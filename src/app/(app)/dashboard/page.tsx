@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/hooks/use-app-context';
 import { Button } from '@/components/ui/button';
@@ -9,10 +8,11 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { FileText, Users, CheckCircle, ListTodo } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
-import { AnnouncementFeed } from '@/components/dashboard/announcement-feed';
+import { AnnouncementFeed } from '@/components/announcements/announcement-feed';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, can } = useAppContext();
+  const [isNewAnnouncementDialogOpen, setIsNewAnnouncementDialogOpen] = useState(false);
 
   const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
@@ -42,7 +42,6 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">Here's a summary of your team's activity.</p>
         </div>
         <div className="flex gap-2">
-            
             <Button variant="outline" asChild>
                 <Link href="/reports">
                     <FileText />
