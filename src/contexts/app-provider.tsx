@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
 
@@ -19,6 +19,7 @@ interface AppContextProps {
   events: PlannerEvent[];
   buildings: Building[];
   manpowerProfiles: ManpowerProfile[];
+  achievements: Achievement[];
   user: User | null;
   users: User[];
   updateTask: (updatedTask: Task) => void;
@@ -37,6 +38,9 @@ interface AppContextProps {
   deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string | null) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
+  addManualAchievement: (userId: string, title: string, description: string, points: number) => void;
+  approveAchievement: (achievementId: string, points: number) => void;
+  rejectAchievement: (achievementId: string) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -49,6 +53,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useLocalStorage<PlannerEvent[]>('aries-events', PLANNER_EVENTS);
   const [buildings, setBuildings] = useLocalStorage<Building[]>('aries-buildings', BUILDINGS);
   const [manpowerProfiles, setManpowerProfiles] = useLocalStorage<ManpowerProfile[]>('aries-manpower-profiles', MANPOWER_PROFILES);
+  const [achievements, setAchievements] = useLocalStorage<Achievement[]>('aries-achievements', ACHIEVEMENTS);
 
 
   const { toast } = useToast();
@@ -278,6 +283,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Occupant Unassigned' });
   };
 
+  const addManualAchievement = (userId: string, title: string, description: string, points: number) => {
+    if (!authContext?.user) return;
+    const newAchievement: Achievement = {
+      id: `ach-${Date.now()}`,
+      userId,
+      title,
+      description,
+      points,
+      date: new Date().toISOString(),
+      type: 'manual',
+      status: 'pending',
+      awardedById: authContext.user.id,
+    };
+    setAchievements([newAchievement, ...achievements]);
+    toast({ title: 'Achievement Submitted', description: 'The award is pending approval.' });
+  };
+
+  const approveAchievement = (achievementId: string, points: number) => {
+    setAchievements(
+      achievements.map((ach) =>
+        ach.id === achievementId ? { ...ach, status: 'approved', points } : ach
+      )
+    );
+  };
+
+  const rejectAchievement = (achievementId: string) => {
+    setAchievements(achievements.filter((ach) => ach.id !== achievementId));
+  };
+
 
   const value = {
     tasks,
@@ -286,6 +320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     events,
     buildings,
     manpowerProfiles,
+    achievements,
     updateTask,
     createTask,
     createAnnouncement,
@@ -304,6 +339,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteBed,
     assignOccupant,
     unassignOccupant,
+    addManualAchievement,
+    approveAchievement,
+    rejectAchievement,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -173,7 +174,7 @@ export type ManpowerTrade = {
   company: string;
 };
 
-export type Trade = 'Welder' | 'Fabricator' | 'Electrician' | 'Painter' | 'Scaffolder' | 'Rope Access Tech' | 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'HSE' | 'Supervisor' | 'Document Controller' | 'Cook';
+export type Trade = 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'HSE' | 'Supervisor' | 'Document Controller' | 'Cook' | 'Welder' | 'Fabricator' | 'Electrician' | 'Painter' | 'Scaffolder' | 'Rope Access Tech';
 
 
 export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received' | 'Not Applicable';
