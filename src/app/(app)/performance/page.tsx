@@ -1,4 +1,6 @@
+'use client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import EmployeePerformanceChart from "@/components/performance/EmployeePerformanceChart";
 
 export default function PerformancePage() {
   return (
@@ -10,9 +12,7 @@ export default function PerformancePage() {
             <CardDescription>Track task distribution and employee statistics.</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground">
-                This page will display bar charts of task distribution and a detailed statistics table for each employee.
-            </p>
+            <EmployeePerformanceChart />
         </CardContent>
       </Card>
     </div>
