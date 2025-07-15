@@ -1,7 +1,7 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ManpowerSummaryTable from '@/components/manpower/ManpowerSummaryTable';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,28 @@ import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 
 export default function ManpowerPage() {
-    const { can } = useAppContext();
+    const { user, roles } = useAppContext();
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());
+
+    const canManageManpower = useMemo(() => {
+        if (!user || !user.role) return false;
+        const userRole = roles.find(r => r.name === user.role);
+        return userRole?.permissions.includes('manage_manpower');
+    }, [user, roles]);
+
+    const canManageManpowerList = useMemo(() => {
+        if (!user || !user.role) return false;
+        const userRole = roles.find(r => r.name === user.role);
+        return userRole?.permissions.includes('manage_manpower_list');
+    }, [user, roles]);
+
+    const canLogForProject = useMemo(() => {
+        if (!user || !user.role) return false;
+        return ['Supervisor', 'Junior Supervisor'].includes(user.role) || canManageManpower;
+    }, [user, canManageManpower]);
+
 
     return (
         <div className="space-y-8">
@@ -28,7 +46,7 @@ export default function ManpowerPage() {
                     <p className="text-muted-foreground">Track daily manpower logs and generate reports.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {can.manage_manpower_list && (
+                    {canManageManpowerList && (
                         <Button asChild variant="outline">
                             <Link href="/manpower-list">
                                 <Users className="mr-2 h-4 w-4" />
@@ -36,7 +54,7 @@ export default function ManpowerPage() {
                             </Link>
                         </Button>
                     )}
-                    {can.manage_manpower && (
+                    {canLogForProject && (
                         <Button onClick={() => setIsLogDialogOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Log Manpower
@@ -130,4 +148,3 @@ export default function ManpowerPage() {
             <ManpowerLogDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} />
         </div>
     );
-}

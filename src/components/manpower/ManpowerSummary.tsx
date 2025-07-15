@@ -1,46 +1,36 @@
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
-import StatCard from '@/components/dashboard/stat-card';
-import { Users, UserCheck, UserX, Briefcase } from 'lucide-react';
+import { useAppContext } from '@/contexts/app-provider';
+import { Users, Briefcase, Plane } from 'lucide-react';
+import StatCard from '../dashboard/stat-card';
 
 export default function ManpowerSummary() {
-    const { manpowerProfiles } = useAppContext();
+  const { workingManpowerCount, onLeaveManpowerCount } = useAppContext();
 
-    const summary = useMemo(() => {
-        const total = manpowerProfiles.length;
-        const working = manpowerProfiles.filter(p => p.status === 'Working').length;
-        const onLeave = manpowerProfiles.filter(p => p.status === 'On Leave').length;
-        const ex = manpowerProfiles.filter(p => p.status === 'Resigned' || p.status === 'Terminated').length;
-        return { total, working, onLeave, ex };
-    }, [manpowerProfiles]);
+  const totalStrength = useMemo(() => {
+    return workingManpowerCount + onLeaveManpowerCount;
+  }, [workingManpowerCount, onLeaveManpowerCount]);
 
-    return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard 
-                title="Total Manpower"
-                value={summary.total.toString()}
-                icon={Users}
-                description="Total number of profiles in the system"
-            />
-            <StatCard 
-                title="Currently Working"
-                value={summary.working.toString()}
-                icon={UserCheck}
-                description="Manpower actively on project sites"
-            />
-            <StatCard 
-                title="On Leave"
-                value={summary.onLeave.toString()}
-                icon={UserX}
-                description="Manpower currently on sick or annual leave"
-            />
-            <StatCard 
-                title="Ex-Manpower"
-                value={summary.ex.toString()}
-                icon={Briefcase}
-                description="Resigned or terminated manpower"
-            />
-        </div>
-    );
+  return (
+    <div className="grid gap-6 md:grid-cols-3">
+       <StatCard 
+          title="Total Working" 
+          value={workingManpowerCount} 
+          icon={Users} 
+          description="Current active manpower count"
+        />
+        <StatCard 
+          title="On Leave" 
+          value={onLeaveManpowerCount}
+          icon={Plane} 
+          description="Manpower currently on leave"
+        />
+        <StatCard 
+          title="Total Strength" 
+          value={totalStrength} 
+          icon={Briefcase} 
+          description="Total manpower including on leave"
+        />
+    </div>
+  );
 }

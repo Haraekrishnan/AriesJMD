@@ -1,8 +1,10 @@
+
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, OtherEquipment, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role } from '@/types';
+import useLocalStorage from '@/hooks/use-local-storage';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, OtherEquipment, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter } from 'date-fns';
 import { USERS, TASKS, PLANNER_EVENTS, ACHIEVEMENTS, ROLES, PROJECTS, ACTIVITY_LOGS, VEHICLES, DRIVERS, INCIDENTS, MANPOWER_LOGS, MANPOWER_PROFILES, INTERNAL_REQUESTS, MANAGEMENT_REQUESTS, INVENTORY_ITEMS, UT_MACHINES, CERTIFICATE_REQUESTS, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, ANNOUNCEMENTS, DAILY_PLANNER_COMMENTS, BUILDINGS } from '@/lib/mock-data';
@@ -10,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type PermissionsObject = Record<Permission, boolean>;
 
-export type AppContextType = {
+type AppContextType = {
   // Auth
   user: User | null;
   loading: boolean;
@@ -71,7 +73,7 @@ export type AppContextType = {
 
   // Functions
   getVisibleUsers: () => User[];
-  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'projectId'> & { assigneeId: string }) => void;
+  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
@@ -106,7 +108,7 @@ export type AppContextType = {
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
-  addProject: (projectName: string, description: string) => void;
+  addProject: (projectName: string) => void;
   updateProject: (project: Project) => void;
   deleteProject: (projectId: string) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
@@ -121,20 +123,16 @@ export type AppContextType = {
   publishIncident: (incidentId: string, comment: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
   markIncidentAsViewed: (incidentId: string) => void;
-  addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' >) => void;
+  addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date'>) => void;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   deleteManpowerProfile: (profileId: string) => void;
-  createInternalRequest: (items: InternalRequest['items']) => void;
+  addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
-  approveInternalRequest: (requestId: string, comment: string) => void;
-  rejectInternalRequest: (requestId: string, comment: string) => void;
-  addInternalRequestComment: (requestId: string, comment: string) => void;
+  updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
-  createManagementRequest: (recipientId: string, subject: string, body: string) => void;
-  approveManagementRequest: (requestId: string, comment: string) => void;
-  rejectManagementRequest: (requestId: string, comment: string) => void;
-  addManagementRequestComment: (requestId: string, comment: string) => void;
+  addManagementRequest: (request: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
+  updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
@@ -146,7 +144,7 @@ export type AppContextType = {
   markUTRequestsAsViewed: () => void;
   acknowledgeFulfilledUTRequest: (requestId: string) => void;
   addUTMachine: (machine: Omit<UTMachine, 'id'>) => void;
-  editUTMachine: (machineId: string, machine: Partial<UTMachine>) => void;
+  updateUTMachine: (machine: UTMachine) => void;
   deleteUTMachine: (machineId: string) => void;
   addDftMachine: (machine: Omit<DftMachine, 'id'>) => void;
   updateDftMachine: (machine: DftMachine) => void;
@@ -155,26 +153,26 @@ export type AppContextType = {
   updateMobileSim: (item: MobileSim) => void;
   deleteMobileSim: (itemId: string) => void;
   addOtherEquipment: (item: Omit<OtherEquipment, 'id'>) => void;
-  editOtherEquipment: (itemId: string, item: Partial<OtherEquipment>) => void;
+  updateOtherEquipment: (item: OtherEquipment) => void;
   deleteOtherEquipment: (itemId: string) => void;
   addMachineLog: (log: Omit<MachineLog, 'id'>) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
-  createAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments' | 'approverId'>) => void;
+  addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => void;
   updateAnnouncement: (announcement: Announcement) => void;
   approveAnnouncement: (announcementId: string) => void;
   rejectAnnouncement: (announcementId: string) => void;
   deleteAnnouncement: (announcementId: string) => void;
   returnAnnouncement: (announcementId: string, comment: string) => void;
   addBuilding: (buildingNumber: string) => void;
-  editBuilding: (buildingId: string, newBuildingNumber: string) => void;
+  updateBuilding: (building: Building) => void;
   deleteBuilding: (buildingId: string) => void;
   addRoom: (buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => void;
   deleteRoom: (buildingId: string, roomId: string) => void;
-  assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string | null) => void;
+  assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
 };
 
-export const AppContext = createContext<AppContextType | undefined>(undefined);
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useLocalStorage<User | null>('aries-user-v8', null);
@@ -269,15 +267,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return [user, ...subordinates];
   }, [user, users, can]);
 
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'projectId'> & { assigneeId: string }) => {
-    if(!user || !user.projectId) return;
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
+    if(!user) return;
     const { assigneeId, ...rest } = taskData;
     const newTask: Task = {
         ...rest,
         id: `task-${Date.now()}`,
         creatorId: user.id,
         status: 'To Do',
-        projectId: user.projectId,
         assigneeId: assigneeId,
         assigneeIds: [assigneeId],
         comments: [],
@@ -304,7 +301,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addComment = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: [...(t.comments || []), newComment] } : t));
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, setTasks, addActivityLog]);
@@ -313,7 +310,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Pending Approval', approvalState: 'pending', previousStatus: t.status, pendingStatus: newStatus, attachment: attachment || t.attachment, comments: [...(t.comments || []), newComment] } : t));
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
   }, [user, tasks, setTasks, addActivityLog]);
@@ -322,7 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         if (t.pendingAssigneeId) { // Reassignment
@@ -330,7 +327,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return { ...t, assigneeId: t.pendingAssigneeId, assigneeIds: [t.pendingAssigneeId], pendingAssigneeId: undefined, status: 'To Do', approvalState: 'none', isViewedByAssignee: false, comments: [...(t.comments || []), newComment] };
         } else { // Status change
           addActivityLog(user.id, 'Task Status Change Approved', `Task "${t.title}" to ${t.pendingStatus}`);
-          return { ...t, status: t.pendingStatus || t.status, completionDate: t.pendingStatus === 'Completed' || t.pendingStatus === 'Done' ? new Date().toISOString() : t.completionDate, pendingStatus: undefined, previousStatus: undefined, approvalState: 'approved', comments: [...(t.comments || []), newComment] };
+          return { ...t, status: t.pendingStatus || t.status, completionDate: t.pendingStatus === 'Completed' ? new Date().toISOString() : t.completionDate, pendingStatus: undefined, previousStatus: undefined, approvalState: 'approved', comments: [...(t.comments || []), newComment] };
         }
       }
       return t;
@@ -341,7 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: t.previousStatus || 'To Do', pendingStatus: undefined, previousStatus: undefined, pendingAssigneeId: undefined, approvalState: 'returned', comments: [...(t.comments || []), newComment] } : t));
     addActivityLog(user.id, 'Task Request Returned', `Task: "${task.title}"`);
   }, [user, tasks, setTasks, addActivityLog]);
@@ -350,7 +347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Pending Approval', approvalState: 'pending', previousStatus: t.status, pendingAssigneeId: newAssigneeId, comments: [...(t.comments || []), newComment] } : t));
     addActivityLog(user.id, 'Task Reassignment Requested', `Task "${task.title}" to ${users.find(u => u.id === newAssigneeId)?.name}`);
   }, [user, tasks, users, setTasks, addActivityLog]);
@@ -369,12 +366,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const approveTask = useCallback((taskId: string, comment?: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if(task) updateTask({ ...task, status: 'Done', comments: comment ? [...task.comments, { id: `c-${Date.now()}`, userId: user!.id, text: comment, date: new Date().toISOString() }] : task.comments });
+    if(task) updateTask({ ...task, status: 'Done', comments: comment ? [...task.comments, { id: `c-${Date.now()}`, userId: user!.id, text: comment, date: new Date().toISOString(), isRead: false }] : task.comments });
   }, [tasks, user, updateTask]);
 
   const returnTask = useCallback((taskId: string, comment: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if(task) updateTask({ ...task, status: 'In Progress', comments: [...task.comments, { id: `c-${Date.now()}`, userId: user!.id, text: comment, date: new Date().toISOString() }] });
+    if(task) updateTask({ ...task, status: 'In Progress', comments: [...task.comments, { id: `c-${Date.now()}`, userId: user!.id, text: comment, date: new Date().toISOString(), isRead: false }] });
   }, [tasks, user, updateTask]);
 
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
@@ -417,13 +414,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setPlannerEvents]);
   
   const addPlannerEventComment = useCallback((eventId: string, text: string) => {
-    if(user) setPlannerEvents(prev => prev.map(e => e.id === eventId ? { ...e, comments: [...(e.comments || []), { id: `ec-${Date.now()}`, userId: user.id, text, date: new Date().toISOString() }] } : e));
+    if(user) setPlannerEvents(prev => prev.map(e => e.id === eventId ? { ...e, comments: [...(e.comments || []), { id: `ec-${Date.now()}`, userId: user.id, text, date: new Date().toISOString(), isRead: false }] } : e));
   }, [user, setPlannerEvents]);
 
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const newComment: Comment = { id: `dpc-${Date.now()}`, userId: user.id, text, date: new Date().toISOString() };
+    const newComment: Comment = { id: `dpc-${Date.now()}`, userId: user.id, text, date: new Date().toISOString(), isRead: false };
     const existingDayIndex = dailyPlannerComments.findIndex(dpc => dpc.day === dayKey && dpc.plannerUserId === plannerUserId);
     if (existingDayIndex > -1) {
         const updatedComments = [...dailyPlannerComments];
@@ -437,15 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    setDailyPlannerComments(prev => prev.map(dpc => {
-      if (dpc.day === dayKey && dpc.plannerUserId === plannerUserId) {
-        return {
-          ...dpc,
-          comments: dpc.comments.map(c => c.userId !== user.id ? { ...c, isRead: true } : c)
-        }
-      }
-      return dpc;
-    }));
+    setDailyPlannerComments(prev => prev.map(dpc => (dpc.day === dayKey && dpc.plannerUserId === plannerUserId) ? { ...dpc, comments: dpc.comments.map(c => c.userId !== user.id ? { ...c, isRead: true } : c) } : dpc));
   }, [user, setDailyPlannerComments]);
 
   const updateDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string, newText: string) => {
@@ -504,8 +493,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRoles(prev => prev.filter(r => r.id !== roleId));
   }, [setRoles]);
 
-  const addProject = useCallback((projectName: string, description: string) => {
-    setProjects(prev => [...prev, { id: `project-${Date.now()}`, name: projectName, description }]);
+  const addProject = useCallback((projectName: string) => {
+    setProjects(prev => [...prev, { id: `project-${Date.now()}`, name: projectName }]);
   }, [setProjects]);
 
   const updateProject = useCallback((updatedProject: Project) => {
@@ -554,7 +543,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             reportTime: now,
             status: 'New',
             isPublished: false,
-            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now }],
+            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now, isRead: true }],
             reportedToUserIds: Array.from(recipients),
             lastUpdated: now,
             viewedBy: [user.id]
@@ -566,7 +555,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateIncident = useCallback((incident: IncidentReport, commentText: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
       
       const updatedIncident = {
           ...incident,
@@ -582,7 +571,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addIncidentComment = useCallback((incidentId: string, text: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text, date: now };
+      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text, date: now, isRead: true };
 
       setIncidentReports(prev => prev.map(i => {
           if (i.id === incidentId) {
@@ -601,14 +590,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const publishIncident = useCallback((incidentId: string, commentText: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
       setIncidentReports(prev => prev.map(i => i.id === incidentId ? { ...i, isPublished: true, lastUpdated: now, viewedBy: [user.id], comments: [...(i.comments || []), newComment] } : i));
   }, [user, setIncidentReports]);
 
   const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], commentText: string) => {
     if (!user) return;
     const now = new Date().toISOString();
-    const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+    const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
       setIncidentReports(prev => prev.map(i => i.id === incidentId ? { ...i, reportedToUserIds: [...new Set([...(i.reportedToUserIds || []), ...userIds])], lastUpdated: now, viewedBy: [user.id], comments: [...(i.comments || []), newComment] } : i));
   }, [user, setIncidentReports]);
   
@@ -622,8 +611,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
   }, [user, setIncidentReports]);
 
-  const addManpowerLog = useCallback((logData: Omit<ManpowerLog, 'id'| 'updatedBy'>) => {
-    if (user) setManpowerLogs(prev => [...prev, { ...logData, id: `mplog-${Date.now()}`, updatedBy: user.id }]);
+  const addManpowerLog = useCallback((logData: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date'>) => {
+    if (user) setManpowerLogs(prev => [...prev, { ...logData, id: `mplog-${Date.now()}`, updatedBy: user.id, date: format(new Date(), 'yyyy-MM-dd') }]);
   }, [user, setManpowerLogs]);
 
   const addManpowerProfile = useCallback((profile: Omit<ManpowerProfile, 'id'>) => {
@@ -638,23 +627,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setManpowerProfiles(prev => prev.filter(p => p.id !== profileId));
   }, [setManpowerProfiles]);
   
-  const createInternalRequest = useCallback((items: InternalRequest['items']) => {
-    if(user) setInternalRequests(prev => [...prev, { id: `ir-${Date.now()}`, requesterId: user.id, date: new Date().toISOString(), status: 'Pending', items, comments: [], viewedByRequester: true }]);
+  const addInternalRequest = useCallback((request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if(user) setInternalRequests(prev => [...prev, { ...request, id: `ir-${Date.now()}`, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true }]);
   }, [user, setInternalRequests]);
 
-  const approveInternalRequest = useCallback((requestId: string, comment: string) => {
-    if(user) setInternalRequests(prev => prev.map(r => r.id === requestId ? {...r, status: 'Approved', approverId: user.id, comments: [...(r.comments || []), { id: `irc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setInternalRequests]);
-  
-  const rejectInternalRequest = useCallback((requestId: string, comment: string) => {
-    if(user) setInternalRequests(prev => prev.map(r => r.id === requestId ? {...r, status: 'Rejected', approverId: user.id, comments: [...(r.comments || []), { id: `irc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setInternalRequests]);
-
-  const addInternalRequestComment = useCallback((requestId: string, comment: string) => {
-    if (user) {
-      const newComment: Comment = { id: `irc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-      setInternalRequests(prev => prev.map(r => r.id === requestId ? {...r, comments: [...(r.comments || []), newComment], viewedByRequester: r.requesterId === user.id} : r));
-    }
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if(user) setInternalRequests(prev => prev.map(r => r.id === requestId ? {...r, status, approverId: user.id, comments: [...(r.comments || []), { id: `irc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
   }, [user, setInternalRequests]);
 
   const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
@@ -665,23 +643,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setInternalRequests(prev => prev.map(r => r.id === requestId ? { ...r, viewedByRequester: true } : r));
   }, [setInternalRequests]);
   
-  const createManagementRequest = useCallback((recipientId: string, subject: string, body: string) => {
-    if (user) setManagementRequests(prev => [...prev, { id: `mr-${Date.now()}`, requesterId: user.id, recipientId, subject, body, date: new Date().toISOString(), status: 'Pending', comments: [], viewedByRequester: true }]);
+  const addManagementRequest = useCallback((request: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if (user) setManagementRequests(prev => [...prev, { ...request, id: `mr-${Date.now()}`, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true }]);
   }, [user, setManagementRequests]);
   
-  const approveManagementRequest = useCallback((requestId: string, comment: string) => {
-    if (user) setManagementRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'Approved', comments: [...(r.comments || []), { id: `mrc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setManagementRequests]);
-  
-  const rejectManagementRequest = useCallback((requestId: string, comment: string) => {
-    if (user) setManagementRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'Rejected', comments: [...(r.comments || []), { id: `mrc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setManagementRequests]);
-
-  const addManagementRequestComment = useCallback((requestId: string, comment: string) => {
-    if (user) {
-      const newComment: Comment = { id: `mrc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-      setManagementRequests(prev => prev.map(r => r.id === requestId ? {...r, comments: [...(r.comments || []), newComment], viewedByRequester: r.requesterId === user.id} : r));
-    }
+  const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
+    if (user) setManagementRequests(prev => prev.map(r => r.id === requestId ? { ...r, status, comments: [...(r.comments || []), { id: `mrc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
   }, [user, setManagementRequests]);
 
   const markManagementRequestAsViewed = useCallback((requestId: string) => {
@@ -745,11 +712,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUtMachines(prev => [...prev, { ...machine, id: `ut-${Date.now()}`}]);
   }, [setUtMachines]);
 
-  const editUTMachine = useCallback((machineId: string, machine: Partial<UTMachine>) => {
-    setUtMachines(utMachines.map(m => m.id === machineId ? { ...m, ...machine } : m));
-    toast({ title: 'UT Machine Updated' });
-  }, [utMachines, setUtMachines, toast]);
-
   const updateUTMachine = useCallback((machine: UTMachine) => {
     setUtMachines(prev => prev.map(m => m.id === machine.id ? machine : m));
   }, [setUtMachines]);
@@ -786,11 +748,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setOtherEquipments(prev => [...prev, { ...item, id: `oth-${Date.now()}`}]);
   }, [setOtherEquipments]);
 
-  const editOtherEquipment = useCallback((itemId: string, item: Partial<OtherEquipment>) => {
-    setOtherEquipments(otherEquipments.map(i => i.id === itemId ? { ...i, ...item } : i));
-    toast({ title: 'Equipment Updated' });
-  }, [otherEquipments, setOtherEquipments, toast]);
-
   const updateOtherEquipment = useCallback((item: OtherEquipment) => {
     setOtherEquipments(prev => prev.map(m => m.id === item.id ? item : m));
   }, [setOtherEquipments]);
@@ -812,28 +769,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAppLogo(logo);
   }, [setAppName, setAppLogo]);
 
-  const createAnnouncement = (newAnnouncementData: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments' | 'approverId'>) => {
-    if (!user) return;
-    const newAnnouncement: Announcement = {
-      ...newAnnouncementData,
-      id: `anno-${Date.now()}`,
-      creatorId: user.id,
-      approverId: user.id, // Self-approved for simplicity
-      status: 'approved',
-      createdAt: new Date().toISOString(),
-      publishedAt: new Date().toISOString(),
-      comments: [],
-    };
-    setAnnouncements([newAnnouncement, ...announcements]);
-    toast({
-      title: 'Announcement Published',
-      description: 'Your announcement is now live.',
-    });
-  };
-
-  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'publishedAt'>) => {
+  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
     if(user && user.supervisorId) {
-        const newAnnouncement: Announcement = { ...data, id: `ann-${Date.now()}`, creatorId: user.id, approverId: user.supervisorId, status: 'pending', createdAt: new Date().toISOString(), publishedAt: '', comments: [] };
+        const newAnnouncement: Announcement = { ...data, id: `ann-${Date.now()}`, creatorId: user.id, approverId: user.supervisorId, status: 'pending', createdAt: new Date().toISOString(), comments: [] };
         setAnnouncements(prev => [newAnnouncement, ...prev]);
     }
   }, [user, setAnnouncements]);
@@ -843,7 +781,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setAnnouncements]);
 
   const approveAnnouncement = useCallback((announcementId: string) => {
-    setAnnouncements(prev => prev.map(a => a.id === announcementId ? {...a, status: 'approved', publishedAt: new Date().toISOString() } : a));
+    setAnnouncements(prev => prev.map(a => a.id === announcementId ? {...a, status: 'approved'} : a));
   }, [setAnnouncements]);
 
   const rejectAnnouncement = useCallback((announcementId: string) => {
@@ -862,14 +800,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBuildings(prev => [...prev, { id: `bldg-${Date.now()}`, buildingNumber, rooms: [] }]);
   }, [setBuildings]);
 
-  const editBuilding = (buildingId: string, newBuildingNumber: string) => {
-    setBuildings(
-      buildings.map((b) =>
-        b.id === buildingId ? { ...b, buildingNumber: newBuildingNumber } : b
-      )
-    );
-  };
-
   const updateBuilding = useCallback((building: Building) => {
     setBuildings(prev => prev.map(b => b.id === building.id ? building : b));
   }, [setBuildings]);
@@ -887,8 +817,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: b.rooms.filter(r => r.id !== roomId) } : b));
   }, [setBuildings]);
 
-  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string | null) => {
-    setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: b.rooms.map(r => r.id === roomId ? { ...r, beds: r.beds.map(bed => bed.id === bedId ? { ...bed, occupantId: occupantId ?? undefined } : bed) } : r) } : b));
+  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
+    setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: b.rooms.map(r => r.id === roomId ? { ...r, beds: r.beds.map(bed => bed.id === bedId ? { ...bed, occupantId } : bed) } : r) } : b));
   }, [setBuildings]);
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
@@ -956,8 +886,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
 
   const value = useMemo(() => ({
-    user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, otherEquipments, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, createInternalRequest, updateInternalRequestItems, approveInternalRequest, rejectInternalRequest, addInternalRequestComment, markInternalRequestAsViewed, createManagementRequest, approveManagementRequest, rejectManagementRequest, addManagementRequestComment, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, addUTMachine, editUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addOtherEquipment, editOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, getMachineLogs, updateBranding, createAnnouncement, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, editBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledUTRequests, workingManpowerCount, onLeaveManpowerCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
-  }), [user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, otherEquipments, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, createInternalRequest, updateInternalRequestItems, approveInternalRequest, rejectInternalRequest, addInternalRequestComment, markInternalRequestAsViewed, createManagementRequest, approveManagementRequest, rejectManagementRequest, addManagementRequestComment, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, addUTMachine, editUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addOtherEquipment, editOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, getMachineLogs, updateBranding, createAnnouncement, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, editBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledUTRequests, workingManpowerCount, onLeaveManpowerCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount]);
+    user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, otherEquipments, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledUTRequests, workingManpowerCount, onLeaveManpowerCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+  }), [user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, otherEquipments, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledUTRequests, workingManpowerCount, onLeaveManpowerCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
@@ -969,3 +899,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    

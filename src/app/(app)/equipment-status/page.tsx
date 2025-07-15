@@ -1,12 +1,13 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, OtherEquipment } from '@/types';
+import type { UTMachine, DftMachine, MobileSim, OtherEquipment } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -104,10 +105,10 @@ export default function EquipmentStatusPage() {
                             <CardContent className="space-y-3">
                                 {myFulfilledUTRequests.map(req => {
                                     const machine = utMachines.find(m => m.id === req.utMachineId);
-                                    const lastComment = req.comments?.[req.comments.length - 1];
+                                    const lastComment = req.comments?.[0];
                                     const fulfiller = users.find(u => u.id === lastComment?.userId);
                                     return (
-                                        <div key={req.id} className="p-3 border rounded-lg bg-card flex justify-between items-center">
+                                        <div key={req.id} className="p-3 border rounded-lg bg-muted/50 flex justify-between items-center">
                                             <div className="flex-1">
                                                 <p className="font-semibold">{req.requestType} for {machine?.machineName} (SN: {machine?.serialNumber})</p>
                                                 <div className="flex items-start gap-2 mt-2">
@@ -137,7 +138,7 @@ export default function EquipmentStatusPage() {
                             <CardContent>
                                 <div className="space-y-2 max-h-40 overflow-y-auto">
                                     {expiringMachines.map((m, i) => (
-                                        <div key={i} className="text-sm p-2 bg-amber-100 dark:bg-amber-900/20 rounded-md">
+                                        <div key={i} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
                                             <span className="font-semibold">{m.machineName} (SN: {m.serialNumber})</span>: Calibration expires on {format(new Date(m.calibrationDueDate), 'dd-MM-yyyy')}.
                                         </div>
                                     ))}

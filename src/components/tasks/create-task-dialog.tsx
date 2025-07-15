@@ -32,11 +32,9 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function CreateTaskDialog() {
-  const { createTask, getVisibleUsers } = useAppContext();
+  const { createTask, users } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-
-  const visibleUsers = getVisibleUsers();
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -45,15 +43,11 @@ export default function CreateTaskDialog() {
       description: '',
       assigneeId: '',
       priority: 'Medium',
-      dueDate: '',
     },
   });
 
   const onSubmit = (data: TaskFormValues) => {
-    createTask({
-      ...data,
-      dueDate: new Date(data.dueDate).toISOString(),
-    });
+    createTask(data);
     toast({
       title: 'Task Created',
       description: `Task "${data.title}" has been created and assigned.`,
@@ -105,7 +99,7 @@ export default function CreateTaskDialog() {
                   <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
                     <SelectContent>
-                      {visibleUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                      {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}

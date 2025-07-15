@@ -1,132 +1,109 @@
 'use client';
 import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useAppContext } from '@/hooks/use-app-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 import { PlusCircle } from 'lucide-react';
 
+const achievementSchema = z.object({
+  userId: z.string().min(1, 'Please select an employee'),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().min(1, 'Description is required'),
+  points: z.coerce.number().min(1, 'Points must be at least 1'),
+});
+
+type AchievementFormValues = z.infer<typeof achievementSchema>;
+
 export default function AddAchievementDialog() {
-  const { users, addManualAchievement } = useAppContext();
+  const { users, awardManualAchievement } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [points, setPoints] = useState(0);
 
-  const handleSubmit = () => {
-    if (!selectedUser || !title || !description || points <= 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Validation Error',
-        description: 'Please fill out all fields and provide points greater than zero.',
-      });
-      return;
-    }
-    addManualAchievement(selectedUser, title, description, points);
+  const form = useForm<AchievementFormValues>({
+    resolver: zodResolver(achievementSchema),
+    defaultValues: {
+      userId: '',
+      title: '',
+      description: '',
+      points: 10,
+    },
+  });
+
+  const onSubmit = (data: AchievementFormValues) => {
+    awardManualAchievement(data);
+    toast({
+      title: 'Achievement Awarded',
+      description: `You have awarded an achievement to ${users.find(u => u.id === data.userId)?.name}.`,
+    });
     setIsOpen(false);
-    // Reset form
-    setSelectedUser('');
-    setTitle('');
-    setDescription('');
-    setPoints(0);
+    form.reset();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) form.reset();
+    }}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Award
+          Award Achievement
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Manual Award</DialogTitle>
-          <DialogDescription>
-            Select an employee and enter the details for the award. It will be submitted for approval.
-          </DialogDescription>
+          <DialogTitle>Add Manual Achievement</DialogTitle>
+          <DialogDescription>Select a user and define the achievement details. This will be visible to everyone.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="employee" className="text-right">
-              Employee
-            </Label>
-            <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select an employee" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map(user => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="title" className="text-right">
-              Award Title
-            </Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="col-span-3"
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Employee</Label>
+            <Controller
+              control={form.control}
+              name="userId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
+                  <SelectContent>
+                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             />
+            {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
-              Reason
-            </Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="col-span-3"
-            />
+
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" {...form.register('title')} placeholder="e.g., Employee of the Month" />
+            {form.formState.errors.title && <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>}
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="points" className="text-right">
-              Points
-            </Label>
-            <Input
-              id="points"
-              type="number"
-              value={points}
-              onChange={(e) => setPoints(Number(e.target.value))}
-              className="col-span-3"
-            />
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description / Reason</Label>
+            <Textarea id="description" {...form.register('description')} placeholder="Reason for the award" />
+            {form.formState.errors.description && <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>}
           </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" onClick={handleSubmit}>
-            Submit for Approval
-          </Button>
-        </DialogFooter>
+
+          <div className="space-y-2">
+            <Label htmlFor="points">Points</Label>
+            <Input id="points" type="number" {...form.register('points')} />
+            {form.formState.errors.points && <p className="text-xs text-destructive">{form.formState.errors.points.message}</p>}
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Award Achievement</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

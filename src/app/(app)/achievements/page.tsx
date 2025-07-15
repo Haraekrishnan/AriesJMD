@@ -1,11 +1,13 @@
+
 'use client';
+
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AchievementsTable from '@/components/achievements/achievements-table';
 import AddAchievementDialog from '@/components/achievements/add-achievement-dialog';
-import type { Achievement } from '@/types';
+import type { Achievement } from '@/lib/types';
 import {
   Table,
   TableHeader,
@@ -59,9 +61,8 @@ export default function AchievementsPage() {
       .map(u => {
         const tasksInPeriod = dateRange
           ? tasks.filter(t => {
-              if (!t.completionDate) return false;
-              const completionDate = new Date(t.completionDate);
-              return t.assigneeIds.includes(u.id) && isWithinInterval(completionDate, { start: dateRange!.start, end: dateRange!.end });
+              const dueDate = new Date(t.dueDate);
+              return t.assigneeIds.includes(u.id) && isWithinInterval(dueDate, { start: dateRange!.start, end: dateRange!.end });
           })
           : tasks.filter(t => t.assigneeIds.includes(u.id));
 
@@ -69,16 +70,13 @@ export default function AchievementsPage() {
           ? achievements.filter(a => a.userId === u.id && isWithinInterval(new Date(a.date), { start: dateRange!.start, end: dateRange!.end }))
           : achievements.filter(a => a.userId === u.id);
         
-        const completed = tasksInPeriod.filter(t => t.status === 'Completed' || t.status === 'Done').length;
+        const completed = tasksInPeriod.filter(t => t.status === 'Done').length;
         
         const overdue = tasksInPeriod.filter(t => {
-            if (t.status !== 'Completed' && t.status !== 'Done') {
-                 return isPast(new Date(t.dueDate));
-            }
             if (t.completionDate) {
                 return isAfter(new Date(t.completionDate), new Date(t.dueDate));
             }
-            return false;
+            return t.status !== 'Done' && isPast(new Date(t.dueDate));
         }).length;
 
         const overduePenalty = overdue * 5;
@@ -133,7 +131,7 @@ export default function AchievementsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Achievements &amp; Rankings</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Achievements & Rankings</h1>
           <p className="text-muted-foreground">Recognize top performers and award achievements.</p>
         </div>
         {can.manage_achievements && <AddAchievementDialog />}
@@ -226,7 +224,7 @@ export default function AchievementsPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Manual Awards &amp; Recognitions</CardTitle>
+          <CardTitle>Manual Awards & Recognitions</CardTitle>
           <CardDescription>Special achievements awarded by management.</CardDescription>
         </CardHeader>
         <CardContent>

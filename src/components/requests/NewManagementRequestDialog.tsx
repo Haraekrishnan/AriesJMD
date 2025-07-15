@@ -1,97 +1,98 @@
 'use client';
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useAppContext } from '@/hooks/use-app-context';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
-type NewManagementRequestDialogProps = {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-};
+const mgmtRequestSchema = z.object({
+  recipientId: z.string().min(1, 'Please select a recipient'),
+  subject: z.string().min(3, 'Subject is required'),
+  body: z.string().min(10, 'Body is required'),
+});
+
+type MgmtRequestFormValues = z.infer<typeof mgmtRequestSchema>;
+
+interface NewManagementRequestDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
 
 export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewManagementRequestDialogProps) {
-    const { user, users, createManagementRequest } = useAppContext();
-    const { toast } = useToast();
+  const { user, users, addManagementRequest } = useAppContext();
+  const { toast } = useToast();
 
-    const [recipientId, setRecipientId] = useState('');
-    const [subject, setSubject] = useState('');
-    const [body, setBody] = useState('');
+  const form = useForm<MgmtRequestFormValues>({
+    resolver: zodResolver(mgmtRequestSchema),
+    defaultValues: { recipientId: '', subject: '', body: '' },
+  });
 
-    const possibleRecipients = users.filter(u => ['Admin', 'Manager', 'Supervisor'].includes(u.role) && u.id !== user?.id);
+  const onSubmit = (data: MgmtRequestFormValues) => {
+    addManagementRequest(data);
+    toast({
+      title: 'Request Sent',
+      description: 'Your request has been sent to management.',
+    });
+    setIsOpen(false);
+    form.reset();
+  };
 
-    const handleSubmit = () => {
-        if (!recipientId || !subject.trim() || !body.trim()) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
-            return;
-        }
-        createManagementRequest(recipientId, subject, body);
-        toast({ title: 'Request Submitted' });
-        // Reset form
-        setRecipientId('');
-        setSubject('');
-        setBody('');
-        setIsOpen(false);
-    };
+  const handleOpenChange = (open: boolean) => {
+    if (!open) form.reset();
+    setIsOpen(open);
+  };
+  
+  const possibleRecipients = users.filter(u => u.id !== user?.id && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Supervisor'));
 
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>New Management Request</DialogTitle>
-                    <DialogDescription>
-                        Submit a request directly to a manager or supervisor.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="recipient" className="text-right">
-                            To
-                        </Label>
-                        <Select value={recipientId} onValueChange={setRecipientId}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select a recipient" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {possibleRecipients.map(u => (
-                                    <SelectItem key={u.id} value={u.id}>{u.name} ({u.role})</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subject" className="text-right">
-                            Subject
-                        </Label>
-                        <Input
-                            id="subject"
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            className="col-span-3"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-start gap-4">
-                        <Label htmlFor="body" className="text-right mt-2">
-                            Details
-                        </Label>
-                        <Textarea
-                            id="body"
-                            value={body}
-                            onChange={(e) => setBody(e.target.value)}
-                            className="col-span-3 min-h-[120px]"
-                            placeholder="Provide details about your request..."
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" onClick={handleSubmit}>Submit Request</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>New Management Request</DialogTitle>
+          <DialogDescription>Send a formal request to a manager or supervisor.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Recipient</Label>
+            <Controller
+              control={form.control}
+              name="recipientId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue placeholder="Select a recipient" /></SelectTrigger>
+                  <SelectContent>
+                    {possibleRecipients.map(u => <SelectItem key={u.id} value={u.id}>{u.name} ({u.role})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.recipientId && <p className="text-xs text-destructive">{form.formState.errors.recipientId.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subject">Subject</Label>
+            <Input id="subject" {...form.register('subject')} />
+            {form.formState.errors.subject && <p className="text-xs text-destructive">{form.formState.errors.subject.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="body">Body</Label>
+            <Textarea id="body" {...form.register('body')} rows={6} />
+            {form.formState.errors.body && <p className="text-xs text-destructive">{form.formState.errors.body.message}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Send Request</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

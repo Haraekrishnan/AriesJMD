@@ -1,13 +1,13 @@
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, Search } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
-import type { ManpowerProfile } from '@/types';
+import type { ManpowerProfile } from '@/lib/types';
 import ManpowerSummary from '@/components/manpower/ManpowerSummary';
 import ManpowerFilters, { type ManpowerFilterValues } from '@/components/manpower/ManpowerFilters';
 import { isWithinInterval, addDays, isBefore, format, parseISO } from 'date-fns';
@@ -15,7 +15,7 @@ import ManpowerReportDownloads from '@/components/manpower/ManpowerReportDownloa
 import { Input } from '@/components/ui/input';
 
 export default function ManpowerListPage() {
-    const { can, manpowerProfiles } = useAppContext();
+    const { user, roles, manpowerProfiles, projects } = useAppContext();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -26,23 +26,22 @@ export default function ManpowerListPage() {
         projectId: 'all',
         expiryDateRange: undefined,
     });
+
+    const canManage = useMemo(() => {
+        if (!user) return false;
+        const userRole = roles.find(r => r.name === user.role);
+        return userRole?.permissions.includes('manage_manpower_list');
+    }, [user, roles]);
     
     const expiringProfiles = useMemo(() => {
-        if (!can.manage_manpower_list) return [];
+        if (!canManage) return [];
         const thirtyDaysFromNow = addDays(new Date(), 30);
         
         return manpowerProfiles.map(p => {
             const expiringDocs: string[] = [];
             const checkDate = (dateStr: string | undefined, name: string) => {
-                if (dateStr) {
-                    try {
-                        const parsedDate = parseISO(dateStr);
-                        if (isBefore(parsedDate, thirtyDaysFromNow)) {
-                            expiringDocs.push(`${name} on ${format(parsedDate, 'dd-MM-yyyy')}`);
-                        }
-                    } catch (e) {
-                        // Ignore invalid date strings
-                    }
+                if (dateStr && isBefore(parseISO(dateStr), thirtyDaysFromNow)) {
+                    expiringDocs.push(`${name} on ${format(parseISO(dateStr), 'dd-MM-yyyy')}`);
                 }
             };
     
@@ -57,7 +56,7 @@ export default function ManpowerListPage() {
             
             return { profile: p, expiringDocs };
         }).filter(item => item.expiringDocs.length > 0);
-    }, [manpowerProfiles, can.manage_manpower_list]);
+    }, [manpowerProfiles, canManage]);
 
     const filteredProfiles = useMemo(() => {
         return manpowerProfiles.filter(profile => {
@@ -68,23 +67,16 @@ export default function ManpowerListPage() {
             const { status, trade, returnDateRange, projectId, expiryDateRange } = filters;
             if (status !== 'all' && profile.status !== status) return false;
             if (trade !== 'all' && profile.trade !== trade) return false;
-            
-            // This filter logic was changed to use 'plantName' as per mock data structure
-            if(projectId !== 'all' && profile.plantName !== projectId) return false;
 
+            if(projectId !== 'all' && profile.eicName !== projectId) return false;
 
             if (returnDateRange?.from) {
                 const returnDate = profile.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate;
                 if (!returnDate) return false;
                 
-                try {
-                    const parsedReturnDate = parseISO(returnDate);
-                    const from = returnDateRange.from;
-                    const to = returnDateRange.to || from;
-                    if (!isWithinInterval(parsedReturnDate, { start: from, end: to })) {
-                        return false;
-                    }
-                } catch(e) {
+                const from = returnDateRange.from;
+                const to = returnDateRange.to || from;
+                if (!isWithinInterval(parseISO(returnDate), { start: from, end: to })) {
                     return false;
                 }
             }
@@ -97,21 +89,17 @@ export default function ManpowerListPage() {
                 ];
                 const fallsInRange = datesToCheck.some(dateStr => {
                     if (!dateStr) return false;
-                    try {
-                        const expiryDate = parseISO(dateStr);
-                        const from = expiryDateRange.from!;
-                        const to = expiryDateRange.to || from;
-                        return isWithinInterval(expiryDate, { start: from, end: to });
-                    } catch(e) {
-                        return false;
-                    }
+                    const expiryDate = parseISO(dateStr);
+                    const from = expiryDateRange.from!;
+                    const to = expiryDateRange.to || from;
+                    return isWithinInterval(expiryDate, { start: from, end: to });
                 });
                 if (!fallsInRange) return false;
             }
 
             return true;
         });
-    }, [manpowerProfiles, filters, searchTerm]);
+    }, [manpowerProfiles, filters, projects, searchTerm]);
 
 
     const handleEdit = (profile: ManpowerProfile) => {
@@ -129,7 +117,7 @@ export default function ManpowerListPage() {
         setSelectedProfile(null);
     };
 
-    if (!can.manage_manpower_list) {
+    if (!canManage) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                 <CardHeader className="text-center items-center">
@@ -168,7 +156,7 @@ export default function ManpowerListPage() {
                     <CardContent>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
                             {expiringProfiles.map(item => (
-                                <div key={item.profile.id} className="text-sm p-2 bg-amber-100 dark:bg-amber-900/20 rounded-md">
+                                <div key={item.profile.id} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
                                     <span className="font-semibold">{item.profile.name} ({item.profile.trade})</span>: {item.expiringDocs.join(', ')}
                                 </div>
                             ))}

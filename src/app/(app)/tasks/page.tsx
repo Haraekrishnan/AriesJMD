@@ -15,11 +15,10 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
-import type { Task } from '@/types';
-import TaskCard from '@/components/tasks/task-card';
+import type { Task } from '@/lib/types';
 
 export default function TasksPage() {
-  const { user, users, tasks, pendingTaskApprovalCount, can } = useAppContext();
+  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, can } = useAppContext();
   
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
@@ -95,16 +94,10 @@ export default function TasksPage() {
       }
       
       let statusMatch = status === 'all' || task.status === status;
-      if (status === 'Completed' && task.status !== 'Done' && task.status !== 'Completed') {
+      if (status === 'Completed' && task.status !== 'Done') {
           statusMatch = false;
-      } else if (status !== 'all' && status !== 'Completed' && task.status === 'Done') {
-          statusMatch = true;
-      } else if (status !== 'all' && task.status !== status) {
+      } else if (status !== 'all' && status !== 'Completed' && task.status !== status) {
           statusMatch = false;
-      }
-      
-      if (status === 'Completed') {
-        statusMatch = task.status === 'Done' || task.status === 'Completed';
       }
 
       const priorityMatch = priority === 'all' || task.priority === priority;
@@ -122,7 +115,7 @@ export default function TasksPage() {
   }, [tasks, filters, user, users]);
 
   const kanbanTasks = useMemo(() => {
-      const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done' && t.status !== 'Completed');
+      const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
       const otherTasks = filteredTasks.filter(t => !overdueTasks.find(ot => ot.id === t.id));
       return { overdue: overdueTasks, regular: otherTasks };
   }, [filteredTasks]);
@@ -130,7 +123,7 @@ export default function TasksPage() {
   const openEditDialog = (task: Task) => {
     setEditingTask(task);
   };
-  
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -178,9 +171,9 @@ export default function TasksPage() {
             <ScrollArea className="max-h-[70vh] p-1">
                 <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => (
-                         <div key={task.id} className="border p-4 rounded-lg bg-card">
-                            <TaskCard task={task} onClick={() => setEditingTask(task)} isDialog />
-                         </div>
+                        <div key={task.id} className="border p-4 rounded-lg">
+                           <EditTaskDialog isOpen={true} setIsOpen={() => setIsPendingApprovalDialogOpen(false)} task={task} />
+                        </div>
                     )) : <p className="text-muted-foreground text-center">No tasks are awaiting your approval.</p>}
                 </div>
             </ScrollArea>
@@ -196,10 +189,10 @@ export default function TasksPage() {
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] p-1">
-                 <div className="p-4 space-y-4">
+                <div className="p-4 space-y-4">
                     {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => (
-                        <div key={task.id} className="border p-4 rounded-lg bg-card">
-                           <TaskCard task={task} onClick={() => setEditingTask(task)} isDialog />
+                        <div key={task.id} className="border p-4 rounded-lg">
+                           <EditTaskDialog isOpen={true} setIsOpen={() => setIsMyRequestsDialogOpen(false)} task={task} />
                         </div>
                     )) : <p className="text-muted-foreground text-center">You have no tasks awaiting approval.</p>}
                 </div>

@@ -1,98 +1,129 @@
 'use client';
-import { useState, useMemo } from 'react';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAppContext } from '@/hooks/use-app-context';
+import { useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import type { UTMachine } from '@/types';
-import { format } from 'date-fns';
+import { Label } from '@/components/ui/label';
+import { UTMachine, MachineLog } from '@/lib/types';
+import { format, formatDistanceToNow } from 'date-fns';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 
-type UTMachineLogManagerDialogProps = {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-    machine: UTMachine;
-};
+const logSchema = z.object({
+  date: z.string().min(1, 'Date is required'),
+  fromTime: z.string().min(1, 'Start time is required'),
+  toTime: z.string().min(1, 'End time is required'),
+  location: z.string().min(1, 'Location is required'),
+  jobDescription: z.string().min(1, 'Description is required'),
+});
+type LogFormValues = z.infer<typeof logSchema>;
+
+interface UTMachineLogManagerDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  machine: UTMachine;
+}
 
 export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }: UTMachineLogManagerDialogProps) {
-    const { addUTMachineLog, users } = useAppContext();
-    const { toast } = useToast();
+  const { user, users, addMachineLog, getMachineLogs } = useAppContext();
+  const { toast } = useToast();
+  
+  const machineLogs = getMachineLogs(machine.id);
 
-    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [fromTime, setFromTime] = useState('');
-    const [toTime, setToTime] = useState('');
-    const [location, setLocation] = useState('');
-    const [jobDescription, setJobDescription] = useState('');
+  const form = useForm<LogFormValues>({
+    resolver: zodResolver(logSchema),
+    defaultValues: {
+      date: format(new Date(), 'yyyy-MM-dd'),
+      fromTime: '09:00',
+      toTime: '17:00',
+      location: '',
+      jobDescription: '',
+    },
+  });
 
-    const handleSubmit = () => {
-        if (!date || !fromTime || !toTime || !location || !jobDescription) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all log details.' });
-            return;
-        }
-        addUTMachineLog(machine.id, { date, fromTime, toTime, location, jobDescription });
-        // Reset form
-        setDate(format(new Date(), 'yyyy-MM-dd'));
-        setFromTime('');
-        setToTime('');
-        setLocation('');
-        setJobDescription('');
-    };
+  const onSubmit = (data: LogFormValues) => {
+    if (!user) return;
+    addMachineLog({ ...data, machineId: machine.id, userId: user.id });
+    toast({
+      title: 'Log Added',
+      description: 'The usage log has been successfully recorded.',
+    });
+    form.reset();
+  };
 
-    const sortedLogs = useMemo(() => {
-        return machine.logs?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
-    }, [machine.logs]);
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Usage Log for {machine.machineName}</DialogTitle>
-                    <DialogDescription>
-                        Add and view usage history for SN: {machine.serialNumber}.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Add New Log</h3>
-                        <div className="space-y-4">
-                            <div><Label htmlFor="date">Date</Label><Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><Label htmlFor="fromTime">From</Label><Input id="fromTime" type="time" value={fromTime} onChange={(e) => setFromTime(e.target.value)} /></div>
-                                <div><Label htmlFor="toTime">To</Label><Input id="toTime" type="time" value={toTime} onChange={(e) => setToTime(e.target.value)} /></div>
-                            </div>
-                            <div><Label htmlFor="location">Location / Job No.</Label><Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} /></div>
-                            <div><Label htmlFor="jobDescription">Job Description</Label><Input id="jobDescription" value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} /></div>
-                             <Button onClick={handleSubmit}>Add Log</Button>
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Usage Log Manager: {machine.machineName}</DialogTitle>
+          <DialogDescription>Add new usage logs and view past entries for this machine.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
+            <div>
+                 <h3 className="font-semibold mb-4">Add New Log Entry</h3>
+                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="date">Date</Label>
+                        <Input id="date" type="date" {...form.register('date')} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="fromTime">From</Label>
+                            <Input id="fromTime" type="time" {...form.register('fromTime')} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="toTime">To</Label>
+                            <Input id="toTime" type="time" {...form.register('toTime')} />
                         </div>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Log History</h3>
-                        <ScrollArea className="h-96 pr-4">
-                            {sortedLogs.length > 0 ? (
-                                <div className="space-y-4">
-                                    {sortedLogs.map(log => {
-                                        const user = users.find(u => u.id === log.userId);
-                                        return(
-                                        <div key={log.id} className="p-3 border rounded-md text-sm bg-muted/50">
-                                            <p className="font-semibold">{log.jobDescription}</p>
-                                            <p className="text-muted-foreground">Date: {format(new Date(log.date), 'dd MMM, yyyy')}, {log.fromTime} - {log.toTime}</p>
-                                            <p className="text-muted-foreground">Location: {log.location}</p>
-                                            {user && <p className="text-xs text-muted-foreground mt-1">Logged by: {user.name}</p>}
-                                        </div>
-                                    )})}
-                                </div>
-                            ) : (
-                                <p className="text-muted-foreground text-center pt-10">No usage logs recorded.</p>
-                            )}
-                        </ScrollArea>
+                     <div className="space-y-2">
+                        <Label htmlFor="location">Location / Project</Label>
+                        <Input id="location" {...form.register('location')} />
                     </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+                     <div className="space-y-2">
+                        <Label htmlFor="jobDescription">Job Description</Label>
+                        <Input id="jobDescription" {...form.register('jobDescription')} />
+                    </div>
+                    <Button type="submit" className="w-full">Add Log</Button>
+                </form>
+            </div>
+            <div>
+                <h3 className="font-semibold mb-4">Past Usage Logs</h3>
+                <ScrollArea className="h-96 rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>User</TableHead>
+                                <TableHead>Job</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {machineLogs.map(log => {
+                                const logUser = users.find(u => u.id === log.userId);
+                                return (
+                                    <TableRow key={log.id}>
+                                        <TableCell>{format(new Date(log.date), 'dd MMM yyyy')}</TableCell>
+                                        <TableCell>{logUser?.name}</TableCell>
+                                        <TableCell>{log.jobDescription}</TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                             {machineLogs.length === 0 && (
+                                <TableRow><TableCell colSpan={3} className="text-center">No logs found.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
+            </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

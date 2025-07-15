@@ -1,62 +1,52 @@
-
 'use client';
-
 import { useState, useMemo } from 'react';
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getMonth, getYear, parseISO, format } from 'date-fns';
-import type { Task } from '@/types';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { format, getYear, getMonth, parseISO } from 'date-fns';
+import type { Task } from '@/lib/types';
 
-type TasksCompletedChartProps = {
-  tasks: Task[];
-};
+interface TasksCompletedChartProps {
+    tasks: Task[];
+}
 
 export default function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
-  const chartData = useMemo(() => {
-    const data: { name: string; 'Tasks Completed': number }[] = [
-      { name: 'Jan', 'Tasks Completed': 0 }, { name: 'Feb', 'Tasks Completed': 0 }, { name: 'Mar', 'Tasks Completed': 0 },
-      { name: 'Apr', 'Tasks Completed': 0 }, { name: 'May', 'Tasks Completed': 0 }, { name: 'Jun', 'Tasks Completed': 0 },
-      { name: 'Jul', 'Tasks Completed': 0 }, { name: 'Aug', 'Tasks Completed': 0 }, { name: 'Sep', 'Tasks Completed': 0 },
-      { name: 'Oct', 'Tasks Completed': 0 }, { name: 'Nov', 'Tasks Completed': 0 }, { name: 'Dec', 'Tasks Completed': 0 },
-    ];
-
-    tasks.forEach(task => {
-      if ((task.status === 'Completed' || task.status === 'Done') && task.completionDate) {
-        const taskDate = parseISO(task.completionDate);
-        if (getYear(taskDate).toString() === selectedYear) {
-          const monthIndex = getMonth(taskDate);
-          data[monthIndex]['Tasks Completed'] += 1;
-        }
-      }
-    });
-
-    return data;
-  }, [tasks, selectedYear]);
-  
   const availableYears = useMemo(() => {
-    if (!tasks) return [new Date().getFullYear()];
-    const years = new Set(tasks.filter(t => t.completionDate).map(t => getYear(parseISO(t.completionDate!))));
+    const years = new Set(tasks.map(t => getYear(parseISO(t.dueDate))));
     if (!years.has(new Date().getFullYear())) {
-        years.add(new Date().getFullYear());
+      years.add(new Date().getFullYear());
     }
-    return Array.from(years).sort((a, b) => b - a);
+    return Array.from(years).sort((a,b) => b - a);
   }, [tasks]);
 
+  const chartData = useMemo(() => {
+    const year = parseInt(selectedYear, 10);
+    const completedTasks = tasks.filter(t => t.status === 'Done' && getYear(parseISO(t.dueDate)) === year);
+
+    const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+      month: format(new Date(year, i), 'MMM'),
+      'Tasks Completed': 0,
+    }));
+
+    completedTasks.forEach(task => {
+      const monthIndex = getMonth(parseISO(task.dueDate));
+      monthlyData[monthIndex]['Tasks Completed']++;
+    });
+
+    return monthlyData;
+  }, [tasks, selectedYear]);
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Tasks Completed</CardTitle>
-            <CardDescription>Monthly task completion for {selectedYear}.</CardDescription>
-          </div>
+        <div className="flex justify-between items-center">
+          <CardTitle>Tasks Completed per Month</CardTitle>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
             <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Select Year" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {availableYears.map(year => (
@@ -66,22 +56,26 @@ export default function TasksCompletedChart({ tasks }: TasksCompletedChartProps)
           </Select>
         </div>
       </CardHeader>
-      <CardContent className="h-[300px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-            <YAxis allowDecimals={false} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--background))',
-                borderColor: 'hsl(var(--border))',
-              }}
-            />
-            <Legend wrapperStyle={{fontSize: "14px"}}/>
-            <Line type="monotone" dataKey="Tasks Completed" stroke="hsl(var(--primary))" strokeWidth={2} activeDot={{ r: 8 }} />
-          </LineChart>
-        </ResponsiveContainer>
+      <CardContent>
+        <div className="h-[350px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 20, left: -10 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip 
+                cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))',
+                    borderColor: 'hsl(var(--border))',
+                    borderRadius: 'var(--radius)'
+                }}
+              />
+              <Legend verticalAlign="bottom" height={36} iconType="line"/>
+              <Line type="monotone" dataKey="Tasks Completed" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

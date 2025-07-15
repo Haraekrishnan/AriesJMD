@@ -1,12 +1,12 @@
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ActivityLogTable from '@/components/activity-tracker/activity-log-table';
 import { AlertTriangle } from 'lucide-react';
 
 export default function ActivityTrackerPage() {
-    const { user, activityLogs, can } = useAppContext();
+    const { user, users, activityLogs, can } = useAppContext();
 
     const visibleLogs = useMemo(() => {
         if (!user) return [];

@@ -1,92 +1,80 @@
 'use client';
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAppContext } from '@/hooks/use-app-context';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { Label } from '@/components/ui/label';
 
-type AddUTMachineDialogProps = {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-};
+const machineSchema = z.object({
+  machineName: z.string().min(1, 'Machine name is required'),
+  serialNumber: z.string().min(1, 'Serial number is required'),
+  calibrationDueDate: z.string().min(1, 'Calibration due date is required'),
+});
+
+type FormValues = z.infer<typeof machineSchema>;
+
+interface AddUTMachineDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
 
 export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDialogProps) {
-    const { addUTMachine } = useAppContext();
-    const { toast } = useToast();
+  const { addUTMachine } = useAppContext();
+  const { toast } = useToast();
+  
+  const form = useForm<FormValues>({
+    resolver: zodResolver(machineSchema),
+    defaultValues: { machineName: '', serialNumber: '' },
+  });
 
-    const [machineName, setMachineName] = useState('');
-    const [serialNumber, setSerialNumber] = useState('');
-    const [calibrationDueDate, setCalibrationDueDate] = useState('');
+  const onSubmit = (data: FormValues) => {
+    addUTMachine(data);
+    toast({
+      title: 'UT Machine Added',
+      description: `Machine ${data.machineName} has been added to the system.`,
+    });
+    setIsOpen(false);
+    form.reset();
+  };
+  
+  const handleOpenChange = (open: boolean) => {
+      if (!open) form.reset();
+      setIsOpen(open);
+  }
 
-    const handleSubmit = () => {
-        if (!machineName || !serialNumber || !calibrationDueDate) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all fields.' });
-            return;
-        }
-        addUTMachine({
-            machineName,
-            serialNumber,
-            calibrationDueDate: new Date(calibrationDueDate).toISOString(),
-        });
-        setIsOpen(false);
-        setMachineName('');
-        setSerialNumber('');
-        setCalibrationDueDate('');
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Add UT Machine</DialogTitle>
-                    <DialogDescription>
-                        Enter the details for the new UT machine.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="machineName" className="text-right">
-                            Machine Name
-                        </Label>
-                        <Input
-                            id="machineName"
-                            value={machineName}
-                            onChange={(e) => setMachineName(e.target.value)}
-                            className="col-span-3"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="serialNumber" className="text-right">
-                            Serial No.
-                        </Label>
-                        <Input
-                            id="serialNumber"
-                            value={serialNumber}
-                            onChange={(e) => setSerialNumber(e.target.value)}
-                            className="col-span-3"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="calibrationDueDate" className="text-right">
-                            Calibration Due
-                        </Label>
-                        <Input
-                            id="calibrationDueDate"
-                            type="date"
-                            value={calibrationDueDate}
-                            onChange={(e) => setCalibrationDueDate(e.target.value)}
-                            className="col-span-3"
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" onClick={handleSubmit}>Add Machine</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New UT Machine</DialogTitle>
+          <DialogDescription>Fill in the details for the new UT machine.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="machineName">Machine Name</Label>
+            <Input id="machineName" {...form.register('machineName')} />
+            {form.formState.errors.machineName && <p className="text-xs text-destructive">{form.formState.errors.machineName.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="serialNumber">Serial Number</Label>
+            <Input id="serialNumber" {...form.register('serialNumber')} />
+            {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="calibrationDueDate">Calibration Due Date</Label>
+            <Input id="calibrationDueDate" type="date" {...form.register('calibrationDueDate')} />
+            {form.formState.errors.calibrationDueDate && <p className="text-xs text-destructive">{form.formState.errors.calibrationDueDate.message}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Add Machine</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

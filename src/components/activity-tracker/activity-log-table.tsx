@@ -1,30 +1,20 @@
 'use client';
 
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
-import type { ActivityLog } from '@/types';
-import { format } from 'date-fns';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
+import type { ActivityLog } from '@/lib/types';
 
-type ActivityLogTableProps = {
+interface ActivityLogTableProps {
   logs: ActivityLog[];
-};
+}
 
 export default function ActivityLogTable({ logs }: ActivityLogTableProps) {
   const { users } = useAppContext();
 
-  const getUserName = (userId: string) => {
-    return users.find(u => u.id === userId)?.name || 'Unknown User';
-  };
-
   if (logs.length === 0) {
-    return <p className="text-muted-foreground text-center py-4">No activity logs found.</p>;
+    return <p className="text-muted-foreground text-center py-8">No activity logs to display.</p>;
   }
 
   return (
@@ -34,18 +24,40 @@ export default function ActivityLogTable({ logs }: ActivityLogTableProps) {
           <TableHead>User</TableHead>
           <TableHead>Action</TableHead>
           <TableHead>Details</TableHead>
-          <TableHead className="text-right">Timestamp</TableHead>
+          <TableHead className="text-right">Time</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {logs.map((log) => (
-          <TableRow key={log.id}>
-            <TableCell>{getUserName(log.userId)}</TableCell>
-            <TableCell className="font-medium">{log.action}</TableCell>
-            <TableCell>{log.details}</TableCell>
-            <TableCell className="text-right">{format(new Date(log.timestamp), 'dd MMM yyyy, hh:mm a')}</TableCell>
-          </TableRow>
-        ))}
+        {logs.map((log) => {
+          const logUser = users.find(u => u.id === log.userId);
+          return (
+            <TableRow key={log.id}>
+              <TableCell>
+                {logUser && (
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={logUser.avatar} alt={logUser.name} />
+                      <AvatarFallback>{logUser.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{logUser.name}</p>
+                      <p className="text-sm text-muted-foreground">{logUser.email}</p>
+                    </div>
+                  </div>
+                )}
+              </TableCell>
+              <TableCell>
+                <p className="font-medium">{log.action}</p>
+              </TableCell>
+              <TableCell>
+                 <p className="text-sm text-muted-foreground">{log.details || 'N/A'}</p>
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

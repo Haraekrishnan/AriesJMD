@@ -1,14 +1,14 @@
 
-'use client';
+'use client'
 
 import { useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { BedSingle, PlusCircle, User, UserX, Edit, Trash2, Building as BuildingIcon } from 'lucide-react';
+import { BedSingle, PlusCircle, User, UserX, Edit, Trash2 } from 'lucide-react';
 import AssignOccupantDialog from './assign-occupant-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import type { Building } from '@/types';
+import type { Building, Room } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface AccommodationDetailsProps {
@@ -54,17 +54,16 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         <>
         <Accordion type="multiple" className="w-full space-y-4">
             {buildings.map(building => (
-                <AccordionItem key={building.id} value={building.id} className="border rounded-lg bg-card">
+                <AccordionItem key={building.id} value={building.id} className="border rounded-lg">
                     <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
                        <div className="flex items-center gap-2">
-                         <BuildingIcon className="h-5 w-5 text-primary" />
                          <span>Building {building.buildingNumber}</span>
                        </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-4 pt-0">
                         <div className="space-y-4">
                             {building.rooms.map(room => (
-                                <div key={room.id} className="p-4 border rounded-md bg-background">
+                                <div key={room.id} className="p-4 border rounded-md bg-muted/50">
                                     <h4 className="font-semibold flex items-center justify-between">
                                         Room {room.roomNumber}
                                         {can.manage_accommodation && (
@@ -85,17 +84,17 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                             </AlertDialog>
                                         )}
                                     </h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-2">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                                         {room.beds.map(bed => {
                                             const occupant = bed.occupantId ? manpowerProfiles.find(p => p.id === bed.occupantId) : null;
                                             return (
-                                                <div key={bed.id} className="p-3 border rounded-lg bg-card flex flex-col items-center justify-center text-center shadow-sm">
-                                                    <BedSingle className="h-6 w-6 mb-2 text-primary" />
+                                                <div key={bed.id} className="p-3 border rounded-lg bg-background flex flex-col items-center justify-center text-center">
+                                                    <BedSingle className="h-6 w-6 mb-2" />
                                                     <p className="font-medium text-sm">Bed {bed.bedNumber}</p>
                                                     {occupant ? (
                                                         <>
-                                                            <p className="text-xs text-muted-foreground mt-1 h-8 flex items-center">{occupant.name}</p>
-                                                            {can.manage_accommodation && <AlertDialog>
+                                                            <p className="text-xs text-muted-foreground mt-1">{occupant.name}</p>
+                                                            <AlertDialog>
                                                                 <AlertDialogTrigger asChild>
                                                                     <Button variant="ghost" size="sm" className="mt-2 h-7 text-destructive hover:text-destructive">
                                                                         <UserX className="mr-1 h-3 w-3"/> Unassign
@@ -111,14 +110,14 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                                                         <AlertDialogAction onClick={() => handleUnassign(building.id, room.id, bed.id)}>Unassign</AlertDialogAction>
                                                                     </AlertDialogFooter>
                                                                 </AlertDialogContent>
-                                                            </AlertDialog>}
+                                                            </AlertDialog>
                                                         </>
                                                     ) : (
                                                          <>
-                                                            <p className="text-xs text-green-600 mt-1 h-8 flex items-center">Available</p>
-                                                            {can.manage_accommodation && <Button variant="outline" size="sm" className="mt-2 h-7" onClick={() => handleAssignClick(building.id, room.id, bed.id)}>
+                                                            <p className="text-xs text-green-600 mt-1">Available</p>
+                                                            <Button variant="outline" size="sm" className="mt-2 h-7" onClick={() => handleAssignClick(building.id, room.id, bed.id)}>
                                                                 <User className="mr-1 h-3 w-3"/> Assign
-                                                            </Button>}
+                                                            </Button>
                                                          </>
                                                     )}
                                                 </div>

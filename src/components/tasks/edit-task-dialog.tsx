@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,9 +14,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, UserRoundCog, Trash2 } from 'lucide-react';
-import type { Task, Priority, TaskStatus, Role, Comment } from '@/types';
+import { format, formatDistanceToNow, startOfDay } from 'date-fns';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2 } from 'lucide-react';
+import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
@@ -46,7 +47,6 @@ const roleHierarchy: Record<Role, number> = {
   'Junior Supervisor': 1,
   'Junior HSE': 1,
   'Assistant Store Incharge': 1,
-  'Document Controller': 1,
   'Supervisor': 2,
   'HSE': 2,
   'Store in Charge': 2,
@@ -163,6 +163,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     }
     if (action === 'approve') {
         approveTaskStatusChange(taskToDisplay.id, newComment);
+        // Toast is handled in the context provider
     } else {
         returnTaskStatusChange(taskToDisplay.id, newComment);
         toast({ title: 'Request Returned', description: 'The task has been returned to the assignee.' });
@@ -215,19 +216,24 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const isApprover = useMemo(() => {
     if (!user) return false;
     
+    // If it's a reassignment request, only the creator can approve.
     if (taskToDisplay.pendingAssigneeId) {
         return user.id === taskToDisplay.creatorId;
     }
 
+    // For status changes, the creator or the current assignee's supervisor can approve.
     if (user.id === taskToDisplay.assigneeId) return false;
     
     const currentAssignee = users.find(u => u.id === taskToDisplay.assigneeId);
     if (!currentAssignee) return false;
 
+    // Supervisor of current assignee can approve.
     if (user.id === currentAssignee.supervisorId) return true;
 
+    // Creator can approve if they are a manager or admin.
     if (user.id === taskToDisplay.creatorId && (user.role === 'Manager' || user.role === 'Admin')) return true;
 
+    // Supervisor of creator can approve if creator is not manager/admin.
     const creatorUser = users.find(u => u.id === taskToDisplay.creatorId);
     if (creatorUser && user.id === creatorUser.supervisorId) return true;
     
@@ -421,7 +427,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 {renderActionButtons()}
             </div>
         </div>
-        <DialogFooter className="justify-between pt-4 mt-4 border-t">
+        <DialogFooter className="justify-between">
             <div>
               {isAdmin && (
                 <AlertDialog>

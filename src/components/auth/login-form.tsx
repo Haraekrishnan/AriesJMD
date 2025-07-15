@@ -1,76 +1,75 @@
 'use client';
-
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useAppContext } from '@/contexts/app-provider';
-import { CardContent } from '../ui/card';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
-const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(1, { message: 'Password is required.' }),
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address.'),
+  password: z.string().min(1, 'Password is required.'),
 });
 
-export function LoginForm() {
-  const { login } = useAppContext();
+type LoginFormValues = z.infer<typeof loginSchema>;
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+export function LoginForm() {
+  const { login } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: 'alex@ariesmarine.com',
+      password: 'password',
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    login(values.email, values.password);
-  }
+  const handleLogin = async (data: LoginFormValues) => {
+    setIsLoading(true);
+    const success = await login(data.email, data.password);
+    
+    if (!success) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: 'Invalid email or password. Please try again.',
+      });
+      setIsLoading(false);
+    }
+    // On success, the AuthProvider will handle setting the user state,
+    // and the redirect will be handled by the login page's useEffect.
+  };
 
   return (
-    <CardContent>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="admin@aries.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="w-full">
-            Login
+    <form onSubmit={form.handleSubmit(handleLogin)}>
+      <Card className="bg-card shadow-none border-none">
+        <CardContent className="p-6 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" placeholder="name@example.com" {...form.register('email')} />
+            {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" type="password" placeholder="••••••••" {...form.register('password')} />
+            {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
+          </div>
+           <p className="text-xs text-muted-foreground pt-2">
+              Hint: Use alex@ariesmarine.com (Manager) or maria@ariesmarine.com (Employee).
+            </p>
+        </CardContent>
+        <CardFooter className="p-6 pt-0">
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
-        </form>
-      </Form>
-    </CardContent>
+        </CardFooter>
+      </Card>
+    </form>
   );
 }

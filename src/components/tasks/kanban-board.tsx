@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { Task, TaskStatus } from '@/types';
-import { useAppContext } from '@/hooks/use-app-context';
+import type { Task, TaskStatus } from '@/lib/types';
+import { useAppContext } from '@/contexts/app-provider';
 import TaskCard from './task-card';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
@@ -27,7 +27,7 @@ const columnColors: Record<BoardColumn, string> = {
 }
 
 export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTasks: Task[] }) {
-  const { user, updateTask } = useAppContext();
+  const { user, requestTaskStatusChange } = useAppContext();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -53,16 +53,8 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
     const task = tasks.find(t => t.id === draggedTask) || overdueTasks.find(t => t.id === draggedTask);
     if (!task) return;
     
-    if (newStatus === 'Done') {
-        updateTask({
-            ...task,
-            status: 'Pending Approval',
-            pendingStatus: 'Completed',
-            previousStatus: task.status
-        });
-    } else {
-        updateTask({ ...task, status: newStatus });
-    }
+    const comment = `Status changed to ${newStatus} via drag and drop.`;
+    requestTaskStatusChange(task.id, newStatus, comment);
     
     setDraggedTask(null);
   };
@@ -76,10 +68,6 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   const openEditDialog = (task: Task) => {
     setEditingTask(task);
   };
-  
-  const handleTaskUpdate = (updatedTask: Task) => {
-    updateTask(updatedTask);
-  }
 
   return (
     <>
@@ -121,7 +109,6 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
             isOpen={!!editingTask} 
             setIsOpen={() => setEditingTask(null)} 
             task={editingTask} 
-            onTaskUpdate={handleTaskUpdate}
         />
       )}
     </>

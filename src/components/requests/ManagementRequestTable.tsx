@@ -1,237 +1,166 @@
+
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
-import type { ManagementRequest, User } from '@/types';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { useState } from 'react';
+import { useAppContext } from '@/contexts/app-provider';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Input } from '../ui/input';
+import { MoreHorizontal, CheckCircle, XCircle, MessagesSquare, Edit } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import type { ManagementRequest, ManagementRequestStatus } from '@/lib/types';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-type ManagementRequestTableProps = {
+
+interface ManagementRequestTableProps {
   requests: ManagementRequest[];
+}
+
+const statusVariant: Record<ManagementRequestStatus, 'default' | 'secondary' | 'destructive'> = {
+  Pending: 'secondary',
+  Approved: 'default',
+  Rejected: 'destructive',
 };
 
 export default function ManagementRequestTable({ requests }: ManagementRequestTableProps) {
-  const { user, users, approveManagementRequest, rejectManagementRequest, addManagementRequestComment } = useAppContext();
-  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
+  const { user, users, updateManagementRequestStatus, markManagementRequestAsViewed } = useAppContext();
+  const [selectedRequest, setSelectedRequest] = useState<ManagementRequest | null>(null);
+  const [action, setAction] = useState<'Approved' | 'Rejected' | null>(null);
   const [comment, setComment] = useState('');
   const { toast } = useToast();
+  
+  const getName = (id: string) => users.find(u => u.id === id)?.name || 'Unknown';
+  const getAvatar = (id: string) => users.find(u => u.id === id)?.avatar;
 
-  const toggleExpand = (requestId: string) => {
-    setExpandedRequestId(expandedRequestId === requestId ? null : requestId);
-  };
-
-  const getStatusVariant = (status: ManagementRequest['status']) => {
-    switch (status) {
-      case 'Pending':
-        return 'secondary';
-      case 'Approved':
-        return 'default';
-      case 'Rejected':
-        return 'destructive';
-      default:
-        return 'default';
-    }
-  };
-
-  const getUser = (userId: string): User | undefined => users.find(u => u.id === userId);
-
-  const handleAddComment = (requestId: string) => {
-    if (comment.trim() === '') return;
-    addManagementRequestComment(requestId, comment);
+  const handleActionClick = (req: ManagementRequest, act: 'Approved' | 'Rejected') => {
+    setSelectedRequest(req);
+    setAction(act);
     setComment('');
   };
 
-  const handleApprovalAction = (
-    requestId: string,
-    action: 'approve' | 'reject',
-    commentText?: string
-  ) => {
-    if (action === 'approve') {
-      approveManagementRequest(requestId, commentText);
-      toast({ title: 'Request Approved' });
-    } else {
-      if (!commentText) {
-        toast({
-          variant: 'destructive',
-          title: 'Comment Required',
-          description: 'A reason is required to reject a request.',
-        });
+  const handleConfirmAction = () => {
+    if (!selectedRequest || !action) return;
+    if (!comment.trim()) {
+        toast({ title: 'Comment required', variant: 'destructive'});
         return;
-      }
-      rejectManagementRequest(requestId, commentText);
-      toast({ title: 'Request Rejected', variant: 'destructive' });
+    }
+
+    updateManagementRequestStatus(selectedRequest.id, action, comment);
+    toast({ title: `Request ${action}d` });
+    setSelectedRequest(null);
+    setAction(null);
+  }
+
+  const handleAccordionToggle = (req: ManagementRequest) => {
+    if (user?.id === req.requesterId && !req.viewedByRequester) {
+        markManagementRequestAsViewed(req.id);
     }
   };
 
   if (requests.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No management requests found.</p>;
+    return <p className="text-center py-10 text-muted-foreground">No requests found.</p>;
   }
 
   return (
-    <div className="space-y-2">
-      {requests.map(request => {
-        const requester = getUser(request.requesterId);
-        const recipient = getUser(request.recipientId);
-        const isExpanded = expandedRequestId === request.id;
-        const isOwner = user?.id === request.requesterId;
-        const isRecipient = user?.id === request.recipientId;
-        const showActions = isRecipient && request.status === 'Pending';
-        const showCommentBox = isOwner || isRecipient;
+    <>
+    <div className="border rounded-md">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead></TableHead>
+            <TableHead>From/To</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Subject & Details</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {requests.map(req => {
+              const isRecipient = req.recipientId === user?.id;
+              const isRequester = req.requesterId === user?.id;
+              const hasUpdate = isRequester && !req.viewedByRequester;
 
-        return (
-          <div key={request.id} className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader className="bg-muted/50 hover:bg-muted/80 cursor-pointer" onClick={() => toggleExpand(request.id)}>
-                <TableRow>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow className="cursor-pointer" onClick={() => toggleExpand(request.id)}>
-                  <TableCell className="font-medium">{request.subject}</TableCell>
-                  <TableCell>{requester?.name}</TableCell>
-                  <TableCell>{recipient?.name}</TableCell>
-                  <TableCell>{format(new Date(request.date), 'dd MMM, yyyy')}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(request.status)}>{request.status}</Badge>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-
-            {isExpanded && (
-              <div className="p-4 bg-background">
-                <h4 className="font-semibold mb-2">Details:</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-4">{request.body}</p>
-                
-                {request.comments && request.comments.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="font-semibold mb-2">Comments:</h4>
-                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
-                      {request.comments.map(c => {
-                         const commentUser = getUser(c.userId);
-                         return(
-                          <div key={c.id} className="flex items-start gap-2 text-sm">
-                            <Avatar className='h-7 w-7'><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                            <div className='flex-1'>
-                                <div className='bg-muted p-2 rounded-md'>
-                                    <div className='flex justify-between items-baseline'>
-                                        <p className="font-semibold text-xs">{commentUser?.name}</p>
-                                        <p className='text-xs text-muted-foreground'>{format(new Date(c.date), 'dd MMM, hh:mm a')}</p>
-                                    </div>
-                                    <p className="text-foreground/80 mt-1">{c.text}</p>
+              return (
+                <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
+                <TableCell className="w-8">
+                   {hasUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
+                </TableCell>
+                <TableCell>
+                    {isRecipient ? `From: ${getName(req.requesterId)}` : `To: ${getName(req.recipientId)}`}
+                </TableCell>
+                <TableCell>{format(new Date(req.date), 'dd MMM yyyy')}</TableCell>
+                <TableCell className="max-w-xs">
+                    <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req)}>
+                        <AccordionItem value={req.id} className="border-none">
+                            <AccordionTrigger className="p-0 hover:no-underline font-normal text-left">{req.subject}</AccordionTrigger>
+                            <AccordionContent className="pt-2 text-muted-foreground">
+                                <p className="text-sm mb-4 p-2 bg-muted rounded-md">{req.body}</p>
+                                <h4 className="font-semibold text-xs mb-2">Comment History</h4>
+                                <div className="space-y-2">
+                                  {req.comments.length > 0 ? req.comments.map((c,i) => {
+                                      const commentUser = users.find(u => u.id === c.userId);
+                                      return (
+                                          <div key={i} className="flex items-start gap-2">
+                                              <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                              <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                  <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                  <p className="text-foreground/80 mt-1">{c.text}</p>
+                                              </div>
+                                          </div>
+                                      )
+                                  }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
                                 </div>
-                            </div>
-                          </div>
-                         )
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                {showCommentBox && (
-                    <div className="flex gap-2 mb-4">
-                        <Input
-                        placeholder="Add a comment..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        />
-                        <Button onClick={() => handleAddComment(request.id)} disabled={!comment.trim()}>
-                        Send
-                        </Button>
-                    </div>
-                )}
-
-                {showActions && (
-                  <div className="flex gap-2 justify-end pt-4 border-t">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive">Reject</Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Reject Request?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Please provide a reason for rejecting this request. This will be added as a comment.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <Textarea
-                          placeholder="Reason for rejection..."
-                          id={`rejection-comment-${request.id}`}
-                        />
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => {
-                              const commentText = (document.getElementById(`rejection-comment-${request.id}`) as HTMLTextAreaElement).value;
-                              handleApprovalAction(request.id, 'reject', commentText);
-                            }}
-                          >
-                            Confirm Rejection
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    <AlertDialog>
-                       <AlertDialogTrigger asChild>
-                          <Button>Approve</Button>
-                       </AlertDialogTrigger>
-                       <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Approve Request?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Do you want to add an optional comment with the approval?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <Textarea
-                            placeholder="Optional comment..."
-                            id={`approval-comment-${request.id}`}
-                            />
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => {
-                                const commentText = (document.getElementById(`approval-comment-${request.id}`) as HTMLTextAreaElement).value;
-                                handleApprovalAction(request.id, 'approve', commentText);
-                            }}>
-                                Approve
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                       </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </TableCell>
+                <TableCell>
+                    <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                    {isRecipient && req.status === 'Pending' && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </TableCell>
+                </TableRow>
+              )
+          })}
+        </TableBody>
+      </Table>
     </div>
+
+    {selectedRequest && action && (
+        <AlertDialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{action} Request?</AlertDialogTitle>
+                    <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div>
+                    <Label htmlFor="comment">Comment (Required)</Label>
+                    <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )}
+    </>
   );
 }

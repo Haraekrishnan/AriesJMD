@@ -6,19 +6,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ExternalLink, GanttChartSquare, PlusCircle } from 'lucide-react';
-import NewInternalRequestDialog from '@/components/requests/NewInternalRequestDialog';
-import InternalRequestTable from '@/components/requests/InternalRequestTable';
+import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
+import InternalRequestTable from '@/components/requests/internal-request-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewManagementRequestDialog from '@/components/requests/NewManagementRequestDialog';
 import ManagementRequestTable from '@/components/requests/ManagementRequestTable';
 import { Badge } from '@/components/ui/badge';
 
 export default function MyRequestsPage() {
-    const { user, can, internalRequests, managementRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
+    const { user, roles, internalRequests, managementRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
 
-    const isApprover = can.approve_store_requests;
+    const isApprover = useMemo(() => {
+        if (!user) return false;
+        const userRole = roles.find(r => r.name === user.role);
+        return userRole?.permissions.includes('approve_store_requests');
+    }, [user, roles]);
 
     const visibleInternalRequests = useMemo(() => {
         if (!user) return [];

@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { LucideIcon } from 'lucide-react';
 
@@ -8,7 +9,7 @@ interface StatCardProps {
   description: string;
 }
 
-export function StatCard({ title, value, icon: Icon, description }: StatCardProps) {
+export default function StatCard({ title, value, icon: Icon, description }: StatCardProps) {
   return (
     <Card className="transition-all duration-300 hover:bg-secondary/50 hover:shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -1,31 +1,22 @@
-
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/hooks/use-auth';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
-import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const { user, loading } = useAppContext();
+  const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       router.replace('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  if (loading || (!loading && user)) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">

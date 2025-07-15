@@ -1,63 +1,74 @@
 
 'use client';
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAppContext } from '@/hooks/use-app-context';
-import { useToast } from '@/hooks/use-toast';
 
-type AddRoomDialogProps = {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-    buildingId: string;
-};
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
+
+const roomSchema = z.object({
+  roomNumber: z.string().min(1, 'Room number is required'),
+  numberOfBeds: z.coerce.number().min(1, 'Number of beds must be at least 1').max(10, 'A room cannot have more than 10 beds.'),
+});
+
+type RoomFormValues = z.infer<typeof roomSchema>;
+
+interface AddRoomDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  buildingId: string;
+}
 
 export default function AddRoomDialog({ isOpen, setIsOpen, buildingId }: AddRoomDialogProps) {
-    const [roomNumber, setRoomNumber] = useState('');
-    const { addRoom } = useAppContext();
-    const { toast } = useToast();
+  const { addRoom } = useAppContext();
+  const { toast } = useToast();
 
-    const handleSubmit = () => {
-        if (roomNumber.trim() && buildingId) {
-            addRoom(buildingId, roomNumber.trim());
-            toast({ title: 'Room Added', description: `Room ${roomNumber} has been added.` });
-            setRoomNumber('');
-            setIsOpen(false);
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: 'Room number cannot be empty.' });
-        }
-    };
+  const form = useForm<RoomFormValues>({
+    resolver: zodResolver(roomSchema),
+    defaultValues: { numberOfBeds: 4 }
+  });
 
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Add New Room</DialogTitle>
-                    <DialogDescription>
-                        Enter the details for the new room.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="roomNumber" className="text-right">
-                            Room No.
-                        </Label>
-                        <Input
-                            id="roomNumber"
-                            value={roomNumber}
-                            onChange={(e) => setRoomNumber(e.target.value)}
-                            className="col-span-3"
-                            placeholder="e.g., 101, 20B"
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" onClick={handleSubmit}>Add Room</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  const onSubmit = (data: RoomFormValues) => {
+    addRoom(buildingId, data);
+    toast({ title: 'Room Added', description: `Room ${data.roomNumber} has been added.` });
+    setIsOpen(false);
+    form.reset();
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) form.reset({ numberOfBeds: 4 });
+    setIsOpen(open);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Room</DialogTitle>
+          <DialogDescription>Add a new room to the selected building.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="roomNumber">Room Number</Label>
+            <Input id="roomNumber" {...form.register('roomNumber')} placeholder="e.g., 101" />
+            {form.formState.errors.roomNumber && <p className="text-xs text-destructive">{form.formState.errors.roomNumber.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="numberOfBeds">Number of Beds</Label>
+            <Input id="numberOfBeds" type="number" {...form.register('numberOfBeds')} placeholder="e.g., 4" />
+            {form.formState.errors.numberOfBeds && <p className="text-xs text-destructive">{form.formState.errors.numberOfBeds.message}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Add Room</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

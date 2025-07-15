@@ -1,96 +1,129 @@
 'use client';
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAppContext } from '@/hooks/use-app-context';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
-type ManpowerLogDialogProps = {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-};
+const logSchema = z.object({
+  projectId: z.string().min(1, 'Project is required'),
+  countIn: z.coerce.number().min(0, 'Count In must be non-negative'),
+  personInName: z.string().optional(),
+  countOut: z.coerce.number().min(0, 'Count Out must be non-negative'),
+  personOutName: z.string().optional(),
+  reason: z.string().min(1, 'Reason is required'),
+});
+
+type LogFormValues = z.infer<typeof logSchema>;
+
+interface ManpowerLogDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
 
 export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDialogProps) {
-    const { projects, addManpowerLog, user } = useAppContext();
-    const { toast } = useToast();
+  const { user, projects, addManpowerLog } = useAppContext();
+  const { toast } = useToast();
 
-    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [projectId, setProjectId] = useState(user?.projectId || '');
-    const [countIn, setCountIn] = useState('');
-    const [countOut, setCountOut] = useState('');
-    const [reason, setReason] = useState('');
+  const form = useForm<LogFormValues>({
+    resolver: zodResolver(logSchema),
+    defaultValues: {
+      projectId: user?.projectId || '',
+      countIn: 0,
+      personInName: '',
+      countOut: 0,
+      personOutName: '',
+      reason: '',
+    },
+  });
+  
+  const isSupervisor = user?.role === 'Supervisor' || user?.role === 'Junior Supervisor';
 
-    const handleSubmit = () => {
-        if (!date || !projectId || !countIn || !countOut) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all required fields.' });
-            return;
-        }
-        addManpowerLog({
-            date,
-            projectId,
-            countIn: Number(countIn),
-            countOut: Number(countOut),
-            reason,
-        });
-        setIsOpen(false);
-        toast({ title: 'Manpower Logged' });
-        // Reset form
-        setDate(format(new Date(), 'yyyy-MM-dd'));
-        setProjectId(user?.projectId || '');
-        setCountIn('');
-        setCountOut('');
-        setReason('');
-    };
-    
-    const canChangeProject = user?.role === 'Admin' || user?.role === 'Manager';
+  const onSubmit = (data: LogFormValues) => {
+    addManpowerLog(data);
+    toast({ title: 'Manpower Logged', description: `Today's manpower count has been updated.` });
+    setIsOpen(false);
+    form.reset();
+  };
+  
+  const handleOpenChange = (open: boolean) => {
+      if (!open) form.reset({
+        projectId: user?.projectId || '',
+        countIn: 0,
+        personInName: '',
+        countOut: 0,
+        personOutName: '',
+        reason: '',
+      });
+      setIsOpen(open);
+  }
 
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Log Daily Manpower</DialogTitle>
-                    <DialogDescription>
-                        Enter the manpower details for a project on a specific date.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="date" className="text-right">Date</Label>
-                        <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="col-span-3" />
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="project" className="text-right">Project</Label>
-                        <Select value={projectId} onValueChange={setProjectId} disabled={!canChangeProject}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select project" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="countIn" className="text-right">Count In</Label>
-                        <Input id="countIn" type="number" value={countIn} onChange={(e) => setCountIn(e.target.value)} className="col-span-3" />
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="countOut" className="text-right">Count Out</Label>
-                        <Input id="countOut" type="number" value={countOut} onChange={(e) => setCountOut(e.target.value)} className="col-span-3" />
-                    </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="reason" className="text-right">Reason</Label>
-                        <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} className="col-span-3" placeholder="e.g. sick leave, etc." />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" onClick={handleSubmit}>Save Log</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Log Daily Manpower</DialogTitle>
+          <DialogDescription>Update the manpower count for today.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <Label>Project / Location</Label>
+            <Controller
+              control={form.control}
+              name="projectId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value} disabled={isSupervisor && !!user?.projectId}>
+                  <SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger>
+                  <SelectContent>
+                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="countIn">Manpower In</Label>
+              <Input id="countIn" type="number" {...form.register('countIn')} />
+              {form.formState.errors.countIn && <p className="text-xs text-destructive">{form.formState.errors.countIn.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="personInName">Person In Name(s)</Label>
+              <Input id="personInName" {...form.register('personInName')} placeholder="e.g., John, Jane" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="countOut">Manpower Out</Label>
+              <Input id="countOut" type="number" {...form.register('countOut')} />
+              {form.formState.errors.countOut && <p className="text-xs text-destructive">{form.formState.errors.countOut.message}</p>}
+            </div>
+             <div>
+              <Label htmlFor="personOutName">Person Out Name(s)</Label>
+              <Input id="personOutName" {...form.register('personOutName')} placeholder="e.g., Peter" />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="reason">Reason for Change</Label>
+            <Textarea id="reason" {...form.register('reason')} placeholder="e.g., Full attendance, 1 sick leave"/>
+            {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Log Count</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

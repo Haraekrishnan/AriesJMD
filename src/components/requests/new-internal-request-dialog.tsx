@@ -1,0 +1,112 @@
+'use client';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { PlusCircle, Trash2 } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
+
+const requestItemSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  remarks: z.string().optional(),
+});
+
+const internalRequestSchema = z.object({
+  items: z.array(requestItemSchema).min(1, 'At least one item is required.'),
+});
+
+type InternalRequestFormValues = z.infer<typeof internalRequestSchema>;
+
+interface NewInternalRequestDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
+
+export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInternalRequestDialogProps) {
+  const { addInternalRequest } = useAppContext();
+  const { toast } = useToast();
+
+  const form = useForm<InternalRequestFormValues>({
+    resolver: zodResolver(internalRequestSchema),
+    defaultValues: {
+      items: [{ description: '', quantity: 1, remarks: '' }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
+
+  const onSubmit = (data: InternalRequestFormValues) => {
+    addInternalRequest(data);
+    toast({
+      title: 'Request Submitted',
+      description: 'Your internal store request has been submitted.',
+    });
+    setIsOpen(false);
+    form.reset();
+  };
+  
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset({ items: [{ description: '', quantity: 1, remarks: '' }] });
+    }
+    setIsOpen(open);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>New Internal Store Request</DialogTitle>
+          <DialogDescription>List the items you need from the internal store.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <ScrollArea className="max-h-[60vh] p-1">
+            <div className="space-y-4 p-4">
+              {fields.map((field, index) => (
+                <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                  <div className="col-span-6 space-y-1">
+                    <Label htmlFor={`items.${index}.description`} className="text-xs">Item Description</Label>
+                    <Textarea id={`items.${index}.description`} {...form.register(`items.${index}.description`)} rows={1} />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label htmlFor={`items.${index}.quantity`} className="text-xs">Quantity</Label>
+                    <Input id={`items.${index}.quantity`} type="number" {...form.register(`items.${index}.quantity`)} />
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    <Label htmlFor={`items.${index}.remarks`} className="text-xs">Remarks</Label>
+                    <Input id={`items.${index}.remarks`} {...form.register(`items.${index}.remarks`)} />
+                  </div>
+                  <div className="col-span-1 flex items-end h-full">
+                     <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+               {form.formState.errors.items?.root && <p className="text-xs text-destructive">{form.formState.errors.items.root.message}</p>}
+
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, remarks: '' })}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            </div>
+          </ScrollArea>
+          <DialogFooter className="pt-4">
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+            <Button type="submit">Submit Request</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

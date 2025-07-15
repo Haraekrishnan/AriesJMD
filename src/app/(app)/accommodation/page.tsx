@@ -1,14 +1,16 @@
+
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PlusCircle, BedDouble, BedSingle, Building as BuildingIcon } from 'lucide-react';
-import { StatCard } from '@/components/dashboard/stat-card';
+import { AlertTriangle, PlusCircle } from 'lucide-react';
+import StatCard from '@/components/dashboard/stat-card';
+import { BedDouble, BedSingle, Building } from 'lucide-react';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
-import type { Building as BuildingType } from '@/types';
+import type { Building as BuildingType } from '@/lib/types';
 import EditBuildingDialog from '@/components/accommodation/edit-building-dialog';
 
 export default function AccommodationPage() {
@@ -85,7 +87,7 @@ export default function AccommodationPage() {
                 <StatCard 
                     title="Available Beds" 
                     value={summary.availableBeds.toString()} 
-                    icon={BuildingIcon}
+                    icon={Building}
                     description="Empty beds available for assignment"
                 />
             </div>

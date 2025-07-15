@@ -1,94 +1,95 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAppContext } from '@/hooks/use-app-context';
+import { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import type { OtherEquipment } from '@/types';
+import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Textarea } from '../ui/textarea';
+import type { OtherEquipment } from '@/lib/types';
 
-type EditOtherEquipmentDialogProps = {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-    item: OtherEquipment;
-};
+const itemSchema = z.object({
+  allottedTo: z.string().min(1, 'Please select a user'),
+  equipmentName: z.string().min(1, 'Equipment name is required'),
+  serialNumber: z.string().min(1, 'Serial number is required'),
+  remarks: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof itemSchema>;
+
+interface EditOtherEquipmentDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  item: OtherEquipment;
+}
 
 export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: EditOtherEquipmentDialogProps) {
-    const { editOtherEquipment, users } = useAppContext();
-    const { toast } = useToast();
+  const { users, updateOtherEquipment } = useAppContext();
+  const { toast } = useToast();
+  
+  const form = useForm<FormValues>({
+    resolver: zodResolver(itemSchema),
+  });
 
-    const [equipmentName, setEquipmentName] = useState('');
-    const [serialNumber, setSerialNumber] = useState('');
-    const [allottedTo, setAllottedTo] = useState('');
-    const [remarks, setRemarks] = useState('');
+  useEffect(() => {
+    if (item && isOpen) {
+        form.reset(item);
+    }
+  }, [item, isOpen, form]);
 
-    useEffect(() => {
-        if (item) {
-            setEquipmentName(item.equipmentName);
-            setSerialNumber(item.serialNumber);
-            setAllottedTo(item.allottedTo);
-            setRemarks(item.remarks || '');
-        }
-    }, [item]);
-
-    const handleSubmit = () => {
-        if (!equipmentName || !serialNumber || !allottedTo) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please fill in all required fields.' });
-            return;
-        }
-        editOtherEquipment(item.id, {
-            equipmentName,
-            serialNumber,
-            allottedTo,
-            remarks
-        });
-        setIsOpen(false);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit Equipment</DialogTitle>
-                    <DialogDescription>
-                        Update the details for {item.equipmentName}.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="equipmentName" className="text-right">Name</Label>
-                        <Input id="equipmentName" value={equipmentName} onChange={(e) => setEquipmentName(e.target.value)} className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="serialNumber" className="text-right">Serial No.</Label>
-                        <Input id="serialNumber" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="col-span-3" />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="allottedTo" className="text-right">Allotted To</Label>
-                        <Select value={allottedTo} onValueChange={setAllottedTo}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select user" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {users.map(user => (
-                                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="remarks" className="text-right">Remarks</Label>
-                        <Textarea id="remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} className="col-span-3" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="submit" onClick={handleSubmit}>Save Changes</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  const onSubmit = (data: FormValues) => {
+    updateOtherEquipment({ ...item, ...data });
+    toast({
+      title: 'Equipment Updated',
+      description: 'Equipment details have been updated.',
+    });
+    setIsOpen(false);
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Equipment</DialogTitle>
+          <DialogDescription>Update the details for this item.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Allotted To</Label>
+              <Controller name="allottedTo" control={form.control} render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select user"/></SelectTrigger>
+                      <SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+                  </Select>
+              )}/>
+               {form.formState.errors.allottedTo && <p className="text-xs text-destructive">{form.formState.errors.allottedTo.message}</p>}
+            </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="equipmentName">Equipment Name</Label>
+              <Input id="equipmentName" {...form.register('equipmentName')} />
+              {form.formState.errors.equipmentName && <p className="text-xs text-destructive">{form.formState.errors.equipmentName.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="serialNumber">Serial Number</Label>
+              <Input id="serialNumber" {...form.register('serialNumber')} />
+              {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="remarks">Remarks</Label>
+            <Textarea id="remarks" {...form.register('remarks')} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Save Changes</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

@@ -1,6 +1,8 @@
-import type { User, Task, PlannerEvent, Achievement, ActivityLog, DailyPlannerComment, RoleDefinition, InternalRequest, Project, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, ManagementRequest, DftMachine, MobileSim, OtherEquipment, Driver, Announcement, IncidentReport, Building, Role } from '@/types';
-import { sub, add, format, formatISO } from 'date-fns';
-import { ALL_PERMISSIONS } from '@/types';
+
+
+import type { User, Task, PlannerEvent, Achievement, ActivityLog, DailyPlannerComment, RoleDefinition, InternalRequest, Project, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, ManagementRequest, DftMachine, MobileSim, OtherEquipment, Driver, Announcement, IncidentReport, Building } from './types';
+import { sub, add, format } from 'date-fns';
+import { ALL_PERMISSIONS } from './types';
 
 export { ALL_PERMISSIONS };
 
@@ -85,13 +87,13 @@ export const ROLES: RoleDefinition[] = [
 ];
 
 export const PROJECTS: Project[] = [
-    { id: 'proj-1', name: 'SEZ', description: 'SEZ Project'},
-    { id: 'proj-2', name: 'DTA', description: 'DTA Project' },
-    { id: 'proj-3', name: 'MTF', description: 'MTF Project' },
-    { id: 'proj-4', name: 'JPC', description: 'JPC Project' },
-    { id: 'proj-5', name: 'SOLAR', description: 'SOLAR Project' },
-    { id: 'proj-6', name: 'Head Office', description: 'Head Office' },
-    { id: 'proj-7', name: 'Pass Section', description: 'Pass Section' },
+    { id: 'proj-1', name: 'SEZ' },
+    { id: 'proj-2', name: 'DTA' },
+    { id: 'proj-3', name: 'MTF' },
+    { id: 'proj-4', name: 'JPC' },
+    { id: 'proj-5', name: 'SOLAR' },
+    { id: 'proj-6', name: 'Head Office' },
+    { id: 'proj-7', name: 'Pass Section' },
 ];
 
 export const USERS: User[] = [
@@ -118,10 +120,7 @@ export const USERS: User[] = [
   { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Junior HSE', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20', projectId: 'proj-6', planningScore: 0 },
   { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2', projectId: 'proj-6', planningScore: 0 },
   { id: '23', name: 'Asst. Store Keeper', email: 'asst.store@ariesmarine.com', password: 'password', role: 'Assistant Store Incharge', avatar: 'https://i.pravatar.cc/150?u=23', supervisorId: '22', projectId: 'proj-6', planningScore: 0 },
-  { id: '24', name: 'Doc Controller', email: 'doc@ariesmarine.com', password: 'password', role: 'Document Controller', avatar: 'https://i.pravatar.cc/150?u=24', supervisorId: '1', projectId: 'proj-7', planningScore: 0 },
 ];
-
-const today = new Date();
 
 export const TASKS: Task[] = [
   {
@@ -131,10 +130,9 @@ export const TASKS: Task[] = [
     status: 'In Progress',
     priority: 'High',
     dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '19',
+    assigneeId: '19', 
     assigneeIds: ['19'],
-    creatorId: '11',
-    projectId: 'proj-1',
+    creatorId: '11', 
     isViewedByAssignee: true,
     comments: [
         { id: 'c-1-1', userId: '11', text: 'Let me know if you have any questions on the design brief.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() }
@@ -149,10 +147,9 @@ export const TASKS: Task[] = [
     status: 'To Do',
     priority: 'High',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '12',
+    assigneeId: '12', 
     assigneeIds: ['12'],
-    creatorId: '3',
-    projectId: 'proj-1',
+    creatorId: '3', 
     isViewedByAssignee: true,
     comments: [],
     requiresAttachmentForCompletion: false,
@@ -165,10 +162,9 @@ export const TASKS: Task[] = [
     status: 'To Do',
     priority: 'Medium',
     dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '2',
+    assigneeId: '2', 
     assigneeIds: ['2'],
-    creatorId: '1',
-    projectId: 'proj-6',
+    creatorId: '1', 
     isViewedByAssignee: true,
     comments: [],
     requiresAttachmentForCompletion: false,
@@ -181,10 +177,9 @@ export const TASKS: Task[] = [
     status: 'In Progress',
     priority: 'High',
     dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '15',
+    assigneeId: '15', 
     assigneeIds: ['15'],
-    creatorId: '5',
-    projectId: 'proj-3',
+    creatorId: '5', 
     isViewedByAssignee: true,
     comments: [
         { id: 'c-4-1', userId: '5', text: 'This is a top priority, please escalate if you run into issues.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
@@ -197,14 +192,13 @@ export const TASKS: Task[] = [
     id: 'task-5',
     title: 'Update brand style guide',
     description: 'Revise the brand style guide with new logos and color palettes. Distribute to all relevant teams.',
-    status: 'Completed',
+    status: 'Done',
     priority: 'Low',
     dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     completionDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '19',
+    assigneeId: '19', 
     assigneeIds: ['19'],
-    creatorId: '11',
-    projectId: 'proj-1',
+    creatorId: '11', 
     isViewedByAssignee: true,
     comments: [],
     requiresAttachmentForCompletion: false,
@@ -219,8 +213,7 @@ export const TASKS: Task[] = [
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '2',
     assigneeIds: ['2'],
-    creatorId: '1',
-    projectId: 'proj-6',
+    creatorId: '1', 
     isViewedByAssignee: true,
     comments: [],
     requiresAttachmentForCompletion: false,
@@ -233,10 +226,9 @@ export const TASKS: Task[] = [
     status: 'To Do',
     priority: 'High',
     dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '12',
+    assigneeId: '12', 
     assigneeIds: ['12'],
-    creatorId: '3',
-    projectId: 'proj-1',
+    creatorId: '3', 
     isViewedByAssignee: false,
     comments: [],
     requiresAttachmentForCompletion: true,
@@ -246,14 +238,13 @@ export const TASKS: Task[] = [
     id: 'task-8',
     title: 'User testing for new feature',
     description: 'Conduct user testing sessions for the upcoming feature release. Gather feedback and report findings.',
-    status: 'Completed',
+    status: 'Done',
     priority: 'Medium',
     dueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     completionDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    assigneeId: '16',
+    assigneeId: '16', 
     assigneeIds: ['16'],
-    creatorId: '5',
-    projectId: 'proj-3',
+    creatorId: '5', 
     isViewedByAssignee: true,
     comments: [],
     requiresAttachmentForCompletion: false,
@@ -264,7 +255,7 @@ export const TASKS: Task[] = [
 export const INTERNAL_REQUESTS: InternalRequest[] = [
     {
         id: 'ireq-1',
-        requesterId: '19',
+        requesterId: '19', 
         items: [
           { description: 'A4 paper ream', quantity: 5, remarks: '' },
           { description: 'Blue and black pens', quantity: 2, remarks: '1 box each' }
@@ -276,7 +267,7 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
     },
     {
         id: 'ireq-2',
-        requesterId: '12',
+        requesterId: '12', 
         items: [
           { description: 'Fluke Multimeters', quantity: 2, remarks: 'The old ones are malfunctioning.' }
         ],
@@ -291,8 +282,8 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
 export const MANAGEMENT_REQUESTS: ManagementRequest[] = [
     {
         id: 'mreq-1',
-        requesterId: '13',
-        recipientId: '4',
+        requesterId: '13', 
+        recipientId: '4', 
         subject: 'Request for additional training',
         body: 'I would like to request enrollment in the advanced project management course to improve my skills.',
         status: 'Pending',
@@ -315,7 +306,7 @@ export const CERTIFICATE_REQUESTS: CertificateRequest[] = [
   {
     id: 'cert-req-1',
     itemId: 'inv-1',
-    requesterId: '3',
+    requesterId: '3', 
     requestType: 'TP Certificate',
     status: 'Pending',
     requestDate: new Date().toISOString(),
@@ -331,8 +322,8 @@ export const MANPOWER_LOGS: ManpowerLog[] = [
 ];
 
 export const UT_MACHINES: UTMachine[] = [
-    { id: 'ut-1', machineName: 'Krautkramer USM 36', serialNumber: 'UTM-001', calibrationDueDate: add(new Date(), { months: 3 }).toISOString(), logs: [] },
-    { id: 'ut-2', machineName: 'Olympus EPOCH 650', serialNumber: 'UTM-002', calibrationDueDate: add(new Date(), { days: 20 }).toISOString(), logs: [] },
+    { id: 'ut-1', machineName: 'Krautkramer USM 36', serialNumber: 'UTM-001', calibrationDueDate: add(new Date(), { months: 3 }).toISOString() },
+    { id: 'ut-2', machineName: 'Olympus EPOCH 650', serialNumber: 'UTM-002', calibrationDueDate: add(new Date(), { days: 20 }).toISOString() },
 ];
 
 export const DFT_MACHINES: DftMachine[] = [];
@@ -341,8 +332,8 @@ export const OTHER_EQUIPMENTS: OtherEquipment[] = [];
 
 
 export const DRIVERS: Driver[] = [
-    { id: 'd-1', name: 'Ali Khan', licenseNumber: 'DL-001', epNumber: 'EP-001', sdpNumber: 'SDP-001', epExpiry: add(new Date(), { months: 4 }).toISOString(), medicalExpiry: add(new Date(), { years: 1 }).toISOString() },
-    { id: 'd-2', name: 'Babu Raj', licenseNumber: 'DL-002', epNumber: 'EP-002', sdpNumber: 'SDP-002', epExpiry: add(new Date(), { days: 20 }).toISOString(), medicalExpiry: add(new Date(), { months: 6 }).toISOString() },
+    { id: 'd-1', name: 'Ali Khan', licenseNumber: 'DL-001', epNumber: 'EP-001', sdpNumber: 'SDP-001', epExpiry: add(new Date(), { months: 4 }).toISOString(), medicalExpiry: add(new Date(), { years: 1 }).toISOString(), photo: '' },
+    { id: 'd-2', name: 'Babu Raj', licenseNumber: 'DL-002', epNumber: 'EP-002', sdpNumber: 'SDP-002', epExpiry: add(new Date(), { days: 20 }).toISOString(), medicalExpiry: add(new Date(), { months: 6 }).toISOString(), photo: '' },
 ];
 
 export const VEHICLES: Vehicle[] = [
@@ -350,7 +341,7 @@ export const VEHICLES: Vehicle[] = [
     { id: 'vh-2', vehicleNumber: 'SHJ 54321', driverId: 'd-2', vapValidity: add(new Date(), { days: 25 }).toISOString(), insuranceValidity: add(new Date(), { months: 8 }).toISOString(), fitnessValidity: add(new Date(), { years: 1 }).toISOString(), taxValidity: add(new Date(), { months: 2 }).toISOString(), puccValidity: add(new Date(), { months: 4 }).toISOString() },
 ];
 
-export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'HSE', 'Supervisor', 'Document Controller', 'Cook', 'Welder', 'Fabricator', 'Electrician', 'Painter', 'Scaffolder', 'Rope Access Tech'];
+export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'HSE', 'Supervisor', 'Document Controller', 'Cook'];
 export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3'];
 export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
 
@@ -407,8 +398,8 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         description: 'Sync up on project progress and blockers.',
         date: new Date().toISOString(),
         frequency: 'daily',
-        creatorId: '11',
-        userId: '19',
+        creatorId: '11', 
+        userId: '19', 
         comments: [],
     },
     {
@@ -417,8 +408,8 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         description: 'Showcase new features developed in the current sprint.',
         date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
         frequency: 'once',
-        creatorId: '2',
-        userId: '2',
+        creatorId: '2', 
+        userId: '2', 
         comments: [],
     },
     {
@@ -427,8 +418,8 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         description: 'Company-wide update meeting.',
         date: new Date(new Date().setDate(15)).toISOString(),
         frequency: 'monthly',
-        creatorId: '1',
-        userId: '1',
+        creatorId: '1', 
+        userId: '1', 
         comments: [],
     },
     {
@@ -437,7 +428,7 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         description: 'Discuss what went well and what could be improved.',
         date: new Date(new Date().setDate(25)).toISOString(),
         frequency: 'weekly',
-        creatorId: '3',
+        creatorId: '3', 
         userId: '12',
         comments: [],
     }
@@ -475,10 +466,7 @@ export const ACTIVITY_LOGS: ActivityLog[] = [
   },
 ];
 
-export const ANNOUNCEMENTS: Announcement[] = [
-    { id: 'anno-1', title: 'System Maintenance Scheduled', content: 'The system will be down for maintenance on Saturday from 2 AM to 4 AM.', publishedAt: formatISO(sub(today, {days: 1})), createdAt: formatISO(sub(today, {days: 1})), creatorId: '1', status: 'approved', comments: [] },
-    { id: 'anno-2', title: 'New Safety Protocols', content: 'Please review the new safety protocols document available in the resources section.', publishedAt: formatISO(sub(today, {days: 3})), createdAt: formatISO(sub(today, {days: 3})), creatorId: '1', status: 'approved', comments: [] },
-];
+export const ANNOUNCEMENTS: Announcement[] = [];
 export const INCIDENTS: IncidentReport[] = [];
 
 export const BUILDINGS: Building[] = [

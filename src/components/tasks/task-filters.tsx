@@ -3,90 +3,92 @@ import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Calendar as CalendarIcon, X } from 'lucide-react';
+import { TaskStatus } from '@/lib/types';
+import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import type { TaskStatus, Priority } from '@/types';
 
-export type TaskFilters = {
-    status: TaskStatus | 'all';
-    priority: Priority | 'all';
-    dateRange?: DateRange;
-    showMyTasksOnly: boolean;
-};
+export interface TaskFilters {
+  status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';
+  priority: 'all' | 'Low' | 'Medium' | 'High';
+  dateRange?: DateRange;
+  showMyTasksOnly: boolean;
+}
 
 interface TaskFiltersProps {
   onApplyFilters: (filters: TaskFilters) => void;
   initialFilters: TaskFilters;
 }
 
-export default function TaskFiltersComponent({ onApplyFilters, initialFilters }: TaskFiltersProps) {
+export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    onApplyFilters(newFilters);
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
   
-  const resetFilters = () => {
-    const defaultFilters = {
+  const handleApply = () => {
+    onApplyFilters(filters);
+  };
+  
+  const handleReset = () => {
+    const clearedFilters = {
         status: 'all',
         priority: 'all',
         dateRange: undefined,
-        showMyTasksOnly: false
+        showMyTasksOnly: false,
     } as const;
-    setFilters(defaultFilters);
-    onApplyFilters(defaultFilters);
+    setFilters(clearedFilters);
+    onApplyFilters(clearedFilters);
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Select value={filters.status} onValueChange={(val: TaskStatus | 'all') => handleFilterChange('status', val)}>
-        <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Statuses</SelectItem>
-          <SelectItem value="To Do">To Do</SelectItem>
-          <SelectItem value="In Progress">In Progress</SelectItem>
-          <SelectItem value="Completed">Completed</SelectItem>
-        </SelectContent>
-      </Select>
+    <div className="p-4 border rounded-lg bg-card">
+        <div className="flex flex-wrap gap-4 items-center">
+            <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value as TaskFilters['status'])}>
+                <SelectTrigger className="w-full sm:w-auto"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="To Do">To Do</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Done">Completed</SelectItem>
+                    <SelectItem value="Overdue">Overdue</SelectItem>
+                </SelectContent>
+            </Select>
 
-      <Select value={filters.priority} onValueChange={(val: Priority | 'all') => handleFilterChange('priority', val)}>
-        <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Priority" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Priorities</SelectItem>
-          <SelectItem value="Low">Low</SelectItem>
-          <SelectItem value="Medium">Medium</SelectItem>
-          <SelectItem value="High">High</SelectItem>
-        </SelectContent>
-      </Select>
+            <Select value={filters.priority} onValueChange={value => handleFilterChange('priority', value as TaskFilters['priority'])}>
+                <SelectTrigger className="w-full sm:w-auto"><SelectValue placeholder="All Priorities"/></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                </SelectContent>
+            </Select>
 
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant={'outline'} className={cn('w-full sm:w-[240px] justify-start text-left font-normal', !filters.dateRange && 'text-muted-foreground')}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {filters.dateRange?.from ? (filters.dateRange.to ? `${format(filters.dateRange.from, 'LLL dd, y')} - ${format(filters.dateRange.to, 'LLL dd, y')}` : format(filters.dateRange.from, 'LLL dd, y')) : <span>Filter by date</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="range" selected={filters.dateRange} onSelect={(range) => handleFilterChange('dateRange', range)} />
-        </PopoverContent>
-      </Popover>
+            <DateRangePicker
+                placeholder="Filter by due date..."
+                date={filters.dateRange}
+                onDateChange={(value: DateRange | undefined) => handleFilterChange('dateRange', value)}
+            />
+            
+            <div className="flex items-center space-x-2">
+                <Switch
+                  id="my-tasks-switch"
+                  checked={filters.showMyTasksOnly}
+                  onCheckedChange={(checked) => handleFilterChange('showMyTasksOnly', checked)}
+                />
+                <Label htmlFor="my-tasks-switch">My Tasks Only</Label>
+            </div>
 
-      <div className="flex items-center space-x-2">
-        <Switch id="my-tasks" checked={filters.showMyTasksOnly} onCheckedChange={(val) => handleFilterChange('showMyTasksOnly', val)}/>
-        <Label htmlFor="my-tasks">My Tasks Only</Label>
-      </div>
-
-      <Button variant="ghost" onClick={resetFilters}>
-        <X className="mr-2 h-4 w-4" />
-        Reset
-      </Button>
+            <div className="flex gap-2 ml-auto">
+                <Button onClick={handleApply}>Apply</Button>
+                <Button variant="ghost" onClick={handleReset}>
+                    <X className="mr-2 h-4 w-4" /> Clear
+                </Button>
+            </div>
+        </div>
     </div>
   );
 }
