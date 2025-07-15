@@ -475,8 +475,8 @@ export const ACTIVITY_LOGS: ActivityLog[] = [
 ];
 
 export const ANNOUNCEMENTS: Announcement[] = [
-    { id: 'anno-1', title: 'System Maintenance Scheduled', content: 'The system will be down for maintenance on Saturday from 2 AM to 4 AM.', publishedAt: formatISO(sub(today, {days: 1})) },
-    { id: 'anno-2', title: 'New Safety Protocols', content: 'Please review the new safety protocols document available in the resources section.', publishedAt: formatISO(sub(today, {days: 3})) },
+    { id: 'anno-1', title: 'System Maintenance Scheduled', content: 'The system will be down for maintenance on Saturday from 2 AM to 4 AM.', publishedAt: formatISO(sub(today, {days: 1})), createdAt: formatISO(sub(today, {days: 1})), creatorId: '1', status: 'approved', comments: [] },
+    { id: 'anno-2', title: 'New Safety Protocols', content: 'Please review the new safety protocols document available in the resources section.', publishedAt: formatISO(sub(today, {days: 3})), createdAt: formatISO(sub(today, {days: 3})), creatorId: '1', status: 'approved', comments: [] },
 ];
 export const INCIDENTS: IncidentReport[] = [];
 

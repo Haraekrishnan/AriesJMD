@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AppContext } from '@/contexts/app-provider';
 import { TaskStatus } from '@/types';
 
-const COLORS: Record<TaskStatus, string> = {
+const COLORS: Record<string, string> = {
   'To Do': 'hsl(var(--chart-4))',
   'In Progress': 'hsl(var(--chart-5))',
   Completed: 'hsl(var(--chart-2))',
@@ -89,7 +89,7 @@ export function TeamTaskDistributionChart() {
                 }}
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[entry.name as TaskStatus]} />
+                  <Cell key={`cell-${index}`} fill={COLORS[entry.name as TaskStatus] ?? '#8884d8'} />
                 ))}
               </Pie>
               <Tooltip

@@ -1,307 +1,436 @@
-export type UserRole = 'Admin' | 'Manager' | 'Supervisor' | 'Employee' | 'Store Personnel' | 'HSE' | 'Junior Supervisor' | 'Junior HSE' | 'Store in Charge' | 'Assistant Store Incharge' | 'Team Member' | 'Document Controller';
 
-export interface User {
+export type User = {
   id: string;
   name: string;
   email: string;
-  password?: string;
-  role: UserRole;
   avatar: string;
-  directReports?: string[];
+  role: Role;
+  password?: string;
   supervisorId?: string;
   projectId?: string;
   planningScore?: number;
-}
+};
 
-export type TaskStatus = 'To Do' | 'In Progress' | 'Completed' | 'Overdue' | 'Pending Approval' | 'Done';
-export type TaskPriority = 'Low' | 'Medium' | 'High';
-export type ApprovalState = 'none' | 'pending' | 'approved' | 'rejected';
+export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pending Approval' | 'Overdue' | 'Completed';
+export type Priority = 'Low' | 'Medium' | 'High';
+export type ApprovalState = 'none' | 'pending' | 'approved' | 'returned';
 
-export interface TaskComment {
-    id: string;
-    userId: string;
-    text: string;
-    date: string;
-}
-
-export interface Task {
+export type Task = {
   id: string;
   title: string;
   description: string;
   status: TaskStatus;
-  priority: TaskPriority;
-  dueDate: string;
-  assigneeId: string;
-  assigneeIds?: string[];
+  assigneeId: string; // Keep single for now for simplicity in UI
+  assigneeIds: string[]; // For potential future multiple assignees
   creatorId: string;
-  projectId: string;
-  comments?: TaskComment[];
+  dueDate: string; // ISO String
+  priority: Priority;
+  comments: Comment[];
   isViewedByAssignee?: boolean;
   requiresAttachmentForCompletion?: boolean;
-  approvalState?: ApprovalState;
-  completionDate?: string;
-}
+  attachment?: {
+    name: string;
+    url: string; // data URI
+  };
+  approvalState: ApprovalState;
+  pendingStatus?: TaskStatus;
+  previousStatus?: TaskStatus;
+  completionDate?: string; // ISO String
+  pendingAssigneeId?: string;
+  projectId: string;
+};
 
-export interface Project {
+export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
+
+export type PlannerEvent = {
+  id: string;
+  title: string;
+  description?: string;
+  date: string; // ISO String of the start date
+  userId: string; // Who the event is for
+  creatorId: string; // Who created the event
+  frequency: Frequency;
+  comments: Comment[];
+};
+
+
+export type AchievementStatus = 'pending' | 'approved' | 'rejected';
+
+export type Achievement = {
+  id: string;
+  userId: string;
+  title: string;
+  description:string;
+  points: number;
+  date: string; // YYYY-MM-DD
+  type: 'system' | 'manual';
+  status: AchievementStatus;
+  awardedById?: string; // Manager's user ID for manual awards
+};
+
+
+export const ALL_PERMISSIONS = [
+  'manage_users',
+  'manage_roles',
+  'manage_projects',
+  'manage_branding',
+  'manage_tasks',
+  'manage_planner',
+  'manage_incidents',
+  'manage_achievements',
+  'manage_vehicles',
+  'manage_manpower',
+  'manage_manpower_list',
+  'approve_store_requests',
+  'manage_inventory',
+  'manage_equipment_status',
+  'manage_announcements',
+  'view_performance_reports',
+  'view_activity_logs',
+  'manage_accommodation'
+] as const;
+
+export type Permission = (typeof ALL_PERMISSIONS)[number];
+
+export type Role = string;
+
+export type RoleDefinition = {
+  id: string;
+  name: string;
+  permissions: readonly Permission[] | Permission[];
+  isEditable?: boolean;
+};
+
+export type Project = {
   id: string;
   name: string;
   description: string;
-}
+};
 
-export interface Announcement {
+export type ActivityLog = {
   id: string;
-  title: string;
-  content: string;
-  publishedAt: string;
-}
+  userId: string;
+  action: string;
+  timestamp: string; // ISO string
+  details?: string;
+};
 
-export type PlannerEventFrequency = 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly';
-export interface PlannerEvent {
+export type Vehicle = {
+  id:string;
+  vehicleNumber: string;
+  driverId: string;
+  vapValidity?: string; // YYYY-MM-DD
+  insuranceValidity?: string; // YYYY-MM-DD
+  fitnessValidity?: string; // YYYY-MM-DD
+  taxValidity?: string; // YYYY-MM-DD
+  puccValidity?: string; // YYYY-MM-DD
+};
+
+export type Driver = {
+  id: string;
+  name: string;
+  photo: string;
+  licenseNumber: string;
+  epNumber?: string;
+  sdpNumber?: string;
+  epExpiry?: string;
+  medicalExpiry?: string;
+  safetyExpiry?: string;
+  sdpExpiry?: string;
+  woExpiry?: string;
+  labourContractExpiry?: string;
+  wcPolicyExpiry?: string;
+};
+
+export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Pending' | 'Resolved' | 'Closed';
+
+export type Comment = {
+  id: string;
+  userId: string;
+  text: string;
+  date: string; // ISO String
+};
+
+export type IncidentReport = {
     id: string;
-    title: string;
-    description: string;
-    date: string;
-    frequency: PlannerEventFrequency;
-    creatorId: string;
-    userId: string;
-    comments: { id: string, text: string, userId: string, date: string }[];
-}
-
-export interface Achievement {
-    id: string;
-    userId: string;
-    type: 'manual' | 'auto';
-    title: string;
-    description: string;
-    points: number;
-    date: string;
-    awardedById: string;
-    status: 'pending' | 'approved' | 'rejected';
-}
-
-export interface ActivityLog {
-    id: string;
-    userId: string;
-    action: string;
-    details: string;
-    timestamp: string;
-}
-
-export interface DailyPlannerComment {
-    id: string;
-    date: string; // YYYY-MM-DD
-    userId: string;
-    comment: string;
-}
-
-export type Permission = 
-    | 'manage_users' | 'manage_roles' | 'manage_projects' | 'manage_branding'
-    | 'manage_tasks' | 'manage_planner' | 'manage_incidents' | 'manage_achievements'
-    | 'manage_vehicles' | 'manage_manpower' | 'manage_manpower_list' | 'manage_accommodation'
-    | 'approve_store_requests' | 'manage_inventory'
-    | 'manage_equipment_status'
-    | 'manage_announcements' | 'view_performance_reports' | 'view_activity_logs';
-
-export const ALL_PERMISSIONS: Permission[] = [
-    'manage_users', 'manage_roles', 'manage_projects', 'manage_branding',
-    'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',
-    'manage_vehicles', 'manage_manpower', 'manage_manpower_list', 'manage_accommodation',
-    'approve_store_requests', 'manage_inventory',
-    'manage_equipment_status',
-    'manage_announcements', 'view_performance_reports', 'view_activity_logs'
-];
+    reporterId: string;
+    reportTime: string; // ISO string
+    incidentTime: string; // ISO string
+    projectId: string;
+    unitArea: string;
+    incidentDetails: string;
+    status: IncidentStatus;
+    reportedToUserIds: string[];
+    isPublished: boolean;
+    comments: Comment[];
+};
 
 
-export interface RoleDefinition {
-    id: string;
+export type ManpowerTrade = {
+  id: string;
+  name: string;
+  trade: string;
+  company: string;
+};
+
+export type Trade = 'Welder' | 'Fabricator' | 'Electrician' | 'Painter' | 'Scaffolder' | 'Rope Access Tech' | 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'HSE' | 'Supervisor' | 'Document Controller' | 'Cook';
+
+
+export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received' | 'Not Applicable';
+
+export type ManpowerDocument = {
     name: string;
-    permissions: Permission[];
-    isEditable: boolean;
-}
+    details?: string;
+    status: DocumentStatus;
+    fileUrl?: string;
+};
 
-export interface RequestItem {
+export type LeaveRecord = {
+    id: string;
+    leaveType?: 'Emergency' | 'Annual' | 'Sick';
+    leaveStartDate: string; // ISO String
+    plannedEndDate?: string; // ISO String
+    leaveEndDate?: string; // ISO String
+    rejoinedDate?: string; // ISO String
+};
+
+export type Skill = {
+    name: string;
+    details: string;
+    link?: string;
+};
+
+export type ManpowerProfile = {
+  id: string;
+  name: string;
+  trade: Trade;
+  status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated';
+  photo?: string;
+  
+  // Identifiers
+  hardCopyFileNo?: string;
+  documentFolderUrl?: string;
+  epNumber?: string;
+  plantName?: string;
+  eicName?: string;
+  
+  // Documents and Skills
+  documents: ManpowerDocument[];
+  skills?: Skill[];
+
+  // Validity Dates
+  passIssueDate?: string; // ISO
+  joiningDate?: string; // ISO
+  woValidity?: string; // ISO
+  wcPolicyValidity?: string; // ISO
+  labourContractValidity?: string; // ISO
+  medicalExpiryDate?: string; // ISO
+  safetyExpiryDate?: string; // ISO
+  irataValidity?: string; // ISO
+  contractValidity?: string; // ISO
+  
+  // Leave and Termination
+  leaveHistory?: LeaveRecord[];
+  terminationDate?: string; // ISO
+  resignationDate?: string; // ISO
+  feedback?: string;
+
+  // Remarks
+  remarks?: string;
+};
+
+
+export type ManpowerLog = {
+  id: string;
+  projectId: string;
+  date: string; // YYYY-MM-DD
+  countIn: number;
+  personInName?: string;
+  countOut: number;
+  personOutName?: string;
+  reason: string;
+  updatedBy: string;
+};
+
+export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+
+export type RequestItem = {
     description: string;
     quantity: number;
     remarks: string;
 }
 
-export interface InternalRequest {
+export type InternalRequest = {
+  id: string;
+  requesterId: string;
+  date: string; // YYYY-MM-DD
+  items: RequestItem[];
+  status: InternalRequestStatus;
+  approverId?: string;
+  comments: { id: string, userId: string, text: string, date: string }[];
+  viewedByRequester: boolean;
+};
+
+export type ManagementRequestStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export type ManagementRequest = {
     id: string;
     requesterId: string;
-    items: RequestItem[];
-    status: 'Pending' | 'Approved' | 'Rejected' | 'Issued';
-    approverId?: string;
+    recipientId: string;
     date: string;
+    subject: string;
+    body: string;
+    status: ManagementRequestStatus;
     comments: { id: string, userId: string, text: string, date: string }[];
     viewedByRequester: boolean;
 }
 
 export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired';
-export interface InventoryItem {
-    id: string;
-    name: string;
-    serialNumber: string;
-    chestCrollNo?: string;
-    ariesId?: string;
-    status: InventoryItemStatus;
-    inspectionDate: string;
-    inspectionDueDate: string;
-    tpInspectionDueDate: string;
-    projectId: string;
-    lastUpdated: string;
-}
 
-export interface CertificateRequest {
-    id: string;
-    itemId: string;
-    requesterId: string;
-    requestType: 'Inspection Certificate' | 'TP Certificate';
-    status: 'Pending' | 'Uploaded' | 'Rejected';
-    requestDate: string;
-    remarks: string;
-    comments: { id: string, userId: string, text: string, date: string }[];
-}
+export type InventoryItem = {
+  id: string;
+  name: string;
+  serialNumber: string;
+  ariesId?: string;
+  chestCrollNo?: string;
+  status: InventoryItemStatus;
+  projectId: string;
+  inspectionDate: string; // ISO string
+  inspectionDueDate: string; // ISO string
+  tpInspectionDueDate: string; // ISO string
+  lastUpdated: string; // ISO string
+  remarks?: string;
+};
 
-export interface ManpowerLog {
-    id: string;
-    date: string; // YYYY-MM-DD
-    projectId: string;
-    countIn: number;
-    countOut: number;
-    reason: string;
-    updatedBy: string;
-    personOutName?: string;
-}
+export type UTMachine = {
+  id: string;
+  machineName: string;
+  serialNumber: string;
+  calibrationDueDate: string; // YYYY-MM-DD
+};
 
-export interface UTMachine {
+export type DftMachine = {
     id: string;
     machineName: string;
     serialNumber: string;
-    calibrationDueDate: string;
-}
+    projectId: string;
+    unit: string;
+    calibrationDueDate: string; // ISO String
+    probeDetails: string;
+    cableDetails: string;
+    status: string;
+};
 
-export interface DftMachine {
-    id: string;
-    machineName: string;
-    serialNumber: string;
-    calibrationDueDate: string;
-}
+export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
 
-export interface MobileSim {
-    id: string;
-    provider: string;
-    number: string;
-    plan: string;
-    assignedTo: string;
-}
+export type MobileSim = {
+  id: string;
+  type: 'Mobile' | 'SIM';
+  provider: string;
+  number: string;
+  allottedToUserId: string;
+  allotmentDate: string; // ISO string
+  projectId: string;
+  status: MobileSimStatus;
+  remarks?: string;
+};
 
-export interface OtherEquipment {
+export type OtherEquipment = {
     id: string;
     equipmentName: string;
-    quantity: number;
+    serialNumber: string;
+    allottedTo: string; // User ID
+    remarks?: string;
+};
+
+export type MachineLog = {
+    id: string;
+    machineId: string;
+    userId: string;
+    date: string; // YYYY-MM-DD
+    fromTime: string; // HH:mm
+    toTime: string; // HH:mm
     location: string;
-}
+    jobDescription: string;
+};
 
 
-export interface Vehicle {
-    id: string;
-    vehicleNumber: string;
-    driverId: string;
-    vapValidity: string;
-    insuranceValidity: string;
-    fitnessValidity: string;
-    taxValidity: string;
-    puccValidity: string;
-}
+export type InventoryTransferRequest = {
+  id: string;
+  requesterId: string;
+  fromProjectId: string;
+  toProjectId: string;
+  items: { itemId: string; serialNumber: string; name: string }[];
+  status: 'Pending' | 'Approved' | 'Rejected';
+  requestDate: string; // ISO String
+  comments: Comment[];
+  approverId?: string;
+};
 
-export type Trade = 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'HSE' | 'Supervisor' | 'Document Controller' | 'Cook';
+export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';
+export type CertificateRequestStatus = 'Pending' | 'Completed' | 'Rejected';
 
-export interface ManpowerDocument {
-    name: string;
-    details: string;
-    status: 'Collected' | 'Received' | 'Pending' | 'Not Applicable';
-    fileUrl?: string;
-}
+export type CertificateRequest = {
+  id: string;
+  requesterId: string;
+  requestType: CertificateRequestType;
+  itemId?: string; // For InventoryItem
+  utMachineId?: string; // For UTMachine
+  status: CertificateRequestStatus;
+  requestDate: string; // ISO String
+  completionDate?: string; // ISO String
+  remarks?: string;
+  comments: Comment[];
+  viewedByRequester?: boolean;
+};
 
-export interface ManpowerLeave {
-    id: string;
-    leaveType: 'Annual' | 'Sick' | 'Emergency';
-    leaveStartDate: string;
-    leaveEndDate?: string;
-}
+export type AnnouncementStatus = 'pending' | 'approved' | 'rejected' | 'returned';
 
-export interface ManpowerProfile {
-    id: string;
-    name: string;
-    trade: Trade;
-    status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated';
-    hardCopyFileNo?: string;
-    epNumber?: string;
-    plantName?: string;
-    eicName?: string;
-    joiningDate?: string;
-    documents: ManpowerDocument[];
-    leaveHistory?: ManpowerLeave[];
-}
-
-export interface ManagementRequest {
-    id: string;
-    requesterId: string;
-    recipientId: string;
-    subject: string;
-    body: string;
-    status: 'Pending' | 'Approved' | 'Rejected';
-    date: string;
-    comments: { id: string, userId: string, text: string, date: string }[];
-    viewedByRequester: boolean;
-}
-
-export interface Driver {
-    id: string;
-    name: string;
-    licenseNumber: string;
-    epNumber: string;
-    sdpNumber: string;
-    epExpiry: string;
-    medicalExpiry: string;
-    photo: string;
-}
-
-export interface IncidentReport {
-    id: string;
-    date: string;
-    time: string;
-    location: string;
-    description: string;
-    reportedById: string;
-    involvedPersonnel: string[];
-    severity: 'Low' | 'Medium' | 'High';
-    status: 'Open' | 'Under Investigation' | 'Closed';
-}
-
-export interface Bed {
-    id: string;
-    bedNumber: string;
-    bedType: 'Bunk' | 'Single';
-    occupantId?: string;
-}
-
-export interface Room {
-    id: string;
-    roomNumber: string;
-    beds: Bed[];
-}
-
-export interface Building {
-    id: string;
-    buildingNumber: string;
-    rooms: Room[];
-}
-
-// Previous Event type is replaced by PlannerEvent. If still needed, it should be distinguished.
-export interface Event {
+export type Announcement = {
   id: string;
   title: string;
-  date: string;
-  userId: string;
-}
+  content: string;
+  creatorId: string;
+  approverId?: string;
+  status: AnnouncementStatus;
+  createdAt: string; // ISO String
+  publishedAt: string; // ISO String
+  comments: {
+    userId: string;
+    text: string;
+    date: string;
+  }[];
+};
+
+export type DailyPlannerComment = {
+  id: string;
+  plannerUserId: string; // The user whose planner this comment belongs to
+  day: string; // YYYY-MM-DD
+  comments: Comment[];
+};
+
+export type Role_Dep = {
+  id: string;
+  name: string;
+  permissions: readonly Permission[] | Permission[];
+  isEditable?: boolean;
+};
+
+export type Bed = {
+  id: string;
+  bedNumber: string;
+  bedType: 'Bunk' | 'Single';
+  occupantId?: string; // ManpowerProfile ID
+};
+
+export type Room = {
+  id: string;
+  roomNumber: string;
+  beds: Bed[];
+};
+
+export type Building = {
+  id: string;
+  buildingNumber: string;
+  rooms: Room[];
+};

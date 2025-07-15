@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext } from 'react';
-import { Task, Project, Announcement, PlannerEvent } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
@@ -13,14 +13,14 @@ interface AppContextProps {
   announcements: Announcement[];
   events: PlannerEvent[];
   updateTask: (updatedTask: Task) => void;
-  createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId'>) => void;
-  getPrioritySuggestion: (title: string, description: string) => Promise<string | null>;
+  createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => void;
+  getPrioritySuggestion: (title: string, description: string) => Promise<Priority | null>;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user } = useContext(AuthContext);
+  const authContext = useContext(AuthContext);
   const [tasks, setTasks] = useLocalStorage<Task[]>('aries-tasks', TASKS);
   const [projects, setProjects] = useLocalStorage<Project[]>('aries-projects', PROJECTS);
   const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements', ANNOUNCEMENTS);
@@ -32,16 +32,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
   };
 
-  const createTask = (newTaskData: Omit<Task, 'id' | 'creatorId' | 'projectId'>) => {
-    if(!user || !user.projectId) return;
+  const createTask = (newTaskData: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => {
+    if(!authContext?.user || !authContext.user.projectId) return;
     const newTask: Task = {
         ...newTaskData,
         id: `task-${Date.now()}`,
-        creatorId: user.id,
-        projectId: user.projectId,
+        creatorId: authContext.user.id,
+        projectId: authContext.user.projectId,
         isViewedByAssignee: false,
         approvalState: 'none',
         comments: [],
+        assigneeIds: [newTaskData.assigneeId],
     };
     setTasks([newTask, ...tasks]);
     toast({
@@ -50,7 +51,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  const getPrioritySuggestion = async (title: string, description: string): Promise<string | null> => {
+  const getPrioritySuggestion = async (title: string, description: string): Promise<Priority | null> => {
     try {
       const response = await fetch('/api/suggest-priority', {
         method: 'POST',
@@ -61,7 +62,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error('Failed to fetch suggestion');
       }
       const data = await response.json();
-      return data.priority;
+      return data.priority as Priority;
     } catch (error) {
       console.error('Error getting priority suggestion:', error);
       toast({
