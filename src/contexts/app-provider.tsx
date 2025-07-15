@@ -1,12 +1,16 @@
 
 'use client';
 
-import React, { createContext, useState, ReactNode, useContext, useCallback } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room } from '@/types';
+import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
+
+type PermissionsCheck = {
+  [key in Permission]: boolean;
+};
 
 interface AppContextProps {
   tasks: Task[];
@@ -14,14 +18,15 @@ interface AppContextProps {
   announcements: Announcement[];
   events: PlannerEvent[];
   buildings: Building[];
+  manpowerProfiles: ManpowerProfile[];
   user: User | null;
   users: User[];
   updateTask: (updatedTask: Task) => void;
   createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => void;
-  createAnnouncement: (newAnnouncement: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'>) => void;
+  createAnnouncement: (newAnnouncement: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'| 'approverId'>) => void;
   getPrioritySuggestion: (title: string, description: string) => Promise<Priority | null>;
   getVisibleUsers: () => User[];
-  can: (permission: Permission) => boolean | undefined;
+  can: PermissionsCheck;
   addBuilding: (buildingNumber: string) => void;
   editBuilding: (buildingId: string, newBuildingNumber: string) => void;
   deleteBuilding: (buildingId: string) => void;
@@ -31,6 +36,7 @@ interface AppContextProps {
   addBed: (buildingId: string, roomId: string, bedNumber: string, bedType: 'Bunk' | 'Single') => void;
   deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string | null) => void;
+  unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -42,14 +48,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements', ANNOUNCEMENTS);
   const [events, setEvents] = useLocalStorage<PlannerEvent[]>('aries-events', PLANNER_EVENTS);
   const [buildings, setBuildings] = useLocalStorage<Building[]>('aries-buildings', BUILDINGS);
+  const [manpowerProfiles, setManpowerProfiles] = useLocalStorage<ManpowerProfile[]>('aries-manpower-profiles', MANPOWER_PROFILES);
+
 
   const { toast } = useToast();
 
-  const can = useCallback((permission: Permission) => {
-    if (!authContext?.user) return false;
-    const userRole = ROLES.find(r => r.name === authContext.user!.role);
-    return userRole?.permissions.includes(permission);
+  const can = useMemo<PermissionsCheck>(() => {
+    const userRole = authContext?.user ? ROLES.find(r => r.name === authContext.user!.role) : undefined;
+    const permissions = userRole?.permissions ?? [];
+    
+    const checks = ALL_PERMISSIONS.reduce((acc, permission) => {
+        acc[permission] = permissions.includes(permission);
+        return acc;
+    }, {} as PermissionsCheck);
+
+    return checks;
+
   }, [authContext?.user]);
+
 
   const updateTask = (updatedTask: Task) => {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
@@ -74,13 +90,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  const createAnnouncement = (newAnnouncementData: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'>) => {
+  const createAnnouncement = (newAnnouncementData: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments' | 'approverId'>) => {
     if (!authContext?.user) return;
     const newAnnouncement: Announcement = {
       ...newAnnouncementData,
       id: `anno-${Date.now()}`,
       creatorId: authContext.user.id,
-      status: 'approved', // Assuming direct approval for simplicity
+      approverId: authContext.user.id, // Self-approved for simplicity
+      status: 'approved',
       createdAt: new Date().toISOString(),
       publishedAt: new Date().toISOString(),
       comments: [],
@@ -255,6 +272,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return b;
     }));
   };
+  
+  const unassignOccupant = (buildingId: string, roomId: string, bedId: string) => {
+    assignOccupant(buildingId, roomId, bedId, null);
+    toast({ title: 'Occupant Unassigned' });
+  };
 
 
   const value = {
@@ -263,6 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     announcements,
     events,
     buildings,
+    manpowerProfiles,
     updateTask,
     createTask,
     createAnnouncement,
@@ -280,6 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addBed,
     deleteBed,
     assignOccupant,
+    unassignOccupant,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

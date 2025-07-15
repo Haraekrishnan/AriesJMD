@@ -5,7 +5,6 @@ import { useAppContext } from '@/hooks/use-app-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, PlusCircle, BedDouble, BedSingle, Building as BuildingIcon } from 'lucide-react';
-import { StatCard } from '@/components/dashboard/stat-card';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
@@ -41,7 +40,7 @@ export default function AccommodationPage() {
         setIsEditBuildingOpen(true);
     }
 
-    if (!can?.('manage_accommodation')) {
+    if (!can.manage_accommodation) {
         return (
            <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -62,7 +61,7 @@ export default function AccommodationPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Accommodation Management</h1>
                     <p className="text-muted-foreground">Manage buildings, rooms, and bed assignments.</p>
                 </div>
-                {can('manage_accommodation') && (
+                {can.manage_accommodation && (
                     <Button onClick={() => setIsAddBuildingOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Building
