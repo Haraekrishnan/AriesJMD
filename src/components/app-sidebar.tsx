@@ -55,12 +55,12 @@ export function AppSidebar() {
                   <SidebarMenuSub>
                     {link.subLinks.map((subLink) => (
                       <SidebarMenuSubItem key={subLink.href}>
-                        <Link href={subLink.href} passHref legacyBehavior>
-                          <SidebarMenuSubButton isActive={isLinkActive(subLink.href)}>
+                        <SidebarMenuSubButton asChild isActive={isLinkActive(subLink.href)}>
+                          <Link href={subLink.href}>
                             <subLink.icon />
                             <span>{subLink.label}</span>
-                          </SidebarMenuSubButton>
-                        </Link>
+                          </Link>
+                        </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
                   </SidebarMenuSub>
@@ -68,15 +68,16 @@ export function AppSidebar() {
               </Collapsible>
             ) : (
               <SidebarMenuItem key={link.href}>
-                <Link href={link.href} passHref legacyBehavior>
-                  <SidebarMenuButton
-                    tooltip={link.label}
-                    isActive={isLinkActive(link.href)}
-                  >
+                <SidebarMenuButton
+                  asChild
+                  tooltip={link.label}
+                  isActive={isLinkActive(link.href)}
+                >
+                  <Link href={link.href}>
                     <link.icon />
                     <span>{link.label}</span>
-                  </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             )
           )}
