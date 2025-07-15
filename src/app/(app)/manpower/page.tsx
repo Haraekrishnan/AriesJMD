@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 
 export default function ManpowerPage() {
-    const { user, can } = useAppContext();
+    const { can } = useAppContext();
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());

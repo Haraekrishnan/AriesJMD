@@ -63,6 +63,8 @@ interface AppContextProps {
   markUTRequestsAsViewed: () => void;
   acknowledgeFulfilledUTRequest: (requestId: string) => void;
   addManpowerLog: (log: Omit<ManpowerLog, 'id' | 'updatedBy'>) => void;
+  addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
+  editManpowerProfile: (profileId: string, profile: Partial<ManpowerProfile>) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -458,6 +460,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const addManpowerProfile = (profile: Omit<ManpowerProfile, 'id'>) => {
+    const newProfile = { ...profile, id: `mp-prof-${Date.now()}` };
+    setManpowerProfiles([newProfile, ...manpowerProfiles]);
+    toast({ title: 'Manpower Profile Added' });
+  };
+
+  const editManpowerProfile = (profileId: string, profile: Partial<ManpowerProfile>) => {
+    setManpowerProfiles(manpowerProfiles.map(p => p.id === profileId ? { ...p, ...profile } : p));
+    toast({ title: 'Manpower Profile Updated' });
+  };
+
 
   const value = {
     tasks,
@@ -509,7 +522,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteOtherEquipment,
     markUTRequestsAsViewed,
     acknowledgeFulfilledUTRequest,
-    addManpowerLog
+    addManpowerLog,
+    addManpowerProfile,
+    editManpowerProfile,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
