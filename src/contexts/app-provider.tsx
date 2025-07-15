@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS, UT_MACHINES, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, CERTIFICATE_REQUESTS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
 
@@ -21,6 +21,11 @@ interface AppContextProps {
   manpowerProfiles: ManpowerProfile[];
   achievements: Achievement[];
   activityLogs: ActivityLog[];
+  utMachines: UTMachine[];
+  dftMachines: DftMachine[];
+  mobileSims: MobileSim[];
+  otherEquipments: OtherEquipment[];
+  myFulfilledUTRequests: CertificateRequest[];
   user: User | null;
   users: User[];
   updateTask: (updatedTask: Task) => void;
@@ -42,6 +47,19 @@ interface AppContextProps {
   addManualAchievement: (userId: string, title: string, description: string, points: number) => void;
   approveAchievement: (achievementId: string, points: number) => void;
   rejectAchievement: (achievementId: string) => void;
+  addUTMachine: (machine: Omit<UTMachine, 'id'>) => void;
+  editUTMachine: (machineId: string, machine: Partial<UTMachine>) => void;
+  deleteUTMachine: (machineId: string) => void;
+  addUTMachineLog: (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => void;
+  addDftMachine: (machine: Omit<DftMachine, 'id'>) => void;
+  editDftMachine: (machineId: string, machine: Partial<DftMachine>) => void;
+  deleteDftMachine: (machineId: string) => void;
+  addDftMachineLog: (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => void;
+  addOtherEquipment: (item: Omit<OtherEquipment, 'id'>) => void;
+  editOtherEquipment: (itemId: string, item: Partial<OtherEquipment>) => void;
+  deleteOtherEquipment: (itemId: string) => void;
+  markUTRequestsAsViewed: () => void;
+  acknowledgeFulfilledUTRequest: (requestId: string) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -56,7 +74,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [manpowerProfiles, setManpowerProfiles] = useLocalStorage<ManpowerProfile[]>('aries-manpower-profiles', MANPOWER_PROFILES);
   const [achievements, setAchievements] = useLocalStorage<Achievement[]>('aries-achievements', ACHIEVEMENTS);
   const [activityLogs, setActivityLogs] = useLocalStorage<ActivityLog[]>('aries-activity-logs', ACTIVITY_LOGS);
-
+  const [utMachines, setUtMachines] = useLocalStorage<UTMachine[]>('aries-ut-machines', UT_MACHINES);
+  const [dftMachines, setDftMachines] = useLocalStorage<DftMachine[]>('aries-dft-machines', DFT_MACHINES);
+  const [mobileSims, setMobileSims] = useLocalStorage<MobileSim[]>('aries-mobile-sims', MOBILE_SIMS);
+  const [otherEquipments, setOtherEquipments] = useLocalStorage<OtherEquipment[]>('aries-other-equipments', OTHER_EQUIPMENTS);
+  const [certificateRequests, setCertificateRequests] = useLocalStorage<CertificateRequest[]>('aries-certificate-requests', CERTIFICATE_REQUESTS);
 
   const { toast } = useToast();
 
@@ -72,7 +94,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return checks;
 
   }, [authContext?.user]);
-
 
   const updateTask = (updatedTask: Task) => {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
@@ -314,6 +335,102 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAchievements(achievements.filter((ach) => ach.id !== achievementId));
   };
 
+  // UT Machine Functions
+  const addUTMachine = (machine: Omit<UTMachine, 'id'>) => {
+    const newMachine = { ...machine, id: `ut-${Date.now()}` };
+    setUtMachines([newMachine, ...utMachines]);
+    toast({ title: 'UT Machine Added' });
+  };
+
+  const editUTMachine = (machineId: string, machine: Partial<UTMachine>) => {
+    setUtMachines(utMachines.map(m => m.id === machineId ? { ...m, ...machine } : m));
+    toast({ title: 'UT Machine Updated' });
+  };
+
+  const deleteUTMachine = (machineId: string) => {
+    setUtMachines(utMachines.filter(m => m.id !== machineId));
+    toast({ title: 'UT Machine Deleted', variant: 'destructive' });
+  };
+
+  const addUTMachineLog = (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => {
+    setUtMachines(utMachines.map(m => {
+      if (m.id === machineId) {
+        const newLog = { ...log, id: `log-${Date.now()}`, machineId };
+        const logs = m.logs ? [newLog, ...m.logs] : [newLog];
+        return { ...m, logs };
+      }
+      return m;
+    }));
+    toast({ title: 'Log Added' });
+  };
+  
+  // DFT Machine Functions
+  const addDftMachine = (machine: Omit<DftMachine, 'id'>) => {
+    const newMachine = { ...machine, id: `dft-${Date.now()}` };
+    setDftMachines([newMachine, ...dftMachines]);
+    toast({ title: 'DFT Machine Added' });
+  };
+
+  const editDftMachine = (machineId: string, machine: Partial<DftMachine>) => {
+    setDftMachines(dftMachines.map(m => m.id === machineId ? { ...m, ...machine } : m));
+    toast({ title: 'DFT Machine Updated' });
+  };
+
+  const deleteDftMachine = (machineId: string) => {
+    setDftMachines(dftMachines.filter(m => m.id !== machineId));
+    toast({ title: 'DFT Machine Deleted', variant: 'destructive' });
+  };
+
+  const addDftMachineLog = (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => {
+    setDftMachines(dftMachines.map(m => {
+      if (m.id === machineId) {
+        const newLog = { ...log, id: `log-${Date.now()}`, machineId };
+        const logs = m.logs ? [newLog, ...m.logs] : [newLog];
+        return { ...m, logs };
+      }
+      return m;
+    }));
+    toast({ title: 'Log Added' });
+  };
+
+  // Other Equipment Functions
+  const addOtherEquipment = (item: Omit<OtherEquipment, 'id'>) => {
+    const newItem = { ...item, id: `other-${Date.now()}` };
+    setOtherEquipments([newItem, ...otherEquipments]);
+    toast({ title: 'Equipment Added' });
+  };
+
+  const editOtherEquipment = (itemId: string, item: Partial<OtherEquipment>) => {
+    setOtherEquipments(otherEquipments.map(i => i.id === itemId ? { ...i, ...item } : i));
+    toast({ title: 'Equipment Updated' });
+  };
+
+  const deleteOtherEquipment = (itemId: string) => {
+    setOtherEquipments(otherEquipments.filter(i => i.id !== itemId));
+    toast({ title: 'Equipment Deleted', variant: 'destructive' });
+  };
+  
+  // Certificate Request Functions
+  const myFulfilledUTRequests = useMemo(() => {
+    if (!authContext?.user) return [];
+    return certificateRequests.filter(req => req.requesterId === authContext.user?.id && req.status === 'Completed' && !req.viewedByRequester);
+  }, [certificateRequests, authContext.user]);
+
+  const markUTRequestsAsViewed = useCallback(() => {
+    setCertificateRequests(prev => prev.map(req => 
+      myFulfilledUTRequests.some(fulfilledReq => fulfilledReq.id === req.id)
+        ? { ...req, viewedByRequester: true }
+        : req
+    ));
+  }, [myFulfilledUTRequests, setCertificateRequests]);
+
+  const acknowledgeFulfilledUTRequest = (requestId: string) => {
+    setCertificateRequests(prev => prev.map(req => 
+      req.id === requestId ? { ...req, status: 'Acknowledged' } : req
+    ));
+    toast({ title: 'Request Acknowledged' });
+  };
+
 
   const value = {
     tasks,
@@ -324,6 +441,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     manpowerProfiles,
     achievements,
     activityLogs,
+    utMachines,
+    dftMachines,
+    mobileSims,
+    otherEquipments,
+    myFulfilledUTRequests,
     updateTask,
     createTask,
     createAnnouncement,
@@ -345,6 +467,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addManualAchievement,
     approveAchievement,
     rejectAchievement,
+    addUTMachine,
+    editUTMachine,
+    deleteUTMachine,
+    addUTMachineLog,
+    addDftMachine,
+    editDftMachine,
+    deleteDftMachine,
+    addDftMachineLog,
+    addOtherEquipment,
+    editOtherEquipment,
+    deleteOtherEquipment,
+    markUTRequestsAsViewed,
+    acknowledgeFulfilledUTRequest
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

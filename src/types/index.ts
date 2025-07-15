@@ -308,6 +308,7 @@ export type UTMachine = {
   machineName: string;
   serialNumber: string;
   calibrationDueDate: string; // YYYY-MM-DD
+  logs?: MachineLog[];
 };
 
 export type DftMachine = {
@@ -320,6 +321,7 @@ export type DftMachine = {
     probeDetails: string;
     cableDetails: string;
     status: string;
+    logs?: MachineLog[];
 };
 
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
@@ -369,7 +371,7 @@ export type InventoryTransferRequest = {
 };
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';
-export type CertificateRequestStatus = 'Pending' | 'Completed' | 'Rejected';
+export type CertificateRequestStatus = 'Pending' | 'Completed' | 'Rejected' | 'Acknowledged';
 
 export type CertificateRequest = {
   id: string;

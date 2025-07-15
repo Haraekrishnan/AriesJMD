@@ -330,8 +330,8 @@ export const MANPOWER_LOGS: ManpowerLog[] = [
 ];
 
 export const UT_MACHINES: UTMachine[] = [
-    { id: 'ut-1', machineName: 'Krautkramer USM 36', serialNumber: 'UTM-001', calibrationDueDate: add(new Date(), { months: 3 }).toISOString() },
-    { id: 'ut-2', machineName: 'Olympus EPOCH 650', serialNumber: 'UTM-002', calibrationDueDate: add(new Date(), { days: 20 }).toISOString() },
+    { id: 'ut-1', machineName: 'Krautkramer USM 36', serialNumber: 'UTM-001', calibrationDueDate: add(new Date(), { months: 3 }).toISOString(), logs: [] },
+    { id: 'ut-2', machineName: 'Olympus EPOCH 650', serialNumber: 'UTM-002', calibrationDueDate: add(new Date(), { days: 20 }).toISOString(), logs: [] },
 ];
 
 export const DFT_MACHINES: DftMachine[] = [];
