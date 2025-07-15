@@ -1,118 +1,111 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useAppContext } from '@/hooks/use-app-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TaskStatus, Task, User } from '@/types';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import type { Task, User } from '@/types';
 
 const COLORS: Record<string, string> = {
-  'To Do': 'hsl(var(--chart-4))',
-  'In Progress': 'hsl(var(--chart-5))',
-  Completed: 'hsl(var(--chart-2))',
-  Done: 'hsl(var(--chart-1))',
-  Overdue: 'hsl(var(--destructive))',
-  'Pending Approval': '#8884d8',
+  'To Do': 'hsl(var(--chart-1))',
+  'In Progress': 'hsl(var(--chart-3))',
+  'In Review': 'hsl(var(--chart-4))',
+  'Completed': 'hsl(var(--chart-2))',
+  'Overdue': 'hsl(var(--destructive))',
 };
 
-type TeamTaskDistributionChartProps = {
-  tasks: Task[];
-  users: User[];
-};
+interface TeamTaskDistributionChartProps {
+    tasks: Task[];
+    users: User[];
+}
 
 export function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistributionChartProps) {
-  const [selectedMember, setSelectedMember] = useState('all');
+  const { user } = useAppContext();
+  const [selectedUserId, setSelectedUserId] = useState(user?.id || 'all');
+
+  const selectedUserName = useMemo(() => {
+    if (selectedUserId === 'all') return 'All Visible Team Members';
+    return users.find(u => u.id === selectedUserId)?.name || 'Selected User';
+  }, [selectedUserId, users]);
 
   const chartData = useMemo(() => {
-    const filteredTasks = selectedMember === 'all'
+    const relevantTasks = selectedUserId === 'all'
       ? tasks
-      : tasks.filter(t => t.assigneeIds.includes(selectedMember));
+      : tasks.filter(t => t.assigneeIds.includes(selectedUserId));
 
-    const statusCounts: Record<string, number> = {
-      'To Do': 0,
-      'In Progress': 0,
-      'Completed': 0,
-      'Overdue': 0,
-      'Done': 0,
+    const statuses = {
+      'To Do': relevantTasks.filter(t => t.status === 'To Do').length,
+      'In Progress': relevantTasks.filter(t => t.status === 'In Progress').length,
+      'In Review': relevantTasks.filter(t => t.status === 'In Review').length,
+      'Completed': relevantTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length,
+      'Overdue': relevantTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done' && t.status !== 'Completed').length,
     };
-
-    filteredTasks?.forEach(task => {
-        const status = (task.status === 'Done' ? 'Completed' : task.status) as TaskStatus;
-        if(status in statusCounts) {
-            statusCounts[status] += 1;
-        }
-    });
-
-    return Object.entries(statusCounts)
+    
+    return Object.entries(statuses)
       .map(([name, value]) => ({ name, value }))
-      .filter(item => item.value > 0);
-  }, [tasks, selectedMember]);
+      .filter(d => d.value > 0);
+  }, [tasks, selectedUserId]);
+
+  const canSelectAll = users.length > 1;
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Task Distribution</CardTitle>
-              <CardDescription>Breakdown of tasks by status.</CardDescription>
-            </div>
-            <Select value={selectedMember} onValueChange={setSelectedMember}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Member" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Entire Team</SelectItem>
-                    {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                    ))}
-                </SelectContent>
+        <CardTitle>Team Task Distribution</CardTitle>
+        <div className="flex flex-col gap-2 pt-2">
+            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger className="w-[240px]">
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                {canSelectAll && <SelectItem value="all">All Visible Members</SelectItem>}
+                {users.map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                ))}
+            </SelectContent>
             </Select>
+            <CardDescription>Showing task distribution for {selectedUserName}.</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="h-[300px] w-full">
-        {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                nameKey="name"
-                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                  if (percent === 0) return null;
-                  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                  const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                  const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-                  return (
-                    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
-                      {`${(percent * 100).toFixed(0)}%`}
-                    </text>
-                  );
-                }}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[entry.name] ?? '#8884d8'} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    borderColor: 'hsl(var(--border))',
-                }}
-              />
-              <Legend wrapperStyle={{fontSize: "14px"}}/>
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            No task data available.
-          </div>
-        )}
+      <CardContent>
+        <div className="h-[350px]">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip
+                  cursor={{fill: 'hsl(var(--muted))'}}
+                  contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: 'var(--radius)'
+                  }}
+                />
+                <Legend verticalAlign="bottom" height={36}/>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  innerRadius={80}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
+                  nameKey="name"
+                >
+                  {chartData.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+                No tasks found for {selectedUserName}.
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
