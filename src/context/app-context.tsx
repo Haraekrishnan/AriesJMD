@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Task, Project, Announcement, Event } from '@/types';
+import { User, Task, Project, Announcement, PlannerEvent } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { mockUsers, mockTasks, mockProjects, mockAnnouncements, mockEvents } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +14,7 @@ interface AppContextProps {
   tasks: Task[];
   projects: Project[];
   announcements: Announcement[];
-  events: Event[];
+  events: PlannerEvent[];
   login: (email: string, pass: string) => boolean;
   logout: () => void;
   updateTask: (updatedTask: Task) => void;
@@ -30,7 +30,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useLocalStorage<Task[]>('aries-tasks', mockTasks);
   const [projects, setProjects] = useLocalStorage<Project[]>('aries-projects', mockProjects);
   const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements', mockAnnouncements);
-  const [events, setEvents] = useLocalStorage<Event[]>('aries-events', mockEvents);
+  const [events, setEvents] = useLocalStorage<PlannerEvent[]>('aries-events', mockEvents);
 
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
