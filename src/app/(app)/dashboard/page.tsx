@@ -7,8 +7,8 @@ import { useAppContext } from '@/hooks/use-app-context';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { FileText, Users, CheckCircle, ListTodo } from 'lucide-react';
-import { TasksCompletedChart } from '@/components/dashboard/tasks-completed-chart';
-import { TeamTaskDistributionChart } from '@/components/dashboard/team-task-distribution-chart';
+import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
+import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import { AnnouncementFeed } from '@/components/dashboard/announcement-feed';
 
 export default function DashboardPage() {
@@ -75,9 +75,13 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <TasksCompletedChart tasks={visibleTasks} />
-        <TeamTaskDistributionChart tasks={visibleTasks} users={visibleUsers} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <TasksCompletedChart tasks={visibleTasks} />
+        </div>
+        <div className="lg:col-span-1">
+          <TeamTaskDistributionChart tasks={visibleTasks} users={visibleUsers} />
+        </div>
       </div>
     </div>
   );

@@ -20,7 +20,7 @@ interface TeamTaskDistributionChartProps {
     users: User[];
 }
 
-export function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistributionChartProps) {
+export default function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistributionChartProps) {
   const { user } = useAppContext();
   const [selectedUserId, setSelectedUserId] = useState(user?.id || 'all');
 
@@ -37,7 +37,7 @@ export function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistribution
     const statuses = {
       'To Do': relevantTasks.filter(t => t.status === 'To Do').length,
       'In Progress': relevantTasks.filter(t => t.status === 'In Progress').length,
-      'In Review': relevantTasks.filter(t => t.status === 'In Review').length,
+      'In Review': relevantTasks.filter(t => t.status === 'In Review' || t.status === 'Pending Approval').length,
       'Completed': relevantTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length,
       'Overdue': relevantTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done' && t.status !== 'Completed').length,
     };
@@ -55,7 +55,7 @@ export function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistribution
         <CardTitle>Team Task Distribution</CardTitle>
         <div className="flex flex-col gap-2 pt-2">
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="w-[240px]">
+            <SelectTrigger className="w-full sm:w-[240px]">
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -12,7 +12,7 @@ type TasksCompletedChartProps = {
   tasks: Task[];
 };
 
-export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
+export default function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const chartData = useMemo(() => {
@@ -24,8 +24,8 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
     ];
 
     tasks.forEach(task => {
-      if (task.status === 'Completed' || task.status === 'Done') {
-        const taskDate = parseISO(task.dueDate);
+      if ((task.status === 'Completed' || task.status === 'Done') && task.completionDate) {
+        const taskDate = parseISO(task.completionDate);
         if (getYear(taskDate).toString() === selectedYear) {
           const monthIndex = getMonth(taskDate);
           data[monthIndex]['Tasks Completed'] += 1;
@@ -38,7 +38,7 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
   
   const availableYears = useMemo(() => {
     if (!tasks) return [new Date().getFullYear()];
-    const years = new Set(tasks.map(t => getYear(parseISO(t.dueDate))));
+    const years = new Set(tasks.filter(t => t.completionDate).map(t => getYear(parseISO(t.completionDate!))));
     if (!years.has(new Date().getFullYear())) {
         years.add(new Date().getFullYear());
     }
@@ -47,7 +47,7 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
 
 
   return (
-    <Card className="col-span-1 lg:col-span-2">
+    <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
