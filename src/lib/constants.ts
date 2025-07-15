@@ -15,6 +15,7 @@ import {
   AlertOctagon,
   List,
   CalendarDays,
+  Send,
 } from 'lucide-react';
 
 export const NAV_LINKS = [
@@ -22,6 +23,11 @@ export const NAV_LINKS = [
     href: '/dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
+  },
+   {
+    href: '/my-requests',
+    label: 'My Requests',
+    icon: Send,
   },
   {
     href: '/tasks',

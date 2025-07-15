@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest, ManpowerLog, RoleDefinition } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest, ManpowerLog, RoleDefinition, InternalRequest, ManagementRequest, RequestItem } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS, UT_MACHINES, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, CERTIFICATE_REQUESTS, MANPOWER_LOGS } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS, UT_MACHINES, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, CERTIFICATE_REQUESTS, MANPOWER_LOGS, INTERNAL_REQUESTS, MANAGEMENT_REQUESTS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
 
@@ -27,6 +26,12 @@ interface AppContextProps {
   otherEquipments: OtherEquipment[];
   myFulfilledUTRequests: CertificateRequest[];
   manpowerLogs: ManpowerLog[];
+  internalRequests: InternalRequest[];
+  managementRequests: ManagementRequest[];
+  pendingInternalRequestCount: number;
+  updatedInternalRequestCount: number;
+  pendingManagementRequestCount: number;
+  updatedManagementRequestCount: number;
   user: User | null;
   users: User[];
   roles: RoleDefinition[];
@@ -65,12 +70,23 @@ interface AppContextProps {
   addManpowerLog: (log: Omit<ManpowerLog, 'id' | 'updatedBy'>) => void;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   editManpowerProfile: (profileId: string, profile: Partial<ManpowerProfile>) => void;
+  createInternalRequest: (items: RequestItem[]) => void;
+  approveInternalRequest: (requestId: string, comment?: string) => void;
+  rejectInternalRequest: (requestId: string, comment: string) => void;
+  addInternalRequestComment: (requestId: string, comment: string) => void;
+  createManagementRequest: (recipientId: string, subject: string, body: string) => void;
+  approveManagementRequest: (requestId: string, comment?: string) => void;
+  rejectManagementRequest: (requestId: string, comment: string) => void;
+  addManagementRequestComment: (requestId: string, comment: string) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const authContext = useContext(AuthContext);
+  const { toast } = useToast();
+  
+  // States
   const [tasks, setTasks] = useLocalStorage<Task[]>('aries-tasks', TASKS);
   const [projects, setProjects] = useLocalStorage<Project[]>('aries-projects', PROJECTS);
   const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements', ANNOUNCEMENTS);
@@ -85,9 +101,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [otherEquipments, setOtherEquipments] = useLocalStorage<OtherEquipment[]>('aries-other-equipments', OTHER_EQUIPMENTS);
   const [certificateRequests, setCertificateRequests] = useLocalStorage<CertificateRequest[]>('aries-certificate-requests', CERTIFICATE_REQUESTS);
   const [manpowerLogs, setManpowerLogs] = useLocalStorage<ManpowerLog[]>('aries-manpower-logs', MANPOWER_LOGS);
-
-  const { toast } = useToast();
-
+  const [internalRequests, setInternalRequests] = useLocalStorage<InternalRequest[]>('aries-internal-requests', INTERNAL_REQUESTS);
+  const [managementRequests, setManagementRequests] = useLocalStorage<ManagementRequest[]>('aries-management-requests', MANAGEMENT_REQUESTS);
+  
+  // Permissions
   const can = useMemo<PermissionsCheck>(() => {
     const userRole = authContext?.user ? ROLES.find(r => r.name === authContext.user!.role) : undefined;
     const permissions = userRole?.permissions ?? [];
@@ -100,6 +117,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return checks;
 
   }, [authContext?.user]);
+  
+  // Internal Request Counts
+  const pendingInternalRequestCount = useMemo(() => {
+    if (!can.approve_store_requests) return 0;
+    return internalRequests.filter(r => r.status === 'Pending').length;
+  }, [internalRequests, can.approve_store_requests]);
+
+  const updatedInternalRequestCount = useMemo(() => {
+    if (!authContext.user) return 0;
+    return internalRequests.filter(r => r.requesterId === authContext.user?.id && !r.viewedByRequester).length;
+  }, [internalRequests, authContext.user]);
+  
+  // Management Request Counts
+  const pendingManagementRequestCount = useMemo(() => {
+    if (!authContext.user) return 0;
+    return managementRequests.filter(r => r.recipientId === authContext.user?.id && r.status === 'Pending').length;
+  }, [managementRequests, authContext.user]);
+
+  const updatedManagementRequestCount = useMemo(() => {
+    if (!authContext.user) return 0;
+    return managementRequests.filter(r => r.requesterId === authContext.user?.id && !r.viewedByRequester).length;
+  }, [managementRequests, authContext.user]);
+
 
   const updateTask = (updatedTask: Task) => {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
@@ -471,6 +511,102 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Manpower Profile Updated' });
   };
 
+  // Internal Request Functions
+  const createInternalRequest = (items: RequestItem[]) => {
+    if (!authContext.user) return;
+    const newRequest: InternalRequest = {
+      id: `ireq-${Date.now()}`,
+      requesterId: authContext.user.id,
+      date: new Date().toISOString(),
+      items,
+      status: 'Pending',
+      comments: [],
+      viewedByRequester: true,
+    };
+    setInternalRequests([newRequest, ...internalRequests]);
+  };
+
+  const addInternalRequestComment = (requestId: string, text: string) => {
+      if (!authContext.user) return;
+      const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text, date: new Date().toISOString() };
+      setInternalRequests(internalRequests.map(r => r.id === requestId ? { ...r, comments: [...r.comments, newComment], viewedByRequester: r.requesterId === authContext.user?.id } : r));
+  };
+  
+  const approveInternalRequest = (requestId: string, comment?: string) => {
+    if (!authContext.user) return;
+    setInternalRequests(internalRequests.map(r => {
+        if (r.id === requestId) {
+            const updatedRequest = { ...r, status: 'Approved' as 'Approved', approverId: authContext.user?.id, viewedByRequester: false };
+            if (comment) {
+                updatedRequest.comments.push({ id: `c-${Date.now()}`, userId: authContext.user!.id, text: comment, date: new Date().toISOString() });
+            }
+            return updatedRequest;
+        }
+        return r;
+    }));
+  };
+
+  const rejectInternalRequest = (requestId: string, comment: string) => {
+    if (!authContext.user) return;
+    setInternalRequests(internalRequests.map(r => {
+        if (r.id === requestId) {
+            const updatedRequest = { ...r, status: 'Rejected' as 'Rejected', approverId: authContext.user?.id, viewedByRequester: false };
+            updatedRequest.comments.push({ id: `c-${Date.now()}`, userId: authContext.user!.id, text: comment, date: new Date().toISOString() });
+            return updatedRequest;
+        }
+        return r;
+    }));
+  };
+  
+  // Management Request Functions
+  const createManagementRequest = (recipientId: string, subject: string, body: string) => {
+    if (!authContext.user) return;
+    const newRequest: ManagementRequest = {
+        id: `mreq-${Date.now()}`,
+        requesterId: authContext.user.id,
+        recipientId,
+        date: new Date().toISOString(),
+        subject,
+        body,
+        status: 'Pending',
+        comments: [],
+        viewedByRequester: true
+    };
+    setManagementRequests([newRequest, ...managementRequests]);
+  };
+  
+  const addManagementRequestComment = (requestId: string, text: string) => {
+      if (!authContext.user) return;
+      const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text, date: new Date().toISOString() };
+      setManagementRequests(managementRequests.map(r => r.id === requestId ? { ...r, comments: [...r.comments, newComment], viewedByRequester: r.requesterId === authContext.user?.id } : r));
+  };
+
+  const approveManagementRequest = (requestId: string, comment?: string) => {
+      if (!authContext.user) return;
+      setManagementRequests(managementRequests.map(r => {
+          if (r.id === requestId) {
+              const updatedRequest = { ...r, status: 'Approved' as 'Approved', viewedByRequester: false };
+              if (comment) {
+                  updatedRequest.comments.push({ id: `c-${Date.now()}`, userId: authContext.user!.id, text: comment, date: new Date().toISOString() });
+              }
+              return updatedRequest;
+          }
+          return r;
+      }));
+  };
+
+  const rejectManagementRequest = (requestId: string, comment: string) => {
+      if (!authContext.user) return;
+      setManagementRequests(managementRequests.map(r => {
+          if (r.id === requestId) {
+              const updatedRequest = { ...r, status: 'Rejected' as 'Rejected', viewedByRequester: false };
+              updatedRequest.comments.push({ id: `c-${Date.now()}`, userId: authContext.user!.id, text: comment, date: new Date().toISOString() });
+              return updatedRequest;
+          }
+          return r;
+      }));
+  };
+
 
   const value = {
     tasks,
@@ -487,6 +623,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     otherEquipments,
     myFulfilledUTRequests,
     manpowerLogs,
+    internalRequests,
+    managementRequests,
+    pendingInternalRequestCount,
+    updatedInternalRequestCount,
+    pendingManagementRequestCount,
+    updatedManagementRequestCount,
     updateTask,
     createTask,
     createAnnouncement,
@@ -525,6 +667,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addManpowerLog,
     addManpowerProfile,
     editManpowerProfile,
+    createInternalRequest,
+    addInternalRequestComment,
+    approveInternalRequest,
+    rejectInternalRequest,
+    createManagementRequest,
+    addManagementRequestComment,
+    approveManagementRequest,
+    rejectManagementRequest,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

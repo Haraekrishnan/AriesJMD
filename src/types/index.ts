@@ -1,6 +1,3 @@
-
-
-
 export type User = {
   id: string;
   name: string;
@@ -269,7 +266,7 @@ export type InternalRequest = {
   items: RequestItem[];
   status: InternalRequestStatus;
   approverId?: string;
-  comments: { id: string, userId: string, text: string, date: string }[];
+  comments: Comment[];
   viewedByRequester: boolean;
 };
 
@@ -283,7 +280,7 @@ export type ManagementRequest = {
     subject: string;
     body: string;
     status: ManagementRequestStatus;
-    comments: { id: string, userId: string, text: string, date: string }[];
+    comments: Comment[];
     viewedByRequester: boolean;
 }
 
