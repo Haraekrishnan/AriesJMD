@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest, ManpowerLog, RoleDefinition } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS, UT_MACHINES, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, CERTIFICATE_REQUESTS } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS, UT_MACHINES, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, CERTIFICATE_REQUESTS, MANPOWER_LOGS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
 
@@ -26,8 +26,10 @@ interface AppContextProps {
   mobileSims: MobileSim[];
   otherEquipments: OtherEquipment[];
   myFulfilledUTRequests: CertificateRequest[];
+  manpowerLogs: ManpowerLog[];
   user: User | null;
   users: User[];
+  roles: RoleDefinition[];
   updateTask: (updatedTask: Task) => void;
   createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => void;
   createAnnouncement: (newAnnouncement: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'| 'approverId'>) => void;
@@ -50,16 +52,17 @@ interface AppContextProps {
   addUTMachine: (machine: Omit<UTMachine, 'id'>) => void;
   editUTMachine: (machineId: string, machine: Partial<UTMachine>) => void;
   deleteUTMachine: (machineId: string) => void;
-  addUTMachineLog: (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => void;
+  addUTMachineLog: (machineId: string, log: Omit<MachineLog, 'id' | 'machineId' | 'userId'>) => void;
   addDftMachine: (machine: Omit<DftMachine, 'id'>) => void;
   editDftMachine: (machineId: string, machine: Partial<DftMachine>) => void;
   deleteDftMachine: (machineId: string) => void;
-  addDftMachineLog: (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => void;
+  addDftMachineLog: (machineId: string, log: Omit<MachineLog, 'id' | 'machineId' | 'userId'>) => void;
   addOtherEquipment: (item: Omit<OtherEquipment, 'id'>) => void;
   editOtherEquipment: (itemId: string, item: Partial<OtherEquipment>) => void;
   deleteOtherEquipment: (itemId: string) => void;
   markUTRequestsAsViewed: () => void;
   acknowledgeFulfilledUTRequest: (requestId: string) => void;
+  addManpowerLog: (log: Omit<ManpowerLog, 'id' | 'updatedBy'>) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -79,6 +82,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [mobileSims, setMobileSims] = useLocalStorage<MobileSim[]>('aries-mobile-sims', MOBILE_SIMS);
   const [otherEquipments, setOtherEquipments] = useLocalStorage<OtherEquipment[]>('aries-other-equipments', OTHER_EQUIPMENTS);
   const [certificateRequests, setCertificateRequests] = useLocalStorage<CertificateRequest[]>('aries-certificate-requests', CERTIFICATE_REQUESTS);
+  const [manpowerLogs, setManpowerLogs] = useLocalStorage<ManpowerLog[]>('aries-manpower-logs', MANPOWER_LOGS);
 
   const { toast } = useToast();
 
@@ -352,10 +356,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast({ title: 'UT Machine Deleted', variant: 'destructive' });
   };
 
-  const addUTMachineLog = (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => {
+  const addUTMachineLog = (machineId: string, log: Omit<MachineLog, 'id' | 'machineId' | 'userId'>) => {
+    if(!authContext?.user) return;
     setUtMachines(utMachines.map(m => {
       if (m.id === machineId) {
-        const newLog = { ...log, id: `log-${Date.now()}`, machineId };
+        const newLog = { ...log, id: `log-${Date.now()}`, machineId, userId: authContext.user!.id };
         const logs = m.logs ? [newLog, ...m.logs] : [newLog];
         return { ...m, logs };
       }
@@ -381,10 +386,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast({ title: 'DFT Machine Deleted', variant: 'destructive' });
   };
 
-  const addDftMachineLog = (machineId: string, log: Omit<MachineLog, 'id' | 'machineId'>) => {
+  const addDftMachineLog = (machineId: string, log: Omit<MachineLog, 'id' | 'machineId' | 'userId'>) => {
+    if(!authContext?.user) return;
     setDftMachines(dftMachines.map(m => {
       if (m.id === machineId) {
-        const newLog = { ...log, id: `log-${Date.now()}`, machineId };
+        const newLog = { ...log, id: `log-${Date.now()}`, machineId, userId: authContext.user!.id };
         const logs = m.logs ? [newLog, ...m.logs] : [newLog];
         return { ...m, logs };
       }
@@ -431,6 +437,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Request Acknowledged' });
   };
 
+  // Manpower Log Functions
+  const addManpowerLog = (log: Omit<ManpowerLog, 'id' | 'updatedBy'>) => {
+    if (!authContext?.user) return;
+
+    const newLog: ManpowerLog = {
+      id: `mplog-${Date.now()}`,
+      ...log,
+      updatedBy: authContext.user.id,
+    };
+
+    setManpowerLogs(prevLogs => {
+      const existingLogIndex = prevLogs.findIndex(l => l.date === newLog.date && l.projectId === newLog.projectId);
+      if (existingLogIndex > -1) {
+        const updatedLogs = [...prevLogs];
+        updatedLogs[existingLogIndex] = newLog;
+        return updatedLogs;
+      }
+      return [newLog, ...prevLogs];
+    });
+  };
+
 
   const value = {
     tasks,
@@ -446,12 +473,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     mobileSims,
     otherEquipments,
     myFulfilledUTRequests,
+    manpowerLogs,
     updateTask,
     createTask,
     createAnnouncement,
     getPrioritySuggestion,
     user: authContext?.user || null,
     users: authContext?.users || [],
+    roles: ROLES,
     getVisibleUsers,
     can,
     addBuilding,
@@ -479,7 +508,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     editOtherEquipment,
     deleteOtherEquipment,
     markUTRequestsAsViewed,
-    acknowledgeFulfilledUTRequest
+    acknowledgeFulfilledUTRequest,
+    addManpowerLog
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
