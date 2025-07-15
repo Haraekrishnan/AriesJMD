@@ -1,25 +1,24 @@
 'use client';
 
-import React, { useContext, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { AppContext } from '@/context/app-context';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Header } from '@/components/header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Loader2 } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const context = useContext(AppContext);
+  const { user, isLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (!context?.isLoading && !context?.user) {
+    if (!isLoading && !user) {
       router.replace('/login');
     }
-  }, [context?.isLoading, context?.user, router]);
+  }, [isLoading, user, router]);
 
-  if (context?.isLoading || !context?.user) {
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

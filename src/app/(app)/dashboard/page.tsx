@@ -1,7 +1,8 @@
 'use client';
 
 import { useContext, useMemo, useState } from 'react';
-import { AppContext } from '@/context/app-context';
+import { AppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/hooks/use-auth';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { TasksCompletedChart } from '@/components/dashboard/tasks-completed-chart';
 import { TeamTaskDistributionChart } from '@/components/dashboard/team-task-distribution-chart';
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const context = useContext(AppContext);
+  const { user } = useAuth();
   const [visibleAnnouncements, setVisibleAnnouncements] = useState<string[]>(
     context?.announcements.map(a => a.id) || []
   );
@@ -38,7 +40,7 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">
-          Welcome back, {context?.user?.name}!
+          Welcome back, {user?.name}!
         </h2>
       </div>
 

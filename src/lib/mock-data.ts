@@ -4,7 +4,7 @@ import { ALL_PERMISSIONS } from '@/types';
 
 export { ALL_PERMISSIONS };
 
-export const mockRoles: RoleDefinition[] = [
+export const ROLES: RoleDefinition[] = [
   {
     id: 'role-admin',
     name: 'Admin',
@@ -84,7 +84,7 @@ export const mockRoles: RoleDefinition[] = [
   }
 ];
 
-export const mockProjects: Project[] = [
+export const PROJECTS: Project[] = [
     { id: 'proj-1', name: 'SEZ', description: 'SEZ Project'},
     { id: 'proj-2', name: 'DTA', description: 'DTA Project' },
     { id: 'proj-3', name: 'MTF', description: 'MTF Project' },
@@ -94,35 +94,35 @@ export const mockProjects: Project[] = [
     { id: 'proj-7', name: 'Pass Section', description: 'Pass Section' },
 ];
 
-export const mockUsers: User[] = [
-  { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'Admin', avatar: 'https://i.pravatar.cc/150?u=1' },
-  { id: '2', name: 'Manu M G', email: 'manu@ariesmarine.com', password: 'password', role: 'Manager', avatar: 'https://i.pravatar.cc/150?u=2', supervisorId: '1' },
-  { id: '3', name: 'Mujeeb', email: 'mujeeb@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=3', supervisorId: '2' },
-  { id: '4', name: 'Albin Raju', email: 'albin@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=4', supervisorId: '2' },
-  { id: '5', name: 'Arjun P', email: 'arjun@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=5', supervisorId: '2' },
-  { id: '6', name: 'Sreehari', email: 'sreehari@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=6', supervisorId: '2' },
-  { id: '7', name: 'Vishnu H', email: 'vishnu.h@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=7', supervisorId: '2' },
-  { id: '8', name: 'Akhil A', email: 'akhil.a@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=8', supervisorId: '2' },
-  { id: '9', name: 'Dhaneesh Kumar', email: 'dhaneesh@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=9', supervisorId: '2' },
-  { id: '10', name: 'Rakhil Raj', email: 'rakhil@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=10', supervisorId: '2' },
-  { id: '11', name: 'Akhil Pillai', email: 'akhil.pillai@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=11', supervisorId: '3' },
-  { id: '12', name: 'Athul Kumar', email: 'athul@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=12', supervisorId: '3' },
-  { id: '13', name: 'Rinu Sam', email: 'rinu@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=13', supervisorId: '4' },
-  { id: '14', name: 'Syam Kumar', email: 'syam@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=14', supervisorId: '4' },
-  { id: '15', name: 'Vishnu S', email: 'vishnu.s@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=15', supervisorId: '5' },
-  { id: '16', name: 'Vishnu J', email: 'vishnu.j@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=16', supervisorId: '5' },
-  { id: '17', name: 'Amaldas M', email: 'amaldas@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=17', supervisorId: '6' },
-  { id: '18', name: 'Sajin Soman', email: 'sajin@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=18', supervisorId: '6' },
-  { id: '19', name: 'Aparna M R', email: 'aparna@ariesmarine.com', password: 'password', role: 'Team Member', avatar: 'https://i.pravatar.cc/150?u=19', supervisorId: '11' },
-  { id: '20', name: 'John Safety', email: 'john.safety@ariesmarine.com', password: 'password', role: 'HSE', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2' },
-  { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Junior HSE', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20' },
-  { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2' },
-  { id: '23', name: 'Asst. Store Keeper', email: 'asst.store@ariesmarine.com', password: 'password', role: 'Assistant Store Incharge', avatar: 'https://i.pravatar.cc/150?u=23', supervisorId: '22' },
+export const USERS: User[] = [
+  { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'Admin', avatar: 'https://i.pravatar.cc/150?u=1', projectId: 'proj-6', planningScore: 0 },
+  { id: '2', name: 'Manu M G', email: 'manu@ariesmarine.com', password: 'password', role: 'Manager', avatar: 'https://i.pravatar.cc/150?u=2', supervisorId: '1', projectId: 'proj-6', planningScore: 0 },
+  { id: '3', name: 'Mujeeb', email: 'mujeeb@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=3', supervisorId: '2', projectId: 'proj-1', planningScore: 0 },
+  { id: '4', name: 'Albin Raju', email: 'albin@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=4', supervisorId: '2', projectId: 'proj-2', planningScore: 0 },
+  { id: '5', name: 'Arjun P', email: 'arjun@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=5', supervisorId: '2', projectId: 'proj-3', planningScore: 0 },
+  { id: '6', name: 'Sreehari', email: 'sreehari@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=6', supervisorId: '2', projectId: 'proj-4', planningScore: 0 },
+  { id: '7', name: 'Vishnu H', email: 'vishnu.h@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=7', supervisorId: '2', projectId: 'proj-5', planningScore: 0 },
+  { id: '8', name: 'Akhil A', email: 'akhil.a@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=8', supervisorId: '2', projectId: 'proj-1', planningScore: 0 },
+  { id: '9', name: 'Dhaneesh Kumar', email: 'dhaneesh@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=9', supervisorId: '2', projectId: 'proj-2', planningScore: 0 },
+  { id: '10', name: 'Rakhil Raj', email: 'rakhil@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=10', supervisorId: '2', projectId: 'proj-3', planningScore: 0 },
+  { id: '11', name: 'Akhil Pillai', email: 'akhil.pillai@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=11', supervisorId: '3', projectId: 'proj-1', planningScore: 0 },
+  { id: '12', name: 'Athul Kumar', email: 'athul@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=12', supervisorId: '3', projectId: 'proj-1', planningScore: 0 },
+  { id: '13', name: 'Rinu Sam', email: 'rinu@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=13', supervisorId: '4', projectId: 'proj-2', planningScore: 0 },
+  { id: '14', name: 'Syam Kumar', email: 'syam@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=14', supervisorId: '4', projectId: 'proj-2', planningScore: 0 },
+  { id: '15', name: 'Vishnu S', email: 'vishnu.s@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=15', supervisorId: '5', projectId: 'proj-3', planningScore: 0 },
+  { id: '16', name: 'Vishnu J', email: 'vishnu.j@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=16', supervisorId: '5', projectId: 'proj-3', planningScore: 0 },
+  { id: '17', name: 'Amaldas M', email: 'amaldas@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=17', supervisorId: '6', projectId: 'proj-4', planningScore: 0 },
+  { id: '18', name: 'Sajin Soman', email: 'sajin@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=18', supervisorId: '6', projectId: 'proj-4', planningScore: 0 },
+  { id: '19', name: 'Aparna M R', email: 'aparna@ariesmarine.com', password: 'password', role: 'Team Member', avatar: 'https://i.pravatar.cc/150?u=19', supervisorId: '11', projectId: 'proj-1', planningScore: 0 },
+  { id: '20', name: 'John Safety', email: 'john.safety@ariesmarine.com', password: 'password', role: 'HSE', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2', projectId: 'proj-6', planningScore: 0 },
+  { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Junior HSE', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20', projectId: 'proj-6', planningScore: 0 },
+  { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2', projectId: 'proj-6', planningScore: 0 },
+  { id: '23', name: 'Asst. Store Keeper', email: 'asst.store@ariesmarine.com', password: 'password', role: 'Assistant Store Incharge', avatar: 'https://i.pravatar.cc/150?u=23', supervisorId: '22', projectId: 'proj-6', planningScore: 0 },
 ];
 
 const today = new Date();
 
-export const mockTasks: Task[] = [
+export const TASKS: Task[] = [
   {
     id: 'task-1',
     title: 'Develop new homepage design',
@@ -131,8 +131,15 @@ export const mockTasks: Task[] = [
     priority: 'High',
     dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '19',
+    assigneeIds: ['19'],
     creatorId: '11',
-    projectId: 'proj-1'
+    projectId: 'proj-1',
+    isViewedByAssignee: true,
+    comments: [
+        { id: 'c-1-1', userId: '11', text: 'Let me know if you have any questions on the design brief.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() }
+    ],
+    requiresAttachmentForCompletion: true,
+    approvalState: 'none'
   },
   {
     id: 'task-2',
@@ -142,8 +149,13 @@ export const mockTasks: Task[] = [
     priority: 'High',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '12',
+    assigneeIds: ['12'],
     creatorId: '3',
-    projectId: 'proj-1'
+    projectId: 'proj-1',
+    isViewedByAssignee: true,
+    comments: [],
+    requiresAttachmentForCompletion: false,
+    approvalState: 'none'
   },
   {
     id: 'task-3',
@@ -153,8 +165,13 @@ export const mockTasks: Task[] = [
     priority: 'Medium',
     dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '2',
+    assigneeIds: ['2'],
     creatorId: '1',
-    projectId: 'proj-6'
+    projectId: 'proj-6',
+    isViewedByAssignee: true,
+    comments: [],
+    requiresAttachmentForCompletion: false,
+    approvalState: 'none'
   },
   {
     id: 'task-4',
@@ -164,8 +181,16 @@ export const mockTasks: Task[] = [
     priority: 'High',
     dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '15',
+    assigneeIds: ['15'],
     creatorId: '5',
-    projectId: 'proj-3'
+    projectId: 'proj-3',
+    isViewedByAssignee: true,
+    comments: [
+        { id: 'c-4-1', userId: '5', text: 'This is a top priority, please escalate if you run into issues.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 'c-4-2', userId: '15', text: 'On it. I think I have an idea of what the issue is.', date: new Date().toISOString() }
+    ],
+    requiresAttachmentForCompletion: false,
+    approvalState: 'none'
   },
   {
     id: 'task-5',
@@ -174,9 +199,15 @@ export const mockTasks: Task[] = [
     status: 'Completed',
     priority: 'Low',
     dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    completionDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '19',
+    assigneeIds: ['19'],
     creatorId: '11',
-    projectId: 'proj-1'
+    projectId: 'proj-1',
+    isViewedByAssignee: true,
+    comments: [],
+    requiresAttachmentForCompletion: false,
+    approvalState: 'approved'
   },
   {
     id: 'task-6',
@@ -186,8 +217,13 @@ export const mockTasks: Task[] = [
     priority: 'Medium',
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '2',
+    assigneeIds: ['2'],
     creatorId: '1',
-    projectId: 'proj-6'
+    projectId: 'proj-6',
+    isViewedByAssignee: true,
+    comments: [],
+    requiresAttachmentForCompletion: false,
+    approvalState: 'none'
   },
   {
     id: 'task-7',
@@ -197,8 +233,13 @@ export const mockTasks: Task[] = [
     priority: 'High',
     dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '12',
+    assigneeIds: ['12'],
     creatorId: '3',
-    projectId: 'proj-1'
+    projectId: 'proj-1',
+    isViewedByAssignee: false,
+    comments: [],
+    requiresAttachmentForCompletion: true,
+    approvalState: 'none'
   },
   {
     id: 'task-8',
@@ -207,13 +248,19 @@ export const mockTasks: Task[] = [
     status: 'Completed',
     priority: 'Medium',
     dueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    completionDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     assigneeId: '16',
+    assigneeIds: ['16'],
     creatorId: '5',
-    projectId: 'proj-3'
+    projectId: 'proj-3',
+    isViewedByAssignee: true,
+    comments: [],
+    requiresAttachmentForCompletion: false,
+    approvalState: 'approved'
   },
 ];
 
-export const mockInternalRequests: InternalRequest[] = [
+export const INTERNAL_REQUESTS: InternalRequest[] = [
     {
         id: 'ireq-1',
         requesterId: '19',
@@ -240,7 +287,7 @@ export const mockInternalRequests: InternalRequest[] = [
     }
 ];
 
-export const mockManagementRequests: ManagementRequest[] = [
+export const MANAGEMENT_REQUESTS: ManagementRequest[] = [
     {
         id: 'mreq-1',
         requesterId: '13',
@@ -254,7 +301,7 @@ export const mockManagementRequests: ManagementRequest[] = [
     }
 ];
 
-export const mockInventoryItems: InventoryItem[] = [
+export const INVENTORY_ITEMS: InventoryItem[] = [
     { id: 'inv-1', name: 'Harness', serialNumber: 'HN-001', chestCrollNo: 'CCN-A1', ariesId: 'ARIES-001', status: 'In Use', inspectionDate: sub(new Date(), { months: 2 }).toISOString(), inspectionDueDate: add(new Date(), { months: 4 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 10 }).toISOString(), projectId: 'proj-1', lastUpdated: new Date().toISOString() },
     { id: 'inv-2', name: 'Harness', serialNumber: 'HN-002', chestCrollNo: 'CCN-A2', ariesId: 'ARIES-002', status: 'In Store', inspectionDate: sub(new Date(), { months: 1 }).toISOString(), inspectionDueDate: add(new Date(), { months: 5 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 11 }).toISOString(), projectId: 'proj-6', lastUpdated: new Date().toISOString() },
     { id: 'inv-3', name: 'Foot Loop', serialNumber: 'FL-001', status: 'In Use', inspectionDate: sub(new Date(), { days: 10 }).toISOString(), inspectionDueDate: add(new Date(), { months: 5, days: 20 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 11, days: 20 }).toISOString(), projectId: 'proj-2', lastUpdated: new Date().toISOString() },
@@ -263,7 +310,7 @@ export const mockInventoryItems: InventoryItem[] = [
     { id: 'inv-6', name: 'Harness', serialNumber: 'HN-004', chestCrollNo: 'CCN-B2', ariesId: 'ARIES-004', status: 'Expired', inspectionDate: sub(new Date(), { months: 7 }).toISOString(), inspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), tpInspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), projectId: 'proj-1', lastUpdated: new Date().toISOString() },
 ];
 
-export const mockCertificateRequests: CertificateRequest[] = [
+export const CERTIFICATE_REQUESTS: CertificateRequest[] = [
   {
     id: 'cert-req-1',
     itemId: 'inv-1',
@@ -276,37 +323,37 @@ export const mockCertificateRequests: CertificateRequest[] = [
   }
 ];
 
-export const mockManpowerLogs: ManpowerLog[] = [
+export const MANPOWER_LOGS: ManpowerLog[] = [
     { id: 'mp-1', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 20, countOut: 1, reason: '1 person sick leave', updatedBy: '3', personOutName: 'David' },
     { id: 'mp-2', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-2', countIn: 15, countOut: 0, reason: 'Full attendance', updatedBy: '4' },
     { id: 'mp-3', date: format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 19, countOut: 0, reason: 'Full attendance', updatedBy: '3' },
 ];
 
-export const mockUtMachines: UTMachine[] = [
+export const UT_MACHINES: UTMachine[] = [
     { id: 'ut-1', machineName: 'Krautkramer USM 36', serialNumber: 'UTM-001', calibrationDueDate: add(new Date(), { months: 3 }).toISOString() },
     { id: 'ut-2', machineName: 'Olympus EPOCH 650', serialNumber: 'UTM-002', calibrationDueDate: add(new Date(), { days: 20 }).toISOString() },
 ];
 
-export const mockDftMachines: DftMachine[] = [];
-export const mockMobileSims: MobileSim[] = [];
-export const mockOtherEquipments: OtherEquipment[] = [];
+export const DFT_MACHINES: DftMachine[] = [];
+export const MOBILE_SIMS: MobileSim[] = [];
+export const OTHER_EQUIPMENTS: OtherEquipment[] = [];
 
 
-export const mockDrivers: Driver[] = [
+export const DRIVERS: Driver[] = [
     { id: 'd-1', name: 'Ali Khan', licenseNumber: 'DL-001', epNumber: 'EP-001', sdpNumber: 'SDP-001', epExpiry: add(new Date(), { months: 4 }).toISOString(), medicalExpiry: add(new Date(), { years: 1 }).toISOString(), photo: '' },
     { id: 'd-2', name: 'Babu Raj', licenseNumber: 'DL-002', epNumber: 'EP-002', sdpNumber: 'SDP-002', epExpiry: add(new Date(), { days: 20 }).toISOString(), medicalExpiry: add(new Date(), { months: 6 }).toISOString(), photo: '' },
 ];
 
-export const mockVehicles: Vehicle[] = [
+export const VEHICLES: Vehicle[] = [
     { id: 'vh-1', vehicleNumber: 'DXB 12345', driverId: 'd-1', vapValidity: add(new Date(), { months: 6 }).toISOString(), insuranceValidity: add(new Date(), { years: 1 }).toISOString(), fitnessValidity: add(new Date(), { years: 2 }).toISOString(), taxValidity: add(new Date(), { months: 3 }).toISOString(), puccValidity: add(new Date(), { months: 5 }).toISOString() },
     { id: 'vh-2', vehicleNumber: 'SHJ 54321', driverId: 'd-2', vapValidity: add(new Date(), { days: 25 }).toISOString(), insuranceValidity: add(new Date(), { months: 8 }).toISOString(), fitnessValidity: add(new Date(), { years: 1 }).toISOString(), taxValidity: add(new Date(), { months: 2 }).toISOString(), puccValidity: add(new Date(), { months: 4 }).toISOString() },
 ];
 
-export const mockTrades: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'HSE', 'Supervisor', 'Document Controller', 'Cook'];
+export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'HSE', 'Supervisor', 'Document Controller', 'Cook'];
 export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3'];
 export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
 
-export const mockManpowerProfiles: ManpowerProfile[] = [
+export const MANPOWER_PROFILES: ManpowerProfile[] = [
     {
         id: 'mp-prof-1',
         name: 'John Doe',
@@ -352,7 +399,7 @@ export const mockManpowerProfiles: ManpowerProfile[] = [
 ];
 
 
-export const mockEvents: PlannerEvent[] = [
+export const PLANNER_EVENTS: PlannerEvent[] = [
     {
         id: 'event-1',
         title: 'Daily Standup',
@@ -395,15 +442,15 @@ export const mockEvents: PlannerEvent[] = [
     }
 ];
 
-export const mockDailyPlannerComments: DailyPlannerComment[] = [];
+export const DAILY_PLANNER_COMMENTS: DailyPlannerComment[] = [];
 
-export const mockAchievements: Achievement[] = [
+export const ACHIEVEMENTS: Achievement[] = [
   { id: 'ach-1', userId: '19', type: 'manual', title: 'Safety Star', description: 'Maintained a perfect safety record for Q2.', points: 50, date: new Date().toISOString(), awardedById: '11', status: 'approved' },
   { id: 'ach-2', userId: '12', type: 'manual', title: 'Innovation Award', description: 'Proposed a new workflow that saved 10 hours per week.', points: 100, date: new Date().toISOString(), awardedById: '2', status: 'approved' },
 ];
 
 const now = new Date();
-export const mockActivityLogs: ActivityLog[] = [
+export const ACTIVITY_LOGS: ActivityLog[] = [
   {
     id: 'log-1',
     userId: '19',
@@ -427,13 +474,13 @@ export const mockActivityLogs: ActivityLog[] = [
   },
 ];
 
-export const mockAnnouncements: Announcement[] = [
+export const ANNOUNCEMENTS: Announcement[] = [
     { id: 'anno-1', title: 'System Maintenance Scheduled', content: 'The system will be down for maintenance on Saturday from 2 AM to 4 AM.', publishedAt: formatISO(sub(today, {days: 1})) },
     { id: 'anno-2', title: 'New Safety Protocols', content: 'Please review the new safety protocols document available in the resources section.', publishedAt: formatISO(sub(today, {days: 3})) },
 ];
-export const mockIncidents: IncidentReport[] = [];
+export const INCIDENTS: IncidentReport[] = [];
 
-export const mockBuildings: Building[] = [
+export const BUILDINGS: Building[] = [
     {
         id: 'bldg-1',
         buildingNumber: 'A1',

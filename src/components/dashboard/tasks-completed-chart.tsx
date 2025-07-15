@@ -4,7 +4,7 @@ import { useState, useMemo, useContext } from 'react';
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppContext } from '@/context/app-context';
+import { AppContext } from '@/contexts/app-provider';
 import { getMonth, getYear, parseISO } from 'date-fns';
 
 export function TasksCompletedChart() {

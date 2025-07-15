@@ -1,7 +1,6 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useContext } from 'react';
 import Link from 'next/link';
 import {
   Bell,
@@ -22,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { NAV_LINKS } from '@/lib/constants';
-import { AppContext } from '@/context/app-context';
+import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from './ui/skeleton';
 
 function getPageTitle(pathname: string): string {
@@ -46,7 +45,7 @@ function getPageTitle(pathname: string): string {
 
 export function Header() {
   const pathname = usePathname();
-  const context = useContext(AppContext);
+  const { user, logout } = useAuth();
   const pageTitle = getPageTitle(pathname);
 
   const getInitials = (name: string) => {
@@ -82,13 +81,13 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              {context?.user ? (
+              {user ? (
                 <Avatar className="h-8 w-8">
                   <AvatarImage
-                    src={`https://placehold.co/40x40/3498DB/FFFFFF/png?text=${getInitials(context.user.name)}`}
-                    alt={context.user.name}
+                    src={`https://placehold.co/40x40/3498DB/FFFFFF/png?text=${getInitials(user.name)}`}
+                    alt={user.name}
                   />
-                  <AvatarFallback>{getInitials(context.user.name)}</AvatarFallback>
+                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
               ) : (
                 <Skeleton className="h-8 w-8 rounded-full" />
@@ -97,7 +96,7 @@ export function Header() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
-              {context?.user?.name || 'My Account'}
+              {user?.name || 'My Account'}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
@@ -107,7 +106,7 @@ export function Header() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => context?.logout()}>
+            <DropdownMenuItem onClick={() => logout()}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Logout</span>
             </DropdownMenuItem>

@@ -4,7 +4,7 @@ import { useState, useMemo, useContext } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppContext } from '@/context/app-context';
+import { AppContext } from '@/contexts/app-provider';
 import { TaskStatus } from '@/types';
 
 const COLORS: Record<TaskStatus, string> = {
@@ -13,6 +13,7 @@ const COLORS: Record<TaskStatus, string> = {
   Completed: 'hsl(var(--chart-2))',
   Overdue: 'hsl(var(--destructive))',
   'Pending Approval': '#8884d8',
+  'Done': 'hsl(var(--chart-1))',
 };
 
 export function TeamTaskDistributionChart() {
