@@ -91,11 +91,12 @@ export const ALL_PERMISSIONS = [
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
 
-export type Role = string;
+export type Role = 'Admin' | 'Manager' | 'Supervisor' | 'HSE' | 'Junior Supervisor' | 'Junior HSE' | 'Store in Charge' | 'Assistant Store Incharge' | 'Team Member' | 'Document Controller';
+
 
 export type RoleDefinition = {
   id: string;
-  name: string;
+  name: Role;
   permissions: readonly Permission[] | Permission[];
   isEditable?: boolean;
 };
@@ -410,7 +411,7 @@ export type DailyPlannerComment = {
   comments: Comment[];
 };
 
-export type Role_Dep = {
+export type RoleDefinition_Dep = {
   id: string;
   name: string;
   permissions: readonly Permission[] | Permission[];

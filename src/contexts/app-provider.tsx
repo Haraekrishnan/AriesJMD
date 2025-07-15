@@ -37,6 +37,7 @@ interface AppContextProps {
   users: User[];
   roles: RoleDefinition[];
   updateTask: (updatedTask: Task) => void;
+  deleteTask: (taskId: string) => void;
   createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => void;
   createAnnouncement: (newAnnouncement: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'| 'approverId'>) => void;
   getPrioritySuggestion: (title: string, description: string) => Promise<Priority | null>;
@@ -79,7 +80,12 @@ interface AppContextProps {
   approveManagementRequest: (requestId: string, comment?: string) => void;
   rejectManagementRequest: (requestId: string, comment: string) => void;
   addManagementRequestComment: (requestId: string, comment: string) => void;
-  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment?: string) => void;
+  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => void;
+  approveTaskStatusChange: (taskId: string, comment: string) => void;
+  returnTaskStatusChange: (taskId: string, comment: string) => void;
+  addComment: (taskId: string, commentText: string) => void;
+  markTaskAsViewed: (taskId: string) => void;
+  requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -156,6 +162,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateTask = (updatedTask: Task) => {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
+  };
+
+  const deleteTask = (taskId: string) => {
+    setTasks(tasks.filter(t => t.id !== taskId));
+    toast({ variant: 'destructive', title: 'Task Deleted' });
   };
 
   const createTask = (newTaskData: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => {
@@ -620,20 +631,107 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
   };
   
-  const requestTaskStatusChange = (taskId: string, newStatus: TaskStatus, comment?: string) => {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task || !authContext.user) return;
-
-      const updatedTask = { ...task, status: newStatus };
-
-      if (comment) {
-          const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: comment, date: new Date().toISOString() };
-          updatedTask.comments.push(newComment);
-      }
-      
-      updateTask(updatedTask);
+  const addComment = (taskId: string, commentText: string) => {
+    if (!authContext.user) return;
+    const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: commentText, date: new Date().toISOString() };
+    setTasks(tasks.map(t => 
+      t.id === taskId ? { ...t, comments: [...t.comments, newComment] } : t
+    ));
   };
 
+  const requestTaskStatusChange = (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
+    if (!authContext.user) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: comment, date: new Date().toISOString() };
+    const updatedTask = { 
+      ...task,
+      status: 'Pending Approval' as 'Pending Approval',
+      pendingStatus: newStatus,
+      previousStatus: task.status,
+      comments: [...task.comments, newComment],
+      attachment: attachment || task.attachment,
+      isViewedByAssignee: true,
+    };
+    updateTask(updatedTask);
+  };
+
+  const approveTaskStatusChange = (taskId: string, comment: string) => {
+    if (!authContext.user) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: comment, date: new Date().toISOString() };
+    
+    // Handle reassignment approval
+    if (task.pendingAssigneeId) {
+        const updatedTask: Task = {
+            ...task,
+            status: task.previousStatus || 'To Do',
+            assigneeId: task.pendingAssigneeId,
+            assigneeIds: [task.pendingAssigneeId],
+            pendingAssigneeId: undefined,
+            comments: [...task.comments, newComment],
+            isViewedByAssignee: false,
+        };
+        updateTask(updatedTask);
+        toast({ title: 'Reassignment Approved' });
+        return;
+    }
+
+    // Handle status change approval
+    const updatedTask: Task = {
+      ...task,
+      status: task.pendingStatus || 'Completed',
+      pendingStatus: undefined,
+      previousStatus: undefined,
+      completionDate: (task.pendingStatus === 'Completed' || task.pendingStatus === 'Done') ? new Date().toISOString() : undefined,
+      comments: [...task.comments, newComment],
+      isViewedByAssignee: false,
+    };
+    updateTask(updatedTask);
+    toast({ title: 'Request Approved' });
+  };
+
+  const returnTaskStatusChange = (taskId: string, comment: string) => {
+    if (!authContext.user) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: comment, date: new Date().toISOString() };
+    
+    const updatedTask: Task = {
+      ...task,
+      status: task.previousStatus || 'In Progress',
+      pendingStatus: undefined,
+      previousStatus: undefined,
+      pendingAssigneeId: undefined,
+      comments: [...task.comments, newComment],
+      isViewedByAssignee: false,
+    };
+    updateTask(updatedTask);
+  };
+  
+  const markTaskAsViewed = (taskId: string) => {
+      setTasks(tasks.map(t => t.id === taskId ? { ...t, isViewedByAssignee: true } : t));
+  };
+  
+  const requestTaskReassignment = (taskId: string, newAssigneeId: string, comment: string) => {
+      if (!authContext.user) return;
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: comment, date: new Date().toISOString() };
+      const updatedTask: Task = {
+          ...task,
+          status: 'Pending Approval',
+          previousStatus: task.status,
+          pendingAssigneeId: newAssigneeId,
+          comments: [...task.comments, newComment],
+      };
+      updateTask(updatedTask);
+  };
 
   const value = {
     tasks,
@@ -658,6 +756,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatedManagementRequestCount,
     pendingTaskApprovalCount,
     updateTask,
+    deleteTask,
     createTask,
     createAnnouncement,
     getPrioritySuggestion,
@@ -704,6 +803,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     approveManagementRequest,
     rejectManagementRequest,
     requestTaskStatusChange,
+    approveTaskStatusChange,
+    returnTaskStatusChange,
+    addComment,
+    markTaskAsViewed,
+    requestTaskReassignment
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

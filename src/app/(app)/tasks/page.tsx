@@ -12,8 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
@@ -133,13 +131,6 @@ export default function TasksPage() {
     setEditingTask(task);
   };
   
-  const handleTaskUpdate = (updatedTask: Task) => {
-    updateTask(updatedTask);
-    if(isPendingApprovalDialogOpen) {
-        setIsPendingApprovalDialogOpen(false);
-    }
-  }
-
   return (
     <>
       <div className="flex flex-col h-full">
@@ -221,7 +212,6 @@ export default function TasksPage() {
             isOpen={!!editingTask} 
             setIsOpen={() => setEditingTask(null)} 
             task={editingTask} 
-            onTaskUpdate={handleTaskUpdate}
         />
       )}
     </>
