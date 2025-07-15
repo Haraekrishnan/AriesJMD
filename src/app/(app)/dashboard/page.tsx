@@ -1,94 +1,83 @@
+
 'use client';
 
-import { useContext, useMemo, useState } from 'react';
-import { AppContext } from '@/contexts/app-provider';
-import { useAuth } from '@/hooks/use-auth';
+import { useMemo } from 'react';
+import Link from 'next/link';
+import { useAppContext } from '@/hooks/use-app-context';
+import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/dashboard/stat-card';
+import { FileText, Users, CheckCircle, ListTodo } from 'lucide-react';
 import { TasksCompletedChart } from '@/components/dashboard/tasks-completed-chart';
 import { TeamTaskDistributionChart } from '@/components/dashboard/team-task-distribution-chart';
-import {
-  CheckCircle,
-  ListTodo,
-  Users,
-  AlertTriangle,
-  X,
-} from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { AnnouncementFeed } from '@/components/dashboard/announcement-feed';
 
 export default function DashboardPage() {
-  const context = useContext(AppContext);
-  const { user } = useAuth();
-  const [visibleAnnouncements, setVisibleAnnouncements] = useState<string[]>(
-    context?.announcements.map(a => a.id) || []
-  );
+  const { user, getVisibleUsers, tasks: allTasks } = useAppContext();
 
-  const stats = useMemo(() => {
-    const completed = context?.tasks.filter(t => t.status === 'Completed').length || 0;
-    const open = context?.tasks.filter(t => t.status === 'To Do' || t.status === 'In Progress').length || 0;
-    const avgTasks = context?.users.length
-      ? (context.tasks.length / context.users.filter(u => u.role === 'Employee').length).toFixed(1)
-      : 0;
-    return { completed, open, avgTasks };
-  }, [context?.tasks, context?.users]);
+  const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
 
-  const handleDismiss = (id: string) => {
-    setVisibleAnnouncements(prev => prev.filter(annoId => annoId !== id));
-  };
+  const visibleTasks = useMemo(() => {
+    if (!allTasks) return [];
+    return allTasks.filter(task => task.assigneeIds.some(id => visibleUserIds.has(id)));
+  }, [allTasks, visibleUserIds]);
+
+  const { completedTasks, openTasks } = useMemo(() => {
+    const completed = visibleTasks.filter(t => t.status === 'Completed' || t.status === 'Done').length;
+    const open = visibleTasks.length - completed;
+    return { completedTasks: completed, openTasks: open };
+  }, [visibleTasks]);
+  
+  const avgTasksPerPerson = useMemo(() => {
+      const employees = visibleUsers.filter(u => u.role === 'Team Member' || u.role.includes('Junior'));
+      if (employees.length === 0 || visibleTasks.length === 0) return '0';
+      return (visibleTasks.length / employees.length).toFixed(1);
+  }, [visibleTasks, visibleUsers]);
 
   return (
-    <div className="flex-1 space-y-4">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Welcome back, {user?.name}!
-        </h2>
+    <div className="space-y-6">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name}!</h1>
+            <p className="text-muted-foreground">Here's a summary of your team's activity.</p>
+        </div>
+        <div className="flex gap-2">
+            
+            <Button variant="outline" asChild>
+                <Link href="/reports">
+                    <FileText />
+                    <span>Generate Report</span>
+                </Link>
+            </Button>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {context?.announcements.map(
-          (announcement) =>
-            visibleAnnouncements.includes(announcement.id) && (
-              <Alert key={announcement.id} className="relative">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>{announcement.title}</AlertTitle>
-                <AlertDescription>{announcement.content}</AlertDescription>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6"
-                  onClick={() => handleDismiss(announcement.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </Alert>
-            )
-        )}
-      </div>
+      <AnnouncementFeed />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="Completed Tasks"
-          value={stats.completed}
-          icon={CheckCircle}
-          description="Total tasks marked as completed."
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard 
+          title="Completed Tasks" 
+          value={completedTasks.toString()} 
+          icon={CheckCircle} 
+          description="Total tasks marked as done by your team"
         />
-        <StatCard
-          title="Open Tasks"
-          value={stats.open}
+        <StatCard 
+          title="Open Tasks" 
+          value={openTasks.toString()}
           icon={ListTodo}
-          description="Tasks currently in progress or to do."
+          description="Tasks currently in-progress or to-do"
         />
-        <StatCard
-          title="Average Tasks Per Person"
-          value={stats.avgTasks}
+        <StatCard 
+          title="Avg. Tasks / Person" 
+          value={avgTasksPerPerson} 
           icon={Users}
-          description="Average tasks assigned to an employee."
+          description="Average tasks across your team"
         />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-        <TasksCompletedChart />
-        <TeamTaskDistributionChart />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <TasksCompletedChart tasks={visibleTasks} />
+        <TeamTaskDistributionChart tasks={visibleTasks} users={visibleUsers} />
       </div>
     </div>
   );

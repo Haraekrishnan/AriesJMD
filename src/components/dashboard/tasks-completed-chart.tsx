@@ -1,14 +1,18 @@
+
 'use client';
 
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo } from 'react';
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppContext } from '@/contexts/app-provider';
 import { getMonth, getYear, parseISO } from 'date-fns';
+import { Task } from '@/types';
 
-export function TasksCompletedChart() {
-  const context = useContext(AppContext);
+type TasksCompletedChartProps = {
+  tasks: Task[];
+};
+
+export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const chartData = useMemo(() => {
@@ -19,8 +23,8 @@ export function TasksCompletedChart() {
       { name: 'Oct', completed: 0 }, { name: 'Nov', completed: 0 }, { name: 'Dec', completed: 0 },
     ];
 
-    context?.tasks.forEach(task => {
-      if (task.status === 'Completed') {
+    tasks.forEach(task => {
+      if (task.status === 'Completed' || task.status === 'Done') {
         const taskDate = parseISO(task.dueDate);
         if (getYear(taskDate).toString() === selectedYear) {
           const monthIndex = getMonth(taskDate);
@@ -30,12 +34,14 @@ export function TasksCompletedChart() {
     });
 
     return data;
-  }, [context?.tasks, selectedYear]);
+  }, [tasks, selectedYear]);
   
   const availableYears = useMemo(() => {
-    const years = new Set(context?.tasks.map(t => getYear(parseISO(t.dueDate))));
+    if (!tasks) return [new Date().getFullYear()];
+    const years = new Set(tasks.map(t => getYear(parseISO(t.dueDate))));
+    if (years.size === 0) return [new Date().getFullYear()];
     return Array.from(years).sort((a, b) => b - a);
-  }, [context?.tasks]);
+  }, [tasks]);
 
 
   return (

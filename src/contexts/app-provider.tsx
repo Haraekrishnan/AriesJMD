@@ -1,7 +1,8 @@
+
 'use client';
 
-import React, { createContext, useState, ReactNode, useContext } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority } from '@/types';
+import React, { createContext, useState, ReactNode, useContext, useCallback } from 'react';
+import { Task, Project, Announcement, PlannerEvent, Priority, User } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
@@ -12,9 +13,12 @@ interface AppContextProps {
   projects: Project[];
   announcements: Announcement[];
   events: PlannerEvent[];
+  user: User | null;
+  users: User[];
   updateTask: (updatedTask: Task) => void;
   createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => void;
   getPrioritySuggestion: (title: string, description: string) => Promise<Priority | null>;
+  getVisibleUsers: () => User[];
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -74,6 +78,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getVisibleUsers = useCallback(() => {
+    if (!authContext?.user || !authContext.users) {
+      return [];
+    }
+
+    const { user, users } = authContext;
+    if (user.role === 'Admin') {
+      return users;
+    }
+    if (user.role === 'Manager') {
+      return users.filter(u => u.supervisorId === user.id || u.id === user.id);
+    }
+    
+    const subordinates = new Set<string>();
+    const findSubordinates = (managerId: string) => {
+      users.forEach(u => {
+        if (u.supervisorId === managerId) {
+          subordinates.add(u.id);
+          findSubordinates(u.id);
+        }
+      });
+    };
+    findSubordinates(user.id);
+    subordinates.add(user.id);
+    
+    return users.filter(u => subordinates.has(u.id));
+  }, [authContext]);
+
   const value = {
     tasks,
     projects,
@@ -82,6 +114,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTask,
     createTask,
     getPrioritySuggestion,
+    user: authContext?.user || null,
+    users: authContext?.users || [],
+    getVisibleUsers,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

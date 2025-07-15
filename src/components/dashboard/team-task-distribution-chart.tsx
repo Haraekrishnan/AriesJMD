@@ -1,47 +1,53 @@
+
 'use client';
 
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppContext } from '@/contexts/app-provider';
-import { TaskStatus } from '@/types';
+import { TaskStatus, Task, User } from '@/types';
 
 const COLORS: Record<string, string> = {
   'To Do': 'hsl(var(--chart-4))',
   'In Progress': 'hsl(var(--chart-5))',
   Completed: 'hsl(var(--chart-2))',
+  Done: 'hsl(var(--chart-1))',
   Overdue: 'hsl(var(--destructive))',
   'Pending Approval': '#8884d8',
-  'Done': 'hsl(var(--chart-1))',
 };
 
-export function TeamTaskDistributionChart() {
-  const context = useContext(AppContext);
+type TeamTaskDistributionChartProps = {
+  tasks: Task[];
+  users: User[];
+};
+
+export function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistributionChartProps) {
   const [selectedMember, setSelectedMember] = useState('all');
 
   const chartData = useMemo(() => {
     const filteredTasks = selectedMember === 'all'
-      ? context?.tasks
-      : context?.tasks.filter(t => t.assigneeId === selectedMember);
+      ? tasks
+      : tasks.filter(t => t.assigneeIds.includes(selectedMember));
 
     const statusCounts: Record<string, number> = {
       'To Do': 0,
       'In Progress': 0,
       'Completed': 0,
       'Overdue': 0,
+      'Done': 0,
     };
 
     filteredTasks?.forEach(task => {
-        if(task.status in statusCounts) {
-            statusCounts[task.status] += 1;
+        const status = (task.status === 'Done' ? 'Completed' : task.status) as TaskStatus;
+        if(status in statusCounts) {
+            statusCounts[status] += 1;
         }
     });
 
     return Object.entries(statusCounts)
       .map(([name, value]) => ({ name, value }))
       .filter(item => item.value > 0);
-  }, [context?.tasks, selectedMember]);
+  }, [tasks, selectedMember]);
 
   return (
     <Card>
@@ -57,7 +63,7 @@ export function TeamTaskDistributionChart() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">Entire Team</SelectItem>
-                    {context?.users.map(user => (
+                    {users.map(user => (
                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                     ))}
                 </SelectContent>
@@ -78,6 +84,7 @@ export function TeamTaskDistributionChart() {
                 dataKey="value"
                 nameKey="name"
                 label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                  if (percent === 0) return null;
                   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                   const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
                   const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
@@ -89,7 +96,7 @@ export function TeamTaskDistributionChart() {
                 }}
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[entry.name as TaskStatus] ?? '#8884d8'} />
+                  <Cell key={`cell-${index}`} fill={COLORS[entry.name] ?? '#8884d8'} />
                 ))}
               </Pie>
               <Tooltip
