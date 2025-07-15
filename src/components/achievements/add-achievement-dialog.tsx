@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAppContext } from '@/hooks/use-app-context';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle } from 'lucide-react';
 

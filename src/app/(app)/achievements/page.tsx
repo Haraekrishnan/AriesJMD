@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAppContext } from '@/hooks/use-app-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AchievementsTable from '@/components/achievements/achievements-table';
