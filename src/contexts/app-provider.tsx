@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest, ManpowerLog, RoleDefinition, InternalRequest, ManagementRequest, RequestItem } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog, UTMachine, DftMachine, MobileSim, OtherEquipment, MachineLog, CertificateRequest, ManpowerLog, RoleDefinition, InternalRequest, ManagementRequest, RequestItem, TaskStatus } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS, UT_MACHINES, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, CERTIFICATE_REQUESTS, MANPOWER_LOGS, INTERNAL_REQUESTS, MANAGEMENT_REQUESTS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +32,7 @@ interface AppContextProps {
   updatedInternalRequestCount: number;
   pendingManagementRequestCount: number;
   updatedManagementRequestCount: number;
+  pendingTaskApprovalCount: number;
   user: User | null;
   users: User[];
   roles: RoleDefinition[];
@@ -118,7 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [authContext?.user]);
   
-  // Internal Request Counts
+  // Request Counts
   const pendingInternalRequestCount = useMemo(() => {
     if (!can.approve_store_requests) return 0;
     return internalRequests.filter(r => r.status === 'Pending').length;
@@ -129,7 +130,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return internalRequests.filter(r => r.requesterId === authContext.user?.id && !r.viewedByRequester).length;
   }, [internalRequests, authContext.user]);
   
-  // Management Request Counts
   const pendingManagementRequestCount = useMemo(() => {
     if (!authContext.user) return 0;
     return managementRequests.filter(r => r.recipientId === authContext.user?.id && r.status === 'Pending').length;
@@ -139,6 +139,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!authContext.user) return 0;
     return managementRequests.filter(r => r.requesterId === authContext.user?.id && !r.viewedByRequester).length;
   }, [managementRequests, authContext.user]);
+  
+  const pendingTaskApprovalCount = useMemo(() => {
+    if (!authContext.user) return 0;
+    return tasks.filter(task => {
+      if (task.status !== 'Pending Approval') return false;
+      const assignee = authContext.users.find(u => u.id === task.assigneeId);
+      if (!assignee) return false;
+      const isCreator = task.creatorId === authContext.user!.id;
+      const isSupervisor = assignee.supervisorId === authContext.user!.id;
+      return isCreator || isSupervisor;
+    }).length;
+  }, [tasks, authContext.user, authContext.users]);
 
 
   const updateTask = (updatedTask: Task) => {
@@ -629,6 +641,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updatedInternalRequestCount,
     pendingManagementRequestCount,
     updatedManagementRequestCount,
+    pendingTaskApprovalCount,
     updateTask,
     createTask,
     createAnnouncement,
