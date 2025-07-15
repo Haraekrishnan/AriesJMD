@@ -1,10 +1,10 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/hooks/use-app-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, PlusCircle, BedDouble, BedSingle, Building as BuildingIcon } from 'lucide-react';
+import { StatCard } from '@/components/dashboard/stat-card';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
