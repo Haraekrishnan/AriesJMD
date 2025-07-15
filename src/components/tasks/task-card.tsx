@@ -3,8 +3,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppContext } from '@/hooks/use-app-context';
-import type { Task, User } from '@/types';
-import { format, formatDistanceToNow } from 'date-fns';
+import type { Task } from '@/types';
+import { format } from 'date-fns';
 import { Clock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
@@ -15,30 +15,56 @@ interface TaskCardProps {
   isDialog?: boolean;
 }
 
-export default function TaskCard({ task, onClick, isDialog=false }: TaskCardProps) {
+export default function TaskCard({ task, onClick, isDialog = false }: TaskCardProps) {
   const { users } = useAppContext();
   const assignee = users.find(u => u.id === task.assigneeId);
-  
-  const getPriorityClass = (priority: Task['priority']) => {
+  const creator = users.find(u => u.id === task.creatorId);
+
+  const getPriorityVariant = (priority: string) => {
     switch (priority) {
-      case 'High': return 'bg-destructive/20 border-destructive text-destructive-foreground';
-      case 'Medium': return 'bg-yellow-500/20 border-yellow-500 text-yellow-700 dark:text-yellow-400';
-      case 'Low': return 'bg-blue-500/20 border-blue-500 text-blue-700 dark:text-blue-400';
-      default: return 'bg-muted';
+      case 'High': return 'destructive';
+      case 'Medium': return 'secondary';
+      case 'Low': return 'default';
+      default: return 'outline';
     }
   };
   
   const dueDate = new Date(task.dueDate);
   const isOverdue = dueDate < new Date() && task.status !== 'Done' && task.status !== 'Completed';
 
+  if (isDialog) {
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-start">
+                <CardTitle className="text-lg">{task.title}</CardTitle>
+                <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">{task.description}</p>
+            <div className="text-xs text-muted-foreground">Due: {format(new Date(task.dueDate), 'PPP')}</div>
+
+            <div className="flex justify-between items-center text-sm">
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Assignee:</span>
+                    {assignee && <Avatar className="h-6 w-6"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>}
+                    <span>{assignee?.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Creator:</span>
+                    <span>{creator?.name}</span>
+                </div>
+            </div>
+        </div>
+    )
+  }
+
   return (
-    <Card className={cn("hover:shadow-md transition-shadow cursor-pointer", isDialog && "border-none shadow-none")} onClick={onClick}>
+    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
       <CardHeader className="p-4 pb-2">
         <div className='flex justify-between items-start'>
             <CardTitle className="text-base font-semibold leading-tight">
               {task.title}
             </CardTitle>
-            <Badge variant="outline" className={cn("shrink-0", getPriorityClass(task.priority))}>{task.priority}</Badge>
+            <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-2">
@@ -63,9 +89,6 @@ export default function TaskCard({ task, onClick, isDialog=false }: TaskCardProp
             <span>{task.comments?.length || 0}</span>
           </div>
         </div>
-        {isDialog && (
-            <Button size="sm" onClick={onClick}>View Details</Button>
-        )}
       </CardFooter>
     </Card>
   );
