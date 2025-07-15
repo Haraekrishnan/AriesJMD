@@ -18,7 +18,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task } from '@/types';
-import KanbanCard from '@/components/tasks/kanban-card';
+import TaskCard from '@/components/tasks/task-card';
 
 export default function TasksPage() {
   const { user, users, tasks, pendingTaskApprovalCount, can, updateTask } = useAppContext();
@@ -173,7 +173,7 @@ export default function TasksPage() {
         <div className='mb-4'>
           <TaskFilters onApplyFilters={setFilters} initialFilters={filters}/>
         </div>
-        <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} onEditTask={openEditDialog}/>
+        <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
       </div>
       
       <Dialog open={isPendingApprovalDialogOpen} onOpenChange={setIsPendingApprovalDialogOpen}>
@@ -188,7 +188,7 @@ export default function TasksPage() {
                 <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => (
                          <div key={task.id} className="border p-4 rounded-lg bg-card">
-                            <KanbanCard task={task} onEdit={() => setEditingTask(task)} isDialog />
+                            <TaskCard task={task} onClick={() => setEditingTask(task)} isDialog />
                          </div>
                     )) : <p className="text-muted-foreground text-center">No tasks are awaiting your approval.</p>}
                 </div>
@@ -208,7 +208,7 @@ export default function TasksPage() {
                  <div className="p-4 space-y-4">
                     {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => (
                         <div key={task.id} className="border p-4 rounded-lg bg-card">
-                           <KanbanCard task={task} onEdit={() => setEditingTask(task)} isDialog />
+                           <TaskCard task={task} onClick={() => setEditingTask(task)} isDialog />
                         </div>
                     )) : <p className="text-muted-foreground text-center">You have no tasks awaiting approval.</p>}
                 </div>

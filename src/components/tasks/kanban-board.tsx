@@ -1,52 +1,59 @@
 'use client';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { useMemo } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
-import KanbanColumn from './kanban-column';
+
+import React, { useState } from 'react';
 import type { Task, TaskStatus } from '@/types';
+import { useAppContext } from '@/hooks/use-app-context';
+import TaskCard from './task-card';
+import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
+import EditTaskDialog from './edit-task-dialog';
 
-const KANBAN_COLUMNS: TaskStatus[] = ['To Do', 'In Progress', 'Completed', 'Overdue'];
+type BoardColumn = 'To Do' | 'In Progress' | 'Completed' | 'Overdue';
 
-interface KanbanBoardProps {
-  tasks: Task[];
-  overdueTasks: Task[];
-  onEditTask: (task: Task) => void;
+const columns: BoardColumn[] = ['To Do', 'In Progress', 'Completed', 'Overdue'];
+
+const statusMap: Record<BoardColumn, TaskStatus | null> = {
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  'Completed': 'Done',
+  'Overdue': null, 
+};
+
+const columnColors: Record<BoardColumn, string> = {
+    'To Do': 'border-t-blue-500',
+    'In Progress': 'border-t-yellow-500',
+    'Completed': 'border-t-green-500',
+    'Overdue': 'border-t-red-500',
 }
 
-export function KanbanBoard({ tasks, overdueTasks, onEditTask }: KanbanBoardProps) {
-  const { updateTask } = useAppContext();
+export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTasks: Task[] }) {
+  const { user, updateTask } = useAppContext();
+  const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const columns = useMemo(() => {
-    const columnMap = new Map<TaskStatus, Task[]>();
-    KANBAN_COLUMNS.forEach(status => columnMap.set(status, []));
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
+    setDraggedTask(taskId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
-    tasks.forEach(task => {
-      const column = columnMap.get(task.status);
-      if (column) {
-        column.push(task);
-      }
-    });
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, column: BoardColumn) => {
+    e.preventDefault();
+    if (!draggedTask) return;
     
-    if (overdueTasks.length > 0) {
-        columnMap.set('Overdue', overdueTasks);
+    const newStatus = statusMap[column];
+    if (!newStatus) { 
+        setDraggedTask(null);
+        return;
     }
 
-    return columnMap;
-  }, [tasks, overdueTasks]);
-  
-  const onDragEnd = (result: DropResult) => {
-    const { source, destination, draggableId } = result;
-
-    if (!destination) {
-      return;
-    }
-
-    const task = tasks.find(t => t.id === draggableId);
+    const task = tasks.find(t => t.id === draggedTask) || overdueTasks.find(t => t.id === draggedTask);
     if (!task) return;
     
-    const newStatus = destination.droppableId as TaskStatus;
-
-    if (newStatus === 'Completed') {
+    if (newStatus === 'Done') {
         updateTask({
             ...task,
             status: 'Pending Approval',
@@ -56,18 +63,67 @@ export function KanbanBoard({ tasks, overdueTasks, onEditTask }: KanbanBoardProp
     } else {
         updateTask({ ...task, status: newStatus });
     }
+    
+    setDraggedTask(null);
   };
+  
+  const getTasksForColumn = (column: BoardColumn) => {
+      if (column === 'Overdue') return overdueTasks;
+      const status = statusMap[column] as TaskStatus;
+      return tasks.filter(t => t.status === status);
+  }
+
+  const openEditDialog = (task: Task) => {
+    setEditingTask(task);
+  };
+  
+  const handleTaskUpdate = (updatedTask: Task) => {
+    updateTask(updatedTask);
+  }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start flex-1">
-        {KANBAN_COLUMNS.map(status => {
-           if (status === 'Overdue' && overdueTasks.length === 0) return null;
-           return (
-            <KanbanColumn key={status} status={status} tasks={columns.get(status) || []} onEditTask={onEditTask} />
-           )
-        })}
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-full flex-1">
+        {columns.map(column => {
+          const columnTasks = getTasksForColumn(column);
+          return (
+          <div
+            key={column}
+            className="flex flex-col bg-card rounded-lg border"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, column)}
+          >
+            <div className={cn("font-bold p-4 sticky top-0 bg-card rounded-t-lg border-t-4", columnColors[column])}>
+                <h3 className="flex items-center gap-2 text-base">
+                    <span>{column}</span>
+                    <Badge variant="secondary" className="text-sm">{columnTasks.length}</Badge>
+                </h3>
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto p-4 pt-2">
+              {columnTasks.length > 0 ? (
+                  columnTasks.map(task => (
+                    <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
+                        <TaskCard task={task} onClick={() => openEditDialog(task)} />
+                    </div>
+                  ))
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    No tasks here.
+                </div>
+              )}
+            </div>
+          </div>
+        )})}
       </div>
-    </DragDropContext>
+      
+      {editingTask && (
+        <EditTaskDialog 
+            isOpen={!!editingTask} 
+            setIsOpen={() => setEditingTask(null)} 
+            task={editingTask} 
+            onTaskUpdate={handleTaskUpdate}
+        />
+      )}
+    </>
   );
 }

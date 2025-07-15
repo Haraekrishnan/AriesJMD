@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppContext } from '@/hooks/use-app-context';
 import type { Task, User } from '@/types';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Clock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';

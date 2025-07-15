@@ -79,6 +79,7 @@ interface AppContextProps {
   approveManagementRequest: (requestId: string, comment?: string) => void;
   rejectManagementRequest: (requestId: string, comment: string) => void;
   addManagementRequestComment: (requestId: string, comment: string) => void;
+  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment?: string) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -618,6 +619,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return r;
       }));
   };
+  
+  const requestTaskStatusChange = (taskId: string, newStatus: TaskStatus, comment?: string) => {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !authContext.user) return;
+
+      const updatedTask = { ...task, status: newStatus };
+
+      if (comment) {
+          const newComment = { id: `c-${Date.now()}`, userId: authContext.user.id, text: comment, date: new Date().toISOString() };
+          updatedTask.comments.push(newComment);
+      }
+      
+      updateTask(updatedTask);
+  };
 
 
   const value = {
@@ -688,6 +703,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addManagementRequestComment,
     approveManagementRequest,
     rejectManagementRequest,
+    requestTaskStatusChange,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
