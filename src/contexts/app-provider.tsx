@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
 
@@ -13,12 +13,24 @@ interface AppContextProps {
   projects: Project[];
   announcements: Announcement[];
   events: PlannerEvent[];
+  buildings: Building[];
   user: User | null;
   users: User[];
   updateTask: (updatedTask: Task) => void;
   createTask: (newTask: Omit<Task, 'id' | 'creatorId' | 'projectId' | 'comments' | 'approvalState' | 'assigneeIds'>) => void;
+  createAnnouncement: (newAnnouncement: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'>) => void;
   getPrioritySuggestion: (title: string, description: string) => Promise<Priority | null>;
   getVisibleUsers: () => User[];
+  can: (permission: Permission) => boolean | undefined;
+  addBuilding: (buildingNumber: string) => void;
+  editBuilding: (buildingId: string, newBuildingNumber: string) => void;
+  deleteBuilding: (buildingId: string) => void;
+  addRoom: (buildingId: string, roomNumber: string) => void;
+  editRoom: (buildingId: string, roomId: string, newRoomNumber: string) => void;
+  deleteRoom: (buildingId: string, roomId: string) => void;
+  addBed: (buildingId: string, roomId: string, bedNumber: string, bedType: 'Bunk' | 'Single') => void;
+  deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
+  assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string | null) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -29,8 +41,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useLocalStorage<Project[]>('aries-projects', PROJECTS);
   const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements', ANNOUNCEMENTS);
   const [events, setEvents] = useLocalStorage<PlannerEvent[]>('aries-events', PLANNER_EVENTS);
+  const [buildings, setBuildings] = useLocalStorage<Building[]>('aries-buildings', BUILDINGS);
 
   const { toast } = useToast();
+
+  const can = useCallback((permission: Permission) => {
+    if (!authContext?.user) return false;
+    const userRole = ROLES.find(r => r.name === authContext.user!.role);
+    return userRole?.permissions.includes(permission);
+  }, [authContext?.user]);
 
   const updateTask = (updatedTask: Task) => {
     setTasks(tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
@@ -54,6 +73,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         description: `Task "${newTask.title}" has been successfully created.`,
     });
   }
+
+  const createAnnouncement = (newAnnouncementData: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments'>) => {
+    if (!authContext?.user) return;
+    const newAnnouncement: Announcement = {
+      ...newAnnouncementData,
+      id: `anno-${Date.now()}`,
+      creatorId: authContext.user.id,
+      status: 'approved', // Assuming direct approval for simplicity
+      createdAt: new Date().toISOString(),
+      publishedAt: new Date().toISOString(),
+      comments: [],
+    };
+    setAnnouncements([newAnnouncement, ...announcements]);
+    toast({
+      title: 'Announcement Published',
+      description: 'Your announcement is now live.',
+    });
+  };
 
   const getPrioritySuggestion = async (title: string, description: string): Promise<Priority | null> => {
     try {
@@ -106,17 +143,143 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return users.filter(u => subordinates.has(u.id));
   }, [authContext]);
 
+  const addBuilding = (buildingNumber: string) => {
+    const newBuilding: Building = {
+      id: `bldg-${Date.now()}`,
+      buildingNumber,
+      rooms: [],
+    };
+    setBuildings([...buildings, newBuilding]);
+  };
+
+  const editBuilding = (buildingId: string, newBuildingNumber: string) => {
+    setBuildings(
+      buildings.map((b) =>
+        b.id === buildingId ? { ...b, buildingNumber: newBuildingNumber } : b
+      )
+    );
+  };
+
+  const deleteBuilding = (buildingId: string) => {
+    setBuildings(buildings.filter((b) => b.id !== buildingId));
+  };
+
+  const addRoom = (buildingId: string, roomNumber: string) => {
+    const newRoom: Room = {
+      id: `room-${Date.now()}`,
+      roomNumber,
+      beds: [],
+    };
+    setBuildings(
+      buildings.map((b) =>
+        b.id === buildingId ? { ...b, rooms: [...b.rooms, newRoom] } : b
+      )
+    );
+  };
+
+  const editRoom = (buildingId: string, roomId: string, newRoomNumber: string) => {
+    setBuildings(buildings.map(b => {
+      if (b.id === buildingId) {
+        return {
+          ...b,
+          rooms: b.rooms.map(r => r.id === roomId ? { ...r, roomNumber: newRoomNumber } : r)
+        }
+      }
+      return b;
+    }));
+  };
+
+  const deleteRoom = (buildingId: string, roomId: string) => {
+    setBuildings(buildings.map(b => {
+      if (b.id === buildingId) {
+        return {
+          ...b,
+          rooms: b.rooms.filter(r => r.id !== roomId)
+        }
+      }
+      return b;
+    }));
+  };
+
+  const addBed = (buildingId: string, roomId: string, bedNumber: string, bedType: 'Bunk' | 'Single') => {
+    setBuildings(buildings.map(b => {
+      if (b.id === buildingId) {
+        return {
+          ...b,
+          rooms: b.rooms.map(r => {
+            if (r.id === roomId) {
+              const newBed = { id: `bed-${Date.now()}`, bedNumber, bedType };
+              return { ...r, beds: [...r.beds, newBed] };
+            }
+            return r;
+          })
+        }
+      }
+      return b;
+    }));
+  };
+
+  const deleteBed = (buildingId: string, roomId: string, bedId: string) => {
+     setBuildings(buildings.map(b => {
+      if (b.id === buildingId) {
+        return {
+          ...b,
+          rooms: b.rooms.map(r => {
+            if (r.id === roomId) {
+              return { ...r, beds: r.beds.filter(bed => bed.id !== bedId) };
+            }
+            return r;
+          })
+        }
+      }
+      return b;
+    }));
+  };
+
+  const assignOccupant = (buildingId: string, roomId: string, bedId: string, occupantId: string | null) => {
+    setBuildings(buildings.map(b => {
+      if (b.id === buildingId) {
+        return {
+          ...b,
+          rooms: b.rooms.map(r => {
+            if (r.id === roomId) {
+              return {
+                ...r,
+                beds: r.beds.map(bed => bed.id === bedId ? { ...bed, occupantId: occupantId ?? undefined } : bed)
+              };
+            }
+            return r;
+          })
+        }
+      }
+      return b;
+    }));
+  };
+
+
   const value = {
     tasks,
     projects,
     announcements,
     events,
+    buildings,
     updateTask,
     createTask,
+    createAnnouncement,
     getPrioritySuggestion,
     user: authContext?.user || null,
     users: authContext?.users || [],
     getVisibleUsers,
+    can,
+    addBuilding,
+    editBuilding,
+    deleteBuilding,
+    addRoom,
+    editRoom,
+    deleteRoom,
+    addBed,
+    deleteBed,
+    assignOccupant,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
