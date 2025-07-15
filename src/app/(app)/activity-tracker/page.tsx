@@ -1,20 +1,51 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+'use client';
+import { useMemo } from 'react';
+import { useAppContext } from '@/hooks/use-app-context';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import ActivityLogTable from '@/components/activity-tracker/activity-log-table';
+import { AlertTriangle } from 'lucide-react';
 
 export default function ActivityTrackerPage() {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-3xl font-bold tracking-tight">Activity Tracker</h1>
-       <Card>
-        <CardHeader>
-            <CardTitle>User Activity Log</CardTitle>
-            <CardDescription>Admin-only view of user activities.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <p className="text-muted-foreground">
-                This page will display a log of user activities, such as logins and major actions, visible only to administrators.
-            </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    const { user, activityLogs, can } = useAppContext();
+
+    const visibleLogs = useMemo(() => {
+        if (!user) return [];
+        if (can.view_activity_logs) {
+            return activityLogs;
+        }
+        return activityLogs.filter(log => log.userId === user.id);
+    }, [activityLogs, user, can.view_activity_logs]);
+
+    if (!can.view_activity_logs) {
+        return (
+            <Card className="w-full max-w-md mx-auto mt-20">
+                <CardHeader className="text-center items-center">
+                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                    </div>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You do not have permission to view this page.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
+    
+    return (
+        <div className="space-y-8">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Activity Tracker</h1>
+                <p className="text-muted-foreground">Review user login sessions and activities.</p>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Session Logs</CardTitle>
+                    <CardDescription>A detailed log of user sessions and the actions they performed.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ActivityLogTable logs={visibleLogs} />
+                </CardContent>
+            </Card>
+        </div>
+    );
 }

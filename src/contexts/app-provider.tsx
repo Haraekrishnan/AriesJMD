@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useContext, useCallback, useMemo } from 'react';
-import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement } from '@/types';
+import { Task, Project, Announcement, PlannerEvent, Priority, User, Permission, Building, Room, ManpowerProfile, ALL_PERMISSIONS, Achievement, ActivityLog } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS } from '@/lib/mock-data';
+import { TASKS, PROJECTS, ANNOUNCEMENTS, PLANNER_EVENTS, ROLES, BUILDINGS, MANPOWER_PROFILES, ACHIEVEMENTS, ACTIVITY_LOGS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { AuthContext } from './auth-provider';
 
@@ -20,6 +20,7 @@ interface AppContextProps {
   buildings: Building[];
   manpowerProfiles: ManpowerProfile[];
   achievements: Achievement[];
+  activityLogs: ActivityLog[];
   user: User | null;
   users: User[];
   updateTask: (updatedTask: Task) => void;
@@ -54,6 +55,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [buildings, setBuildings] = useLocalStorage<Building[]>('aries-buildings', BUILDINGS);
   const [manpowerProfiles, setManpowerProfiles] = useLocalStorage<ManpowerProfile[]>('aries-manpower-profiles', MANPOWER_PROFILES);
   const [achievements, setAchievements] = useLocalStorage<Achievement[]>('aries-achievements', ACHIEVEMENTS);
+  const [activityLogs, setActivityLogs] = useLocalStorage<ActivityLog[]>('aries-activity-logs', ACTIVITY_LOGS);
 
 
   const { toast } = useToast();
@@ -321,6 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     buildings,
     manpowerProfiles,
     achievements,
+    activityLogs,
     updateTask,
     createTask,
     createAnnouncement,
