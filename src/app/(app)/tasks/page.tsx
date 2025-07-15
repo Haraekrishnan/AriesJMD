@@ -1,11 +1,11 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { KanbanBoard } from '@/components/tasks/kanban-board';
 import CreateTaskDialog from '@/components/tasks/create-task-dialog';
 import TaskFilters, { type TaskFilters as FiltersType } from '@/components/tasks/task-filters';
 import { Button } from '@/components/ui/button';
-import { Bell, History, PlusCircle } from 'lucide-react';
+import { Bell, History } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import type { Task } from '@/types';
 import TaskCard from '@/components/tasks/task-card';
 
 export default function TasksPage() {
-  const { user, users, tasks, pendingTaskApprovalCount, can, updateTask } = useAppContext();
+  const { user, users, tasks, pendingTaskApprovalCount, can } = useAppContext();
   
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
@@ -95,7 +95,7 @@ export default function TasksPage() {
       }
       
       let statusMatch = status === 'all' || task.status === status;
-      if (status === 'Completed' && task.status !== 'Done') {
+      if (status === 'Completed' && task.status !== 'Done' && task.status !== 'Completed') {
           statusMatch = false;
       } else if (status !== 'all' && status !== 'Completed' && task.status === 'Done') {
           statusMatch = true;

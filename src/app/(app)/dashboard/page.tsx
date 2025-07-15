@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { FileText, Users, CheckCircle, ListTodo } from 'lucide-react';
@@ -11,8 +11,7 @@ import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribu
 import { AnnouncementFeed } from '@/components/announcements/announcement-feed';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks, can } = useAppContext();
-  const [isNewAnnouncementDialogOpen, setIsNewAnnouncementDialogOpen] = useState(false);
+  const { user, getVisibleUsers, tasks: allTasks } = useAppContext();
 
   const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);

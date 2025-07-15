@@ -3,23 +3,23 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAppContext();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!loading && user) {
       router.replace('/dashboard');
     }
-  }, [user, isLoading, router]);
+  }, [user, loading, router]);
 
-  if (isLoading || (!isLoading && user)) {
+  if (loading || (!loading && user)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

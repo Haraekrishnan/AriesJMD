@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Megaphone, PlusCircle, Rss, X } from 'lucide-react';

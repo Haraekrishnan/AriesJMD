@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -14,9 +14,11 @@ import ManagementRequestTable from '@/components/requests/ManagementRequestTable
 import { Badge } from '@/components/ui/badge';
 
 export default function MyRequestsPage() {
-    const { user, internalRequests, managementRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
+    const { user, can, internalRequests, managementRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
+
+    const isApprover = can.approve_store_requests;
 
     const visibleInternalRequests = useMemo(() => {
         if (!user) return [];
@@ -57,12 +59,12 @@ export default function MyRequestsPage() {
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="store-requests">Internal Store Requests
                          {(pendingInternalRequestCount + updatedInternalRequestCount > 0) && (
-                            <Badge className="ml-2" variant="secondary">{pendingInternalRequestCount + updatedInternalRequestCount}</Badge>
+                            <Badge className="ml-2" variant="destructive">{pendingInternalRequestCount + updatedInternalRequestCount}</Badge>
                          )}
                     </TabsTrigger>
                     <TabsTrigger value="management-requests">Management Requests
                          {(pendingManagementRequestCount + updatedManagementRequestCount > 0) && (
-                            <Badge className="ml-2" variant="secondary">{pendingManagementRequestCount + updatedManagementRequestCount}</Badge>
+                            <Badge className="ml-2" variant="destructive">{pendingManagementRequestCount + updatedManagementRequestCount}</Badge>
                          )}
                     </TabsTrigger>
                 </TabsList>

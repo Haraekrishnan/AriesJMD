@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/hooks/use-app-context';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -52,7 +52,7 @@ export default function CreateTaskDialog() {
   const onSubmit = (data: TaskFormValues) => {
     createTask({
       ...data,
-      status: 'To Do',
+      dueDate: new Date(data.dueDate).toISOString(),
     });
     toast({
       title: 'Task Created',

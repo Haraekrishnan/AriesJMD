@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { NAV_LINKS } from '@/lib/constants';
-import { useAuth } from '@/hooks/use-auth';
+import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from './ui/skeleton';
 
 function getPageTitle(pathname: string): string {
@@ -45,7 +45,7 @@ function getPageTitle(pathname: string): string {
 
 export function Header() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout } = useAppContext();
   const pageTitle = getPageTitle(pathname);
 
   const getInitials = (name: string) => {

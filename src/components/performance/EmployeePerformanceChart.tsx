@@ -1,8 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
-import { useAppContext } from '@/hooks/use-app-context';
-import type { Task } from '@/types';
+import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function EmployeePerformanceChart() {

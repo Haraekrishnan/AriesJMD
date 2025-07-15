@@ -1,22 +1,22 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
+import { useAppContext } from '@/contexts/app-provider';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAppContext();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!loading) {
       if (user) {
         router.replace('/dashboard');
       } else {
         router.replace('/login');
       }
     }
-  }, [isLoading, user, router]);
+  }, [loading, user, router]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
