@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Filter, X } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Label } from '../ui/label';
@@ -39,7 +39,7 @@ export default function TaskFiltersComponent({ onApplyFilters, initialFilters }:
         priority: 'all',
         dateRange: undefined,
         showMyTasksOnly: false
-    };
+    } as const;
     setFilters(defaultFilters);
     onApplyFilters(defaultFilters);
   }
