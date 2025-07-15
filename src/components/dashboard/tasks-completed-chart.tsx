@@ -5,8 +5,8 @@ import { useState, useMemo } from 'react';
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getMonth, getYear, parseISO } from 'date-fns';
-import { Task } from '@/types';
+import { getMonth, getYear, parseISO, format } from 'date-fns';
+import type { Task } from '@/types';
 
 type TasksCompletedChartProps = {
   tasks: Task[];
@@ -16,11 +16,11 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const chartData = useMemo(() => {
-    const data: { name: string; completed: number }[] = [
-      { name: 'Jan', completed: 0 }, { name: 'Feb', completed: 0 }, { name: 'Mar', completed: 0 },
-      { name: 'Apr', completed: 0 }, { name: 'May', completed: 0 }, { name: 'Jun', completed: 0 },
-      { name: 'Jul', completed: 0 }, { name: 'Aug', completed: 0 }, { name: 'Sep', completed: 0 },
-      { name: 'Oct', completed: 0 }, { name: 'Nov', completed: 0 }, { name: 'Dec', completed: 0 },
+    const data: { name: string; 'Tasks Completed': number }[] = [
+      { name: 'Jan', 'Tasks Completed': 0 }, { name: 'Feb', 'Tasks Completed': 0 }, { name: 'Mar', 'Tasks Completed': 0 },
+      { name: 'Apr', 'Tasks Completed': 0 }, { name: 'May', 'Tasks Completed': 0 }, { name: 'Jun', 'Tasks Completed': 0 },
+      { name: 'Jul', 'Tasks Completed': 0 }, { name: 'Aug', 'Tasks Completed': 0 }, { name: 'Sep', 'Tasks Completed': 0 },
+      { name: 'Oct', 'Tasks Completed': 0 }, { name: 'Nov', 'Tasks Completed': 0 }, { name: 'Dec', 'Tasks Completed': 0 },
     ];
 
     tasks.forEach(task => {
@@ -28,7 +28,7 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
         const taskDate = parseISO(task.dueDate);
         if (getYear(taskDate).toString() === selectedYear) {
           const monthIndex = getMonth(taskDate);
-          data[monthIndex].completed += 1;
+          data[monthIndex]['Tasks Completed'] += 1;
         }
       }
     });
@@ -39,7 +39,9 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
   const availableYears = useMemo(() => {
     if (!tasks) return [new Date().getFullYear()];
     const years = new Set(tasks.map(t => getYear(parseISO(t.dueDate))));
-    if (years.size === 0) return [new Date().getFullYear()];
+    if (!years.has(new Date().getFullYear())) {
+        years.add(new Date().getFullYear());
+    }
     return Array.from(years).sort((a, b) => b - a);
   }, [tasks]);
 
@@ -77,7 +79,7 @@ export function TasksCompletedChart({ tasks }: TasksCompletedChartProps) {
               }}
             />
             <Legend wrapperStyle={{fontSize: "14px"}}/>
-            <Line type="monotone" dataKey="completed" name="Completed Tasks" stroke="hsl(var(--primary))" strokeWidth={2} activeDot={{ r: 8 }} />
+            <Line type="monotone" dataKey="Tasks Completed" stroke="hsl(var(--primary))" strokeWidth={2} activeDot={{ r: 8 }} />
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
