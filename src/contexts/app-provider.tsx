@@ -173,6 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!authContext?.user || !authContext.user.projectId) return;
     const newTask: Task = {
         ...newTaskData,
+        dueDate: new Date(newTaskData.dueDate).toISOString(),
         id: `task-${Date.now()}`,
         creatorId: authContext.user.id,
         projectId: authContext.user.projectId,
@@ -182,10 +183,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         assigneeIds: [newTaskData.assigneeId],
     };
     setTasks([newTask, ...tasks]);
-    toast({
-        title: 'Task Created',
-        description: `Task "${newTask.title}" has been successfully created.`,
-    });
   }
 
   const createAnnouncement = (newAnnouncementData: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'publishedAt' | 'comments' | 'approverId'>) => {

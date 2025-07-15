@@ -1,174 +1,148 @@
 'use client';
 import { useState } from 'react';
-import { Button } from "@/components/ui/button";
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/hooks/use-app-context';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, PlusCircle, Sparkles } from 'lucide-react';
-import { useAppContext } from '@/hooks/use-app-context';
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import type { Priority } from '@/types';
+import { Label } from '@/components/ui/label';
+import { PlusCircle } from 'lucide-react';
+
+const taskSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().min(1, 'Description is required'),
+  assigneeId: z.string().min(1, 'Please select an assignee'),
+  dueDate: z.string().min(1, 'Due date is required'),
+  priority: z.enum(['Low', 'Medium', 'High']),
+});
+
+type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function CreateTaskDialog() {
-  const { createTask, getVisibleUsers, getPrioritySuggestion } = useAppContext();
+  const { createTask, getVisibleUsers } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
-  const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [priority, setPriority] = useState<Priority | ''>('');
-  const [isSuggesting, setIsSuggesting] = useState(false);
 
   const visibleUsers = getVisibleUsers();
 
-  const handleSuggestPriority = async () => {
-    if (!title || !description) {
-      toast({
-        variant: 'destructive',
-        title: 'Title and Description Required',
-        description: 'Please provide a title and description before suggesting a priority.',
-      });
-      return;
-    }
-    setIsSuggesting(true);
-    const suggestedPriority = await getPrioritySuggestion(title, description);
-    if (suggestedPriority) {
-      setPriority(suggestedPriority);
-    }
-    setIsSuggesting(false);
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      assigneeId: '',
+      priority: 'Medium',
+      dueDate: '',
+    },
+  });
+
+  const onSubmit = (data: TaskFormValues) => {
+    createTask({
+      ...data,
+      status: 'To Do',
+    });
+    toast({
+      title: 'Task Created',
+      description: `Task "${data.title}" has been created and assigned.`,
+    });
+    setIsOpen(false);
+    form.reset();
   };
 
-  const handleSubmit = () => {
-    if (!title || !assigneeId || !dueDate || !priority) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Fields',
-        description: 'Please fill out all required fields.',
-      });
-      return;
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset();
     }
-    createTask({
-      title,
-      description,
-      status: 'To Do',
-      assigneeId,
-      dueDate: dueDate.toISOString(),
-      priority,
-    });
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setAssigneeId('');
-    setDueDate(undefined);
-    setPriority('');
-    setIsOpen(false);
+    setIsOpen(open);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Create Task
+          New Task
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create a New Task</DialogTitle>
-          <DialogDescription>
-            Fill in the details below to create a new task for your team.
-          </DialogDescription>
+          <DialogTitle>Create New Task</DialogTitle>
+          <DialogDescription>Fill in the details below to create a new task.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Input id="title" {...form.register('title')} />
+            {form.formState.errors.title && <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>}
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Textarea id="description" {...form.register('description')} />
+            {form.formState.errors.description && <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>}
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="assignee">Assign To</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assignee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {visibleUsers.map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Assignee</Label>
+              <Controller
+                control={form.control}
+                name="assigneeId"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
+                    <SelectContent>
+                      {visibleUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn('w-full justify-start text-left font-normal', !dueDate && 'text-muted-foreground')}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dueDate ? format(dueDate, 'PPP') : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
-                </PopoverContent>
-              </Popover>
+              <Label>Priority</Label>
+              <Controller
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
+          
           <div className="space-y-2">
-            <Label>Priority</Label>
-            <div className="flex gap-2">
-              <Select value={priority} onValueChange={(val: Priority) => setPriority(val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" onClick={handleSuggestPriority} disabled={isSuggesting}>
-                <Sparkles className={cn("h-4 w-4", isSuggesting && "animate-spin")} />
-              </Button>
-            </div>
+              <Label htmlFor="dueDate">Due Date</Label>
+              <Input id="dueDate" type="date" {...form.register('dueDate')} />
+              {form.formState.errors.dueDate && <p className="text-xs text-destructive">{form.formState.errors.dueDate.message}</p>}
           </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" onClick={handleSubmit}>
-            Create Task
-          </Button>
-        </DialogFooter>
+
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Create Task</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
