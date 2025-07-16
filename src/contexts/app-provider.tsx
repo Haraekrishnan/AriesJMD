@@ -306,7 +306,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [addActivityLog, setUser, users]);
 
   const logout = useCallback(() => {
-    if (user) addActivityLog(user.id, 'User Logged Out');
+    if (user) {
+      addActivityLog(user.id, 'User Logged Out');
+    }
     setUser(null);
     router.push('/login');
   }, [user, addActivityLog, setUser, router]);
@@ -314,8 +316,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
     update(ref(rtdb, `users/${id}`), data);
-    addActivityLog(user?.id || 'system', 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-    if (user?.id === updatedUser.id) setUser(updatedUser);
+    if (user) {
+      addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
+      if (user.id === updatedUser.id) setUser(updatedUser);
+    }
   }, [user, addActivityLog, setUser]);
 
   const updateProfile = useCallback((name: string, email: string, avatar: string, password?: string) => {
@@ -560,13 +564,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: true };
-    const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}`);
-    const commentsRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}/comments`);
-    const newCommentRef = push(commentsRef);
-    set(newCommentRef, newComment);
-    update(dayRef, { lastUpdated: new Date().toISOString(), viewedBy: [user.id] });
-  }, [user]);
+    const commentId = push(ref(rtdb)).key; // Generate a unique key for the comment
+    if (!commentId) return;
+
+    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString(), isRead: true };
+    
+    // Construct the path for the new comment
+    const commentPath = `dailyPlannerComments/${plannerUserId}/${dayKey}/comments/${commentId}`;
+    const dayNodePath = `dailyPlannerComments/${plannerUserId}/${dayKey}`;
+    
+    const updates: { [key: string]: any } = {};
+    updates[commentPath] = newComment;
+    updates[`${dayNodePath}/lastUpdated`] = new Date().toISOString();
+    updates[`${dayNodePath}/viewedBy`] = [user.id]; // Reset viewedBy to the current user
+
+    update(ref(rtdb), updates);
+}, [user]);
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -1166,10 +1179,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [machineLogs]);
 
   const updateBranding = useCallback((name: string, logo: string | null) => {
-    setAppName(name);
-    setAppLogo(logo);
-    update(ref(rtdb, `branding`), { appName: name, appLogo: logo });
-    addActivityLog(user?.id || 'system', 'Branding Updated');
+    if (user) {
+      setAppName(name);
+      setAppLogo(logo);
+      update(ref(rtdb, `branding`), { appName: name, appLogo: logo });
+      addActivityLog(user.id, 'Branding Updated');
+    }
   }, [user, setAppName, setAppLogo, addActivityLog]);
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
@@ -1242,9 +1257,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const notificationDays = new Set<string>();
     const visibleUsers = getVisibleUsers();
     dailyPlannerComments.forEach(dpc => {
-        if (visibleUsers.some(u => u.id === dpc.plannerUserId)) {
-            if (dpc.comments.some(c => c.isRead === false && c.userId !== user.id)) notificationDays.add(dpc.day);
-        }
+      // Ensure 'viewedBy' exists and is an array before checking
+      const viewedBy = dpc.viewedBy || [];
+      if (visibleUsers.some(u => u.id === dpc.plannerUserId) && !viewedBy.includes(user.id)) {
+        notificationDays.add(dpc.day);
+      }
     });
     return Array.from(notificationDays);
   }, [dailyPlannerComments, user, getVisibleUsers]);
@@ -1284,4 +1301,5 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 

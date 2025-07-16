@@ -63,11 +63,15 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const selectedDayComments = useMemo(() => {
         if (!selectedDate) return [];
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
-        const entry = dailyPlannerComments.find(dpc => dpc.day === dayKey && dpc.plannerUserId === selectedUserId);
+        const entry = dailyPlannerComments.find(dpc => dpc.id === `${selectedUserId}/${dayKey}`);
         return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
     }, [dailyPlannerComments, selectedDate, selectedUserId]);
-
-    const notificationDays = useMemo(() => unreadPlannerCommentDays.map(d => new Date(d)), [unreadPlannerCommentDays]);
+    
+    const unreadDaysAsDates = useMemo(() => {
+        return unreadPlannerCommentDays
+            .filter(dayKey => dayKey.startsWith(selectedUserId))
+            .map(dayKey => new Date(dayKey.split('/')[1]));
+    }, [unreadPlannerCommentDays, selectedUserId]);
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
     const isMyOwnPlanner = user?.id === selectedUserId;
@@ -105,7 +109,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                             onSelect={setSelectedDate}
                             month={currentMonth}
                             onMonthChange={setCurrentMonth}
-                            modifiers={{ event: eventDays, notification: notificationDays }}
+                            modifiers={{ event: eventDays, notification: unreadDaysAsDates }}
                             modifiersStyles={{
                                 event: { color: 'hsl(var(--accent-foreground))', backgroundColor: 'hsl(var(--accent))' },
                                 notification: { color: 'hsl(var(--destructive-foreground))', backgroundColor: 'hsl(var(--destructive))' },
@@ -211,3 +215,4 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
+
