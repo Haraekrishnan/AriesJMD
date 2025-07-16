@@ -6,7 +6,6 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, OtherEquipment, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter } from 'date-fns';
-import { USERS, TASKS, PLANNER_EVENTS, ACHIEVEMENTS, ROLES, PROJECTS, ACTIVITY_LOGS, VEHICLES, DRIVERS, INCIDENTS, MANPOWER_LOGS, MANPOWER_PROFILES, INTERNAL_REQUESTS, MANAGEMENT_REQUESTS, INVENTORY_ITEMS, UT_MACHINES, CERTIFICATE_REQUESTS, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, ANNOUNCEMENTS, DAILY_PLANNER_COMMENTS, BUILDINGS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/firebase';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
@@ -183,26 +182,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<RoleDefinition[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [plannerEvents, setPlannerEvents] = useLocalStorage<PlannerEvent[]>('aries-events-v8', PLANNER_EVENTS);
-  const [dailyPlannerComments, setDailyPlannerComments] = useLocalStorage<DailyPlannerComment[]>('aries-daily-planner-comments-v8', DAILY_PLANNER_COMMENTS);
-  const [achievements, setAchievements] = useLocalStorage<Achievement[]>('aries-achievements-v8', ACHIEVEMENTS);
-  const [activityLogs, setActivityLogs] = useLocalStorage<ActivityLog[]>('aries-activity-logs-v8', ACTIVITY_LOGS);
-  const [vehicles, setVehicles] = useLocalStorage<Vehicle[]>('aries-vehicles-v8', VEHICLES);
-  const [drivers, setDrivers] = useLocalStorage<Driver[]>('aries-drivers-v8', DRIVERS);
-  const [incidentReports, setIncidentReports] = useLocalStorage<IncidentReport[]>('aries-incidents-v8', INCIDENTS);
-  const [manpowerLogs, setManpowerLogs] = useLocalStorage<ManpowerLog[]>('aries-manpower-logs-v8', MANPOWER_LOGS);
-  const [manpowerProfiles, setManpowerProfiles] = useLocalStorage<ManpowerProfile[]>('aries-manpower-profiles-v8', MANPOWER_PROFILES);
-  const [internalRequests, setInternalRequests] = useLocalStorage<InternalRequest[]>('aries-internal-requests-v8', INTERNAL_REQUESTS);
-  const [managementRequests, setManagementRequests] = useLocalStorage<ManagementRequest[]>('aries-mgmt-requests-v8', MANAGEMENT_REQUESTS);
-  const [inventoryItems, setInventoryItems] = useLocalStorage<InventoryItem[]>('aries-inventory-items-v8', INVENTORY_ITEMS);
-  const [utMachines, setUtMachines] = useLocalStorage<UTMachine[]>('aries-ut-machines-v8', UT_MACHINES);
-  const [dftMachines, setDftMachines] = useLocalStorage<DftMachine[]>('aries-dft-machines-v8', DFT_MACHINES);
-  const [mobileSims, setMobileSims] = useLocalStorage<MobileSim[]>('aries-mobile-sims-v8', MOBILE_SIMS);
-  const [otherEquipments, setOtherEquipments] = useLocalStorage<OtherEquipment[]>('aries-other-equipments-v8', OTHER_EQUIPMENTS);
+  const [plannerEvents, setPlannerEvents] = useLocalStorage<PlannerEvent[]>('aries-events-v8', []);
+  const [dailyPlannerComments, setDailyPlannerComments] = useLocalStorage<DailyPlannerComment[]>('aries-daily-planner-comments-v8', []);
+  const [achievements, setAchievements] = useLocalStorage<Achievement[]>('aries-achievements-v8', []);
+  const [activityLogs, setActivityLogs] = useLocalStorage<ActivityLog[]>('aries-activity-logs-v8', []);
+  const [vehicles, setVehicles] = useLocalStorage<Vehicle[]>('aries-vehicles-v8', []);
+  const [drivers, setDrivers] = useLocalStorage<Driver[]>('aries-drivers-v8', []);
+  const [incidentReports, setIncidentReports] = useLocalStorage<IncidentReport[]>('aries-incidents-v8', []);
+  const [manpowerLogs, setManpowerLogs] = useLocalStorage<ManpowerLog[]>('aries-manpower-logs-v8', []);
+  const [manpowerProfiles, setManpowerProfiles] = useLocalStorage<ManpowerProfile[]>('aries-manpower-profiles-v8', []);
+  const [internalRequests, setInternalRequests] = useLocalStorage<InternalRequest[]>('aries-internal-requests-v8', []);
+  const [managementRequests, setManagementRequests] = useLocalStorage<ManagementRequest[]>('aries-mgmt-requests-v8', []);
+  const [inventoryItems, setInventoryItems] = useLocalStorage<InventoryItem[]>('aries-inventory-items-v8', []);
+  const [utMachines, setUtMachines] = useLocalStorage<UTMachine[]>('aries-ut-machines-v8', []);
+  const [dftMachines, setDftMachines] = useLocalStorage<DftMachine[]>('aries-dft-machines-v8', []);
+  const [mobileSims, setMobileSims] = useLocalStorage<MobileSim[]>('aries-mobile-sims-v8', []);
+  const [otherEquipments, setOtherEquipments] = useLocalStorage<OtherEquipment[]>('aries-other-equipments-v8', []);
   const [machineLogs, setMachineLogs] = useLocalStorage<MachineLog[]>('aries-machine-logs-v8', []);
-  const [certificateRequests, setCertificateRequests] = useLocalStorage<CertificateRequest[]>('aries-cert-requests-v8', CERTIFICATE_REQUESTS);
-  const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements-v8', ANNOUNCEMENTS);
-  const [buildings, setBuildings] = useLocalStorage<Building[]>('aries-buildings-v8', BUILDINGS);
+  const [certificateRequests, setCertificateRequests] = useLocalStorage<CertificateRequest[]>('aries-cert-requests-v8', []);
+  const [announcements, setAnnouncements] = useLocalStorage<Announcement[]>('aries-announcements-v8', []);
+  const [buildings, setBuildings] = useLocalStorage<Building[]>('aries-buildings-v8', []);
   const [appName, setAppName] = useLocalStorage('aries-appName-v8', 'Aries Marine');
   const [appLogo, setAppLogo] = useLocalStorage<string | null>('aries-appLogo-v8', null);
   
@@ -219,39 +218,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     setLoading(true);
   
-    const setupListener = (path: string, setter: Function, initialData: any[]) => {
+    const setupListener = (path: string, setter: Function) => {
       const dbRef = ref(rtdb, path);
       const unsubscribe = onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          // Convert Firebase object to array
           const dataArray = Object.keys(data).map(key => ({
             id: key,
             ...data[key]
           }));
           setter(dataArray);
         } else {
-          // If no data, seed with mock data
-          initialData.forEach(item => {
-            const { id, ...rest } = item;
-            set(ref(rtdb, `${path}/${id}`), rest);
-          });
-          setter(initialData);
+          setter([]);
         }
       });
       return unsubscribe;
     };
   
     const listeners = [
-      setupListener('users', setUsers, USERS),
-      setupListener('roles', setRoles, ROLES),
-      setupListener('tasks', setTasks, TASKS),
-      setupListener('projects', setProjects, PROJECTS),
+      setupListener('users', setUsers),
+      setupListener('roles', setRoles),
+      setupListener('tasks', setTasks),
+      setupListener('projects', setProjects),
     ];
   
     setLoading(false);
   
-    // Cleanup listeners on component unmount
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
     };
@@ -335,16 +327,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, users, addActivityLog]);
 
   const updateTask = useCallback((taskData: Task) => {
+    if (!user) return;
     const { id, ...data } = taskData;
     update(ref(rtdb, `tasks/${id}`), data);
-    addActivityLog(user!.id, 'Task Updated', `Task: "${taskData.title}"`);
+    addActivityLog(user.id, 'Task Updated', `Task: "${taskData.title}"`);
   }, [user, addActivityLog]);
 
   const deleteTask = useCallback((taskId: string) => {
+    if (!user) return;
     const taskToDelete = tasks.find(t => t.id === taskId);
     if(taskToDelete) {
       remove(ref(rtdb, `tasks/${taskId}`));
-      addActivityLog(user!.id, 'Task Deleted', `Task: "${taskToDelete.title}"`);
+      addActivityLog(user.id, 'Task Deleted', `Task: "${taskToDelete.title}"`);
     }
   }, [user, tasks, addActivityLog]);
   
@@ -361,9 +355,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    set(newCommentRef, newComment);
+    addComment(taskId, commentText);
 
     const updates: Partial<Task> = { 
         status: 'Pending Approval', 
@@ -374,16 +366,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
-  }, [user, tasks, addActivityLog]);
+  }, [user, tasks, addActivityLog, addComment]);
 
   const approveTaskStatusChange = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    set(newCommentRef, newComment);
+    addComment(taskId, commentText);
 
     const updates: Partial<Task> = {};
 
@@ -405,16 +395,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb, `tasks/${taskId}`), updates);
-  }, [user, tasks, users, addActivityLog]);
+  }, [user, tasks, users, addActivityLog, addComment]);
 
   const returnTaskStatusChange = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    set(newCommentRef, newComment);
+    addComment(taskId, commentText);
     
     const updates: Partial<Task> = { 
       status: task.previousStatus || 'To Do', 
@@ -425,16 +413,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Request Returned', `Task: "${task.title}"`);
-  }, [user, tasks, addActivityLog]);
+  }, [user, tasks, addActivityLog, addComment]);
   
   const requestTaskReassignment = useCallback((taskId: string, newAssigneeId: string, commentText: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    set(newCommentRef, newComment);
+    addComment(taskId, commentText);
     
     const updates: Partial<Task> = {
       status: 'Pending Approval',
@@ -444,7 +430,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Reassignment Requested', `Task "${task.title}" to ${users.find(u => u.id === newAssigneeId)?.name}`);
-  }, [user, tasks, users, addActivityLog]);
+  }, [user, tasks, users, addActivityLog, addComment]);
 
   const markTaskAsViewed = useCallback((taskId: string) => {
     update(ref(rtdb, `tasks/${taskId}`), { isViewedByAssignee: true });
@@ -1010,3 +996,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
