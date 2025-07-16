@@ -1156,7 +1156,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         newRequest.utMachineId = requestData.utMachineId;
     }
 
-    set(newRequestRef, newRequest);
+    set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
     addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
   }, [user, addActivityLog]);
   
@@ -1303,8 +1303,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, setAppName, setAppLogo, addActivityLog]);
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
-    if(user && user.supervisorId) {
-        const newAnnouncement: Announcement = { ...data, id: `ann-${Date.now()}`, creatorId: user.id, approverId: user.supervisorId, status: 'pending', createdAt: new Date().toISOString(), comments: [] };
+    if(user) {
+        const isPrivileged = user.role === 'Admin' || user.role === 'Manager';
+        const newAnnouncement: Announcement = { 
+            ...data, 
+            id: `ann-${Date.now()}`, 
+            creatorId: user.id, 
+            approverId: isPrivileged ? user.id : (user.supervisorId || ''), 
+            status: isPrivileged ? 'approved' : 'pending', 
+            createdAt: new Date().toISOString(), 
+            comments: [] 
+        };
         const newRef = push(ref(rtdb, 'announcements'));
         set(newRef, newAnnouncement);
     }
@@ -1358,9 +1367,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [certificateRequests, user]);
   
   const pendingCertRequestCount = useMemo(() => {
-      if (!can.manage_inventory) return 0;
-      return certificateRequests.filter(req => req.status === 'Pending').length;
-  }, [certificateRequests, can.manage_inventory]);
+    if (!user) return 0;
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+    if (!storeRoles.includes(user.role)) return 0;
+    return certificateRequests.filter(req => req.status === 'Pending').length;
+  }, [certificateRequests, user]);
 
   const myFulfilledCertRequestCount = useMemo(() => {
       if (!user) return 0;

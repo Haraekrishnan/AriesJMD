@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, LaptopDesktop } from '@/lib/types';
+import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -23,9 +23,10 @@ import EditLaptopDesktopDialog from '@/components/laptops-desktops/EditLaptopDes
 import AddMobileSimDialog from '@/components/mobile-sim/AddMobileSimDialog';
 import EditMobileSimDialog from '@/components/mobile-sim/EditMobileSimDialog';
 import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
+import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 
 export default function EquipmentStatusPage() {
-    const { can, utMachines, dftMachines, mobileSims, laptopsDesktops, users, myFulfilledUTRequests, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest } = useAppContext();
+    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledUTRequests, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, certificateRequests, inventoryItems } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -48,6 +49,19 @@ export default function EquipmentStatusPage() {
     const [isAddLaptopDesktopOpen, setIsAddLaptopDesktopOpen] = useState(false);
     const [isEditLaptopDesktopOpen, setIsEditLaptopDesktopOpen] = useState(false);
     const [selectedLaptopDesktop, setSelectedLaptopDesktop] = useState<LaptopDesktop | null>(null);
+
+    const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
+
+    const canManageStore = useMemo(() => {
+        if(!user) return false;
+        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+        return storeRoles.includes(user.role);
+    }, [user]);
+
+    const pendingCertRequests = useMemo(() => {
+        if (!canManageStore) return [];
+        return certificateRequests.filter(req => req.status === 'Pending');
+    }, [certificateRequests, canManageStore]);
 
 
     useEffect(() => {
@@ -84,7 +98,7 @@ export default function EquipmentStatusPage() {
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Equipment Status</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Equipment</h1>
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
             </div>
@@ -155,6 +169,29 @@ export default function EquipmentStatusPage() {
                             </CardContent>
                         </Card>
                     )}
+                    {canManageStore && pendingCertRequests.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Pending Certificate Requests</CardTitle>
+                                <CardDescription>Review and action these certificate requests.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {pendingCertRequests.map(req => {
+                                    const requester = users.find(u => u.id === req.requesterId);
+                                    const item = inventoryItems.find(i => i.id === req.itemId);
+                                    const machine = utMachines.find(m => m.id === req.utMachineId);
+                                    const subject = item ? `${item.name} (SN: ${item.serialNumber})` : (machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown');
+
+                                    return (
+                                        <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
+                                            <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
+                                            <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
+                                        </div>
+                                    )
+                                })}
+                            </CardContent>
+                        </Card>
+                    )}
                     <Card>
                         <CardHeader><CardTitle>UT Machine List</CardTitle><CardDescription>A comprehensive list of all UT machines.</CardDescription></CardHeader>
                         <CardContent><UTMachineTable onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
@@ -217,6 +254,6 @@ export default function EquipmentStatusPage() {
         
             {can.manage_equipment_status && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
             {selectedLaptopDesktop && can.manage_equipment_status && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
+            {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
-}

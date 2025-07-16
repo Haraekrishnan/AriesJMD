@@ -1,5 +1,6 @@
+
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,19 @@ import { Megaphone, X } from 'lucide-react';
 export default function AnnouncementFeed() {
     const { announcements } = useAppContext();
     const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+    
+    useEffect(() => {
+        const storedHiddenIds = sessionStorage.getItem('hiddenAnnouncementIds');
+        if (storedHiddenIds) {
+            setHiddenIds(JSON.parse(storedHiddenIds));
+        }
+    }, []);
+
+    const handleHide = (id: string) => {
+        const newHiddenIds = [...hiddenIds, id];
+        setHiddenIds(newHiddenIds);
+        sessionStorage.setItem('hiddenAnnouncementIds', JSON.stringify(newHiddenIds));
+    };
     
     const visibleAnnouncements = useMemo(() => {
         return announcements
@@ -28,9 +42,9 @@ export default function AnnouncementFeed() {
                     </AlertDescription>
                     <Button 
                         size="icon" 
-                        variant="destructive"
+                        variant="ghost"
                         className="absolute top-2 right-2 h-6 w-6 rounded-full bg-blue-200/50 hover:bg-blue-300/70 dark:bg-blue-800/50 dark:hover:bg-blue-700/70"
-                        onClick={() => setHiddenIds(prev => [...prev, announcement.id])}
+                        onClick={() => handleHide(announcement.id)}
                     >
                         <X className="h-4 w-4 text-blue-700 dark:text-blue-200" />
                     </Button>
