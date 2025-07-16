@@ -1,4 +1,3 @@
-// This file is deprecated and will be removed. Please use rtdb.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 
