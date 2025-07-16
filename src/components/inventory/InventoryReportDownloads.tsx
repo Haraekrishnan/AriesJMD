@@ -1,3 +1,4 @@
+
 'use client';
 import type { InventoryItem } from '@/lib/types';
 import { useAppContext } from '@/contexts/app-provider';
@@ -84,11 +85,14 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
 
     doc.save('Inventory_Report.pdf');
   };
+  
+  const isDisabled = isSummary ? (summaryData?.length || 0) === 0 : (items?.length || 0) === 0;
 
   return (
     <div className="flex gap-2">
-      <Button variant="outline" onClick={handleDownloadExcel} disabled={(isSummary ? summaryData.length : items.length) === 0}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
-      <Button variant="outline" onClick={handleDownloadPdf} disabled={(isSummary ? summaryData.length : items.length) === 0}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
+      <Button variant="outline" onClick={handleDownloadExcel} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
+      <Button variant="outline" onClick={handleDownloadPdf} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
     </div>
   );
 }
+
