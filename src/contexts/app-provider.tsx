@@ -1019,12 +1019,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
     if(user) {
-        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+        const request = internalRequests.find(r => r.id === requestId);
+        if (!request) return;
+
         const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
         set(newCommentRef, newComment);
+        
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, viewedByRequester: false });
     }
-  }, [user]);
+  }, [user, internalRequests]);
 
   const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
     if (user) {
@@ -1380,5 +1384,6 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 

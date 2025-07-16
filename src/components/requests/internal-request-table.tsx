@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -121,6 +122,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <TableBody>
           {requests.map(req => {
             const hasUpdate = req.requesterId === user?.id && !req.viewedByRequester;
+            const canEditRequest = user?.role === 'Admin' || req.status === 'Pending';
             return (
               <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
                 <TableCell className="w-8">
@@ -169,7 +171,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={req.status === 'Issued' || req.status === 'Rejected'}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleEditClick(req)}><Edit className="mr-2 h-4 w-4" /> Edit Items</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit Items</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>
