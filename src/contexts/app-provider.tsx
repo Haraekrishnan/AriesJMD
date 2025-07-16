@@ -679,8 +679,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user) {
         update(ref(rtdb, `achievements/${achievementId}`), { status: 'approved', points });
         addActivityLog(user.id, 'Achievement Approved', `Approved achievement ID: ${achievementId}`);
+
+        const achievement = achievements.find(a => a.id === achievementId);
+        const awardedUser = users.find(u => u.id === achievement?.userId);
+
+        if (achievement && awardedUser) {
+            const newAnnouncement: Partial<Announcement> = {
+                title: `Achievement Unlocked: ${achievement.title}!`,
+                content: `Congratulations to ${awardedUser.name} for receiving the "${achievement.title}" award for: ${achievement.description}.`,
+                creatorId: user.id,
+                approverId: user.id,
+                status: 'approved',
+                createdAt: new Date().toISOString(),
+                comments: [],
+            };
+            const newRef = push(ref(rtdb, 'announcements'));
+            set(newRef, newAnnouncement);
+        }
     }
-  }, [user, addActivityLog]);
+  }, [user, addActivityLog, achievements, users]);
 
   const rejectAchievement = useCallback((achievementId: string) => {
     if (user) {
@@ -1309,8 +1326,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [dailyPlannerComments, user]);
 
   const plannerNotificationCount = useMemo(() => {
-      return unreadPlannerCommentDays.length;
-  }, [unreadPlannerCommentDays]);
+      if (!user) return 0;
+      const myUnreadComments = dailyPlannerComments
+        .filter(dpc => {
+            const plannerUserId = dpc.plannerUserId;
+            return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
+        })
+      return myUnreadComments.length;
+  }, [dailyPlannerComments, user]);
 
   const pendingInternalRequestCount = useMemo(() => (can.approve_store_requests ? internalRequests.filter(r => r.status === 'Pending').length : 0), [internalRequests, can.approve_store_requests]);
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
@@ -1348,5 +1371,7 @@ export const useAppContext = (): AppContextType => {
     
 
 
+
+    
 
     
