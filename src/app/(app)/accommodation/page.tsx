@@ -23,10 +23,12 @@ export default function AccommodationPage() {
         let totalBeds = 0;
         let occupiedBeds = 0;
         buildings.forEach(b => {
-            b.rooms.forEach(r => {
-                totalBeds += r.beds.length;
-                occupiedBeds += r.beds.filter(bed => bed.occupantId).length;
-            });
+            if (b.rooms) {
+                b.rooms.forEach(r => {
+                    totalBeds += r.beds.length;
+                    occupiedBeds += r.beds.filter(bed => bed.occupantId).length;
+                });
+            }
         });
         return { totalBeds, occupiedBeds, availableBeds: totalBeds - occupiedBeds };
     }, [buildings]);

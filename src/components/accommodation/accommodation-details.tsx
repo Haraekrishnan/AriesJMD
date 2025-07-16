@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState } from 'react';
@@ -62,7 +61,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                     </AccordionTrigger>
                     <AccordionContent className="p-4 pt-0">
                         <div className="space-y-4">
-                            {building.rooms.map(room => (
+                            {(building.rooms || []).map(room => (
                                 <div key={room.id} className="p-4 border rounded-md bg-muted/50">
                                     <h4 className="font-semibold flex items-center justify-between">
                                         Room {room.roomNumber}
