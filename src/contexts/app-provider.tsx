@@ -815,8 +815,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
     const occupant = manpowerProfiles.find(p => p.id === occupantId);
-    const updatedRooms = building.rooms.map(r => r.id === roomId ? { ...r, beds: r.beds.map(b => b.id === bedId ? { ...b, occupantId } : b) } : r);
-    update(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    const updatedRooms = (building.rooms || []).map(r => r.id === roomId ? { ...r, beds: r.beds.map(b => b.id === bedId ? { ...b, occupantId } : b) } : r);
+    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
     addActivityLog(user.id, 'Occupant Assigned', `${occupant?.name} to bed in Building ${building.buildingNumber}`);
   }, [user, buildings, manpowerProfiles, addActivityLog]);
 
@@ -826,7 +826,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!building) return;
     
     let occupantName = '';
-    const updatedRooms = building.rooms.map(r => {
+    const updatedRooms = (building.rooms || []).map(r => {
       if (r.id === roomId) {
         return {
           ...r,
@@ -842,7 +842,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return r;
     });
-    update(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
     addActivityLog(user.id, 'Occupant Unassigned', `${occupantName} from bed in Building ${building.buildingNumber}`);
   }, [user, buildings, manpowerProfiles, addActivityLog]);
 
@@ -1276,5 +1276,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
 
     
