@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,6 +21,7 @@ import { useEffect } from 'react';
 const driverSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   licenseNumber: z.string().min(1, 'License Number is required'),
+  licenseExpiry: z.date().optional(),
   epNumber: z.string().optional(),
   epExpiry: z.date().optional(),
   medicalExpiry: z.date().optional(),
@@ -69,6 +71,7 @@ export default function AddDriverDialog({ isOpen, setIsOpen, driver }: AddDriver
     if (isOpen) {
         const defaultValues = driver ? {
             ...driver,
+            licenseExpiry: driver.licenseExpiry ? new Date(driver.licenseExpiry) : undefined,
             epExpiry: driver.epExpiry ? new Date(driver.epExpiry) : undefined,
             medicalExpiry: driver.medicalExpiry ? new Date(driver.medicalExpiry) : undefined,
             safetyExpiry: driver.safetyExpiry ? new Date(driver.safetyExpiry) : undefined,
@@ -116,18 +119,21 @@ export default function AddDriverDialog({ isOpen, setIsOpen, driver }: AddDriver
                     <div><Label>SDP Number</Label><Input {...form.register('sdpNumber')} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                    <div><Label>License Expiry</Label><DatePickerController name="licenseExpiry" control={form.control} /></div>
                     <div><Label>EP Expiry</Label><DatePickerController name="epExpiry" control={form.control} /></div>
-                    <div><Label>Medical Expiry</Label><DatePickerController name="medicalExpiry" control={form.control} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                    <div><Label>Medical Expiry</Label><DatePickerController name="medicalExpiry" control={form.control} /></div>
                     <div><Label>Safety Expiry</Label><DatePickerController name="safetyExpiry" control={form.control} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                     <div><Label>SDP Expiry</Label><DatePickerController name="sdpExpiry" control={form.control} /></div>
+                    <div><Label>WO Expiry</Label><DatePickerController name="woExpiry" control={form.control} /></div>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>WO Expiry</Label><DatePickerController name="woExpiry" control={form.control} /></div>
                     <div><Label>Labour Contract Expiry</Label><DatePickerController name="labourContractExpiry" control={form.control} /></div>
+                    <div><Label>WC Policy Expiry</Label><DatePickerController name="wcPolicyExpiry" control={form.control} /></div>
                 </div>
-                <div><Label>WC Policy Expiry</Label><DatePickerController name="wcPolicyExpiry" control={form.control} /></div>
             </div>
             </ScrollArea>
             <DialogFooter className="mt-4">

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -39,6 +40,7 @@ export default function DriverListTable() {
                     <TableRow>
                         <TableHead>Driver Name</TableHead>
                         <TableHead>License No.</TableHead>
+                        <TableHead>License Expiry</TableHead>
                         <TableHead>EP Expiry</TableHead>
                         <TableHead>Medical Expiry</TableHead>
                         <TableHead>Safety Expiry</TableHead>
@@ -50,6 +52,9 @@ export default function DriverListTable() {
                         <TableRow key={driver.id}>
                             <TableCell className="font-medium">{driver.name}</TableCell>
                             <TableCell>{driver.licenseNumber}</TableCell>
+                             <TableCell className={cn(isDatePast(driver.licenseExpiry) && 'text-destructive font-bold')}>
+                                {driver.licenseExpiry ? format(new Date(driver.licenseExpiry), 'dd-MM-yyyy') : 'N/A'}
+                            </TableCell>
                             <TableCell className={cn(isDatePast(driver.epExpiry) && 'text-destructive font-bold')}>
                                 {driver.epExpiry ? format(new Date(driver.epExpiry), 'dd-MM-yyyy') : 'N/A'}
                             </TableCell>

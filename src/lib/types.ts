@@ -132,6 +132,7 @@ export type Driver = {
   name: string;
   photo: string;
   licenseNumber: string;
+  licenseExpiry?: string;
   epNumber?: string;
   sdpNumber?: string;
   epExpiry?: string;
@@ -177,30 +178,9 @@ export type ManpowerTrade = {
   company: string;
 };
 
-export type Trade = 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'HSE' | 'Supervisor' | 'Document Controller' | 'Cook' | 'Welder' | 'Fabricator' | 'Electrician' | 'Painter' | 'Scaffolder' | 'Rope Access Tech';
-
-export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received';
-
-export type ManpowerDocument = {
-    name: string;
-    details?: string;
-    status: DocumentStatus;
-};
-
-export type LeaveRecord = {
-    id: string;
-    leaveType?: 'Emergency' | 'Annual';
-    leaveStartDate: string; // ISO String
-    plannedEndDate?: string; // ISO String
-    leaveEndDate?: string; // ISO String
-    rejoinedDate?: string; // ISO String
-};
-
-export type Skill = {
-    name: string;
-    details: string;
-    link?: string;
-};
+export type Trade = 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'HSE' | 'Supervisor' | 'Document Controller' | 'Cook';
+export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3'];
+export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
 
 export type ManpowerProfile = {
   id: string;
@@ -241,6 +221,28 @@ export type ManpowerProfile = {
   remarks?: string;
 };
 
+export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received';
+
+export type ManpowerDocument = {
+    name: string;
+    details?: string;
+    status: DocumentStatus;
+};
+
+export type LeaveRecord = {
+    id: string;
+    leaveType?: 'Emergency' | 'Annual';
+    leaveStartDate: string; // ISO String
+    plannedEndDate?: string; // ISO String
+    leaveEndDate?: string; // ISO String
+    rejoinedDate?: string; // ISO String
+};
+
+export type Skill = {
+    name: string;
+    details: string;
+    link?: string;
+};
 
 export type ManpowerLog = {
   id: string;
