@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -19,6 +20,9 @@ import DftMachineLogManagerDialog from '@/components/dft-machine/DftMachineLogMa
 import AddOtherEquipmentDialog from '@/components/other-equipment/AddOtherEquipmentDialog';
 import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
 import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEquipmentDialog';
+import AddMobileSimDialog from '@/components/mobile-sim/AddMobileSimDialog';
+import EditMobileSimDialog from '@/components/mobile-sim/EditMobileSimDialog';
+import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 
 export default function EquipmentStatusPage() {
     const { can, utMachines, dftMachines, mobileSims, otherEquipments, users, myFulfilledUTRequests, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest } = useAppContext();
@@ -35,7 +39,10 @@ export default function EquipmentStatusPage() {
     const [isDftLogManagerOpen, setIsDftLogManagerOpen] = useState(false);
     const [selectedDftMachine, setSelectedDftMachine] = useState<DftMachine | null>(null);
     
-    // Mobile/SIM State - Reverted to simpler implementation
+    // Mobile/SIM State
+    const [isAddMobileSimOpen, setIsAddMobileSimOpen] = useState(false);
+    const [isEditMobileSimOpen, setIsEditMobileSimOpen] = useState(false);
+    const [selectedMobileSim, setSelectedMobileSim] = useState<MobileSim | null>(null);
     
     // Other Equipment State
     const [isAddOtherEquipmentOpen, setIsAddOtherEquipmentOpen] = useState(false);
@@ -64,7 +71,10 @@ export default function EquipmentStatusPage() {
     const handleAddDft = () => { setSelectedDftMachine(null); setIsAddDftMachineOpen(true); };
     const handleLogManagerDft = (machine: DftMachine) => { setSelectedDftMachine(machine); setIsDftLogManagerOpen(true); };
 
-    // Mobile/SIM Handlers - Reverted to simpler implementation
+    // Mobile/SIM Handlers
+    const handleEditMobileSim = (item: MobileSim) => { setSelectedMobileSim(item); setIsEditMobileSimOpen(true); };
+    const handleAddMobileSim = () => { setSelectedMobileSim(null); setIsAddMobileSimOpen(true); };
+
 
     // Other Equipment Handlers
     const handleEditOther = (item: OtherEquipment) => { setSelectedOtherEquipment(item); setIsEditOtherEquipmentOpen(true); };
@@ -165,9 +175,17 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="mobile-sim" className="mt-4 space-y-4">
+                     <div className="flex justify-end">
+                        {can.manage_equipment_status && (
+                            <Button onClick={handleAddMobileSim}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Mobile/SIM
+                            </Button>
+                        )}
+                    </div>
                     <Card>
-                        <CardHeader><CardTitle>Mobile & SIM Allotment</CardTitle><CardDescription>This feature is not yet fully implemented.</CardDescription></CardHeader>
-                        <CardContent><p className="text-muted-foreground text-center py-8">Mobile & SIM tracking will be available in a future update.</p></CardContent>
+                        <CardHeader><CardTitle>Mobile & SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
+                        <CardContent><MobileSimTable onEdit={handleEditMobileSim} /></CardContent>
                     </Card>
                 </TabsContent>
                  <TabsContent value="other-equipment" className="mt-4 space-y-4">
@@ -193,6 +211,9 @@ export default function EquipmentStatusPage() {
             {can.manage_equipment_status && <AddDftMachineDialog isOpen={isAddDftMachineOpen} setIsOpen={setIsAddDftMachineOpen} />}
             {selectedDftMachine && can.manage_equipment_status && (<EditDftMachineDialog isOpen={isEditDftMachineOpen} setIsOpen={setIsEditDftMachineOpen} machine={selectedDftMachine} />)}
             {selectedDftMachine && (<DftMachineLogManagerDialog isOpen={isDftLogManagerOpen} setIsOpen={setIsDftLogManagerOpen} machine={selectedDftMachine} />)}
+
+            {can.manage_equipment_status && <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />}
+            {selectedMobileSim && can.manage_equipment_status && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
         
             {can.manage_equipment_status && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
             {selectedOtherEquipment && can.manage_equipment_status && (<EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />)}

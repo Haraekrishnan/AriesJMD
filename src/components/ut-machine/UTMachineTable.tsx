@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -8,9 +9,11 @@ import { MoreHorizontal, Edit, Trash2, FileText, BadgeHelp } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { format, isAfter } from 'date-fns';
+import { format, isAfter, isPast } from 'date-fns';
 import { UTMachine } from '@/lib/types';
 import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
+import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 interface UTMachineTableProps {
   onEdit: (machine: UTMachine) => void;
@@ -18,10 +21,19 @@ interface UTMachineTableProps {
 }
 
 export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableProps) {
-  const { can, utMachines, deleteUTMachine } = useAppContext();
+  const { can, utMachines, projects, deleteUTMachine } = useAppContext();
   const { toast } = useToast();
   const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
   const [selectedMachineForCert, setSelectedMachineForCert] = useState<UTMachine | null>(null);
+
+  const machinesWithProject = useMemo(() => {
+    return utMachines.map(machine => ({
+        ...machine,
+        projectName: projects.find(p => p.id === machine.projectId)?.name || 'N/A'
+    }));
+  }, [utMachines, projects]);
+    
+  const isDatePast = (date: string) => isPast(new Date(date));
 
   const handleDelete = (machineId: string) => {
     deleteUTMachine(machineId);
@@ -36,14 +48,8 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
       setSelectedMachineForCert(machine);
       setIsCertRequestOpen(true);
   }
-  
-  const formatDate = (dateString: string) => {
-      const date = new Date(dateString);
-      const isExpired = isAfter(new Date(), date);
-      return <span className={isExpired ? 'text-destructive' : ''}>{format(date, 'dd-MM-yyyy')}</span>
-  }
 
-  if (utMachines.length === 0) {
+  if (machinesWithProject.length === 0) {
       return (
         <div className="text-center text-muted-foreground py-8">
             No UT machines found.
@@ -56,18 +62,24 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Machine Name</TableHead>
-          <TableHead>Serial Number</TableHead>
-          <TableHead>Calibration Due</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+            <TableHead>Machine Name</TableHead>
+            <TableHead>Serial No.</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Calibration Due</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {utMachines.map(machine => (
+        {machinesWithProject.map(machine => (
           <TableRow key={machine.id}>
             <TableCell className="font-medium">{machine.machineName}</TableCell>
             <TableCell>{machine.serialNumber}</TableCell>
-            <TableCell>{formatDate(machine.calibrationDueDate)}</TableCell>
+            <TableCell>{machine.projectName}</TableCell>
+            <TableCell className={cn(isDatePast(machine.calibrationDueDate) && 'text-destructive font-bold')}>
+                {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
+            </TableCell>
+            <TableCell><Badge variant="secondary">{machine.status}</Badge></TableCell>
             <TableCell className="text-right">
                 <AlertDialog>
                   <DropdownMenu>

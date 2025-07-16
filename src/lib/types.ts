@@ -306,7 +306,12 @@ export type UTMachine = {
   id: string;
   machineName: string;
   serialNumber: string;
-  calibrationDueDate: string; // YYYY-MM-DD
+  projectId: string;
+  unit: string;
+  calibrationDueDate: string; // ISO String
+  probeDetails: string;
+  cableDetails: string;
+  status: string;
 };
 
 export type DftMachine = {
