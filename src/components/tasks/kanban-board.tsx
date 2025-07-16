@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -7,6 +8,7 @@ import TaskCard from './task-card';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import EditTaskDialog from './edit-task-dialog';
+import { isPast } from 'date-fns';
 
 type BoardColumn = 'To Do' | 'In Progress' | 'Completed' | 'Overdue';
 
@@ -62,6 +64,10 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   const getTasksForColumn = (column: BoardColumn) => {
       if (column === 'Overdue') return overdueTasks;
       const status = statusMap[column] as TaskStatus;
+      // Exclude overdue tasks from regular columns
+      if (column === 'To Do' || column === 'In Progress') {
+        return tasks.filter(t => t.status === status && !isPast(new Date(t.dueDate)));
+      }
       return tasks.filter(t => t.status === status);
   }
 
