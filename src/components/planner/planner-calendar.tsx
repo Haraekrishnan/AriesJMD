@@ -62,19 +62,19 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     
     const selectedDayComments = useMemo(() => {
         if (!selectedDate) return [];
-        const dayKey = format(selectedDate, 'yyyy-MM-dd');
+        const dayKey = `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`;
         const entry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
         return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
-    }, [dailyPlannerComments, selectedDate]);
+    }, [dailyPlannerComments, selectedDate, selectedUserId]);
     
     const unreadDaysAsDates = useMemo(() => {
         return unreadPlannerCommentDays
             .filter(dayKey => {
-                 const comment = dailyPlannerComments.find(d => d.id === dayKey);
-                 return comment?.plannerUserId === selectedUserId;
+                 const plannerId = dayKey.split('_')[1];
+                 return plannerId === selectedUserId;
             })
-            .map(dayKey => new Date(dayKey));
-    }, [unreadPlannerCommentDays, selectedUserId, dailyPlannerComments]);
+            .map(dayKey => new Date(dayKey.split('_')[0]));
+    }, [unreadPlannerCommentDays, selectedUserId]);
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
     const isMyOwnPlanner = user?.id === selectedUserId;
@@ -92,7 +92,8 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
 
     const handleSaveEditedComment = useCallback(() => {
         if (!editingComment || !selectedDate) return;
-        updateDailyPlannerComment(editingComment.id, selectedUserId, format(selectedDate, 'yyyy-MM-dd'), editingComment.text);
+        const dayKey = `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`;
+        updateDailyPlannerComment(editingComment.id, dayKey, editingComment.text);
         setEditingComment(null);
     }, [editingComment, selectedDate, selectedUserId, updateDailyPlannerComment]);
     
@@ -186,7 +187,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                                 <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"><Trash2 className="h-3 w-3"/></Button></AlertDialogTrigger>
                                                                 <AlertDialogContent>
                                                                     <AlertDialogHeader><AlertDialogTitle>Delete comment?</AlertDialogTitle><AlertDialogDescription>This action is permanent.</AlertDialogDescription></AlertDialogHeader>
-                                                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => selectedDate && deleteDailyPlannerComment(comment.id, selectedUserId, format(selectedDate, 'yyyy-MM-dd'))}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => selectedDate && deleteDailyPlannerComment(comment.id, `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`)}>Delete</AlertDialogAction></AlertDialogFooter>
                                                                 </AlertDialogContent>
                                                             </AlertDialog>
                                                         </div>}

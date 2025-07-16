@@ -94,9 +94,9 @@ type AppContextType = {
   addPlannerEventComment: (eventId: string, text: string) => void;
   markPlannerCommentsAsRead: (plannerUserId: string, day: Date) => void;
   addDailyPlannerComment: (plannerUserId: string, day: Date, text: string) => void;
-  updateDailyPlannerComment: (commentId: string, plannerUserId: string, day: string, newText: string) => void;
-  deleteDailyPlannerComment: (commentId: string, plannerUserId: string, day: string) => void;
-  deleteAllDailyPlannerComments: (plannerUserId: string, day: string) => void;
+  updateDailyPlannerComment: (commentId: string, dayKey: string, newText: string) => void;
+  deleteDailyPlannerComment: (commentId: string, dayKey: string) => void;
+  deleteAllDailyPlannerComments: (dayKey: string) => void;
   awardManualAchievement: (achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => void;
   updateManualAchievement: (achievement: Achievement) => void;
   deleteManualAchievement: (achievementId: string) => void;
@@ -244,14 +244,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     const processDailyComments = (data: any) => {
-        return Object.keys(data).map(dayKey => {
-            const dayData = data[dayKey];
+        return Object.keys(data).map(key => {
+            const dayData = data[key];
             return {
-                id: dayKey,
-                day: dayData.day,
-                plannerUserId: dayData.plannerUserId,
-                lastUpdated: dayData.lastUpdated,
-                viewedBy: dayData.viewedBy || [],
+                id: key,
+                ...dayData,
                 comments: dayData.comments ? Object.keys(dayData.comments).map(commentKey => ({
                     id: commentKey,
                     ...dayData.comments[commentKey]
@@ -603,11 +600,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
-    const dayKey = format(day, 'yyyy-MM-dd');
+    const dayKey = `${format(day, 'yyyy-MM-dd')}_${plannerUserId}`;
     const commentId = push(ref(rtdb)).key;
     if (!commentId) return;
-
-    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString() };
+  
+    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString(), isRead: true };
     const updates: { [key: string]: any } = {};
     const basePath = `dailyPlannerComments/${dayKey}`;
     
@@ -615,20 +612,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
     
     const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
+    
     const viewedBy = existingEntry ? [...(existingEntry.viewedBy || []), user.id] : [user.id];
     updates[`${basePath}/viewedBy`] = Array.from(new Set(viewedBy));
-
+  
     if (!existingEntry) {
-        updates[`${basePath}/plannerUserId`] = plannerUserId;
-        updates[`${basePath}/day`] = dayKey;
+      updates[`${basePath}/plannerUserId`] = plannerUserId;
+      updates[`${basePath}/day`] = format(day, 'yyyy-MM-dd');
     }
-
+  
     update(ref(rtdb), updates);
   }, [user, dailyPlannerComments]);
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
-    const dayKey = format(day, 'yyyy-MM-dd');
+    const dayKey = `${format(day, 'yyyy-MM-dd')}_${plannerUserId}`;
     const dayRef = ref(rtdb, `dailyPlannerComments/${dayKey}`);
     const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === dayKey)?.viewedBy || [];
     if (!currentViewedBy.includes(user.id)) {
@@ -636,18 +634,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, dailyPlannerComments]);
 
-  const updateDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string, newText: string) => {
-    const commentRef = ref(rtdb, `dailyPlannerComments/${day}/comments/${commentId}`);
+  const updateDailyPlannerComment = useCallback((commentId: string, dayKey: string, newText: string) => {
+    const commentRef = ref(rtdb, `dailyPlannerComments/${dayKey}/comments/${commentId}`);
     update(commentRef, { text: newText });
   }, []);
 
-  const deleteDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string) => {
-    const commentRef = ref(rtdb, `dailyPlannerComments/${day}/comments/${commentId}`);
+  const deleteDailyPlannerComment = useCallback((commentId: string, dayKey: string) => {
+    const commentRef = ref(rtdb, `dailyPlannerComments/${dayKey}/comments/${commentId}`);
     remove(commentRef);
   }, []);
   
-  const deleteAllDailyPlannerComments = useCallback((plannerUserId: string, day: string) => {
-    remove(ref(rtdb, `dailyPlannerComments/${day}`));
+  const deleteAllDailyPlannerComments = useCallback((dayKey: string) => {
+    remove(ref(rtdb, `dailyPlannerComments/${dayKey}`));
   }, []);
 
   const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
@@ -1304,8 +1302,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dailyPlannerComments.forEach(dpc => {
       // Ensure 'viewedBy' exists and is an array before checking
       const viewedBy = dpc.viewedBy || [];
-      if (visibleUsers.some(u => u.id === dpc.plannerUserId) && !viewedBy.includes(user.id)) {
-        notificationDays.add(dpc.day);
+      const plannerUserId = dpc.id.split('_')[1];
+      if (visibleUsers.some(u => u.id === plannerUserId) && !viewedBy.includes(user.id)) {
+        notificationDays.add(dpc.id);
       }
     });
     return Array.from(notificationDays);
@@ -1314,10 +1313,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const plannerNotificationCount = useMemo(() => {
       if (!user) return 0;
       const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
-      const unreadComments = dailyPlannerComments.filter(dpc => 
-          visibleUserIds.has(dpc.plannerUserId) &&
+      const unreadComments = dailyPlannerComments.filter(dpc => {
+          const plannerId = dpc.id.split('_')[1];
+          return visibleUserIds.has(plannerId) &&
           !dpc.viewedBy?.includes(user.id)
-      );
+      });
       return unreadComments.length;
   }, [dailyPlannerComments, user, getVisibleUsers]);
 
