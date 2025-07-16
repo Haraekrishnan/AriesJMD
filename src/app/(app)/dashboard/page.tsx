@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -79,4 +78,15 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+  useEffect(() => {
+    const tasksRef = ref(rtdb, 'tasks');
+    const unsub = onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const parsedTasks = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      setTasks(parsedTasks); // your context's setter
+    });
+  
+    return () => unsub();
+  }, []);
+  
 }
