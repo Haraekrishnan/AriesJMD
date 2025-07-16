@@ -1158,6 +1158,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (restOfData.utMachineId) {
         newRequest.utMachineId = restOfData.utMachineId;
     }
+     if (restOfData.dftMachineId) {
+        newRequest.dftMachineId = restOfData.dftMachineId;
+    }
 
     set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
     addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
@@ -1387,14 +1390,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const pendingStoreCertRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
     if (!storeRoles.includes(user.role)) return 0;
     return certificateRequests.filter(req => req.status === 'Pending' && req.itemId).length;
   }, [certificateRequests, user]);
 
   const pendingEquipmentCertRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
     if (!storeRoles.includes(user.role)) return 0;
     return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId)).length;
   }, [certificateRequests, user]);
@@ -1426,7 +1429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const pendingInternalRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
     if (!storeRoles.includes(user.role)) {
         return 0;
     }
@@ -1471,3 +1474,6 @@ export const useAppContext = (): AppContextType => {
 
     
 
+
+
+    

@@ -14,7 +14,7 @@ interface InventoryReportDownloadsProps {
   summaryData?: any[];
 }
 
-export default function InventoryReportDownloads({ items, isSummary = false, summaryData = [] }: InventoryReportDownloadsProps) {
+export default function InventoryReportDownloads({ items, isSummary = false, summaryData }: InventoryReportDownloadsProps) {
   const { projects } = useAppContext();
 
   const handleDownloadExcel = () => {
@@ -22,7 +22,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
     let worksheet;
 
     if (isSummary) {
-      dataToExport = summaryData.map(row => {
+      dataToExport = (summaryData || []).map(row => {
         const newRow: {[key: string]: any} = { 'Item Name': row.name };
         projects.forEach(p => {
           newRow[p.name] = row[p.id] || 0;
@@ -60,7 +60,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
 
     if (isSummary) {
       const head = [['Item Name', ...projects.map(p => p.name), 'Total']];
-      const body = summaryData.map(row => {
+      const body = (summaryData || []).map(row => {
           const rowData: (string | number)[] = [row.name];
           projects.forEach(p => {
             rowData.push(row[p.id] || 0);
@@ -97,3 +97,6 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
   );
 }
 
+
+
+    

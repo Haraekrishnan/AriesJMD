@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import type { InventoryItem } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { useAppContext } from '@/contexts/app-provider';
-import InventoryReportDownloads from './InventoryReportDownloads';
 
 interface InventorySummaryProps {
     items: InventoryItem[];
@@ -41,9 +40,6 @@ export default function InventorySummary({ items }: InventorySummaryProps) {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-end">
-                <InventoryReportDownloads items={items} isSummary={true} summaryData={summaryData} />
-            </div>
             <div className="border rounded-md">
                 <Table>
                     <TableHeader>
@@ -67,3 +63,5 @@ export default function InventorySummary({ items }: InventorySummaryProps) {
         </div>
     );
 }
+
+    

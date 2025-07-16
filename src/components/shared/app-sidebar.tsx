@@ -32,8 +32,7 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
-  const pathname = usePathname();
-  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount } = useAppContext();
+  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount } = useAppContext();
   
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0 },
@@ -108,3 +107,5 @@ export function AppSidebar() {
     </aside>
   );
 }
+
+    

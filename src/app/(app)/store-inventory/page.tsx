@@ -274,3 +274,5 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+
+    
