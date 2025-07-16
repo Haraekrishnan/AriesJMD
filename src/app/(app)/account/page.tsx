@@ -1,3 +1,4 @@
+
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -192,7 +193,7 @@ export default function AccountPage() {
               <div className="space-y-2">
                 <Label htmlFor="logo-upload">Application Logo</Label>
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-md border flex items-center justify-center bg-card">
+                  <div className="h-16 w-16 rounded-md border flex items-center justify-center bg-transparent">
                     {newAppLogo ? (
                         <img src={newAppLogo} alt="App Logo" className="h-full w-full object-contain rounded-md" />
                     ) : (
