@@ -1170,7 +1170,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     addCertificateRequestComment(requestId, comment);
-    update(ref(rtdb, `certificateRequests/${requestId}`), { status: 'Completed', completionDate: new Date().toISOString() });
+    update(ref(rtdb, `certificateRequests/${requestId}`), { 
+      status: 'Completed', 
+      completionDate: new Date().toISOString(),
+      viewedByRequester: false 
+    });
     addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
   }, [user, addActivityLog, addCertificateRequestComment]);
   
