@@ -148,4 +148,3 @@ export default function ManpowerPage() {
             <ManpowerLogDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} />
         </div>
     );
-}
