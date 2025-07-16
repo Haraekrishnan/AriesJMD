@@ -74,6 +74,7 @@ export default function AchievementsPage() {
         const completed = tasksInPeriod.filter(t => t.status === 'Done').length;
         
         const overdue = tasksInPeriod.filter(t => {
+            if (!t.dueDate) return false;
             if (t.completionDate) {
                 return isAfter(new Date(t.completionDate), new Date(t.dueDate));
             }
@@ -100,15 +101,10 @@ export default function AchievementsPage() {
       })
       .sort((a, b) => b.score - a.score);
   }, [users, tasks, achievements, rankingFilter]);
-
+  
   const manualAchievements = useMemo(() => {
-    const performanceUserIds = new Set(performanceData.map(p => p.user.id));
-    return achievements.filter(ach => 
-        ach.type === 'manual' && 
-        ach.status === 'approved' &&
-        !performanceUserIds.has(ach.userId)
-    );
-  }, [achievements, performanceData]);
+    return achievements.filter(ach => ach.type === 'manual' && ach.status === 'approved');
+  }, [achievements]);
 
   const pendingAchievements = useMemo(() => {
     if (!can.manage_achievements) return [];
