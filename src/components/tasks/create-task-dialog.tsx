@@ -1,5 +1,6 @@
+
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,6 +21,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { PlusCircle } from 'lucide-react';
+import type { Role } from '@/lib/types';
+
+const roleHierarchy: Record<Role, number> = {
+  'Team Member': 0,
+  'Junior Supervisor': 1,
+  'Junior HSE': 1,
+  'Assistant Store Incharge': 1,
+  'Supervisor': 2,
+  'HSE': 2,
+  'Store in Charge': 2,
+  'Manager': 3,
+  'Admin': 4,
+};
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -32,7 +46,7 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function CreateTaskDialog() {
-  const { createTask, users } = useAppContext();
+  const { user, createTask, getVisibleUsers } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -45,6 +59,22 @@ export default function CreateTaskDialog() {
       priority: 'Medium',
     },
   });
+
+  const allVisibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+
+  const assignableUsers = useMemo(() => {
+    if (!user) return [];
+    if (user.role === 'Admin' || user.role === 'Manager') {
+      return allVisibleUsers;
+    }
+    
+    const userRoleLevel = roleHierarchy[user.role];
+
+    return allVisibleUsers.filter(assignee => {
+      const assigneeRoleLevel = roleHierarchy[assignee.role];
+      return assignee.id === user.id || assigneeRoleLevel < userRoleLevel;
+    });
+  }, [user, allVisibleUsers]);
 
   const onSubmit = (data: TaskFormValues) => {
     createTask(data);
@@ -99,7 +129,7 @@ export default function CreateTaskDialog() {
                   <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
                     <SelectContent>
-                      {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                      {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}
