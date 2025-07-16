@@ -613,11 +613,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`${basePath}/comments/${commentId}`] = newComment;
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
     
-    const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
-    const existingViewedBy = existingEntry?.viewedBy || [];
-    
-    updates[`${basePath}/viewedBy`] = [user.id];
+    updates[`${basePath}/viewedBy`] = [user.id]; // Only the creator has viewed it initially.
   
+    const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
     if (!existingEntry) {
       updates[`${basePath}/plannerUserId`] = plannerUserId;
       updates[`${basePath}/day`] = format(day, 'yyyy-MM-dd');
@@ -1319,21 +1317,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return [];
     return dailyPlannerComments
         .filter(dpc => {
-            const plannerUserId = dpc.id.split('_')[1];
-            // Notify me if it's my planner and I haven't seen the comments.
-            return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
+             const plannerUserId = dpc.id.split('_')[1];
+             return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
         })
         .map(dpc => dpc.id);
   }, [dailyPlannerComments, user]);
 
   const plannerNotificationCount = useMemo(() => {
-      if (!user) return 0;
-      const myUnreadComments = dailyPlannerComments
-        .filter(dpc => {
-            const plannerUserId = dpc.plannerUserId;
-            return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
-        })
-      return myUnreadComments.length;
+    if (!user) return 0;
+    const myUnreadComments = dailyPlannerComments.filter(dpc => {
+      const plannerOwnerId = dpc.plannerUserId;
+      // Notify me if a comment is on my planner and I haven't seen it yet.
+      return plannerOwnerId === user.id && !dpc.viewedBy?.includes(user.id);
+    });
+    return myUnreadComments.length;
   }, [dailyPlannerComments, user]);
 
   const pendingInternalRequestCount = useMemo(() => (can.approve_store_requests ? internalRequests.filter(r => r.status === 'Pending').length : 0), [internalRequests, can.approve_store_requests]);
@@ -1353,11 +1350,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
   
   const pendingAchievementCount = useMemo(() => {
-    if (can.manage_achievements) {
-        return achievements.filter(a => a.status === 'pending').length;
+    if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) {
+      return 0;
     }
-    return 0;
-  }, [achievements, can.manage_achievements]);
+    return achievements.filter(a => a.status === 'pending' && a.awardedById !== user.id).length;
+  }, [achievements, user]);
 
   const value = useMemo(() => ({
     user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, otherEquipments, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledUTRequests, workingManpowerCount, onLeaveManpowerCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount
@@ -1383,3 +1380,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
