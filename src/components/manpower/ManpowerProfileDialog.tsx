@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -219,27 +220,26 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
 
   const onSubmit = (data: ProfileFormValues) => {
-    const dataToSubmit = {
-      ...data,
-      leaveHistory: data.leaveHistory?.map(l => ({
-        ...l,
-        leaveStartDate: l.leaveStartDate instanceof Date ? l.leaveStartDate.toISOString() : l.leaveStartDate,
-        plannedEndDate: l.plannedEndDate instanceof Date ? l.plannedEndDate.toISOString() : l.plannedEndDate,
-        leaveEndDate: l.leaveEndDate instanceof Date ? l.leaveEndDate.toISOString() : l.leaveEndDate,
-        rejoinedDate: l.rejoinedDate instanceof Date ? l.rejoinedDate.toISOString() : l.rejoinedDate,
-      })),
-      passIssueDate: data.passIssueDate?.toISOString(),
-      joiningDate: data.joiningDate?.toISOString(),
-      woValidity: data.woValidity?.toISOString(),
-      wcPolicyValidity: data.wcPolicyValidity?.toISOString(),
-      labourContractValidity: data.labourContractValidity?.toISOString(),
-      medicalExpiryDate: data.medicalExpiryDate?.toISOString(),
-      safetyExpiryDate: data.safetyExpiryDate?.toISOString(),
-      irataValidity: data.irataValidity?.toISOString(),
-      contractValidity: data.contractValidity?.toISOString(),
-      terminationDate: data.terminationDate?.toISOString(),
-      resignationDate: data.resignationDate?.toISOString(),
+    // This helper function cleans the object to remove undefined values, which Firebase doesn't allow.
+    const cleanDataForFirebase = (obj: any) => {
+      const newObj: any = {};
+      for (const key in obj) {
+        if (obj[key] instanceof Date) {
+          newObj[key] = obj[key].toISOString();
+        } else if(obj[key] !== undefined) {
+          if (Array.isArray(obj[key])) {
+            newObj[key] = obj[key].map(item => typeof item === 'object' && item !== null ? cleanDataForFirebase(item) : item);
+          } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+            newObj[key] = cleanDataForFirebase(obj[key]);
+          } else {
+            newObj[key] = obj[key];
+          }
+        }
+      }
+      return newObj;
     };
+    
+    const dataToSubmit = cleanDataForFirebase(data);
 
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
