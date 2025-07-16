@@ -30,6 +30,9 @@ export default function ReportsPage() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
+      if (!task.assigneeIds) {
+        return false;
+      }
       // First, ensure the task assignee is visible to the current user
       const isAssigneeVisible = visibleUsers.some(user => task.assigneeIds.includes(user.id));
       if (!isAssigneeVisible) {
