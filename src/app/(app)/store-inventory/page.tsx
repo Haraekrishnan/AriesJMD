@@ -1,7 +1,7 @@
 
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, utMachines, certificateRequests, acknowledgeFulfilledUTRequest } = useAppContext();
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
@@ -92,6 +92,12 @@ export default function StoreInventoryPage() {
     const pendingCertRequestsForMe = useMemo(() => canManageInventory ? certificateRequests.filter(req => req.status === 'Pending' && req.itemId) : [], [certificateRequests, canManageInventory]);
     const myCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.itemId), [certificateRequests, user]);
     const myFulfilledCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.status === 'Completed' && !req.viewedByRequester && req.itemId), [certificateRequests, user]);
+
+    useEffect(() => {
+        if (myFulfilledCertRequests.length > 0) {
+            markFulfilledRequestsAsViewed('store');
+        }
+    }, [myFulfilledCertRequests, markFulfilledRequestsAsViewed]);
 
 
     const inventoryNotifications = useMemo(() => {
@@ -183,7 +189,7 @@ export default function StoreInventoryPage() {
                                           </div>
                                         )}
                                     </div>
-                                    <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledUTRequest(req.id)} className="ml-4 shrink-0">
+                                    <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledRequest(req.id)} className="ml-4 shrink-0">
                                         <CheckCircle className="mr-2 h-4 w-4" />
                                         Acknowledge
                                     </Button>
@@ -242,7 +248,7 @@ export default function StoreInventoryPage() {
                 <CardHeader>
                    <div className='flex justify-between items-center'>
                      {view === 'list' && (
-                        <InventoryFilters onApplyFilters={setFilters} />
+                        <InventoryFilters onApplyFilters={setFilters} filteredItems={filteredItems} />
                      )}
                      {view === 'summary' && <CardTitle>Inventory Summary</CardTitle>}
                    </div>

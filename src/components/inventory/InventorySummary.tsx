@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import type { InventoryItem } from '@/lib/types';

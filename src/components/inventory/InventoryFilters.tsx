@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -68,7 +69,6 @@ export default function InventoryFilters({ onApplyFilters, filteredItems }: Inve
             <div className="flex gap-2 ml-auto">
                 <Button onClick={handleApply}>Apply</Button>
                 <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
-                <InventoryReportDownloads items={filteredItems} />
             </div>
         </div>
     );

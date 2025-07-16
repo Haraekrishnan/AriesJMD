@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -26,7 +27,7 @@ import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 
 export default function EquipmentStatusPage() {
-    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledUTRequests, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest, certificateRequests, inventoryItems } = useAppContext();
+    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -58,11 +59,6 @@ export default function EquipmentStatusPage() {
         return storeRoles.includes(user.role);
     }, [user]);
 
-    const myFulfilledEquipmentRequests = useMemo(() => {
-        if (!user) return [];
-        return myFulfilledUTRequests.filter(req => req.utMachineId || req.dftMachineId);
-    }, [myFulfilledUTRequests, user]);
-    
     const pendingCertRequests = useMemo(() => {
         if (!canManageStore) return [];
         return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId));
@@ -70,10 +66,10 @@ export default function EquipmentStatusPage() {
 
 
     useEffect(() => {
-        if (myFulfilledEquipmentRequests?.length > 0) {
-            markUTRequestsAsViewed();
+        if (myFulfilledEquipmentCertRequests?.length > 0) {
+            markFulfilledRequestsAsViewed('equipment');
         }
-    }, [markUTRequestsAsViewed, myFulfilledEquipmentRequests]);
+    }, [markFulfilledRequestsAsViewed, myFulfilledEquipmentCertRequests]);
 
     const expiringMachines = useMemo(() => {
         const thirtyDaysFromNow = addDays(new Date(), 30);
@@ -124,14 +120,14 @@ export default function EquipmentStatusPage() {
                             </Button>
                         )}
                     </div>
-                     {myFulfilledEquipmentRequests && myFulfilledEquipmentRequests.length > 0 && (
+                     {myFulfilledEquipmentCertRequests && myFulfilledEquipmentCertRequests.length > 0 && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Fulfilled Certificate Requests</CardTitle>
                                 <CardDescription>Your recent certificate requests have been fulfilled. Please acknowledge them to clear them from this list.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                {myFulfilledEquipmentRequests.map(req => {
+                                {myFulfilledEquipmentCertRequests.map(req => {
                                     const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
                                     const lastComment = req.comments?.[req.comments.length-1];
                                     const fulfiller = users.find(u => u.id === lastComment?.userId);
@@ -149,7 +145,7 @@ export default function EquipmentStatusPage() {
                                                 </div>
                                                 )}
                                             </div>
-                                            <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledUTRequest(req.id)} className="ml-4 shrink-0">
+                                            <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledRequest(req.id)} className="ml-4 shrink-0">
                                                 <CheckCircle className="mr-2 h-4 w-4" />
                                                 Acknowledge
                                             </Button>
