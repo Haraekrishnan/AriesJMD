@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -63,7 +64,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         if (!selectedDate) return [];
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
         const entry = dailyPlannerComments.find(dpc => dpc.day === dayKey && dpc.plannerUserId === selectedUserId);
-        return entry?.comments.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) || [];
+        return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
     }, [dailyPlannerComments, selectedDate, selectedUserId]);
 
     const notificationDays = useMemo(() => unreadPlannerCommentDays.map(d => new Date(d)), [unreadPlannerCommentDays]);

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -39,6 +40,16 @@ export default function ScheduleView({ selectedUserId }: ScheduleViewProps) {
         });
         return eventsByDate;
     }, [dateRange, getExpandedPlannerEvents, selectedUserId]);
+    
+    const commentsByDay = useMemo(() => {
+        const comments: Record<string, Comment[]> = {};
+        dailyPlannerComments.forEach(dpc => {
+            if (dpc.plannerUserId === selectedUserId) {
+                comments[dpc.day] = dpc.comments ? Object.values(dpc.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
+            }
+        });
+        return comments;
+    }, [dailyPlannerComments, selectedUserId]);
 
     const handleAddDailyComment = useCallback((day: Date) => {
         if (!dailyComment.trim() || !day) return;
@@ -58,7 +69,7 @@ export default function ScheduleView({ selectedUserId }: ScheduleViewProps) {
             {dateRange.map(day => {
               const dayKey = format(day, 'yyyy-MM-dd');
               const dayEvents = expandedEvents[dayKey] || [];
-              const dayComments = dailyPlannerComments.find(dpc => dpc.day === dayKey && dpc.plannerUserId === selectedUserId)?.comments || [];
+              const dayComments = commentsByDay[dayKey] || [];
 
               return (
                 <Card key={dayKey}>

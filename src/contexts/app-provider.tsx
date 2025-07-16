@@ -560,7 +560,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: true };
     const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}`);
     const commentsRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}/comments`);
     const newCommentRef = push(commentsRef);
@@ -1284,3 +1284,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+

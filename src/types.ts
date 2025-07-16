@@ -2,6 +2,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -150,6 +151,7 @@ export type Comment = {
   userId: string;
   text: string;
   date: string; // ISO String
+  isRead?: boolean;
 };
 
 export type IncidentReport = {
@@ -399,6 +401,8 @@ export type DailyPlannerComment = {
   plannerUserId: string; // The user whose planner this comment belongs to
   day: string; // YYYY-MM-DD
   comments: Comment[];
+  lastUpdated: string;
+  viewedBy: string[];
 };
 
 export type Role_Dep = {

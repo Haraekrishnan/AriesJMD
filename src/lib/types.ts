@@ -392,6 +392,8 @@ export type DailyPlannerComment = {
   plannerUserId: string; // The user whose planner this comment belongs to
   day: string; // YYYY-MM-DD
   comments: Comment[];
+  lastUpdated: string;
+  viewedBy: string[];
 };
 
 export type Role_Dep = {
