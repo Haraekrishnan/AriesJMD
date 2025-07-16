@@ -280,7 +280,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
-    const newLog: Omit<ActivityLog, 'id'> = { userId, action, details, timestamp: new Date().toISOString() };
+    const newLog: Omit<ActivityLog, 'id' | 'details'> & { details?: string } = {
+        userId,
+        action,
+        timestamp: new Date().toISOString()
+    };
+    if (details) {
+        newLog.details = details;
+    }
     set(logRef, newLog);
   }, []);
 
