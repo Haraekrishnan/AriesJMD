@@ -27,7 +27,7 @@ export default function AnnouncementFeed() {
                         {announcement.content}
                     </AlertDescription>
                     <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setHiddenIds(prev => [...prev, announcement.id])}>
-                        <X className="h-5 w-5"/>
+                        <X className="h-5 w-5 text-blue-800 dark:text-blue-300"/>
                     </Button>
                 </Alert>
             ))}
