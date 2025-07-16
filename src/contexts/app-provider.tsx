@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -258,6 +257,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setupListener('otherEquipments', setOtherEquipments),
       setupListener('machineLogs', setMachineLogs),
       setupListener('certificateRequests', setCertificateRequests),
+      setupListener('manpowerLogs', setManpowerLogs),
+      setupListener('manpowerProfiles', setManpowerProfiles),
+      setupListener('vehicles', setVehicles),
+      setupListener('drivers', setDrivers),
+      setupListener('buildings', setBuildings),
     ];
   
     setLoading(false);
@@ -637,28 +641,161 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, projects, addActivityLog]);
 
   const addVehicle = useCallback((vehicle: Omit<Vehicle, 'id'>) => {
-    setVehicles(prev => [...prev, { id: `vehicle-${Date.now()}`, ...vehicle }]);
-  }, [setVehicles]);
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'vehicles'));
+    set(newRef, vehicle);
+    addActivityLog(user.id, 'Vehicle Added', vehicle.vehicleNumber);
+  }, [user, addActivityLog]);
 
   const updateVehicle = useCallback((updatedVehicle: Vehicle) => {
-    setVehicles(prev => prev.map(v => v.id === updatedVehicle.id ? updatedVehicle : v));
-  }, [setVehicles]);
+    if(!user) return;
+    const { id, ...data } = updatedVehicle;
+    update(ref(rtdb, `vehicles/${id}`), data);
+    addActivityLog(user.id, 'Vehicle Updated', updatedVehicle.vehicleNumber);
+  }, [user, addActivityLog]);
 
   const deleteVehicle = useCallback((vehicleId: string) => {
-    setVehicles(prev => prev.filter(v => v.id !== vehicleId));
-  }, [setVehicles]);
+    if(!user) return;
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    remove(ref(rtdb, `vehicles/${vehicleId}`));
+    if (vehicle) addActivityLog(user.id, 'Vehicle Deleted', vehicle.vehicleNumber);
+  }, [user, vehicles, addActivityLog]);
   
   const addDriver = useCallback((driver: Omit<Driver, 'id' | 'photo'>) => {
-    setDrivers(prev => [...prev, { ...driver, id: `driver-${Date.now()}`, photo: `https://placehold.co/100x100.png` }]);
-  }, [setDrivers]);
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'drivers'));
+    set(newRef, { ...driver, photo: `https://placehold.co/100x100.png` });
+    addActivityLog(user.id, 'Driver Added', driver.name);
+  }, [user, addActivityLog]);
 
   const updateDriver = useCallback((updatedDriver: Driver) => {
-    setDrivers(prev => prev.map(d => d.id === updatedDriver.id ? updatedDriver : d));
-  }, [setDrivers]);
+    if(!user) return;
+    const { id, ...data } = updatedDriver;
+    update(ref(rtdb, `drivers/${id}`), data);
+    addActivityLog(user.id, 'Driver Updated', updatedDriver.name);
+  }, [user, addActivityLog]);
 
   const deleteDriver = useCallback((driverId: string) => {
-    setDrivers(prev => prev.filter(d => d.id !== driverId));
-  }, [setDrivers]);
+    if(!user) return;
+    const driver = drivers.find(d => d.id === driverId);
+    remove(ref(rtdb, `drivers/${driverId}`));
+    if (driver) addActivityLog(user.id, 'Driver Deleted', driver.name);
+  }, [user, drivers, addActivityLog]);
+
+  const addManpowerLog = useCallback((logData: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date'>) => {
+    if(!user) return;
+    const newLogRef = push(ref(rtdb, 'manpowerLogs'));
+    set(newLogRef, { ...logData, updatedBy: user.id, date: format(new Date(), 'yyyy-MM-dd') });
+    addActivityLog(user.id, 'Manpower Logged', `Project ID: ${logData.projectId}`);
+  }, [user, addActivityLog]);
+
+  const addManpowerProfile = useCallback((profile: Omit<ManpowerProfile, 'id'>) => {
+    if(!user) return;
+    const newProfileRef = push(ref(rtdb, 'manpowerProfiles'));
+    set(newProfileRef, profile);
+    addActivityLog(user.id, 'Manpower Profile Added', profile.name);
+  }, [user, addActivityLog]);
+
+  const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
+    if(!user) return;
+    const { id, ...data } = profile;
+    update(ref(rtdb, `manpowerProfiles/${id}`), data);
+    addActivityLog(user.id, 'Manpower Profile Updated', profile.name);
+  }, [user, addActivityLog]);
+
+  const deleteManpowerProfile = useCallback((profileId: string) => {
+    if(!user) return;
+    const profile = manpowerProfiles.find(p => p.id === profileId);
+    remove(ref(rtdb, `manpowerProfiles/${profileId}`));
+    if (profile) addActivityLog(user.id, 'Manpower Profile Deleted', profile.name);
+  }, [user, manpowerProfiles, addActivityLog]);
+
+  const addBuilding = useCallback((buildingNumber: string) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'buildings'));
+    set(newRef, { buildingNumber, rooms: [] });
+    addActivityLog(user.id, 'Building Added', buildingNumber);
+  }, [user, addActivityLog]);
+
+  const updateBuilding = useCallback((building: Building) => {
+    if(!user) return;
+    const { id, ...data } = building;
+    update(ref(rtdb, `buildings/${id}`), data);
+    addActivityLog(user.id, 'Building Updated', building.buildingNumber);
+  }, [user, addActivityLog]);
+
+  const deleteBuilding = useCallback((buildingId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    remove(ref(rtdb, `buildings/${buildingId}`));
+    if (building) addActivityLog(user.id, 'Building Deleted', building.buildingNumber);
+  }, [user, buildings, addActivityLog]);
+
+  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+
+    const newRoom: Room = { 
+      id: `room-${Date.now()}`,
+      roomNumber: roomData.roomNumber, 
+      beds: Array.from({ length: roomData.numberOfBeds }).map((_, i) => ({ 
+        id: `bed-${Date.now()}-${i}`, 
+        bedNumber: String.fromCharCode(65 + i), 
+        bedType: 'Bunk' 
+      })) 
+    };
+
+    const updatedRooms = [...(building.rooms || []), newRoom];
+    update(ref(rtdb, `buildings/${buildingId}`), { rooms: updatedRooms });
+    addActivityLog(user.id, 'Room Added', `Room ${roomData.roomNumber} to Building ${building.buildingNumber}`);
+  }, [user, buildings, addActivityLog]);
+
+  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    const room = building.rooms.find(r => r.id === roomId);
+    const updatedRooms = building.rooms.filter(r => r.id !== roomId);
+    update(ref(rtdb, `buildings/${buildingId}`), { rooms: updatedRooms });
+    if(room) addActivityLog(user.id, 'Room Deleted', `Room ${room.roomNumber} from Building ${building.buildingNumber}`);
+  }, [user, buildings, addActivityLog]);
+
+  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    const occupant = manpowerProfiles.find(p => p.id === occupantId);
+    const updatedRooms = building.rooms.map(r => r.id === roomId ? { ...r, beds: r.beds.map(b => b.id === bedId ? { ...b, occupantId } : b) } : r);
+    update(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    addActivityLog(user.id, 'Occupant Assigned', `${occupant?.name} to bed in Building ${building.buildingNumber}`);
+  }, [user, buildings, manpowerProfiles, addActivityLog]);
+
+  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    
+    let occupantName = '';
+    const updatedRooms = building.rooms.map(r => {
+      if (r.id === roomId) {
+        return {
+          ...r,
+          beds: r.beds.map(bed => {
+            if (bed.id === bedId) {
+              const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
+              occupantName = occupant?.name || 'occupant';
+              return { ...bed, occupantId: undefined };
+            }
+            return bed;
+          })
+        };
+      }
+      return r;
+    });
+    update(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    addActivityLog(user.id, 'Occupant Unassigned', `${occupantName} from bed in Building ${building.buildingNumber}`);
+  }, [user, buildings, manpowerProfiles, addActivityLog]);
 
   const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
     if (user) {
@@ -742,21 +879,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
   }, [user, setIncidentReports]);
 
-  const addManpowerLog = useCallback((logData: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date'>) => {
-    if (user) setManpowerLogs(prev => [...prev, { ...logData, id: `mplog-${Date.now()}`, updatedBy: user.id, date: format(new Date(), 'yyyy-MM-dd') }]);
-  }, [user, setManpowerLogs]);
-
-  const addManpowerProfile = useCallback((profile: Omit<ManpowerProfile, 'id'>) => {
-    setManpowerProfiles(prev => [...prev, { ...profile, id: `mp-${Date.now()}` }]);
-  }, [setManpowerProfiles]);
-
-  const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
-    setManpowerProfiles(prev => prev.map(p => p.id === profile.id ? profile : p));
-  }, [setManpowerProfiles]);
-
-  const deleteManpowerProfile = useCallback((profileId: string) => {
-    setManpowerProfiles(prev => prev.filter(p => p.id !== profileId));
-  }, [setManpowerProfiles]);
   
   const addInternalRequest = useCallback((request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
     if(user) setInternalRequests(prev => [...prev, { ...request, id: `ir-${Date.now()}`, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true }]);
@@ -997,35 +1119,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
     if(user) setAnnouncements(prev => prev.map(a => a.id === announcementId ? {...a, status: 'returned', comments: [...a.comments, { userId: user.id, text: comment, date: new Date().toISOString() }]} : a));
   }, [user, setAnnouncements]);
-
-  const addBuilding = useCallback((buildingNumber: string) => {
-    setBuildings(prev => [...prev, { id: `bldg-${Date.now()}`, buildingNumber, rooms: [] }]);
-  }, [setBuildings]);
-
-  const updateBuilding = useCallback((building: Building) => {
-    setBuildings(prev => prev.map(b => b.id === building.id ? building : b));
-  }, [setBuildings]);
-
-  const deleteBuilding = useCallback((buildingId: string) => {
-    setBuildings(prev => prev.filter(b => b.id !== buildingId));
-  }, [setBuildings]);
-
-  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
-    const newRoom: Room = { roomNumber: roomData.roomNumber, id: `room-${Date.now()}`, beds: Array.from({ length: roomData.numberOfBeds }).map((_, i) => ({ id: `bed-${Date.now()}-${i}`, bedNumber: String.fromCharCode(65 + i), bedType: 'Bunk' })) };
-    setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: [...b.rooms, newRoom] } : b));
-  }, [setBuildings]);
-
-  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
-    setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: b.rooms.filter(r => r.id !== roomId) } : b));
-  }, [setBuildings]);
-
-  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: b.rooms.map(r => r.id === roomId ? { ...r, beds: r.beds.map(bed => bed.id === bedId ? { ...bed, occupantId } : bed) } : r) } : b));
-  }, [setBuildings]);
-
-  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, rooms: b.rooms.map(r => r.id === roomId ? { ...r, beds: r.beds.map(bed => bed.id === bedId ? { ...bed, occupantId: undefined } : bed) } : r) } : b));
-  }, [setBuildings]);
   
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
@@ -1101,9 +1194,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    
-
-
-
