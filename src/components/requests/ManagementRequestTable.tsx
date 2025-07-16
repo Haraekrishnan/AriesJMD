@@ -18,6 +18,7 @@ import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import EditManagementRequestDialog from './EditManagementRequestDialog';
 
 
 interface ManagementRequestTableProps {
@@ -33,6 +34,7 @@ const statusVariant: Record<ManagementRequestStatus, 'default' | 'secondary' | '
 export default function ManagementRequestTable({ requests }: ManagementRequestTableProps) {
   const { user, users, updateManagementRequestStatus, markManagementRequestAsViewed } = useAppContext();
   const [selectedRequest, setSelectedRequest] = useState<ManagementRequest | null>(null);
+  const [editingRequest, setEditingRequest] = useState<ManagementRequest | null>(null);
   const [action, setAction] = useState<'Approved' | 'Rejected' | null>(null);
   const [comment, setComment] = useState('');
   const { toast } = useToast();
@@ -89,6 +91,7 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
               const isRequester = req.requesterId === user?.id;
               const hasUpdate = isRequester && !req.viewedByRequester;
               const commentsArray = Array.isArray(req.comments) ? req.comments : [];
+              const canEdit = user?.role === 'Admin' || (isRecipient && req.status === 'Pending');
 
               return (
                 <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
@@ -128,15 +131,16 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    {isRecipient && req.status === 'Pending' && (
+                    {(isRecipient && req.status === 'Pending') || (user?.role === 'Admin') ? (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>
+                            {canEdit && <DropdownMenuItem onClick={() => setEditingRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                            {isRecipient && req.status === 'Pending' && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
+                            {isRecipient && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    )}
+                    ) : null}
                 </TableCell>
                 </TableRow>
               )
@@ -162,6 +166,14 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+    )}
+    
+    {editingRequest && (
+        <EditManagementRequestDialog 
+            isOpen={!!editingRequest} 
+            setIsOpen={() => setEditingRequest(null)}
+            request={editingRequest}
+        />
     )}
     </>
   );
