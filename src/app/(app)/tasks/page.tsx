@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -116,8 +117,9 @@ export default function TasksPage() {
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
-      const otherTasks = filteredTasks.filter(t => !overdueTasks.find(ot => ot.id === t.id));
-      return { overdue: overdueTasks, regular: otherTasks };
+      const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
+      const regularTasks = filteredTasks.filter(t => !overdueTaskIds.has(t.id));
+      return { overdue: overdueTasks, regular: regularTasks };
   }, [filteredTasks]);
 
   const openEditDialog = (task: Task) => {
