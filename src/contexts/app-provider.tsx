@@ -1140,7 +1140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const { remarks, ...restOfData } = requestData;
     const comments = remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: remarks, date: new Date().toISOString() }] : [];
-
+    
     const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
       ...restOfData,
       requesterId: user.id,
@@ -1446,3 +1446,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
