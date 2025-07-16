@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import type { User, TaskStatus } from '@/lib/types';
@@ -36,7 +37,7 @@ export default function PerformancePage() {
             : tasks;
             
         return usersToDisplay.map(u => {
-            const userTasks = tasksToConsider.filter(task => task.assigneeIds.includes(u.id));
+            const userTasks = tasksToConsider.filter(task => task.assigneeIds && task.assigneeIds.includes(u.id));
             
             const getEffectiveStatus = (task: typeof tasks[0]): TaskStatus | undefined => {
                 if (task.status === 'Pending Approval') {
