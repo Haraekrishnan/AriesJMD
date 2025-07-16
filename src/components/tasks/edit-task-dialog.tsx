@@ -269,6 +269,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const Wrapper = isOpen ? DialogContent : 'div';
   const wrapperProps = isOpen ? { className: "sm:max-w-4xl grid-rows-[auto,1fr,auto]" } : {};
   
+  const commentsArray = Array.isArray(taskToDisplay.comments) 
+    ? taskToDisplay.comments 
+    : Object.values(taskToDisplay.comments || {});
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <Wrapper {...wrapperProps}>
@@ -378,7 +382,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 <h3 className="text-lg font-semibold">Comments & Activity</h3>
                 <ScrollArea className="flex-1 h-64 pr-4 border-b">
                     <div className="space-y-4">
-                        {taskToDisplay.comments && [...taskToDisplay.comments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((comment, index) => {
+                        {commentsArray.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((comment, index) => {
                             const commentUser = users.find(u => u.id === comment.userId);
                             return (
                                 <div key={index} className={cn("flex items-start gap-3")}>
@@ -390,7 +394,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                 </div>
                             )
                         })}
-                        {(!taskToDisplay.comments || taskToDisplay.comments.length === 0) && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
+                        {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
                     </div>
                 </ScrollArea>
                 {taskToDisplay.attachment && (
