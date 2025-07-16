@@ -55,11 +55,11 @@ export function AppSidebar() {
     <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
       <div className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-lg flex items-center justify-center">
+            <div className="flex items-center justify-center h-8 w-8">
                 {appLogo ? (
-                  <img src={appLogo} alt={appName} className="h-6 w-6 object-contain" />
+                  <img src={appLogo} alt={appName} className="h-full w-full object-contain" />
                 ) : (
-                  <Ship className="h-6 w-6 text-primary-foreground" />
+                  <Ship className="h-8 w-8 text-primary" />
                 )}
             </div>
             <h1 className="text-xl font-bold">{appName}</h1>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -60,9 +61,6 @@ export function LoginForm() {
             <Input id="password" type="password" placeholder="••••••••" {...form.register('password')} />
             {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
           </div>
-           <p className="text-xs text-muted-foreground pt-2">
-              Hint: Use alex@ariesmarine.com (Manager) or maria@ariesmarine.com (Employee).
-            </p>
         </CardContent>
         <CardFooter className="p-6 pt-0">
           <Button type="submit" className="w-full" disabled={isLoading}>
