@@ -5,7 +5,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, OtherEquipment, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
@@ -88,7 +88,7 @@ type AppContextType = {
   addComment: (taskId: string, commentText: string) => void;
   markTaskAsViewed: (taskId: string) => void;
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
-  getExpandedPlannerEvents: (month: Date, userId: string) => (PlannerEvent & { eventDate: Date })[];
+  getExpandedPlannerEvents: (dayToCheck: Date, userId: string) => PlannerEvent[];
   addPlannerEvent: (event: Omit<PlannerEvent, 'id' | 'comments'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
@@ -502,31 +502,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [tasks, user, addComment]);
 
-  const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
+  const getExpandedPlannerEvents = useCallback((dayToCheck: Date, userId: string) => {
     const userEvents = plannerEvents.filter(event => event.userId === userId);
     if (!userEvents.length) return [];
-    const start = startOfMonth(month);
-    const end = endOfMonth(month);
-    const daysInMonth = eachDayOfInterval({ start, end });
-    const allEventsInView: (PlannerEvent & { eventDate: Date })[] = [];
-    daysInMonth.forEach(day => {
-        userEvents.forEach(event => {
-            const eventDate = new Date(event.date);
-            let shouldAdd = false;
-            if (isAfter(day, eventDate) || isSameDay(day, eventDate)) {
-                switch(event.frequency) {
-                    case 'once': if (isSameDay(day, eventDate)) shouldAdd = true; break;
-                    case 'daily': shouldAdd = true; break;
-                    case 'daily-except-sundays': if (!isSunday(day)) shouldAdd = true; break;
-                    case 'weekly': if (getDay(day) === getDay(eventDate)) shouldAdd = true; break;
-                    case 'weekends': if (isSaturday(day) || isSunday(day)) shouldAdd = true; break;
-                    case 'monthly': if (getDate(day) === getDate(eventDate)) shouldAdd = true; break;
+    
+    const matchingEvents: PlannerEvent[] = [];
+    
+    userEvents.forEach(event => {
+        const eventStartDate = startOfDay(new Date(event.date));
+        
+        // Skip events that haven't started yet
+        if (isAfter(eventStartDate, dayToCheck)) {
+            return;
+        }
+
+        let shouldAdd = false;
+        switch (event.frequency) {
+            case 'once':
+                if (isSameDay(dayToCheck, eventStartDate)) {
+                    shouldAdd = true;
                 }
-            }
-            if (shouldAdd) allEventsInView.push({ ...event, eventDate: day });
-        });
+                break;
+            case 'daily':
+                shouldAdd = true;
+                break;
+            case 'daily-except-sundays':
+                if (!isSunday(dayToCheck)) {
+                    shouldAdd = true;
+                }
+                break;
+            case 'weekly':
+                if (getDay(dayToCheck) === getDay(eventStartDate)) {
+                    shouldAdd = true;
+                }
+                break;
+            case 'weekends':
+                if (isSaturday(dayToCheck) || isSunday(dayToCheck)) {
+                    shouldAdd = true;
+                }
+                break;
+            case 'monthly':
+                if (getDate(dayToCheck) === getDate(eventStartDate)) {
+                    shouldAdd = true;
+                }
+                break;
+        }
+
+        if (shouldAdd) {
+            matchingEvents.push(event);
+        }
     });
-    return allEventsInView;
+
+    return matchingEvents;
   }, [plannerEvents]);
 
   const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id' | 'comments'>) => {
@@ -564,45 +591,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const commentId = push(ref(rtdb)).key; // Generate a unique key for the comment
+    const commentId = push(ref(rtdb)).key;
     if (!commentId) return;
 
     const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString(), isRead: true };
-    
-    // Construct the path for the new comment
-    const commentPath = `dailyPlannerComments/${plannerUserId}/${dayKey}/comments/${commentId}`;
-    const dayNodePath = `dailyPlannerComments/${plannerUserId}/${dayKey}`;
-    
+
     const updates: { [key: string]: any } = {};
-    updates[commentPath] = newComment;
-    updates[`${dayNodePath}/lastUpdated`] = new Date().toISOString();
-    updates[`${dayNodePath}/viewedBy`] = [user.id]; // Reset viewedBy to the current user
+    const basePath = `dailyPlannerComments/${plannerUserId.replace(/[.#$[\]]/g, '_')}/${dayKey}`;
+    
+    updates[`${basePath}/comments/${commentId}`] = newComment;
+    updates[`${basePath}/lastUpdated`] = new Date().toISOString();
+    updates[`${basePath}/viewedBy`] = [user.id];
+    updates[`${basePath}/plannerUserId`] = plannerUserId;
+    updates[`${basePath}/day`] = dayKey;
+
 
     update(ref(rtdb), updates);
-}, [user]);
+  }, [user]);
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}`);
-    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === `${plannerUserId}/${dayKey}`)?.viewedBy || [];
+    const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId.replace(/[.#$[\]]/g, '_')}/${dayKey}`);
+    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === `${plannerUserId.replace(/[.#$[\]]/g, '_')}/${dayKey}`)?.viewedBy || [];
     if (!currentViewedBy.includes(user.id)) {
       update(dayRef, { viewedBy: [...currentViewedBy, user.id] });
     }
   }, [user, dailyPlannerComments]);
 
   const updateDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string, newText: string) => {
-    const commentRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`);
+    const commentRef = ref(rtdb, `dailyPlannerComments/${plannerUserId.replace(/[.#$[\]]/g, '_')}/${day}/comments/${commentId}`);
     update(commentRef, { text: newText });
   }, []);
 
   const deleteDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string) => {
-    const commentRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`);
+    const commentRef = ref(rtdb, `dailyPlannerComments/${plannerUserId.replace(/[.#$[\]]/g, '_')}/${day}/comments/${commentId}`);
     remove(commentRef);
   }, []);
   
   const deleteAllDailyPlannerComments = useCallback((plannerUserId: string, day: string) => {
-    remove(ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}`));
+    remove(ref(rtdb, `dailyPlannerComments/${plannerUserId.replace(/[.#$[\]]/g, '_')}/${day}`));
   }, []);
 
   const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
@@ -1301,5 +1329,6 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 

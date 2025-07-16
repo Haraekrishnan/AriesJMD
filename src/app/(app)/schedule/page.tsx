@@ -1,10 +1,11 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import CreateEventDialog from '@/components/schedule/create-event-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import ScheduleView from '@/components/schedule/schedule-view';
+import ScheduleAgendaView from '@/components/schedule/ScheduleAgendaView';
 
 export default function SchedulePage() {
     const { user, getVisibleUsers, can } = useAppContext();
@@ -41,7 +42,7 @@ export default function SchedulePage() {
                 </div>
             </div>
             
-            <ScheduleView selectedUserId={selectedUserId} />
+            <ScheduleAgendaView selectedUserId={selectedUserId} />
         </div>
     );
 }
