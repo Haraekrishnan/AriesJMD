@@ -1141,20 +1141,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { remarks, ...restOfData } = requestData;
     const comments = remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: remarks, date: new Date().toISOString() }] : [];
     
+    // Explicitly build the object to avoid undefined properties
     const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
-      ...restOfData,
       requesterId: user.id,
+      requestType: restOfData.requestType,
       status: 'Pending',
       requestDate: new Date().toISOString(),
       comments,
       viewedByRequester: false
     };
 
-    if (requestData.itemId) {
-      newRequest.itemId = requestData.itemId;
+    if (restOfData.itemId) {
+        newRequest.itemId = restOfData.itemId;
     }
-    if (requestData.utMachineId) {
-      newRequest.utMachineId = requestData.utMachineId;
+    if (restOfData.utMachineId) {
+        newRequest.utMachineId = restOfData.utMachineId;
     }
 
     set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
@@ -1447,3 +1448,5 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
 
+
+    
