@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -5,8 +6,13 @@ import CreateEventDialog from '@/components/planner/create-event-dialog';
 import PlannerCalendar from '@/components/planner/planner-calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { redirect } from 'next/navigation';
 
 export default function PlannerPage() {
+    redirect('/schedule');
+    
+    // The code below is kept to prevent breaking changes if other components depend on it,
+    // but the user will be redirected away from this page.
     const { user, getVisibleUsers, can } = useAppContext();
     const [selectedUserId, setSelectedUserId] = useState<string>(user!.id);
     

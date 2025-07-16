@@ -88,7 +88,7 @@ type AppContextType = {
   addComment: (taskId: string, commentText: string) => void;
   markTaskAsViewed: (taskId: string) => void;
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
-  getExpandedPlannerEvents: (dayToCheck: Date, userId: string) => PlannerEvent[];
+  getExpandedPlannerEvents: (month: Date, userId: string) => (PlannerEvent & { eventDate: Date })[];
   addPlannerEvent: (event: Omit<PlannerEvent, 'id' | 'comments'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
@@ -502,59 +502,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [tasks, user, addComment]);
 
-  const getExpandedPlannerEvents = useCallback((dayToCheck: Date, userId: string) => {
+  const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
     const userEvents = plannerEvents.filter(event => event.userId === userId);
     if (!userEvents.length) return [];
-    
-    const matchingEvents: PlannerEvent[] = [];
-    
-    userEvents.forEach(event => {
+  
+    const daysInMonth = eachDayOfInterval({
+      start: startOfMonth(month),
+      end: endOfMonth(month),
+    });
+  
+    const matchingEvents: (PlannerEvent & { eventDate: Date })[] = [];
+  
+    daysInMonth.forEach(dayInMonth => {
+      userEvents.forEach(event => {
         const eventStartDate = startOfDay(new Date(event.date));
         
-        // Skip events that haven't started yet
-        if (isAfter(eventStartDate, dayToCheck)) {
-            return;
+        if (isAfter(eventStartDate, dayInMonth)) {
+          return;
         }
-
+  
         let shouldAdd = false;
         switch (event.frequency) {
-            case 'once':
-                if (isSameDay(dayToCheck, eventStartDate)) {
-                    shouldAdd = true;
-                }
-                break;
-            case 'daily':
-                shouldAdd = true;
-                break;
-            case 'daily-except-sundays':
-                if (!isSunday(dayToCheck)) {
-                    shouldAdd = true;
-                }
-                break;
-            case 'weekly':
-                if (getDay(dayToCheck) === getDay(eventStartDate)) {
-                    shouldAdd = true;
-                }
-                break;
-            case 'weekends':
-                if (isSaturday(dayToCheck) || isSunday(dayToCheck)) {
-                    shouldAdd = true;
-                }
-                break;
-            case 'monthly':
-                if (getDate(dayToCheck) === getDate(eventStartDate)) {
-                    shouldAdd = true;
-                }
-                break;
+          case 'once':
+            if (isSameDay(dayInMonth, eventStartDate)) shouldAdd = true;
+            break;
+          case 'daily':
+            shouldAdd = true;
+            break;
+          case 'daily-except-sundays':
+            if (!isSunday(dayInMonth)) shouldAdd = true;
+            break;
+          case 'weekly':
+            if (getDay(dayInMonth) === getDay(eventStartDate)) shouldAdd = true;
+            break;
+          case 'weekends':
+            if (isSaturday(dayInMonth) || isSunday(dayInMonth)) shouldAdd = true;
+            break;
+          case 'monthly':
+            if (getDate(dayInMonth) === getDate(eventStartDate)) shouldAdd = true;
+            break;
         }
-
+  
         if (shouldAdd) {
-            matchingEvents.push(event);
+          matchingEvents.push({ ...event, eventDate: dayInMonth });
         }
+      });
     });
-
+  
     return matchingEvents;
   }, [plannerEvents]);
+  
 
   const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id' | 'comments'>) => {
     if (user) {
@@ -595,19 +592,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!commentId) return;
 
     const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString(), isRead: true };
-
     const updates: { [key: string]: any } = {};
     const basePath = `dailyPlannerComments/${plannerUserId.replace(/[.#$[\]]/g, '_')}/${dayKey}`;
     
     updates[`${basePath}/comments/${commentId}`] = newComment;
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
-    updates[`${basePath}/viewedBy`] = [user.id];
-    updates[`${basePath}/plannerUserId`] = plannerUserId;
-    updates[`${basePath}/day`] = dayKey;
+    
+    const existingEntry = dailyPlannerComments.find(dpc => dpc.id === `${plannerUserId}/${dayKey}`);
+    const viewedBy = existingEntry ? [...(existingEntry.viewedBy || []), user.id] : [user.id];
+    updates[`${basePath}/viewedBy`] = Array.from(new Set(viewedBy));
 
+    if (!existingEntry) {
+        updates[`${basePath}/plannerUserId`] = plannerUserId;
+        updates[`${basePath}/day`] = dayKey;
+    }
 
     update(ref(rtdb), updates);
-  }, [user]);
+  }, [user, dailyPlannerComments]);
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -1294,7 +1295,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return Array.from(notificationDays);
   }, [dailyPlannerComments, user, getVisibleUsers]);
 
-  const plannerNotificationCount = useMemo(() => unreadPlannerCommentDays.length, [unreadPlannerCommentDays]);
+  const plannerNotificationCount = useMemo(() => {
+      if (!user) return 0;
+      const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
+      const unreadComments = dailyPlannerComments.filter(dpc => 
+          visibleUserIds.has(dpc.plannerUserId) &&
+          !dpc.viewedBy?.includes(user.id)
+      );
+      return unreadComments.length;
+  }, [dailyPlannerComments, user, getVisibleUsers]);
+
   const pendingInternalRequestCount = useMemo(() => (can.approve_store_requests ? internalRequests.filter(r => r.status === 'Pending').length : 0), [internalRequests, can.approve_store_requests]);
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
@@ -1329,6 +1339,7 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 
 
