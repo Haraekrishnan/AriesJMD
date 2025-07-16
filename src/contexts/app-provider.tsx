@@ -686,6 +686,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const awardedUser = users.find(u => u.id === achievement?.userId);
 
         if (achievement && awardedUser) {
+            const isPrivileged = user.role === 'Admin' || user.role === 'Manager';
             const newAnnouncement: Partial<Announcement> = {
                 title: `Achievement Unlocked: ${achievement.title}!`,
                 content: `Congratulations to ${awardedUser.name} for receiving the "${achievement.title}" award for: ${achievement.description}.`,
@@ -1136,24 +1137,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
-    
+
     const { remarks, ...restOfData } = requestData;
     const comments = remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: remarks, date: new Date().toISOString() }] : [];
 
-    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = { 
-        ...restOfData,
-        requesterId: user.id,
-        status: 'Pending',
-        requestDate: new Date().toISOString(),
-        comments,
-        viewedByRequester: false
+    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
+      ...restOfData,
+      requesterId: user.id,
+      status: 'Pending',
+      requestDate: new Date().toISOString(),
+      comments,
+      viewedByRequester: false
     };
 
     if (requestData.itemId) {
-        newRequest.itemId = requestData.itemId;
+      newRequest.itemId = requestData.itemId;
     }
     if (requestData.utMachineId) {
-        newRequest.utMachineId = requestData.utMachineId;
+      newRequest.utMachineId = requestData.utMachineId;
     }
 
     set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
