@@ -26,8 +26,13 @@ export default function AnnouncementFeed() {
                     <AlertDescription className="text-blue-800 dark:text-blue-300">
                         {announcement.content}
                     </AlertDescription>
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setHiddenIds(prev => [...prev, announcement.id])}>
-                        <X className="h-5 w-5 text-blue-800 dark:text-blue-300"/>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-2 right-2 h-7 w-7 text-blue-800 hover:bg-blue-200/50 dark:text-blue-300 dark:hover:bg-blue-800/50" 
+                        onClick={() => setHiddenIds(prev => [...prev, announcement.id])}
+                    >
+                        <X className="h-5 w-5" />
                     </Button>
                 </Alert>
             ))}
