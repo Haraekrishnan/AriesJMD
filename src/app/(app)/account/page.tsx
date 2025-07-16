@@ -192,12 +192,13 @@ export default function AccountPage() {
               <div className="space-y-2">
                 <Label htmlFor="logo-upload">Application Logo</Label>
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 rounded-md">
-                    <AvatarImage src={newAppLogo || undefined} alt="App Logo" />
-                    <AvatarFallback className="rounded-md bg-muted">
-                      <Layers className="h-8 w-8 text-muted-foreground" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="h-16 w-16 rounded-md border flex items-center justify-center bg-card">
+                    {newAppLogo ? (
+                        <img src={newAppLogo} alt="App Logo" className="h-full w-full object-contain rounded-md" />
+                    ) : (
+                        <Layers className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
                   <Input id="logo-upload" type="file" onChange={handleLogoFileChange} accept="image/*" />
                 </div>
               </div>
