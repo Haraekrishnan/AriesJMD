@@ -33,7 +33,7 @@ import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount } = useAppContext();
+  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingCertRequestCount, myFulfilledCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount } = useAppContext();
   
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0 },
@@ -47,7 +47,7 @@ export function AppSidebar() {
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0 },
     { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0 },
-    { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0 },
+    { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: pendingAchievementCount },
     { href: '/reports', icon: FileText, label: 'Reports', notificationCount: 0 },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0 },
   ];
