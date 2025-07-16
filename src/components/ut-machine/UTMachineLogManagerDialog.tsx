@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
@@ -14,6 +14,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
+
 
 const logSchema = z.object({
   date: z.string().min(1, 'Date is required'),
@@ -21,6 +23,7 @@ const logSchema = z.object({
   toTime: z.string().min(1, 'End time is required'),
   location: z.string().min(1, 'Location is required'),
   jobDescription: z.string().min(1, 'Description is required'),
+  userName: z.string().min(1, 'User name is required'),
 });
 type LogFormValues = z.infer<typeof logSchema>;
 
@@ -31,7 +34,7 @@ interface UTMachineLogManagerDialogProps {
 }
 
 export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }: UTMachineLogManagerDialogProps) {
-  const { user, users, addMachineLog, getMachineLogs } = useAppContext();
+  const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
   const { toast } = useToast();
   
   const machineLogs = getMachineLogs(machine.id);
@@ -44,22 +47,29 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
       toTime: '17:00',
       location: '',
       jobDescription: '',
+      userName: '',
     },
   });
 
   const onSubmit = (data: LogFormValues) => {
     if (!user) return;
-    addMachineLog({ ...data, machineId: machine.id, userId: user.id });
+    addMachineLog({ ...data, machineId: machine.id, loggedByUserId: user.id });
     toast({
       title: 'Log Added',
       description: 'The usage log has been successfully recorded.',
     });
     form.reset();
   };
+  
+  const handleDelete = (logId: string) => {
+    deleteMachineLog(logId);
+    toast({ title: 'Log Deleted', variant: 'destructive' });
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Usage Log Manager: {machine.machineName}</DialogTitle>
           <DialogDescription>Add new usage logs and view past entries for this machine.</DialogDescription>
@@ -83,6 +93,10 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                         </div>
                     </div>
                      <div className="space-y-2">
+                        <Label htmlFor="userName">User Name</Label>
+                        <Input id="userName" {...form.register('userName')} placeholder="Enter name of person who used it" />
+                    </div>
+                     <div className="space-y-2">
                         <Label htmlFor="location">Location / Project</Label>
                         <Input id="location" {...form.register('location')} />
                     </div>
@@ -99,19 +113,45 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Date</TableHead>
+                                <TableHead>Job & Date</TableHead>
                                 <TableHead>User</TableHead>
-                                <TableHead>Job</TableHead>
+                                <TableHead className="text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {machineLogs.map(log => {
-                                const logUser = users.find(u => u.id === log.userId);
+                                const loggedByUser = users.find(u => u.id === log.loggedByUserId);
                                 return (
                                     <TableRow key={log.id}>
-                                        <TableCell>{format(new Date(log.date), 'dd MMM yyyy')}</TableCell>
-                                        <TableCell>{logUser?.name}</TableCell>
-                                        <TableCell>{log.jobDescription}</TableCell>
+                                        <TableCell>
+                                            <p className="font-medium">{log.jobDescription}</p>
+                                            <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
+                                        </TableCell>
+                                        <TableCell>
+                                            <p className="font-medium">{log.userName}</p>
+                                            <p className="text-xs text-muted-foreground">Logged by: {loggedByUser?.name}</p>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {user?.role === 'Admin' && (
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                                            <Trash2 className="h-4 w-4"/>
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Delete Log Entry?</AlertDialogTitle>
+                                                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(log.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 )
                             })}

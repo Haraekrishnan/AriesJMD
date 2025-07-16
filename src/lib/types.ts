@@ -351,7 +351,8 @@ export type OtherEquipment = {
 export type MachineLog = {
     id: string;
     machineId: string;
-    userId: string;
+    userName: string;
+    loggedByUserId: string;
     date: string; // YYYY-MM-DD
     fromTime: string; // HH:mm
     toTime: string; // HH:mm
@@ -428,5 +429,3 @@ export type Building = {
   rooms: Room[];
 };
 
-
-    
