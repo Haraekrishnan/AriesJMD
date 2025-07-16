@@ -3,12 +3,15 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import useLocalStorage from '@/hooks/use-local-storage';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, OtherEquipment, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter } from 'date-fns';
 import { USERS, TASKS, PLANNER_EVENTS, ACHIEVEMENTS, ROLES, PROJECTS, ACTIVITY_LOGS, VEHICLES, DRIVERS, INCIDENTS, MANPOWER_LOGS, MANPOWER_PROFILES, INTERNAL_REQUESTS, MANAGEMENT_REQUESTS, INVENTORY_ITEMS, UT_MACHINES, CERTIFICATE_REQUESTS, DFT_MACHINES, MOBILE_SIMS, OTHER_EQUIPMENTS, ANNOUNCEMENTS, DAILY_PLANNER_COMMENTS, BUILDINGS } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { rtdb } from '@/lib/firebase';
+import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import useLocalStorage from '@/hooks/use-local-storage';
+
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -176,10 +179,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useLocalStorage<User | null>('aries-user-v8', null);
-  const [users, setUsers] = useLocalStorage<User[]>('aries-users-v8', USERS);
-  const [roles, setRoles] = useLocalStorage<RoleDefinition[]>('aries-roles-v8', ROLES);
-  const [tasks, setTasks] = useLocalStorage<Task[]>('aries-tasks-v8', TASKS);
-  const [projects, setProjects] = useLocalStorage<Project[]>('aries-projects-v8', PROJECTS);
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<RoleDefinition[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [plannerEvents, setPlannerEvents] = useLocalStorage<PlannerEvent[]>('aries-events-v8', PLANNER_EVENTS);
   const [dailyPlannerComments, setDailyPlannerComments] = useLocalStorage<DailyPlannerComment[]>('aries-daily-planner-comments-v8', DAILY_PLANNER_COMMENTS);
   const [achievements, setAchievements] = useLocalStorage<Achievement[]>('aries-achievements-v8', ACHIEVEMENTS);
@@ -208,7 +211,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    if (!rtdb) {
+      console.error("Firebase Realtime Database is not initialized.");
+      setLoading(false);
+      return;
+    }
+  
+    setLoading(true);
+  
+    const setupListener = (path: string, setter: Function, initialData: any[]) => {
+      const dbRef = ref(rtdb, path);
+      const unsubscribe = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          // Convert Firebase object to array
+          const dataArray = Object.keys(data).map(key => ({
+            id: key,
+            ...data[key]
+          }));
+          setter(dataArray);
+        } else {
+          // If no data, seed with mock data
+          initialData.forEach(item => {
+            const { id, ...rest } = item;
+            set(ref(rtdb, `${path}/${id}`), rest);
+          });
+          setter(initialData);
+        }
+      });
+      return unsubscribe;
+    };
+  
+    const listeners = [
+      setupListener('users', setUsers, USERS),
+      setupListener('roles', setRoles, ROLES),
+      setupListener('tasks', setTasks, TASKS),
+      setupListener('projects', setProjects, PROJECTS),
+    ];
+  
     setLoading(false);
+  
+    // Cleanup listeners on component unmount
+    return () => {
+      listeners.forEach(unsubscribe => unsubscribe());
+    };
   }, []);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
@@ -236,9 +282,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, setUser, router]);
   
   const updateUser = useCallback((updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    const { id, ...data } = updatedUser;
+    update(ref(rtdb, `users/${id}`), data);
     if (user?.id === updatedUser.id) setUser(updatedUser);
-  }, [user, setUsers, setUser]);
+  }, [user, setUser]);
 
   const updateProfile = useCallback((name: string, email: string, avatar: string, password?: string) => {
     if (user) {
@@ -270,9 +317,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
     if(!user) return;
     const { assigneeId, ...rest } = taskData;
-    const newTask: Task = {
+    const tasksRef = ref(rtdb, 'tasks');
+    const newTaskRef = push(tasksRef);
+    const newTask: Omit<Task, 'id'> = {
         ...rest,
-        id: `task-${Date.now()}`,
         creatorId: user.id,
         status: 'To Do',
         assigneeId: assigneeId,
@@ -281,98 +329,150 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isViewedByAssignee: false,
         approvalState: 'none'
     };
-    setTasks(prev => [newTask, ...prev]);
+    set(newTaskRef, newTask);
     const assignee = users.find(u => u.id === newTask.assigneeId);
     addActivityLog(user.id, 'Task Created', `Task "${newTask.title}" for ${assignee?.name}`);
-  }, [user, setTasks, users, addActivityLog]);
+  }, [user, users, addActivityLog]);
 
   const updateTask = useCallback((taskData: Task) => {
-    setTasks(prev => prev.map(t => (t.id === taskData.id ? taskData : t)));
+    const { id, ...data } = taskData;
+    update(ref(rtdb, `tasks/${id}`), data);
     addActivityLog(user!.id, 'Task Updated', `Task: "${taskData.title}"`);
-  }, [user, setTasks, addActivityLog]);
+  }, [user, addActivityLog]);
 
   const deleteTask = useCallback((taskId: string) => {
     const taskToDelete = tasks.find(t => t.id === taskId);
     if(taskToDelete) {
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+      remove(ref(rtdb, `tasks/${taskId}`));
       addActivityLog(user!.id, 'Task Deleted', `Task: "${taskToDelete.title}"`);
     }
-  }, [user, tasks, setTasks, addActivityLog]);
+  }, [user, tasks, addActivityLog]);
   
   const addComment = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: [...(t.comments || []), newComment] } : t));
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
+    set(newCommentRef, newComment);
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
-  }, [user, setTasks, addActivityLog]);
+  }, [user, addActivityLog]);
 
   const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, commentText: string, attachment?: Task['attachment']) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Pending Approval', approvalState: 'pending', previousStatus: t.status, pendingStatus: newStatus, attachment: attachment || t.attachment, comments: [...(t.comments || []), newComment] } : t));
+    
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
+    set(newCommentRef, newComment);
+
+    const updates: Partial<Task> = { 
+        status: 'Pending Approval', 
+        approvalState: 'pending', 
+        previousStatus: task.status, 
+        pendingStatus: newStatus,
+        attachment: attachment || task.attachment
+    };
+    update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
-  }, [user, tasks, setTasks, addActivityLog]);
+  }, [user, tasks, addActivityLog]);
 
   const approveTaskStatusChange = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    setTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        if (t.pendingAssigneeId) { // Reassignment
-          addActivityLog(user.id, 'Task Reassignment Approved', `Task "${t.title}" to ${users.find(u => u.id === t.pendingAssigneeId)?.name}`);
-          return { ...t, assigneeId: t.pendingAssigneeId, assigneeIds: [t.pendingAssigneeId], pendingAssigneeId: undefined, status: 'To Do', approvalState: 'none', isViewedByAssignee: false, comments: [...(t.comments || []), newComment] };
-        } else { // Status change
-          addActivityLog(user.id, 'Task Status Change Approved', `Task "${t.title}" to ${t.pendingStatus}`);
-          return { ...t, status: t.pendingStatus || t.status, completionDate: t.pendingStatus === 'Completed' ? new Date().toISOString() : t.completionDate, pendingStatus: undefined, previousStatus: undefined, approvalState: 'approved', comments: [...(t.comments || []), newComment] };
-        }
-      }
-      return t;
-    }));
-  }, [user, tasks, users, setTasks, addActivityLog]);
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
+    set(newCommentRef, newComment);
+
+    const updates: Partial<Task> = {};
+
+    if (task.pendingAssigneeId) { // Reassignment
+      updates.assigneeId = task.pendingAssigneeId;
+      updates.assigneeIds = [task.pendingAssigneeId];
+      updates.pendingAssigneeId = undefined;
+      updates.status = 'To Do';
+      updates.approvalState = 'none';
+      updates.isViewedByAssignee = false;
+      addActivityLog(user.id, 'Task Reassignment Approved', `Task "${task.title}" to ${users.find(u => u.id === task.pendingAssigneeId)?.name}`);
+    } else { // Status change
+      updates.status = task.pendingStatus || task.status;
+      if (task.pendingStatus === 'Completed') updates.completionDate = new Date().toISOString();
+      updates.pendingStatus = undefined;
+      updates.previousStatus = undefined;
+      updates.approvalState = 'approved';
+      addActivityLog(user.id, 'Task Status Change Approved', `Task "${task.title}" to ${updates.status}`);
+    }
+
+    update(ref(rtdb, `tasks/${taskId}`), updates);
+  }, [user, tasks, users, addActivityLog]);
 
   const returnTaskStatusChange = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: t.previousStatus || 'To Do', pendingStatus: undefined, previousStatus: undefined, pendingAssigneeId: undefined, approvalState: 'returned', comments: [...(t.comments || []), newComment] } : t));
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
+    set(newCommentRef, newComment);
+    
+    const updates: Partial<Task> = { 
+      status: task.previousStatus || 'To Do', 
+      pendingStatus: undefined, 
+      previousStatus: undefined, 
+      pendingAssigneeId: undefined, 
+      approvalState: 'returned' 
+    };
+    update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Request Returned', `Task: "${task.title}"`);
-  }, [user, tasks, setTasks, addActivityLog]);
+  }, [user, tasks, addActivityLog]);
   
   const requestTaskReassignment = useCallback((taskId: string, newAssigneeId: string, commentText: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newComment: Comment = { id: `comment-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Pending Approval', approvalState: 'pending', previousStatus: t.status, pendingAssigneeId: newAssigneeId, comments: [...(t.comments || []), newComment] } : t));
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
+    set(newCommentRef, newComment);
+    
+    const updates: Partial<Task> = {
+      status: 'Pending Approval',
+      approvalState: 'pending',
+      previousStatus: task.status,
+      pendingAssigneeId: newAssigneeId
+    };
+    update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Reassignment Requested', `Task "${task.title}" to ${users.find(u => u.id === newAssigneeId)?.name}`);
-  }, [user, tasks, users, setTasks, addActivityLog]);
+  }, [user, tasks, users, addActivityLog]);
 
   const markTaskAsViewed = useCallback((taskId: string) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isViewedByAssignee: true } : t));
-  }, [setTasks]);
+    update(ref(rtdb, `tasks/${taskId}`), { isViewedByAssignee: true });
+  }, []);
 
   const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
-    updateTask({ ...tasks.find(t => t.id === taskId)!, status: newStatus });
-  }, [tasks, updateTask]);
+    update(ref(rtdb, `tasks/${taskId}`), { status: newStatus });
+  }, []);
 
   const submitTaskForApproval = useCallback((taskId: string) => {
-    updateTask({ ...tasks.find(t => t.id === taskId)!, status: 'Pending Approval' });
-  }, [tasks, updateTask]);
+    update(ref(rtdb, `tasks/${taskId}`), { status: 'Pending Approval' });
+  }, []);
 
   const approveTask = useCallback((taskId: string, comment?: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if(task) updateTask({ ...task, status: 'Done', comments: comment ? [...task.comments, { id: `c-${Date.now()}`, userId: user!.id, text: comment, date: new Date().toISOString(), isRead: false }] : task.comments });
-  }, [tasks, user, updateTask]);
+    if(task && user) {
+        if(comment) addComment(taskId, comment);
+        update(ref(rtdb, `tasks/${taskId}`), { status: 'Done' });
+    }
+  }, [tasks, user, addComment]);
 
   const returnTask = useCallback((taskId: string, comment: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if(task) updateTask({ ...task, status: 'In Progress', comments: [...task.comments, { id: `c-${Date.now()}`, userId: user!.id, text: comment, date: new Date().toISOString(), isRead: false }] });
-  }, [tasks, user, updateTask]);
+    if(task && user) {
+        addComment(taskId, comment);
+        update(ref(rtdb, `tasks/${taskId}`), { status: 'In Progress' });
+    }
+  }, [tasks, user, addComment]);
 
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
     const userEvents = plannerEvents.filter(event => event.userId === userId);
@@ -470,40 +570,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setAchievements]);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
-    setUsers(prev => [...prev, { ...userData, id: `user-${Date.now()}`, avatar: `https://placehold.co/100x100.png` }]);
-  }, [setUsers]);
+    const usersRef = ref(rtdb, 'users');
+    const newUserRef = push(usersRef);
+    set(newUserRef, { ...userData, avatar: `https://placehold.co/100x100.png` });
+  }, []);
   
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, planningScore: score } : u));
-  }, [setUsers]);
+    update(ref(rtdb, `users/${userId}`), { planningScore: score });
+  }, []);
 
   const deleteUser = useCallback((userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-  }, [setUsers]);
+    remove(ref(rtdb, `users/${userId}`));
+  }, []);
 
   const addRole = useCallback((newRole: Omit<RoleDefinition, 'id'| 'isEditable'>) => {
-    setRoles(prev => [...prev, { ...newRole, id: `role-${Date.now()}`, isEditable: true }]);
-  }, [setRoles]);
+    const rolesRef = ref(rtdb, 'roles');
+    const newRoleRef = push(rolesRef);
+    set(newRoleRef, { ...newRole, isEditable: true });
+  }, []);
 
   const updateRole = useCallback((updatedRole: RoleDefinition) => {
-    setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
-  }, [setRoles]);
+    const { id, ...data } = updatedRole;
+    update(ref(rtdb, `roles/${id}`), data);
+  }, []);
 
   const deleteRole = useCallback((roleId: string) => {
-    setRoles(prev => prev.filter(r => r.id !== roleId));
-  }, [setRoles]);
+    remove(ref(rtdb, `roles/${roleId}`));
+  }, []);
 
   const addProject = useCallback((projectName: string) => {
-    setProjects(prev => [...prev, { id: `project-${Date.now()}`, name: projectName }]);
-  }, [setProjects]);
+    const projectsRef = ref(rtdb, 'projects');
+    const newProjectRef = push(projectsRef);
+    set(newProjectRef, { name: projectName });
+  }, []);
 
   const updateProject = useCallback((updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-  }, [setProjects]);
+    const { id, ...data } = updatedProject;
+    update(ref(rtdb, `projects/${id}`), data);
+  }, []);
 
   const deleteProject = useCallback((projectId: string) => {
-    setProjects(prev => prev.filter(p => p.id !== projectId));
-  }, [setProjects]);
+    remove(ref(rtdb, `projects/${projectId}`));
+  }, []);
 
   const addVehicle = useCallback((vehicle: Omit<Vehicle, 'id'>) => {
     setVehicles(prev => [...prev, { id: `vehicle-${Date.now()}`, ...vehicle }]);
