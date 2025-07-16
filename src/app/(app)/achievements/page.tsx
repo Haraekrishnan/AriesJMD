@@ -107,9 +107,9 @@ export default function AchievementsPage() {
   }, [achievements]);
 
   const pendingAchievements = useMemo(() => {
-    if (!can.manage_achievements || !user) return [];
+    if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) return [];
     return achievements.filter(ach => ach.status === 'pending' && ach.awardedById !== user.id);
-  }, [achievements, can.manage_achievements, user]);
+  }, [achievements, user]);
 
   const handleApproveClick = (achievement: Achievement) => {
     setAchievementToApprove(achievement);
