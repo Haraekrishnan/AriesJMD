@@ -1023,7 +1023,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-    const existingComments = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+    const existingComments = Array.isArray(request.comments) ? request.comments : [];
     
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/status`] = status;
@@ -1058,12 +1058,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
     if (user) {
-        const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-        set(newCommentRef, newComment);
-        update(ref(rtdb, `managementRequests/${requestId}`), { status, viewedByRequester: false });
+        const request = managementRequests.find(r => r.id === requestId);
+        if (!request) return;
+
+        const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+        const existingComments = Array.isArray(request.comments) ? request.comments : [];
+
+        const updates: { [key: string]: any } = {};
+        updates[`managementRequests/${requestId}/status`] = status;
+        updates[`managementRequests/${requestId}/viewedByRequester`] = false;
+        updates[`managementRequests/${requestId}/comments`] = [...existingComments, newComment];
+
+        update(ref(rtdb), updates);
     }
-  }, [user]);
+  }, [user, managementRequests]);
 
   const markManagementRequestAsViewed = useCallback((requestId: string) => {
     update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
@@ -1326,7 +1334,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return dailyPlannerComments
         .filter(dpc => {
              const plannerUserId = dpc.id.split('_')[1];
-             return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
+             return plannerOwnerId === user.id && !dpc.viewedBy?.includes(user.id);
         })
         .map(dpc => dpc.id);
   }, [dailyPlannerComments, user]);
@@ -1342,12 +1350,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [dailyPlannerComments, user]);
 
   const pendingInternalRequestCount = useMemo(() => {
-    if (!user || !can.approve_store_requests) return 0;
-    const isStorePersonnel = user.role === 'Store in Charge' || user.role === 'Assistant Store Incharge';
+    if (!user) return 0;
+    const storeRoles = ['Store in Charge', 'Assistant Store Incharge'];
+    const isStorePersonnel = storeRoles.includes(user.role) && can.approve_store_requests;
     if (!isStorePersonnel) return 0;
     
     return internalRequests.filter(r => r.status === 'Pending').length;
-  }, [internalRequests, user, can.approve_store_requests]);
+  }, [internalRequests, user, can.approve_store_requests, roles]);
 
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
@@ -1393,6 +1402,7 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 
 

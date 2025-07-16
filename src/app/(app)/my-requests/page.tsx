@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -18,20 +19,30 @@ export default function MyRequestsPage() {
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
 
-    const isApprover = useMemo(() => {
+    const isStoreApprover = useMemo(() => {
         if (!user) return false;
         const userRole = roles.find(r => r.name === user.role);
         return userRole?.permissions.includes('approve_store_requests');
     }, [user, roles]);
 
+    const isManagementApprover = useMemo(() => {
+        if (!user) return false;
+        const managementRoles = ['Admin', 'Manager', 'Supervisor'];
+        return managementRoles.includes(user.role);
+    }, [user]);
+
     const visibleInternalRequests = useMemo(() => {
         if (!user) return [];
-        return internalRequests.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [internalRequests, user]);
+        return internalRequests
+            .filter(req => req.requesterId === user.id || isStoreApprover)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [internalRequests, user, isStoreApprover]);
     
     const visibleManagementRequests = useMemo(() => {
         if (!user) return [];
-        return managementRequests.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return managementRequests
+            .filter(req => req.requesterId === user.id || req.recipientId === user.id)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [managementRequests, user]);
 
     return (
