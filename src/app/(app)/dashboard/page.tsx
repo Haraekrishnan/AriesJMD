@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -22,7 +23,7 @@ export default function DashboardPage() {
     return allTasks.filter(task => task.assigneeIds.some(id => visibleUserIds.has(id)));
   }, [allTasks, visibleUserIds]);
 
-  const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done').length, [visibleTasks]);
+  const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length, [visibleTasks]);
   const openTasks = useMemo(() => visibleTasks.length - completedTasks, [visibleTasks, completedTasks]);
   
   const avgTasksPerPerson = useMemo(() => {
@@ -72,21 +73,10 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <TasksCompletedChart tasks={visibleTasks} />
         <TeamTaskDistributionChart tasks={visibleTasks} users={visibleUsers} />
       </div>
     </div>
   );
-  useEffect(() => {
-    const tasksRef = ref(rtdb, 'tasks');
-    const unsub = onValue(tasksRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const parsedTasks = Object.entries(data).map(([id, val]) => ({ id, ...val }));
-      setTasks(parsedTasks); // your context's setter
-    });
-  
-    return () => unsub();
-  }, []);
-  
 }
