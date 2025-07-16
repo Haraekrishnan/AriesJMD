@@ -161,6 +161,7 @@ type AppContextType = {
   deleteOtherEquipment: (itemId: string) => void;
   addMachineLog: (log: Omit<MachineLog, 'id'>) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
+  updateBranding: (name: string, logo: string | null) => void;
   addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => void;
   updateAnnouncement: (announcement: Announcement) => void;
   approveAnnouncement: (announcementId: string) => void;
@@ -438,7 +439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (task.pendingAssigneeId) { // Reassignment
       updates.assigneeId = task.pendingAssigneeId;
       updates.assigneeIds = [task.pendingAssigneeId];
-      updates.pendingAssigneeId = undefined;
+      updates.pendingAssigneeId = null;
       updates.status = 'To Do';
       updates.approvalState = 'none';
       updates.isViewedByAssignee = false;
@@ -446,8 +447,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else { // Status change
       updates.status = task.pendingStatus || task.status;
       if (task.pendingStatus === 'Completed') updates.completionDate = new Date().toISOString();
-      updates.pendingStatus = undefined;
-      updates.previousStatus = undefined;
+      updates.pendingStatus = null;
+      updates.previousStatus = null;
       updates.approvalState = 'approved';
       addActivityLog(user.id, 'Task Status Change Approved', `Task "${updates.status}"`);
     }
@@ -1024,7 +1025,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-    const existingComments = Array.isArray(request.comments) ? request.comments : [];
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
     
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/status`] = status;
@@ -1070,7 +1071,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!request) return;
 
         const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-        const existingComments = Array.isArray(request.comments) ? request.comments : [];
+        const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
 
         const updates: { [key: string]: any } = {};
         updates[`managementRequests/${requestId}/status`] = status;
@@ -1350,21 +1351,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const plannerNotificationCount = useMemo(() => {
     if (!user) return 0;
     const myUnreadComments = dailyPlannerComments.filter(dpc => {
-      const plannerOwnerId = dpc.plannerUserId;
+      const plannerUserId = dpc.plannerUserId;
       // Notify me if a comment is on my planner and I haven't seen it yet.
-      return plannerOwnerId === user.id && !dpc.viewedBy?.includes(user.id);
+      return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
     });
     return myUnreadComments.length;
   }, [dailyPlannerComments, user]);
 
   const pendingInternalRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles = ['Store in Charge', 'Assistant Store Incharge'];
-    const isStorePersonnel = storeRoles.includes(user.role) && can.approve_store_requests;
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
+    const isStorePersonnel = storeRoles.includes(user.role);
     if (!isStorePersonnel) return 0;
     
     return internalRequests.filter(r => r.status === 'Pending').length;
-  }, [internalRequests, user, can.approve_store_requests, roles]);
+  }, [internalRequests, user]);
 
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
@@ -1410,6 +1411,7 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 
 
