@@ -1148,7 +1148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       status: 'Pending',
       requestDate: new Date().toISOString(),
       comments,
-      viewedByRequester: false
+      viewedByRequester: true
     };
 
     if (restOfData.itemId) {
@@ -1311,15 +1311,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
     if(user) {
         const isPrivileged = user.role === 'Admin' || user.role === 'Manager';
-        const newAnnouncement: Announcement = { 
-            ...data, 
-            id: `ann-${Date.now()}`, 
+        const newAnnouncement: Partial<Announcement> = { 
+            ...data,
             creatorId: user.id, 
-            approverId: isPrivileged ? user.id : (user.supervisorId || ''), 
             status: isPrivileged ? 'approved' : 'pending', 
             createdAt: new Date().toISOString(), 
             comments: [] 
         };
+        if (!isPrivileged) {
+          newAnnouncement.approverId = user.supervisorId || '';
+        }
+
         const newRef = push(ref(rtdb, 'announcements'));
         set(newRef, newAnnouncement);
     }
@@ -1374,7 +1376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const pendingCertRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
     if (!storeRoles.includes(user.role)) return 0;
     return certificateRequests.filter(req => req.status === 'Pending').length;
   }, [certificateRequests, user]);

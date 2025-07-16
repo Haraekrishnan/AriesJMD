@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
 import { format, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
-import InventoryReportDownloads from './InventoryReportDownloads';
 import RequestCertificateDialog from './RequestCertificateDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -66,9 +65,6 @@ export default function InventoryTable({ items }: InventoryTableProps) {
 
     return (
         <>
-            <div className="flex justify-end mb-4">
-                <InventoryReportDownloads items={items}/>
-            </div>
             <Accordion type="multiple" className="w-full space-y-2">
                 {Object.entries(groupedItems).map(([itemName, itemList]) => (
                     <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">

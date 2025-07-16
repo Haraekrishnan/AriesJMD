@@ -1,14 +1,26 @@
 'use client';
 import { useState } from 'react';
+import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/app-provider';
 import type { InventoryItemStatus } from '@/lib/types';
 import { X } from 'lucide-react';
+import InventoryReportDownloads from './InventoryReportDownloads';
+import type { InventoryItem } from '@/lib/types';
+
+
+export interface InventoryFilterValues {
+    name: string;
+    status: string;
+    projectId: string;
+    search: string;
+}
 
 interface InventoryFiltersProps {
-  onApplyFilters: (filters: { name: string, status: string, projectId: string, search: string }) => void;
+  onApplyFilters: (filters: InventoryFilterValues) => void;
+  filteredItems: InventoryItem[];
 }
 
 const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Expired', label: string}[] = [
@@ -20,7 +32,7 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
     { value: 'TP Expired', label: 'TP Expired' },
 ];
 
-export default function InventoryFilters({ onApplyFilters }: InventoryFiltersProps) {
+export default function InventoryFilters({ onApplyFilters, filteredItems }: InventoryFiltersProps) {
     const { projects, inventoryItems } = useAppContext();
     const [name, setName] = useState('all');
     const [status, setStatus] = useState('all');
@@ -56,6 +68,7 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
             <div className="flex gap-2 ml-auto">
                 <Button onClick={handleApply}>Apply</Button>
                 <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
+                <InventoryReportDownloads items={filteredItems} />
             </div>
         </div>
     );

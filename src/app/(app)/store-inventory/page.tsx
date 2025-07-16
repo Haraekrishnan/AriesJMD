@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -13,7 +14,6 @@ import type { InventoryItem, CertificateRequest, Role } from '@/lib/types';
 import { isAfter, isBefore, addDays, parseISO } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
-import InventoryReportDownloads from '@/components/inventory/InventoryReportDownloads';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -89,8 +89,8 @@ export default function StoreInventoryPage() {
         return Object.entries(data).map(([name, counts]) => ({ name, ...counts }));
     }, [filteredItems, projects]);
 
-    const pendingCertRequestsForMe = useMemo(() => canManageInventory ? certificateRequests.filter(req => req.status === 'Pending') : [], [certificateRequests, canManageInventory]);
-    const myCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id), [certificateRequests, user]);
+    const pendingCertRequestsForMe = useMemo(() => canManageInventory ? certificateRequests.filter(req => req.status === 'Pending' && req.itemId) : [], [certificateRequests, canManageInventory]);
+    const myCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.itemId), [certificateRequests, user]);
     const myFulfilledCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.status === 'Completed' && !req.viewedByRequester && req.itemId), [certificateRequests, user]);
 
 
@@ -166,8 +166,7 @@ export default function StoreInventoryPage() {
                     <CardContent className="space-y-3">
                         {myFulfilledCertRequests.map(req => {
                             const item = inventoryItems.find(i => i.id === req.itemId);
-                            const machine = utMachines.find(m => m.id === req.utMachineId);
-                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : (machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown');
+                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : 'Unknown';
                             const lastComment = req.comments?.[req.comments.length - 1];
                             const fulfiller = users.find(u => u.id === lastComment?.userId);
                             return (
@@ -205,8 +204,7 @@ export default function StoreInventoryPage() {
                          {pendingCertRequestsForMe.map(req => {
                             const requester = users.find(u => u.id === req.requesterId);
                             const item = inventoryItems.find(i => i.id === req.itemId);
-                            const machine = utMachines.find(m => m.id === req.utMachineId);
-                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : (machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown');
+                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : 'Unknown';
 
                             return (
                                 <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
@@ -228,8 +226,7 @@ export default function StoreInventoryPage() {
                     <CardContent className="space-y-4">
                          {myCertRequests.map(req => {
                             const item = inventoryItems.find(i => i.id === req.itemId);
-                            const machine = utMachines.find(m => m.id === req.utMachineId);
-                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : (machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown');
+                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : 'Unknown';
                             return (
                                 <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
                                     <div><p><span className="font-semibold">{req.requestType}</span> for <span className="font-semibold">{subject}</span></p><p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p></div>
@@ -245,10 +242,7 @@ export default function StoreInventoryPage() {
                 <CardHeader>
                    <div className='flex justify-between items-center'>
                      {view === 'list' && (
-                        <>
-                            <InventoryFilters onApplyFilters={setFilters} />
-                            <InventoryReportDownloads items={filteredItems} />
-                        </>
+                        <InventoryFilters onApplyFilters={setFilters} />
                      )}
                      {view === 'summary' && <CardTitle>Inventory Summary</CardTitle>}
                    </div>
