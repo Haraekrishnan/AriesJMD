@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -614,7 +615,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
     const existingViewedBy = existingEntry?.viewedBy || [];
     
-    // Only the author has viewed it initially.
     updates[`${basePath}/viewedBy`] = [user.id];
   
     if (!existingEntry) {
@@ -1299,29 +1299,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const unreadPlannerCommentDays = useMemo(() => {
     if (!user) return [];
-    const notificationDays = new Set<string>();
-    const visibleUsers = getVisibleUsers();
-    dailyPlannerComments.forEach(dpc => {
-      // Ensure 'viewedBy' exists and is an array before checking
-      const viewedBy = dpc.viewedBy || [];
-      const plannerUserId = dpc.id.split('_')[1];
-      if (visibleUsers.some(u => u.id === plannerUserId) && !viewedBy.includes(user.id)) {
-        notificationDays.add(dpc.id);
-      }
-    });
-    return Array.from(notificationDays);
-  }, [dailyPlannerComments, user, getVisibleUsers]);
+    return dailyPlannerComments
+        .filter(dpc => {
+            const plannerUserId = dpc.id.split('_')[1];
+            // Notify me if it's my planner and I haven't seen the comments.
+            return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
+        })
+        .map(dpc => dpc.id);
+  }, [dailyPlannerComments, user]);
 
   const plannerNotificationCount = useMemo(() => {
-      if (!user) return 0;
-      const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
-      const unreadComments = dailyPlannerComments.filter(dpc => {
-          const plannerId = dpc.id.split('_')[1];
-          return visibleUserIds.has(plannerId) &&
-          !dpc.viewedBy?.includes(user.id)
-      });
-      return unreadComments.length;
-  }, [dailyPlannerComments, user, getVisibleUsers]);
+      return unreadPlannerCommentDays.length;
+  }, [unreadPlannerCommentDays]);
 
   const pendingInternalRequestCount = useMemo(() => (can.approve_store_requests ? internalRequests.filter(r => r.status === 'Pending').length : 0), [internalRequests, can.approve_store_requests]);
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
@@ -1358,3 +1347,6 @@ export const useAppContext = (): AppContextType => {
 
     
 
+
+
+    
