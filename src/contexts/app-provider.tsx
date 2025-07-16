@@ -551,7 +551,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPlannerEventComment = useCallback((eventId: string, text: string) => {
     if(user) {
         const newCommentRef = push(ref(rtdb, `plannerEvents/${eventId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
         set(newCommentRef, newComment);
     }
   }, [user]);
@@ -874,11 +874,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
       
+      const existingComments = Array.isArray(incident.comments) 
+        ? incident.comments 
+        : Object.values(incident.comments || {});
+
       const updatedIncident = {
           ...incident,
           lastUpdated: now,
           viewedBy: [user.id],
-          comments: [...(incident.comments || []), newComment]
+          comments: [...existingComments, newComment]
       };
       
       const { id, ...data } = updatedIncident;
