@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,6 +16,7 @@ import type { Vehicle } from '@/lib/types';
 const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
   driverId: z.string().min(1, 'Please select a driver'),
+  seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
   vapValidity: z.string().optional(),
   insuranceValidity: z.string().optional(),
   fitnessValidity: z.string().optional(),
@@ -31,7 +33,7 @@ interface EditVehicleDialogProps {
 }
 
 export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVehicleDialogProps) {
-  const { updateVehicle, users } = useAppContext();
+  const { updateVehicle, drivers } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<VehicleFormValues>({
@@ -43,6 +45,7 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
         form.reset({
             vehicleNumber: vehicle.vehicleNumber,
             driverId: vehicle.driverId,
+            seatingCapacity: vehicle.seatingCapacity,
             vapValidity: vehicle.vapValidity,
             insuranceValidity: vehicle.insuranceValidity,
             fitnessValidity: vehicle.fitnessValidity,
@@ -76,12 +79,18 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
           <DialogDescription>Update the details for vehicle {vehicle.vehicleNumber}.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="vehicleNumber">Vehicle Number</Label>
-            <Input id="vehicleNumber" {...form.register('vehicleNumber')} />
-            {form.formState.errors.vehicleNumber && <p className="text-xs text-destructive">{form.formState.errors.vehicleNumber.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="vehicleNumber">Vehicle Number</Label>
+              <Input id="vehicleNumber" {...form.register('vehicleNumber')} />
+              {form.formState.errors.vehicleNumber && <p className="text-xs text-destructive">{form.formState.errors.vehicleNumber.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="seatingCapacity">Seating Capacity</Label>
+              <Input id="seatingCapacity" type="number" {...form.register('seatingCapacity')} />
+              {form.formState.errors.seatingCapacity && <p className="text-xs text-destructive">{form.formState.errors.seatingCapacity.message}</p>}
+            </div>
           </div>
-
           <div className="space-y-2">
             <Label>Driver</Label>
             <Controller
@@ -91,7 +100,7 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
                 <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger><SelectValue placeholder="Select a driver" /></SelectTrigger>
                   <SelectContent>
-                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                    {drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}

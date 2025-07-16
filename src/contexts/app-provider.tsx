@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -466,9 +465,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const updates: Partial<Task> = { 
       status: task.previousStatus || 'To Do', 
-      pendingStatus: undefined, 
-      previousStatus: undefined, 
-      pendingAssigneeId: undefined, 
+      pendingStatus: null, 
+      previousStatus: null, 
+      pendingAssigneeId: null, 
       approvalState: 'returned' 
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -1237,21 +1236,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newItemRef = push(ref(rtdb, 'laptopsDesktops'));
     set(newItemRef, item);
-    addActivityLog(user.id, 'Laptop/Desktop Added', `Added ${item.equipmentName}`);
+    addActivityLog(user.id, 'Laptop/Desktop Added', `Added ${item.make} ${item.model}`);
   }, [user, addActivityLog]);
 
   const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
     if (!user) return;
     const { id, ...data } = item;
     update(ref(rtdb, `laptopsDesktops/${id}`), data);
-    addActivityLog(user.id, 'Laptop/Desktop Updated', `Updated ${item.equipmentName}`);
+    addActivityLog(user.id, 'Laptop/Desktop Updated', `Updated ${item.make} ${item.model}`);
   }, [user, addActivityLog]);
 
   const deleteLaptopDesktop = useCallback((itemId: string) => {
     if (!user) return;
     const item = laptopsDesktops.find(i => i.id === itemId);
     remove(ref(rtdb, `laptopsDesktops/${itemId}`));
-    if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', `Deleted ${item.equipmentName}`);
+    if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', `Deleted ${item.make} ${item.model}`);
   }, [user, laptopsDesktops, addActivityLog]);
 
   const addMachineLog = useCallback((log: Omit<MachineLog, 'id'>) => {
@@ -1371,11 +1370,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pendingInternalRequestCount = useMemo(() => {
     if (!user) return 0;
     const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
-    const isStorePersonnel = storeRoles.includes(user.role);
-    if (!isStorePersonnel) return 0;
-    
+    if (!storeRoles.includes(user.role) && !can.approve_store_requests) {
+        return 0;
+    }
     return internalRequests.filter(r => r.status === 'Pending').length;
-  }, [internalRequests, user]);
+  }, [internalRequests, user, can.approve_store_requests]);
 
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);

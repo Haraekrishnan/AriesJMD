@@ -1,3 +1,4 @@
+
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -34,7 +35,8 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Equipment Name</TableHead>
+          <TableHead>Make</TableHead>
+          <TableHead>Model</TableHead>
           <TableHead>Serial Number</TableHead>
           <TableHead>Allotted To</TableHead>
           <TableHead>Remarks</TableHead>
@@ -46,7 +48,8 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
             const allottedUser = users.find(u => u.id === item.allottedTo);
             return (
                 <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.equipmentName}</TableCell>
+                    <TableCell className="font-medium">{item.make}</TableCell>
+                    <TableCell>{item.model}</TableCell>
                     <TableCell>{item.serialNumber}</TableCell>
                     <TableCell>
                          <div className="flex items-center gap-3">

@@ -119,6 +119,7 @@ export type Vehicle = {
   id:string;
   vehicleNumber: string;
   driverId: string;
+  seatingCapacity: number;
   vapValidity?: string; // YYYY-MM-DD
   insuranceValidity?: string; // YYYY-MM-DD
   fitnessValidity?: string; // YYYY-MM-DD
@@ -342,7 +343,8 @@ export type MobileSim = {
 
 export type LaptopDesktop = {
     id: string;
-    equipmentName: string;
+    make: string;
+    model: string;
     serialNumber: string;
     allottedTo: string; // User ID
     remarks?: string;

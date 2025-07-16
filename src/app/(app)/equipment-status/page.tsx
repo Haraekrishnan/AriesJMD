@@ -94,7 +94,7 @@ export default function EquipmentStatusPage() {
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
                     <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
-                    <TabsTrigger value="laptops-desktops">Lap &amp; Desktops</TabsTrigger>
+                    <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
                     <div className="flex justify-end">

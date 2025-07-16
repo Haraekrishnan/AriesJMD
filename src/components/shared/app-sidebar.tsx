@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -20,7 +19,7 @@ import {
   Users,
   Send,
   Warehouse,
-  Truck,
+  Car,
   Home,
   CalendarDays,
 } from 'lucide-react';
@@ -41,7 +40,7 @@ export function AppSidebar() {
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingCertRequestCount + myFulfilledCertRequestCount },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment Status', notificationCount: 0 },
-    { href: '/vehicle-status', icon: Truck, label: 'Fleet Management', notificationCount: 0 },
+    { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0 },
     { href: '/schedule', icon: CalendarDays, label: 'Schedule', notificationCount: plannerNotificationCount },
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0 },
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0 },

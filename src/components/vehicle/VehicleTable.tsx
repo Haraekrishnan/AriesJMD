@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -16,7 +17,7 @@ interface VehicleTableProps {
 }
 
 export default function VehicleTable({ onEdit }: VehicleTableProps) {
-  const { vehicles, users, can, deleteVehicle } = useAppContext();
+  const { vehicles, drivers, can, deleteVehicle } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (vehicleId: string) => {
@@ -29,7 +30,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
   };
   
   const getDriverName = (driverId: string) => {
-    return users.find(u => u.id === driverId)?.name || 'Unassigned';
+    return drivers.find(d => d.id === driverId)?.name || 'Unassigned';
   }
   
   const formatDate = (dateString?: string) => {
@@ -43,6 +44,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
         <TableRow>
           <TableHead>Vehicle No.</TableHead>
           <TableHead>Driver</TableHead>
+          <TableHead>Seating</TableHead>
           <TableHead>VAP Validity</TableHead>
           <TableHead>Insurance</TableHead>
           <TableHead>Fitness</TableHead>
@@ -56,6 +58,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
           <TableRow key={vehicle.id}>
             <TableCell className="font-medium">{vehicle.vehicleNumber}</TableCell>
             <TableCell>{getDriverName(vehicle.driverId)}</TableCell>
+            <TableCell>{vehicle.seatingCapacity}</TableCell>
             <TableCell>{formatDate(vehicle.vapValidity)}</TableCell>
             <TableCell>{formatDate(vehicle.insuranceValidity)}</TableCell>
             <TableCell>{formatDate(vehicle.fitnessValidity)}</TableCell>
