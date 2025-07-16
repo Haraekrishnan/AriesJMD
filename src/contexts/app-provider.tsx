@@ -1334,7 +1334,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return dailyPlannerComments
         .filter(dpc => {
              const plannerUserId = dpc.id.split('_')[1];
-             return plannerOwnerId === user.id && !dpc.viewedBy?.includes(user.id);
+             return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
         })
         .map(dpc => dpc.id);
   }, [dailyPlannerComments, user]);
@@ -1402,6 +1402,7 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 
 
