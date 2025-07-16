@@ -1022,16 +1022,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const request = internalRequests.find(r => r.id === requestId);
     if (!request) return;
 
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    const newCommentId = push(ref(rtdb)).key;
-    if (!newCommentId) return;
-
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+    
     const updates: { [key: string]: any } = {};
-    const existingComments = request.comments || [];
-    updates[`internalRequests/${requestId}/comments/${existingComments.length}`] = { ...newComment, id: newCommentId };
     updates[`internalRequests/${requestId}/status`] = status;
     updates[`internalRequests/${requestId}/approverId`] = user.id;
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    updates[`internalRequests/${requestId}/comments`] = [...existingComments, newComment];
 
     update(ref(rtdb), updates);
   }, [user, internalRequests]);
@@ -1343,7 +1341,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return myUnreadComments.length;
   }, [dailyPlannerComments, user]);
 
-  const pendingInternalRequestCount = useMemo(() => (can.approve_store_requests ? internalRequests.filter(r => r.status === 'Pending').length : 0), [internalRequests, can.approve_store_requests]);
+  const pendingInternalRequestCount = useMemo(() => {
+    if (!user || !can.approve_store_requests) return 0;
+    const isStorePersonnel = user.role === 'Store in Charge' || user.role === 'Assistant Store Incharge';
+    if (!isStorePersonnel) return 0;
+    
+    return internalRequests.filter(r => r.status === 'Pending').length;
+  }, [internalRequests, user, can.approve_store_requests]);
+
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
   const updatedManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [managementRequests, user]);
@@ -1388,6 +1393,7 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 
 
