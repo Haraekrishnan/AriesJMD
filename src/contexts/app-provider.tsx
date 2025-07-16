@@ -140,7 +140,7 @@ type AppContextType = {
   addMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
   deleteInventoryItem: (itemId: string) => void;
-  addCertificateRequest: (request: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments'>) => void;
+  addCertificateRequest: (request: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
   addCertificateRequestComment: (requestId: string, comment: string) => void;
   markUTRequestsAsViewed: () => void;
@@ -223,7 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const unsubscribe = onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          if (path === 'branding') { // Branding is an object, not an array
+          if (path === 'branding') {
             setter(data);
           } else {
             const dataArray = Object.keys(data).map(key => ({
@@ -251,6 +251,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setupListener('projects', setProjects),
       setupListener('activityLogs', setActivityLogs),
       setupListener('branding', handleBrandingData),
+      setupListener('inventoryItems', setInventoryItems),
+      setupListener('utMachines', setUtMachines),
+      setupListener('dftMachines', setDftMachines),
+      setupListener('mobileSims', setMobileSims),
+      setupListener('otherEquipments', setOtherEquipments),
+      setupListener('machineLogs', setMachineLogs),
+      setupListener('certificateRequests', setCertificateRequests),
     ];
   
     setLoading(false);
@@ -780,110 +787,179 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setManagementRequests]);
 
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    setInventoryItems(prev => [...prev, { ...itemData, id: `inv-${Date.now()}`, lastUpdated: new Date().toISOString() }]);
-  }, [setInventoryItems]);
-
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'inventoryItems'));
+    set(newItemRef, { ...itemData, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Added', `Added ${itemData.name} (SN: ${itemData.serialNumber})`);
+  }, [user, addActivityLog]);
+  
   const deleteInventoryItem = useCallback((itemId: string) => {
-    setInventoryItems(prev => prev.filter(i => i.id !== itemId));
-  }, [setInventoryItems]);
+    if (!user) return;
+    const item = inventoryItems.find(i => i.id === itemId);
+    remove(ref(rtdb, `inventoryItems/${itemId}`));
+    addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
+  }, [user, inventoryItems, addActivityLog]);
   
   const addMultipleInventoryItems = useCallback((itemsToImport: any[]): number => {
+    if (!user) return 0;
     let importedCount = 0;
-    const updatedItems = [...inventoryItems];
+    const updates: { [key: string]: any } = {};
     itemsToImport.forEach(item => {
         try {
             const serialNumber = item['SERIAL NUMBER']?.toString();
             if (!serialNumber) return;
-            const existingItemIndex = updatedItems.findIndex(i => i.serialNumber === serialNumber);
+            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
             const project = projects.find(p => p.name.toLowerCase() === item['PROJECT']?.toLowerCase());
             if (!project) return;
             const newItemData = { name: item['ITEM NAME'], serialNumber, chestCrollNo: item['CHEST CROLL NO']?.toString(), ariesId: item['ARIES ID']?.toString(), inspectionDate: new Date(item['INSPECTION DATE']).toISOString(), inspectionDueDate: new Date(item['INSPECTION DUE DATE']).toISOString(), tpInspectionDueDate: new Date(item['TP INSPECTION DUE DATE']).toISOString(), status: item['STATUS'] as InventoryItemStatus || 'In Store', projectId: project.id, lastUpdated: new Date().toISOString() };
-            if (existingItemIndex > -1) updatedItems[existingItemIndex] = { ...updatedItems[existingItemIndex], ...newItemData };
-            else updatedItems.push({ ...newItemData, id: `inv-${Date.now()}-${importedCount}` });
-            importedCount++;
+            
+            const key = existingItem ? existingItem.id : push(ref(rtdb, 'inventoryItems')).key;
+            if (key) {
+              updates[`/inventoryItems/${key}`] = existingItem ? { ...existingItem, ...newItemData } : { ...newItemData, id: key };
+              importedCount++;
+            }
         } catch(e) { console.error("Skipping invalid row:", item, e); }
     });
-    setInventoryItems(updatedItems);
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Bulk Inventory Import', `Imported ${importedCount} items.`);
     return importedCount;
-  }, [inventoryItems, projects, setInventoryItems]);
-
+  }, [user, inventoryItems, projects, addActivityLog]);
+  
   const updateInventoryItem = useCallback((item: InventoryItem) => {
-    setInventoryItems(prev => prev.map(i => i.id === item.id ? { ...item, lastUpdated: new Date().toISOString() } : i));
-  }, [setInventoryItems]);
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Updated', `Updated ${item.name} (SN: ${item.serialNumber})`);
+  }, [user, addActivityLog]);
   
-  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments'>) => {
-    if(user) setCertificateRequests(prev => [...prev, { ...requestData, id: `cert-${Date.now()}`, requesterId: user.id, status: 'Pending', requestDate: new Date().toISOString(), comments: requestData.remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() }] : [], viewedByRequester: false }]);
-  }, [user, setCertificateRequests]);
-
+  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'certificateRequests'));
+    const newRequest: Omit<CertificateRequest, 'id'> = { ...requestData, requesterId: user.id, status: 'Pending', requestDate: new Date().toISOString(), comments: requestData.remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() }] : [], viewedByRequester: false };
+    set(newRequestRef, newRequest);
+    addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
+  }, [user, addActivityLog]);
+  
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
-    if (user) setCertificateRequests(prev => prev.map(req => req.id === requestId ? { ...req, comments: [...(req.comments || []), { id: `crc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }] } : req));
-  }, [user, setCertificateRequests]);
-  
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    set(newCommentRef, newComment);
+  }, [user]);
+
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
-    if (user) setCertificateRequests(prev => prev.map(req => req.id === requestId ? { ...req, status: 'Completed', completionDate: new Date().toISOString(), comments: [...(req.comments || []), { id: `crc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }] } : req));
-  }, [user, setCertificateRequests]);
+    if (!user) return;
+    addCertificateRequestComment(requestId, comment);
+    update(ref(rtdb, `certificateRequests/${requestId}`), { status: 'Completed', completionDate: new Date().toISOString() });
+    addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
+  }, [user, addActivityLog, addCertificateRequestComment]);
   
   const acknowledgeFulfilledUTRequest = useCallback((requestId: string) => {
-    setCertificateRequests(prev => prev.filter(req => req.id !== requestId));
-  }, [setCertificateRequests]);
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+  }, []);
   
   const markUTRequestsAsViewed = useCallback(() => {
     if (!user) return;
-    setCertificateRequests(prev => prev.map(req => (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) ? { ...req, viewedByRequester: true } : req));
-  }, [user, setCertificateRequests]);
+    const updates: { [key: string]: any } = {};
+    certificateRequests.forEach(req => {
+      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) {
+        updates[`/certificateRequests/${req.id}/viewedByRequester`] = true;
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, certificateRequests]);
   
   const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
-    setUtMachines(prev => [...prev, { ...machine, id: `ut-${Date.now()}`}]);
-  }, [setUtMachines]);
-
+    if (!user) return;
+    const newMachineRef = push(ref(rtdb, 'utMachines'));
+    set(newMachineRef, machine);
+    addActivityLog(user.id, 'UT Machine Added', `Added ${machine.machineName}`);
+  }, [user, addActivityLog]);
+  
   const updateUTMachine = useCallback((machine: UTMachine) => {
-    setUtMachines(prev => prev.map(m => m.id === machine.id ? machine : m));
-  }, [setUtMachines]);
+    if (!user) return;
+    const { id, ...data } = machine;
+    update(ref(rtdb, `utMachines/${id}`), data);
+    addActivityLog(user.id, 'UT Machine Updated', `Updated ${machine.machineName}`);
+  }, [user, addActivityLog]);
 
   const deleteUTMachine = useCallback((machineId: string) => {
-    setUtMachines(prev => prev.filter(m => m.id !== machineId));
-  }, [setUtMachines]);
+    if (!user) return;
+    remove(ref(rtdb, `utMachines/${machineId}`));
+    addActivityLog(user.id, 'UT Machine Deleted', `Machine ID: ${machineId}`);
+  }, [user, addActivityLog]);
 
   const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
-    setDftMachines(prev => [...prev, { ...machine, id: `dft-${Date.now()}`}]);
-  }, [setDftMachines]);
+    if (!user) return;
+    const newMachineRef = push(ref(rtdb, 'dftMachines'));
+    set(newMachineRef, machine);
+    addActivityLog(user.id, 'DFT Machine Added', `Added ${machine.machineName}`);
+  }, [user, addActivityLog]);
 
   const updateDftMachine = useCallback((machine: DftMachine) => {
-    setDftMachines(prev => prev.map(m => m.id === machine.id ? machine : m));
-  }, [setDftMachines]);
+    if (!user) return;
+    const { id, ...data } = machine;
+    update(ref(rtdb, `dftMachines/${id}`), data);
+    addActivityLog(user.id, 'DFT Machine Updated', `Updated ${machine.machineName}`);
+  }, [user, addActivityLog]);
 
   const deleteDftMachine = useCallback((machineId: string) => {
-    setDftMachines(prev => prev.filter(m => m.id !== machineId));
-  }, [setDftMachines]);
+    if (!user) return;
+    remove(ref(rtdb, `dftMachines/${machineId}`));
+    addActivityLog(user.id, 'DFT Machine Deleted', `Machine ID: ${machineId}`);
+  }, [user, addActivityLog]);
 
   const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
-    setMobileSims(prev => [...prev, { ...item, id: `ms-${Date.now()}`}]);
-  }, [setMobileSims]);
-
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'mobileSims'));
+    set(newItemRef, item);
+    addActivityLog(user.id, 'Mobile/SIM Added', `Added ${item.type} with number ${item.number}`);
+  }, [user, addActivityLog]);
+  
   const updateMobileSim = useCallback((item: MobileSim) => {
-    setMobileSims(prev => prev.map(m => m.id === item.id ? item : m));
-  }, [setMobileSims]);
-
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `mobileSims/${id}`), data);
+    addActivityLog(user.id, 'Mobile/SIM Updated', `Updated ${item.number}`);
+  }, [user, addActivityLog]);
+  
   const deleteMobileSim = useCallback((itemId: string) => {
-    setMobileSims(prev => prev.filter(m => m.id !== itemId));
-  }, [setMobileSims]);
+    if (!user) return;
+    const item = mobileSims.find(i => i.id === itemId);
+    remove(ref(rtdb, `mobileSims/${itemId}`));
+    if(item) addActivityLog(user.id, 'Mobile/SIM Deleted', `Deleted ${item.number}`);
+  }, [user, mobileSims, addActivityLog]);
   
   const addOtherEquipment = useCallback((item: Omit<OtherEquipment, 'id'>) => {
-    setOtherEquipments(prev => [...prev, { ...item, id: `oth-${Date.now()}`}]);
-  }, [setOtherEquipments]);
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'otherEquipments'));
+    set(newItemRef, item);
+    addActivityLog(user.id, 'Other Equipment Added', `Added ${item.equipmentName}`);
+  }, [user, addActivityLog]);
 
   const updateOtherEquipment = useCallback((item: OtherEquipment) => {
-    setOtherEquipments(prev => prev.map(m => m.id === item.id ? item : m));
-  }, [setOtherEquipments]);
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `otherEquipments/${id}`), data);
+    addActivityLog(user.id, 'Other Equipment Updated', `Updated ${item.equipmentName}`);
+  }, [user, addActivityLog]);
 
   const deleteOtherEquipment = useCallback((itemId: string) => {
-    setOtherEquipments(prev => prev.filter(m => m.id !== itemId));
-  }, [setOtherEquipments]);
+    if (!user) return;
+    const item = otherEquipments.find(i => i.id === itemId);
+    remove(ref(rtdb, `otherEquipments/${itemId}`));
+    if(item) addActivityLog(user.id, 'Other Equipment Deleted', `Deleted ${item.equipmentName}`);
+  }, [user, otherEquipments, addActivityLog]);
 
   const addMachineLog = useCallback((log: Omit<MachineLog, 'id'>) => {
-    if(user) setMachineLogs(prev => [...prev, { ...log, id: `mlog-${Date.now()}` }]);
-  }, [user, setMachineLogs]);
-
+    if(user) {
+        const newLogRef = push(ref(rtdb, 'machineLogs'));
+        set(newLogRef, log);
+    }
+  }, [user]);
+  
   const getMachineLogs = useCallback((machineId: string) => {
     return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [machineLogs]);
@@ -1028,5 +1104,6 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
