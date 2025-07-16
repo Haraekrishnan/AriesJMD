@@ -613,7 +613,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`${basePath}/comments/${commentId}`] = newComment;
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
     
-    updates[`${basePath}/viewedBy`] = [user.id]; // Only the creator has viewed it initially.
+    updates[`${basePath}/viewedBy`] = [user.id];
   
     const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
     if (!existingEntry) {
@@ -1350,7 +1350,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
   
   const pendingAchievementCount = useMemo(() => {
-    if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) {
+    if (!user || !['Admin', 'Manager'].includes(user.role)) {
       return 0;
     }
     return achievements.filter(a => a.status === 'pending' && a.awardedById !== user.id).length;
@@ -1380,4 +1380,5 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
