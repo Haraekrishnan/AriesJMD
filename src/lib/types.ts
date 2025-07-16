@@ -340,7 +340,7 @@ export type MobileSim = {
   remarks?: string;
 };
 
-export type OtherEquipment = {
+export type LaptopDesktop = {
     id: string;
     equipmentName: string;
     serialNumber: string;
@@ -428,4 +428,3 @@ export type Building = {
   buildingNumber: string;
   rooms: Room[];
 };
-

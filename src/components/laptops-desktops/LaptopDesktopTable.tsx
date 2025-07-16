@@ -1,5 +1,4 @@
 'use client';
-import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -7,19 +6,19 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { OtherEquipment } from '@/lib/types';
+import { LaptopDesktop } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 
-interface OtherEquipmentTableProps {
-  onEdit: (item: OtherEquipment) => void;
+interface LaptopDesktopTableProps {
+  onEdit: (item: LaptopDesktop) => void;
 }
 
-export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps) {
-  const { can, otherEquipments, users, deleteOtherEquipment } = useAppContext();
+export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) {
+  const { can, laptopsDesktops, users, deleteLaptopDesktop } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
-    deleteOtherEquipment(itemId);
+    deleteLaptopDesktop(itemId);
     toast({
       variant: 'destructive',
       title: 'Item Deleted',
@@ -27,8 +26,8 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
     });
   };
   
-  if (otherEquipments.length === 0) {
-    return <p className="text-muted-foreground text-center py-8">No other equipment data found.</p>;
+  if (laptopsDesktops.length === 0) {
+    return <p className="text-muted-foreground text-center py-8">No laptop or desktop data found.</p>;
   }
 
   return (
@@ -43,7 +42,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
         </TableRow>
       </TableHeader>
       <TableBody>
-        {otherEquipments.map(item => {
+        {laptopsDesktops.map(item => {
             const allottedUser = users.find(u => u.id === item.allottedTo);
             return (
                 <TableRow key={item.id}>

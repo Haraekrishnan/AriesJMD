@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
-import type { OtherEquipment } from '@/lib/types';
+import type { LaptopDesktop } from '@/lib/types';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -22,14 +22,14 @@ const itemSchema = z.object({
 
 type FormValues = z.infer<typeof itemSchema>;
 
-interface EditOtherEquipmentDialogProps {
+interface EditLaptopDesktopDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  item: OtherEquipment;
+  item: LaptopDesktop;
 }
 
-export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: EditOtherEquipmentDialogProps) {
-  const { users, updateOtherEquipment } = useAppContext();
+export default function EditLaptopDesktopDialog({ isOpen, setIsOpen, item }: EditLaptopDesktopDialogProps) {
+  const { users, updateLaptopDesktop } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
@@ -43,7 +43,7 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
   }, [item, isOpen, form]);
 
   const onSubmit = (data: FormValues) => {
-    updateOtherEquipment({ ...item, ...data });
+    updateLaptopDesktop({ ...item, ...data });
     toast({
       title: 'Equipment Updated',
       description: 'Equipment details have been updated.',
@@ -55,7 +55,7 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit Equipment</DialogTitle>
+          <DialogTitle>Edit Laptop/Desktop</DialogTitle>
           <DialogDescription>Update the details for this item.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">

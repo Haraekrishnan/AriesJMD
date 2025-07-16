@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, OtherEquipment } from '@/lib/types';
+import type { UTMachine, DftMachine, MobileSim, LaptopDesktop } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -17,15 +17,15 @@ import AddDftMachineDialog from '@/components/dft-machine/AddDftMachineDialog';
 import DftMachineTable from '@/components/dft-machine/DftMachineTable';
 import EditDftMachineDialog from '@/components/dft-machine/EditDftMachineDialog';
 import DftMachineLogManagerDialog from '@/components/dft-machine/DftMachineLogManagerDialog';
-import AddOtherEquipmentDialog from '@/components/other-equipment/AddOtherEquipmentDialog';
-import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
-import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEquipmentDialog';
+import AddLaptopDesktopDialog from '@/components/laptops-desktops/AddLaptopDesktopDialog';
+import LaptopDesktopTable from '@/components/laptops-desktops/LaptopDesktopTable';
+import EditLaptopDesktopDialog from '@/components/laptops-desktops/EditLaptopDesktopDialog';
 import AddMobileSimDialog from '@/components/mobile-sim/AddMobileSimDialog';
 import EditMobileSimDialog from '@/components/mobile-sim/EditMobileSimDialog';
 import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 
 export default function EquipmentStatusPage() {
-    const { can, utMachines, dftMachines, mobileSims, otherEquipments, users, myFulfilledUTRequests, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest } = useAppContext();
+    const { can, utMachines, dftMachines, mobileSims, laptopsDesktops, users, myFulfilledUTRequests, markUTRequestsAsViewed, acknowledgeFulfilledUTRequest } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -44,10 +44,10 @@ export default function EquipmentStatusPage() {
     const [isEditMobileSimOpen, setIsEditMobileSimOpen] = useState(false);
     const [selectedMobileSim, setSelectedMobileSim] = useState<MobileSim | null>(null);
     
-    // Other Equipment State
-    const [isAddOtherEquipmentOpen, setIsAddOtherEquipmentOpen] = useState(false);
-    const [isEditOtherEquipmentOpen, setIsEditOtherEquipmentOpen] = useState(false);
-    const [selectedOtherEquipment, setSelectedOtherEquipment] = useState<OtherEquipment | null>(null);
+    // Laptop/Desktop State
+    const [isAddLaptopDesktopOpen, setIsAddLaptopDesktopOpen] = useState(false);
+    const [isEditLaptopDesktopOpen, setIsEditLaptopDesktopOpen] = useState(false);
+    const [selectedLaptopDesktop, setSelectedLaptopDesktop] = useState<LaptopDesktop | null>(null);
 
 
     useEffect(() => {
@@ -76,9 +76,9 @@ export default function EquipmentStatusPage() {
     const handleAddMobileSim = () => { setSelectedMobileSim(null); setIsAddMobileSimOpen(true); };
 
 
-    // Other Equipment Handlers
-    const handleEditOther = (item: OtherEquipment) => { setSelectedOtherEquipment(item); setIsEditOtherEquipmentOpen(true); };
-    const handleAddOther = () => { setSelectedOtherEquipment(null); setIsAddOtherEquipmentOpen(true); };
+    // Laptop/Desktop Handlers
+    const handleEditLaptopDesktop = (item: LaptopDesktop) => { setSelectedLaptopDesktop(item); setIsEditLaptopDesktopOpen(true); };
+    const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
 
     return (
         <div className="space-y-8">
@@ -93,8 +93,8 @@ export default function EquipmentStatusPage() {
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
-                    <TabsTrigger value="mobile-sim">Mobile & SIM</TabsTrigger>
-                    <TabsTrigger value="other-equipment">Other Equipment</TabsTrigger>
+                    <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
+                    <TabsTrigger value="laptops-desktops">Lap &amp; Desktops</TabsTrigger>
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
                     <div className="flex justify-end">
@@ -184,22 +184,22 @@ export default function EquipmentStatusPage() {
                         )}
                     </div>
                     <Card>
-                        <CardHeader><CardTitle>Mobile & SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
+                        <CardHeader><CardTitle>Mobile &amp; SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
                         <CardContent><MobileSimTable onEdit={handleEditMobileSim} /></CardContent>
                     </Card>
                 </TabsContent>
-                 <TabsContent value="other-equipment" className="mt-4 space-y-4">
+                 <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
                      <div className="flex justify-end">
                         {can.manage_equipment_status && (
-                            <Button onClick={handleAddOther}>
+                            <Button onClick={handleAddLaptopDesktop}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Equipment
+                                Add Laptop/Desktop
                             </Button>
                         )}
                     </div>
                     <Card>
-                        <CardHeader><CardTitle>Other Equipment & Usage</CardTitle><CardDescription>List of all other company equipment.</CardDescription></CardHeader>
-                        <CardContent><OtherEquipmentTable onEdit={handleEditOther} /></CardContent>
+                        <CardHeader><CardTitle>Laptop &amp; Desktop Usage</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
+                        <CardContent><LaptopDesktopTable onEdit={handleEditLaptopDesktop} /></CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
@@ -215,8 +215,8 @@ export default function EquipmentStatusPage() {
             {can.manage_equipment_status && <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />}
             {selectedMobileSim && can.manage_equipment_status && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
         
-            {can.manage_equipment_status && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
-            {selectedOtherEquipment && can.manage_equipment_status && (<EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />)}
+            {can.manage_equipment_status && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
+            {selectedLaptopDesktop && can.manage_equipment_status && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
         </div>
     );
 }

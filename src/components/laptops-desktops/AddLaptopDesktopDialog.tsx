@@ -20,13 +20,13 @@ const itemSchema = z.object({
 
 type FormValues = z.infer<typeof itemSchema>;
 
-interface AddOtherEquipmentDialogProps {
+interface AddLaptopDesktopDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
 
-export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherEquipmentDialogProps) {
-  const { users, addOtherEquipment } = useAppContext();
+export default function AddLaptopDesktopDialog({ isOpen, setIsOpen }: AddLaptopDesktopDialogProps) {
+  const { users, addLaptopDesktop } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
@@ -34,7 +34,7 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
   });
 
   const onSubmit = (data: FormValues) => {
-    addOtherEquipment(data);
+    addLaptopDesktop(data);
     toast({
       title: 'Equipment Added',
       description: `${data.equipmentName} has been added.`,
@@ -52,7 +52,7 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add New Equipment</DialogTitle>
+          <DialogTitle>Add New Laptop/Desktop</DialogTitle>
           <DialogDescription>Fill in the details for the new equipment.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
