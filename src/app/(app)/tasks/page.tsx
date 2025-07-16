@@ -79,7 +79,7 @@ export default function TasksPage() {
     }
 
     return tasks.filter(task => {
-      if (!task.assigneeIds.some(id => visibleUserIds.has(id))) {
+      if (!task.assigneeIds || !task.assigneeIds.some(id => visibleUserIds.has(id))) {
         return false;
       }
       
