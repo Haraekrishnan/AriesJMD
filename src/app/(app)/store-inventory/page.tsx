@@ -17,6 +17,7 @@ import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import InventoryReportDownloads from '@/components/inventory/InventoryReportDownloads';
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed } = useAppContext();
@@ -91,7 +92,16 @@ export default function StoreInventoryPage() {
 
     const pendingCertRequestsForMe = useMemo(() => canManageInventory ? certificateRequests.filter(req => req.status === 'Pending' && req.itemId) : [], [certificateRequests, canManageInventory]);
     const myCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.itemId), [certificateRequests, user]);
-    const myFulfilledCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.status === 'Completed' && !req.viewedByRequester && req.itemId), [certificateRequests, user]);
+    
+    const myFulfilledCertRequests = useMemo(() => {
+      if (!user) return [];
+      return certificateRequests.filter(req => 
+        req.requesterId === user.id && 
+        req.status === 'Completed' && 
+        !req.viewedByRequester && 
+        req.itemId
+      );
+    }, [certificateRequests, user]);
 
     useEffect(() => {
         if (myFulfilledCertRequests.length > 0) {
@@ -246,11 +256,11 @@ export default function StoreInventoryPage() {
 
             <Card>
                 <CardHeader>
-                   <div className='flex justify-between items-center'>
-                     {view === 'list' && (
-                        <InventoryFilters onApplyFilters={setFilters} filteredItems={filteredItems} />
-                     )}
-                     {view === 'summary' && <CardTitle>Inventory Summary</CardTitle>}
+                   <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                     {view === 'list' ? (
+                        <InventoryFilters onApplyFilters={setFilters} />
+                     ) : <CardTitle>Inventory Summary</CardTitle>}
+                     <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
                    </div>
                 </CardHeader>
                 <CardContent>

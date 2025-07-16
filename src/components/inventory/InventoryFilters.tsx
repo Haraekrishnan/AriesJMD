@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -8,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAppContext } from '@/contexts/app-provider';
 import type { InventoryItemStatus } from '@/lib/types';
 import { X } from 'lucide-react';
-import InventoryReportDownloads from './InventoryReportDownloads';
 import type { InventoryItem } from '@/lib/types';
 
 
@@ -21,7 +21,6 @@ export interface InventoryFilterValues {
 
 interface InventoryFiltersProps {
   onApplyFilters: (filters: InventoryFilterValues) => void;
-  filteredItems: InventoryItem[];
 }
 
 const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Expired', label: string}[] = [
@@ -33,7 +32,7 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
     { value: 'TP Expired', label: 'TP Expired' },
 ];
 
-export default function InventoryFilters({ onApplyFilters, filteredItems }: InventoryFiltersProps) {
+export default function InventoryFilters({ onApplyFilters }: InventoryFiltersProps) {
     const { projects, inventoryItems } = useAppContext();
     const [name, setName] = useState('all');
     const [status, setStatus] = useState('all');

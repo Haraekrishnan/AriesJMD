@@ -1,4 +1,5 @@
 
+
 'use client';
 import type { InventoryItem } from '@/lib/types';
 import { useAppContext } from '@/contexts/app-provider';
@@ -86,7 +87,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
     doc.save('Inventory_Report.pdf');
   };
   
-  const isDisabled = isSummary ? (summaryData?.length || 0) === 0 : (items?.length || 0) === 0;
+  const isDisabled = isSummary ? (!summaryData || summaryData.length === 0) : (!items || items.length === 0);
 
   return (
     <div className="flex gap-2">
