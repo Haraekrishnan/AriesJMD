@@ -1405,11 +1405,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pendingInternalRequestCount = useMemo(() => {
     if (!user) return 0;
     const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
-    if (!storeRoles.includes(user.role) && !can.approve_store_requests) {
+    if (!storeRoles.includes(user.role)) {
         return 0;
     }
     return internalRequests.filter(r => r.status === 'Pending').length;
-  }, [internalRequests, user, can.approve_store_requests]);
+  }, [internalRequests, user]);
 
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
