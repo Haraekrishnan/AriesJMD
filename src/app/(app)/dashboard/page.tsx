@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
 
   const visibleTasks = useMemo(() => {
-    return allTasks.filter(task => task.assigneeIds.some(id => visibleUserIds.has(id)));
+    return allTasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
   }, [allTasks, visibleUserIds]);
 
   const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length, [visibleTasks]);
