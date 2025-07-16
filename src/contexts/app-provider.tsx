@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1135,7 +1136,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
-    const newRequest: Omit<CertificateRequest, 'id'> = { ...requestData, requesterId: user.id, status: 'Pending', requestDate: new Date().toISOString(), comments: requestData.remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() }] : [], viewedByRequester: false };
+    
+    const { remarks, ...restOfData } = requestData;
+    const comments = remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: remarks, date: new Date().toISOString() }] : [];
+
+    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = { 
+        ...restOfData,
+        requesterId: user.id,
+        status: 'Pending',
+        requestDate: new Date().toISOString(),
+        comments,
+        viewedByRequester: false
+    };
+
+    if (requestData.itemId) {
+        newRequest.itemId = requestData.itemId;
+    }
+    if (requestData.utMachineId) {
+        newRequest.utMachineId = requestData.utMachineId;
+    }
+
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
   }, [user, addActivityLog]);
