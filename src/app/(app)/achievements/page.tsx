@@ -61,10 +61,11 @@ export default function AchievementsPage() {
       .map(u => {
         const tasksInPeriod = dateRange
           ? tasks.filter(t => {
+              if (!t.assigneeIds) return false;
               const dueDate = new Date(t.dueDate);
               return t.assigneeIds.includes(u.id) && isWithinInterval(dueDate, { start: dateRange!.start, end: dateRange!.end });
           })
-          : tasks.filter(t => t.assigneeIds.includes(u.id));
+          : tasks.filter(t => t.assigneeIds && t.assigneeIds.includes(u.id));
 
         const achievementsInPeriod = dateRange
           ? achievements.filter(a => a.userId === u.id && isWithinInterval(new Date(a.date), { start: dateRange!.start, end: dateRange!.end }))
