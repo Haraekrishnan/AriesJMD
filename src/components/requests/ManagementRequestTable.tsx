@@ -87,6 +87,7 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
               const isRecipient = req.recipientId === user?.id;
               const isRequester = req.requesterId === user?.id;
               const hasUpdate = isRequester && !req.viewedByRequester;
+              const commentsArray = Array.isArray(req.comments) ? req.comments : [];
 
               return (
                 <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
@@ -105,7 +106,7 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
                                 <p className="text-sm mb-4 p-2 bg-muted rounded-md">{req.body}</p>
                                 <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                                 <div className="space-y-2">
-                                  {req.comments.length > 0 ? req.comments.map((c,i) => {
+                                  {commentsArray.length > 0 ? commentsArray.map((c,i) => {
                                       const commentUser = users.find(u => u.id === c.userId);
                                       return (
                                           <div key={i} className="flex items-start gap-2">
