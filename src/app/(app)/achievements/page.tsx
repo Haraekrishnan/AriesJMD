@@ -34,7 +34,7 @@ import { isWithinInterval, startOfMonth, endOfMonth, subMonths, startOfYear, end
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AchievementsPage() {
-  const { users, tasks, achievements, approveAchievement, rejectAchievement, can } = useAppContext();
+  const { user, users, tasks, achievements, approveAchievement, rejectAchievement, can } = useAppContext();
   const { toast } = useToast();
 
   const [achievementToApprove, setAchievementToApprove] = useState<Achievement | null>(null);
@@ -107,9 +107,9 @@ export default function AchievementsPage() {
   }, [achievements]);
 
   const pendingAchievements = useMemo(() => {
-    if (!can.manage_achievements) return [];
-    return achievements.filter(ach => ach.status === 'pending');
-  }, [achievements, can.manage_achievements]);
+    if (!can.manage_achievements || !user) return [];
+    return achievements.filter(ach => ach.status === 'pending' && ach.awardedById !== user.id);
+  }, [achievements, can.manage_achievements, user]);
 
   const handleApproveClick = (achievement: Achievement) => {
     setAchievementToApprove(achievement);
