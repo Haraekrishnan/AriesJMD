@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -100,8 +101,13 @@ export default function AchievementsPage() {
   }, [users, tasks, achievements, rankingFilter]);
 
   const manualAchievements = useMemo(() => {
-    return achievements.filter(ach => ach.type === 'manual' && ach.status === 'approved');
-  }, [achievements]);
+    const performanceUserIds = new Set(performanceData.map(p => p.user.id));
+    return achievements.filter(ach => 
+        ach.type === 'manual' && 
+        ach.status === 'approved' &&
+        !performanceUserIds.has(ach.userId)
+    );
+  }, [achievements, performanceData]);
 
   const pendingAchievements = useMemo(() => {
     if (!can.manage_achievements) return [];
