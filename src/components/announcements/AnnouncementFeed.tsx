@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -29,10 +28,11 @@ export default function AnnouncementFeed() {
                     </AlertDescription>
                     <Button 
                         size="icon" 
-                        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-blue-200/50 hover:bg-blue-200 dark:bg-blue-800/50 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-300" 
+                        variant="destructive"
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full bg-blue-200/50 hover:bg-blue-300/70 dark:bg-blue-800/50 dark:hover:bg-blue-700/70"
                         onClick={() => setHiddenIds(prev => [...prev, announcement.id])}
                     >
-                        <X className="h-5 w-5" />
+                        <X className="h-4 w-4 text-blue-700 dark:text-blue-200" />
                     </Button>
                 </Alert>
             ))}
