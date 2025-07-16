@@ -120,6 +120,10 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
   };
   
   const handleGenerateReport = () => {
+    const commentsArray = Array.isArray(incident.comments) 
+        ? incident.comments 
+        : Object.values(incident.comments || {});
+
     const data = [
         { A: 'Incident ID', B: incident.id },
         { A: 'Status', B: incident.status },
@@ -131,7 +135,7 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
         { A: 'Details', B: incident.incidentDetails },
         {},
         { A: '--- Comment History ---' },
-        ...(incident.comments || []).map(c => {
+        ...commentsArray.map(c => {
             const commentUser = users.find(u => u.id === c.userId);
             return {
                 A: `Comment by ${commentUser?.name} at ${format(new Date(c.date), 'yyyy-MM-dd HH:mm')}`,
@@ -151,6 +155,10 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
     publishIncident(incident.id, comment);
     toast({ title: "Incident Published", description: "This incident is now visible to all users."});
   };
+
+  const commentsArray = Array.isArray(incident.comments) 
+    ? incident.comments 
+    : Object.values(incident.comments || {});
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -232,7 +240,7 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
                 <h3 className="text-lg font-semibold">Comments & Activity</h3>
                 <ScrollArea className="flex-1 h-64 pr-4 border-b">
                   <div className="space-y-4">
-                    {(incident.comments || []).map((comment, index) => {
+                    {commentsArray.map((comment, index) => {
                       const commentUser = users.find(u => u.id === comment.userId);
                       return (
                         <div key={index} className="flex items-start gap-3">
@@ -244,7 +252,7 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
                         </div>
                       )
                     })}
-                     {(incident.comments || []).length === 0 && <p className="text-sm text-center text-muted-foreground pt-12">No comments or activity yet.</p>}
+                     {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground pt-12">No comments or activity yet.</p>}
                   </div>
                 </ScrollArea>
                 <div className="relative">
