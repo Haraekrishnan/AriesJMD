@@ -217,22 +217,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     setLoading(true);
   
-    const setupListener = (path: string, setter: Function) => {
+    const setupListener = (path: string, setter: Function, processData?: (data: any) => any) => {
       const dbRef = ref(rtdb, path);
       const unsubscribe = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val();
+        let data = snapshot.val();
         if (data) {
-          if (path === 'branding') {
-            setter(data);
+          if (processData) {
+            data = processData(data);
           } else {
-            const dataArray = Object.keys(data).map(key => ({
+            data = Object.keys(data).map(key => ({
               id: key,
               ...data[key]
             }));
-            setter(dataArray);
           }
+          setter(data);
         } else {
-          setter(path === 'branding' ? { appName: 'Aries Marine', appLogo: null } : []);
+          setter(processData ? { appName: 'Aries Marine', appLogo: null } : []);
         }
       });
       return unsubscribe;
@@ -242,6 +242,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAppName(data.appName || 'Aries Marine');
       setAppLogo(data.appLogo || null);
     };
+
+    const processDailyComments = (data: any) => {
+        return Object.keys(data).map(dayKey => {
+            const dayData = data[dayKey];
+            return {
+                id: dayKey,
+                day: dayData.day,
+                plannerUserId: dayData.plannerUserId,
+                lastUpdated: dayData.lastUpdated,
+                viewedBy: dayData.viewedBy || [],
+                comments: dayData.comments ? Object.keys(dayData.comments).map(commentKey => ({
+                    id: commentKey,
+                    ...dayData.comments[commentKey]
+                })) : []
+            };
+        });
+    };
   
     const listeners = [
       setupListener('users', setUsers),
@@ -249,7 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setupListener('tasks', setTasks),
       setupListener('projects', setProjects),
       setupListener('activityLogs', setActivityLogs),
-      setupListener('branding', handleBrandingData),
+      setupListener('branding', handleBrandingData, data => data),
       setupListener('inventoryItems', setInventoryItems),
       setupListener('utMachines', setUtMachines),
       setupListener('dftMachines', setDftMachines),
@@ -263,7 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setupListener('drivers', setDrivers),
       setupListener('buildings', setBuildings),
       setupListener('plannerEvents', setPlannerEvents),
-      setupListener('dailyPlannerComments', setDailyPlannerComments),
+      setupListener('dailyPlannerComments', setDailyPlannerComments, processDailyComments),
       setupListener('achievements', setAchievements),
       setupListener('internalRequests', setInternalRequests),
       setupListener('managementRequests', setManagementRequests),
@@ -579,7 +596,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPlannerEventComment = useCallback((eventId: string, text: string) => {
     if(user) {
         const newCommentRef = push(ref(rtdb, `plannerEvents/${eventId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
         set(newCommentRef, newComment);
     }
   }, [user]);
@@ -587,18 +604,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const sanitizedPlannerUserId = plannerUserId.replace(/[.#$[\]]/g, '_');
     const commentId = push(ref(rtdb)).key;
     if (!commentId) return;
 
-    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString(), isRead: true };
+    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString() };
     const updates: { [key: string]: any } = {};
-    const basePath = `dailyPlannerComments/${sanitizedPlannerUserId}/${dayKey}`;
+    const basePath = `dailyPlannerComments/${dayKey}`;
     
     updates[`${basePath}/comments/${commentId}`] = newComment;
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
     
-    const existingEntry = dailyPlannerComments.find(dpc => dpc.id === `${sanitizedPlannerUserId}/${dayKey}`);
+    const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
     const viewedBy = existingEntry ? [...(existingEntry.viewedBy || []), user.id] : [user.id];
     updates[`${basePath}/viewedBy`] = Array.from(new Set(viewedBy));
 
@@ -613,29 +629,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const sanitizedPlannerUserId = plannerUserId.replace(/[.#$[\]]/g, '_');
-    const dayRef = ref(rtdb, `dailyPlannerComments/${sanitizedPlannerUserId}/${dayKey}`);
-    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === `${sanitizedPlannerUserId}/${dayKey}`)?.viewedBy || [];
+    const dayRef = ref(rtdb, `dailyPlannerComments/${dayKey}`);
+    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === dayKey)?.viewedBy || [];
     if (!currentViewedBy.includes(user.id)) {
       update(dayRef, { viewedBy: [...currentViewedBy, user.id] });
     }
   }, [user, dailyPlannerComments]);
 
   const updateDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string, newText: string) => {
-    const sanitizedPlannerUserId = plannerUserId.replace(/[.#$[\]]/g, '_');
-    const commentRef = ref(rtdb, `dailyPlannerComments/${sanitizedPlannerUserId}/${day}/comments/${commentId}`);
+    const commentRef = ref(rtdb, `dailyPlannerComments/${day}/comments/${commentId}`);
     update(commentRef, { text: newText });
   }, []);
 
   const deleteDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string) => {
-    const sanitizedPlannerUserId = plannerUserId.replace(/[.#$[\]]/g, '_');
-    const commentRef = ref(rtdb, `dailyPlannerComments/${sanitizedPlannerUserId}/${day}/comments/${commentId}`);
+    const commentRef = ref(rtdb, `dailyPlannerComments/${day}/comments/${commentId}`);
     remove(commentRef);
   }, []);
   
   const deleteAllDailyPlannerComments = useCallback((plannerUserId: string, day: string) => {
-    const sanitizedPlannerUserId = plannerUserId.replace(/[.#$[\]]/g, '_');
-    remove(ref(rtdb, `dailyPlannerComments/${sanitizedPlannerUserId}/${day}`));
+    remove(ref(rtdb, `dailyPlannerComments/${day}`));
   }, []);
 
   const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
@@ -1339,5 +1351,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
 
     

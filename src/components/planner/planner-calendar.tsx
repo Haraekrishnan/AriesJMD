@@ -63,15 +63,18 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const selectedDayComments = useMemo(() => {
         if (!selectedDate) return [];
         const dayKey = format(selectedDate, 'yyyy-MM-dd');
-        const entry = dailyPlannerComments.find(dpc => dpc.id === `${selectedUserId}/${dayKey}`);
+        const entry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
         return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
-    }, [dailyPlannerComments, selectedDate, selectedUserId]);
+    }, [dailyPlannerComments, selectedDate]);
     
     const unreadDaysAsDates = useMemo(() => {
         return unreadPlannerCommentDays
-            .filter(dayKey => dayKey.startsWith(selectedUserId))
-            .map(dayKey => new Date(dayKey.split('/')[1]));
-    }, [unreadPlannerCommentDays, selectedUserId]);
+            .filter(dayKey => {
+                 const comment = dailyPlannerComments.find(d => d.id === dayKey);
+                 return comment?.plannerUserId === selectedUserId;
+            })
+            .map(dayKey => new Date(dayKey));
+    }, [unreadPlannerCommentDays, selectedUserId, dailyPlannerComments]);
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
     const isMyOwnPlanner = user?.id === selectedUserId;
@@ -216,3 +219,6 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     );
 }
 
+
+
+    
