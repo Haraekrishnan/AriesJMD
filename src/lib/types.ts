@@ -1,5 +1,4 @@
 
-
 export type User = {
   id: string;
   name: string;
@@ -349,6 +348,7 @@ export type LaptopDesktop = {
     model: string;
     serialNumber: string;
     allottedTo: string; // User ID
+    ariesId?: string;
     remarks?: string;
 };
 

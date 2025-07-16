@@ -38,6 +38,7 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
           <TableHead>Make</TableHead>
           <TableHead>Model</TableHead>
           <TableHead>Serial Number</TableHead>
+          <TableHead>Aries ID</TableHead>
           <TableHead>Allotted To</TableHead>
           <TableHead>Remarks</TableHead>
           {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
@@ -51,6 +52,7 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
                     <TableCell className="font-medium">{item.make}</TableCell>
                     <TableCell>{item.model}</TableCell>
                     <TableCell>{item.serialNumber}</TableCell>
+                    <TableCell>{item.ariesId || 'N/A'}</TableCell>
                     <TableCell>
                          <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">

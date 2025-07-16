@@ -39,7 +39,7 @@ export function AppSidebar() {
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingCertRequestCount + myFulfilledCertRequestCount },
-    { href: '/equipment-status', icon: HardHat, label: 'Equipment Status', notificationCount: 0 },
+    { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: 0 },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0 },
     { href: '/schedule', icon: CalendarDays, label: 'Schedule', notificationCount: plannerNotificationCount },
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0 },
