@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
+
 interface InternalRequestTableProps {
   requests: InternalRequest[];
 }
@@ -123,6 +124,10 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
           {requests.map(req => {
             const hasUpdate = req.requesterId === user?.id && !req.viewedByRequester;
             const canEditRequest = user?.role === 'Admin' || req.status === 'Pending';
+            const commentsArray = Array.isArray(req.comments) 
+              ? req.comments 
+              : Object.values(req.comments || {});
+            
             return (
               <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
                 <TableCell className="w-8">
@@ -146,12 +151,12 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                             </ul>
                             <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                             <div className="space-y-2">
-                              {req.comments && req.comments.length > 0 ? req.comments.map((c,i) => {
+                              {commentsArray.length > 0 ? commentsArray.map((c,i) => {
                                   const commentUser = users.find(u => u.id === c.userId);
                                   return (
                                       <div key={i} className="flex items-start gap-2">
                                           <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                          <div className="text-xs bg-muted p-2 rounded-md w-full">
+                                          <div className="text-xs bg-background p-2 rounded-md w-full">
                                               <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
                                               <p className="text-foreground/80 mt-1">{c.text}</p>
                                           </div>

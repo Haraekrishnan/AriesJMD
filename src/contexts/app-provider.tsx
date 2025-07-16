@@ -1018,16 +1018,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
 
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if(user) {
-        const request = internalRequests.find(r => r.id === requestId);
-        if (!request) return;
+    if (!user) return;
+    const request = internalRequests.find(r => r.id === requestId);
+    if (!request) return;
 
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-        set(newCommentRef, newComment);
-        
-        update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, viewedByRequester: false });
-    }
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newCommentId = push(ref(rtdb)).key;
+    if (!newCommentId) return;
+
+    const updates: { [key: string]: any } = {};
+    const existingComments = request.comments || [];
+    updates[`internalRequests/${requestId}/comments/${existingComments.length}`] = { ...newComment, id: newCommentId };
+    updates[`internalRequests/${requestId}/status`] = status;
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
   }, [user, internalRequests]);
 
   const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
@@ -1354,9 +1360,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
   
   const pendingAchievementCount = useMemo(() => {
-    if (!user || !['Admin', 'Manager'].includes(user.role)) {
-      return 0;
-    }
+    if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) return 0;
     return achievements.filter(a => a.status === 'pending' && a.awardedById !== user.id).length;
   }, [achievements, user]);
 
@@ -1384,6 +1388,7 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
 
 
