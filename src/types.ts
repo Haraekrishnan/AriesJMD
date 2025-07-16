@@ -3,6 +3,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -90,7 +91,8 @@ export const ALL_PERMISSIONS = [
   'manage_announcements',
   'view_performance_reports',
   'view_activity_logs',
-  'manage_accommodation'
+  'manage_accommodation',
+  'log_manpower'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -430,3 +432,4 @@ export type Building = {
   buildingNumber: string;
   rooms: Room[];
 };
+

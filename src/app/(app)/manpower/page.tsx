@@ -15,28 +15,10 @@ import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 
 export default function ManpowerPage() {
-    const { user, roles } = useAppContext();
+    const { can } = useAppContext();
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());
-
-    const canManageManpower = useMemo(() => {
-        if (!user || !user.role) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('manage_manpower');
-    }, [user, roles]);
-
-    const canManageManpowerList = useMemo(() => {
-        if (!user || !user.role) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('manage_manpower_list');
-    }, [user, roles]);
-
-    const canLogForProject = useMemo(() => {
-        if (!user || !user.role) return false;
-        return ['Supervisor', 'Junior Supervisor'].includes(user.role) || canManageManpower;
-    }, [user, canManageManpower]);
-
 
     return (
         <div className="space-y-8">
@@ -46,7 +28,7 @@ export default function ManpowerPage() {
                     <p className="text-muted-foreground">Track daily manpower logs and generate reports.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {canManageManpowerList && (
+                    {can.manage_manpower_list && (
                         <Button asChild variant="outline">
                             <Link href="/manpower-list">
                                 <Users className="mr-2 h-4 w-4" />
@@ -54,7 +36,7 @@ export default function ManpowerPage() {
                             </Link>
                         </Button>
                     )}
-                    {canLogForProject && (
+                    {can.log_manpower && (
                         <Button onClick={() => setIsLogDialogOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Log Manpower

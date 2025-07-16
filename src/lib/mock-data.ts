@@ -22,7 +22,8 @@ export const ROLES: RoleDefinition[] = [
       'manage_vehicles', 'manage_manpower', 'manage_manpower_list', 'manage_accommodation',
       'approve_store_requests', 'manage_inventory',
       'manage_equipment_status',
-      'manage_announcements', 'view_performance_reports', 'view_activity_logs'
+      'manage_announcements', 'view_performance_reports', 'view_activity_logs',
+      'log_manpower'
     ],
     isEditable: false,
   },
