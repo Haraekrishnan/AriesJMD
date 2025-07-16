@@ -58,17 +58,22 @@ export default function EquipmentStatusPage() {
         return storeRoles.includes(user.role);
     }, [user]);
 
+    const myFulfilledEquipmentRequests = useMemo(() => {
+        if (!user) return [];
+        return myFulfilledUTRequests.filter(req => req.utMachineId || req.dftMachineId);
+    }, [myFulfilledUTRequests, user]);
+    
     const pendingCertRequests = useMemo(() => {
         if (!canManageStore) return [];
-        return certificateRequests.filter(req => req.status === 'Pending');
+        return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId));
     }, [certificateRequests, canManageStore]);
 
 
     useEffect(() => {
-        if (myFulfilledUTRequests?.length > 0) {
+        if (myFulfilledEquipmentRequests?.length > 0) {
             markUTRequestsAsViewed();
         }
-    }, [markUTRequestsAsViewed, myFulfilledUTRequests]);
+    }, [markUTRequestsAsViewed, myFulfilledEquipmentRequests]);
 
     const expiringMachines = useMemo(() => {
         const thirtyDaysFromNow = addDays(new Date(), 30);
@@ -119,21 +124,22 @@ export default function EquipmentStatusPage() {
                             </Button>
                         )}
                     </div>
-                     {myFulfilledUTRequests && myFulfilledUTRequests.length > 0 && (
+                     {myFulfilledEquipmentRequests && myFulfilledEquipmentRequests.length > 0 && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Fulfilled Certificate Requests</CardTitle>
                                 <CardDescription>Your recent certificate requests have been fulfilled. Please acknowledge them to clear them from this list.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                {myFulfilledUTRequests.map(req => {
-                                    const machine = utMachines.find(m => m.id === req.utMachineId);
-                                    const lastComment = req.comments?.[0];
+                                {myFulfilledEquipmentRequests.map(req => {
+                                    const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
+                                    const lastComment = req.comments?.[req.comments.length-1];
                                     const fulfiller = users.find(u => u.id === lastComment?.userId);
                                     return (
                                         <div key={req.id} className="p-3 border rounded-lg bg-muted/50 flex justify-between items-center">
                                             <div className="flex-1">
                                                 <p className="font-semibold">{req.requestType} for {machine?.machineName} (SN: {machine?.serialNumber})</p>
+                                                {lastComment && (
                                                 <div className="flex items-start gap-2 mt-2">
                                                     <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
                                                     <div className="bg-background p-2 rounded-md w-full text-sm">
@@ -141,6 +147,7 @@ export default function EquipmentStatusPage() {
                                                         <p className="text-foreground/80 mt-1">{lastComment?.text}</p>
                                                     </div>
                                                 </div>
+                                                )}
                                             </div>
                                             <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledUTRequest(req.id)} className="ml-4 shrink-0">
                                                 <CheckCircle className="mr-2 h-4 w-4" />
@@ -178,9 +185,8 @@ export default function EquipmentStatusPage() {
                             <CardContent className="space-y-4">
                                 {pendingCertRequests.map(req => {
                                     const requester = users.find(u => u.id === req.requesterId);
-                                    const item = inventoryItems.find(i => i.id === req.itemId);
-                                    const machine = utMachines.find(m => m.id === req.utMachineId);
-                                    const subject = item ? `${item.name} (SN: ${item.serialNumber})` : (machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown');
+                                    const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
+                                    const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
 
                                     return (
                                         <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
@@ -235,7 +241,7 @@ export default function EquipmentStatusPage() {
                         )}
                     </div>
                     <Card>
-                        <CardHeader><CardTitle>Laptop &amp; Desktop Usage</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
+                        <CardHeader><CardTitle>Laptops &amp; Desktops</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
                         <CardContent><LaptopDesktopTable onEdit={handleEditLaptopDesktop} /></CardContent>
                     </Card>
                 </TabsContent>

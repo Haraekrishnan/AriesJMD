@@ -91,7 +91,7 @@ export default function StoreInventoryPage() {
 
     const pendingCertRequestsForMe = useMemo(() => canManageInventory ? certificateRequests.filter(req => req.status === 'Pending') : [], [certificateRequests, canManageInventory]);
     const myCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id), [certificateRequests, user]);
-    const myFulfilledCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.status === 'Completed' && !req.viewedByRequester), [certificateRequests, user]);
+    const myFulfilledCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.status === 'Completed' && !req.viewedByRequester && req.itemId), [certificateRequests, user]);
 
 
     const inventoryNotifications = useMemo(() => {
