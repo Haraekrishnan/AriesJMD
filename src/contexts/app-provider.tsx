@@ -400,7 +400,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addComment = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), isRead: false };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     set(newCommentRef, newComment);
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, addActivityLog]);
@@ -446,7 +446,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updates.pendingStatus = undefined;
       updates.previousStatus = undefined;
       updates.approvalState = 'approved';
-      addActivityLog(user.id, 'Task Status Change Approved', `Task "${task.title}" to ${updates.status}`);
+      addActivityLog(user.id, 'Task Status Change Approved', `Task "${updates.status}"`);
     }
 
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -604,7 +604,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const commentId = push(ref(rtdb)).key;
     if (!commentId) return;
   
-    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString(), isRead: true };
+    const newComment: Comment = { id: commentId, userId: user.id, text, date: new Date().toISOString() };
     const updates: { [key: string]: any } = {};
     const basePath = `dailyPlannerComments/${dayKey}`;
     
@@ -612,9 +612,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
     
     const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
+    const existingViewedBy = existingEntry?.viewedBy || [];
     
-    const viewedBy = existingEntry ? [...(existingEntry.viewedBy || []), user.id] : [user.id];
-    updates[`${basePath}/viewedBy`] = Array.from(new Set(viewedBy));
+    // Only the author has viewed it initially.
+    updates[`${basePath}/viewedBy`] = [user.id];
   
     if (!existingEntry) {
       updates[`${basePath}/plannerUserId`] = plannerUserId;
@@ -623,6 +624,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     update(ref(rtdb), updates);
   }, [user, dailyPlannerComments]);
+
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -920,7 +922,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             reportTime: now,
             status: 'New',
             isPublished: false,
-            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now, isRead: true }],
+            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now }],
             reportedToUserIds: Array.from(recipients),
             lastUpdated: now,
             viewedBy: [user.id]
@@ -932,7 +934,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateIncident = useCallback((incident: IncidentReport, commentText: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
+      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
       
       const existingComments = Array.isArray(incident.comments) 
         ? incident.comments 
@@ -953,7 +955,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addIncidentComment = useCallback((incidentId: string, text: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: now, isRead: true };
+      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: now };
       const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
       set(newCommentRef, newComment);
       update(ref(rtdb, `incidentReports/${incidentId}`), { lastUpdated: now, viewedBy: [user.id] });
@@ -962,7 +964,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const publishIncident = useCallback((incidentId: string, commentText: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
+      const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
       const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
       set(newCommentRef, newComment);
       update(ref(rtdb, `incidentReports/${incidentId}`), { isPublished: true, lastUpdated: now, viewedBy: [user.id] });
@@ -971,7 +973,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], commentText: string) => {
     if (!user) return;
     const now = new Date().toISOString();
-    const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
+    const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
     const incident = incidentReports.find(i => i.id === incidentId);
     if (!incident) return;
     const updatedUserIds = [...new Set([...(incident.reportedToUserIds || []), ...userIds])];
@@ -1355,3 +1357,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
