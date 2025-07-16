@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -561,7 +562,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
     const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}`);
-    const newCommentRef = push(ref(dayRef, 'comments'));
+    const commentsRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}/comments`);
+    const newCommentRef = push(commentsRef);
     set(newCommentRef, newComment);
     update(dayRef, { lastUpdated: new Date().toISOString(), viewedBy: [user.id] });
   }, [user]);
@@ -577,11 +579,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, dailyPlannerComments]);
 
   const updateDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string, newText: string) => {
-    update(ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`), { text: newText });
+    const commentRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`);
+    update(commentRef, { text: newText });
   }, []);
 
   const deleteDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string) => {
-    remove(ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`));
+    const commentRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`);
+    remove(commentRef);
   }, []);
   
   const deleteAllDailyPlannerComments = useCallback((plannerUserId: string, day: string) => {
