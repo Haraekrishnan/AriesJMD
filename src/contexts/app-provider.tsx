@@ -262,6 +262,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setupListener('vehicles', setVehicles),
       setupListener('drivers', setDrivers),
       setupListener('buildings', setBuildings),
+      setupListener('plannerEvents', setPlannerEvents),
+      setupListener('dailyPlannerComments', setDailyPlannerComments),
+      setupListener('achievements', setAchievements),
+      setupListener('internalRequests', setInternalRequests),
+      setupListener('managementRequests', setManagementRequests),
+      setupListener('incidentReports', setIncidentReports),
+      setupListener('announcements', setAnnouncements),
     ];
   
     setLoading(false);
@@ -511,72 +518,107 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [plannerEvents]);
 
   const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id' | 'comments'>) => {
-    if (user) setPlannerEvents(prev => [...prev, { ...eventData, id: `event-${Date.now()}`, comments: [] }]);
-  }, [user, setPlannerEvents]);
+    if (user) {
+        const newEventRef = push(ref(rtdb, 'plannerEvents'));
+        set(newEventRef, eventData);
+        addActivityLog(user.id, 'Planner Event Added', `Added event: ${eventData.title}`);
+    }
+  }, [user, addActivityLog]);
   
   const updatePlannerEvent = useCallback((updatedEvent: PlannerEvent) => {
-    setPlannerEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-  }, [setPlannerEvents]);
+    if (user) {
+        const { id, ...data } = updatedEvent;
+        update(ref(rtdb, `plannerEvents/${id}`), data);
+        addActivityLog(user.id, 'Planner Event Updated', `Updated event: ${updatedEvent.title}`);
+    }
+  }, [user, addActivityLog]);
 
   const deletePlannerEvent = useCallback((eventId: string) => {
-    setPlannerEvents(prev => prev.filter(e => e.id !== eventId));
-  }, [setPlannerEvents]);
+    if (user) {
+        const event = plannerEvents.find(e => e.id === eventId);
+        remove(ref(rtdb, `plannerEvents/${eventId}`));
+        if (event) addActivityLog(user.id, 'Planner Event Deleted', `Deleted event: ${event.title}`);
+    }
+  }, [user, plannerEvents, addActivityLog]);
   
   const addPlannerEventComment = useCallback((eventId: string, text: string) => {
-    if(user) setPlannerEvents(prev => prev.map(e => e.id === eventId ? { ...e, comments: [...(e.comments || []), { id: `ec-${Date.now()}`, userId: user.id, text, date: new Date().toISOString(), isRead: false }] } : e));
-  }, [user, setPlannerEvents]);
+    if(user) {
+        const newCommentRef = push(ref(rtdb, `plannerEvents/${eventId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
+        set(newCommentRef, newComment);
+    }
+  }, [user]);
 
   const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    const newComment: Comment = { id: `dpc-${Date.now()}`, userId: user.id, text, date: new Date().toISOString(), isRead: false };
-    const existingDayIndex = dailyPlannerComments.findIndex(dpc => dpc.day === dayKey && dpc.plannerUserId === plannerUserId);
-    if (existingDayIndex > -1) {
-        const updatedComments = [...dailyPlannerComments];
-        updatedComments[existingDayIndex].comments.push(newComment);
-        setDailyPlannerComments(updatedComments);
-    } else {
-        setDailyPlannerComments(prev => [...prev, { id: `dp-${dayKey}-${plannerUserId}`, plannerUserId, day: dayKey, comments: [newComment] }]);
-    }
-  }, [user, dailyPlannerComments, setDailyPlannerComments]);
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
+    const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}`);
+    const newCommentRef = push(ref(dayRef, 'comments'));
+    set(newCommentRef, newComment);
+    update(dayRef, { lastUpdated: new Date().toISOString(), viewedBy: [user.id] });
+  }, [user]);
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
     const dayKey = format(day, 'yyyy-MM-dd');
-    setDailyPlannerComments(prev => prev.map(dpc => (dpc.day === dayKey && dpc.plannerUserId === plannerUserId) ? { ...dpc, comments: dpc.comments.map(c => c.userId !== user.id ? { ...c, isRead: true } : c) } : dpc));
-  }, [user, setDailyPlannerComments]);
+    const dayRef = ref(rtdb, `dailyPlannerComments/${plannerUserId}/${dayKey}`);
+    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === `${plannerUserId}/${dayKey}`)?.viewedBy || [];
+    if (!currentViewedBy.includes(user.id)) {
+      update(dayRef, { viewedBy: [...currentViewedBy, user.id] });
+    }
+  }, [user, dailyPlannerComments]);
 
   const updateDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string, newText: string) => {
-    setDailyPlannerComments(prev => prev.map(dpc => (dpc.day === day && dpc.plannerUserId === plannerUserId) ? { ...dpc, comments: dpc.comments.map(c => c.id === commentId ? { ...c, text: newText } : c) } : dpc));
-  }, [setDailyPlannerComments]);
+    update(ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`), { text: newText });
+  }, []);
 
   const deleteDailyPlannerComment = useCallback((commentId: string, plannerUserId: string, day: string) => {
-    setDailyPlannerComments(prev => prev.map(dpc => (dpc.day === day && dpc.plannerUserId === plannerUserId) ? { ...dpc, comments: dpc.comments.filter(c => c.id !== commentId) } : dpc).filter(dpc => dpc.comments.length > 0));
-  }, [setDailyPlannerComments]);
+    remove(ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}/comments/${commentId}`));
+  }, []);
   
   const deleteAllDailyPlannerComments = useCallback((plannerUserId: string, day: string) => {
-    setDailyPlannerComments(prev => prev.filter(dpc => !(dpc.day === day && dpc.plannerUserId === plannerUserId)));
-  }, [setDailyPlannerComments]);
+    remove(ref(rtdb, `dailyPlannerComments/${plannerUserId}/${day}`));
+  }, []);
 
   const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
-    if (user) setAchievements(prev => [...prev, { ...achievementData, id: `ach-${Date.now()}`, date: new Date().toISOString(), type: 'manual', status: 'pending', awardedById: user.id }]);
-  }, [user, setAchievements]);
+    if (user) {
+        const newAchRef = push(ref(rtdb, 'achievements'));
+        const newAchievement: Omit<Achievement, 'id'> = { ...achievementData, date: new Date().toISOString(), type: 'manual', status: 'pending', awardedById: user.id };
+        set(newAchRef, newAchievement);
+        addActivityLog(user.id, 'Achievement Awarded', `Awarded "${achievementData.title}"`);
+    }
+  }, [user, addActivityLog]);
 
   const updateManualAchievement = useCallback((updatedAchievement: Achievement) => {
-    setAchievements(prev => prev.map(a => a.id === updatedAchievement.id ? updatedAchievement : a));
-  }, [setAchievements]);
+    if (user) {
+        const { id, ...data } = updatedAchievement;
+        update(ref(rtdb, `achievements/${id}`), data);
+        addActivityLog(user.id, 'Achievement Updated', `Updated "${updatedAchievement.title}"`);
+    }
+  }, [user, addActivityLog]);
 
   const deleteManualAchievement = useCallback((achievementId: string) => {
-    setAchievements(prev => prev.filter(a => a.id !== achievementId));
-  }, [setAchievements]);
+    if (user) {
+        const ach = achievements.find(a => a.id === achievementId);
+        remove(ref(rtdb, `achievements/${achievementId}`));
+        if (ach) addActivityLog(user.id, 'Achievement Deleted', `Deleted "${ach.title}"`);
+    }
+  }, [user, achievements, addActivityLog]);
 
   const approveAchievement = useCallback((achievementId: string, points: number) => {
-    setAchievements(prev => prev.map(a => a.id === achievementId ? { ...a, status: 'approved', points } : a));
-  }, [setAchievements]);
+    if (user) {
+        update(ref(rtdb, `achievements/${achievementId}`), { status: 'approved', points });
+        addActivityLog(user.id, 'Achievement Approved', `Approved achievement ID: ${achievementId}`);
+    }
+  }, [user, addActivityLog]);
 
   const rejectAchievement = useCallback((achievementId: string) => {
-    setAchievements(prev => prev.filter(a => a.id !== achievementId));
-  }, [setAchievements]);
+    if (user) {
+        remove(ref(rtdb, `achievements/${achievementId}`));
+        addActivityLog(user.id, 'Achievement Rejected', `Rejected achievement ID: ${achievementId}`);
+    }
+  }, [user, addActivityLog]);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const usersRef = ref(rtdb, 'users');
@@ -804,9 +846,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const hseUser = users.find(u => u.role === 'HSE');
         if (hseUser) recipients.add(hseUser.id);
         const now = new Date().toISOString();
-        const newIncident: IncidentReport = {
+        const newIncidentRef = push(ref(rtdb, 'incidentReports'));
+        const newIncident: Omit<IncidentReport, 'id'> = {
             ...incidentData,
-            id: `inc-${Date.now()}`,
             reporterId: user.id,
             reportTime: now,
             status: 'New',
@@ -816,9 +858,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             lastUpdated: now,
             viewedBy: [user.id]
         };
-        setIncidentReports(prev => [newIncident, ...prev]);
+        set(newIncidentRef, newIncident);
     }
-  }, [user, users, setIncidentReports]);
+  }, [user, users]);
 
   const updateIncident = useCallback((incident: IncidentReport, commentText: string) => {
       if (!user) return;
@@ -832,81 +874,103 @@ export function AppProvider({ children }: { children: ReactNode }) {
           comments: [...(incident.comments || []), newComment]
       };
       
-      setIncidentReports(prev => prev.map(i => i.id === updatedIncident.id ? updatedIncident : i));
-  }, [user, setIncidentReports]);
+      const { id, ...data } = updatedIncident;
+      update(ref(rtdb, `incidentReports/${id}`), data);
+  }, [user]);
 
 
   const addIncidentComment = useCallback((incidentId: string, text: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text, date: now, isRead: true };
-
-      setIncidentReports(prev => prev.map(i => {
-          if (i.id === incidentId) {
-              const updatedIncident = {
-                  ...i,
-                  comments: [...(i.comments || []), newComment],
-                  lastUpdated: now,
-                  viewedBy: [user.id]
-              };
-              return updatedIncident;
-          }
-          return i;
-      }));
-  }, [user, setIncidentReports]);
+      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: now, isRead: true };
+      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `incidentReports/${incidentId}`), { lastUpdated: now, viewedBy: [user.id] });
+  }, [user]);
 
   const publishIncident = useCallback((incidentId: string, commentText: string) => {
       if (!user) return;
       const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
-      setIncidentReports(prev => prev.map(i => i.id === incidentId ? { ...i, isPublished: true, lastUpdated: now, viewedBy: [user.id], comments: [...(i.comments || []), newComment] } : i));
-  }, [user, setIncidentReports]);
+      const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
+      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `incidentReports/${incidentId}`), { isPublished: true, lastUpdated: now, viewedBy: [user.id] });
+  }, [user]);
 
   const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], commentText: string) => {
     if (!user) return;
     const now = new Date().toISOString();
-    const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
-      setIncidentReports(prev => prev.map(i => i.id === incidentId ? { ...i, reportedToUserIds: [...new Set([...(i.reportedToUserIds || []), ...userIds])], lastUpdated: now, viewedBy: [user.id], comments: [...(i.comments || []), newComment] } : i));
-  }, [user, setIncidentReports]);
+    const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now, isRead: true };
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+    const updatedUserIds = [...new Set([...(incident.reportedToUserIds || []), ...userIds])];
+    
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    set(newCommentRef, newComment);
+    update(ref(rtdb, `incidentReports/${incidentId}`), { reportedToUserIds: updatedUserIds, lastUpdated: now, viewedBy: [user.id] });
+  }, [user, incidentReports]);
   
   const markIncidentAsViewed = useCallback((incidentId: string) => {
       if (!user) return;
-      setIncidentReports(prev => prev.map(i => {
-          if (i.id === incidentId && !i.viewedBy.includes(user.id)) {
-              return { ...i, viewedBy: [...i.viewedBy, user.id] };
-          }
-          return i;
-      }));
-  }, [user, setIncidentReports]);
+      const incident = incidentReports.find(i => i.id === incidentId);
+      if (incident && !incident.viewedBy.includes(user.id)) {
+          update(ref(rtdb, `incidentReports/${incidentId}`), { viewedBy: [...incident.viewedBy, user.id] });
+      }
+  }, [user, incidentReports]);
 
   
-  const addInternalRequest = useCallback((request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
-    if(user) setInternalRequests(prev => [...prev, { ...request, id: `ir-${Date.now()}`, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true }]);
-  }, [user, setInternalRequests]);
+  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if(user) {
+        const newRequestRef = push(ref(rtdb, 'internalRequests'));
+        const newRequest: Omit<InternalRequest, 'id'> = { ...requestData, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true };
+        set(newRequestRef, newRequest);
+        addActivityLog(user.id, 'Internal Request Created');
+    }
+  }, [user, addActivityLog]);
 
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if(user) setInternalRequests(prev => prev.map(r => r.id === requestId ? {...r, status, approverId: user.id, comments: [...(r.comments || []), { id: `irc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setInternalRequests]);
+    if(user) {
+        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, viewedByRequester: false });
+    }
+  }, [user]);
 
   const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
-    if (user) setInternalRequests(prev => prev.map(r => r.id === requestId ? { ...r, items, comments: [...(r.comments || []), { id: `irc-${Date.now()}`, userId: user.id, text: 'Request items updated by store keeper.', date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setInternalRequests]);
+    if (user) {
+        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request items updated by store keeper.', date: new Date().toISOString() };
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `internalRequests/${requestId}`), { items, viewedByRequester: false });
+    }
+  }, [user]);
 
   const markInternalRequestAsViewed = useCallback((requestId: string) => {
-    setInternalRequests(prev => prev.map(r => r.id === requestId ? { ...r, viewedByRequester: true } : r));
-  }, [setInternalRequests]);
+    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
+  }, []);
   
-  const addManagementRequest = useCallback((request: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
-    if (user) setManagementRequests(prev => [...prev, { ...request, id: `mr-${Date.now()}`, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true }]);
-  }, [user, setManagementRequests]);
+  const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if (user) {
+        const newRequestRef = push(ref(rtdb, 'managementRequests'));
+        const newRequest: Omit<ManagementRequest, 'id'> = { ...requestData, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true };
+        set(newRequestRef, newRequest);
+        addActivityLog(user.id, 'Management Request Created');
+    }
+  }, [user, addActivityLog]);
   
   const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
-    if (user) setManagementRequests(prev => prev.map(r => r.id === requestId ? { ...r, status, comments: [...(r.comments || []), { id: `mrc-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() }], viewedByRequester: false } : r));
-  }, [user, setManagementRequests]);
+    if (user) {
+        const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `managementRequests/${requestId}`), { status, viewedByRequester: false });
+    }
+  }, [user]);
 
   const markManagementRequestAsViewed = useCallback((requestId: string) => {
-    setManagementRequests(prev => prev.map(r => r.id === requestId ? { ...r, viewedByRequester: true } : r));
-  }, [setManagementRequests]);
+    update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
+  }, []);
 
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if (!user) return;
@@ -919,7 +983,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const item = inventoryItems.find(i => i.id === itemId);
     remove(ref(rtdb, `inventoryItems/${itemId}`));
-    addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
+    if(item) addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
   }, [user, inventoryItems, addActivityLog]);
   
   const addMultipleInventoryItems = useCallback((itemsToImport: any[]): number => {
@@ -1096,29 +1160,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
     if(user && user.supervisorId) {
         const newAnnouncement: Announcement = { ...data, id: `ann-${Date.now()}`, creatorId: user.id, approverId: user.supervisorId, status: 'pending', createdAt: new Date().toISOString(), comments: [] };
-        setAnnouncements(prev => [newAnnouncement, ...prev]);
+        const newRef = push(ref(rtdb, 'announcements'));
+        set(newRef, newAnnouncement);
     }
-  }, [user, setAnnouncements]);
+  }, [user]);
 
   const updateAnnouncement = useCallback((announcement: Announcement) => {
-    setAnnouncements(prev => prev.map(a => a.id === announcement.id ? announcement : a));
-  }, [setAnnouncements]);
+    const { id, ...data } = announcement;
+    update(ref(rtdb, `announcements/${id}`), data);
+  }, []);
 
   const approveAnnouncement = useCallback((announcementId: string) => {
-    setAnnouncements(prev => prev.map(a => a.id === announcementId ? {...a, status: 'approved'} : a));
-  }, [setAnnouncements]);
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'approved' });
+  }, []);
 
   const rejectAnnouncement = useCallback((announcementId: string) => {
-    setAnnouncements(prev => prev.map(a => a.id === announcementId ? {...a, status: 'rejected'} : a));
-  }, [setAnnouncements]);
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'rejected' });
+  }, []);
 
   const deleteAnnouncement = useCallback((announcementId: string) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== announcementId));
-  }, [setAnnouncements]);
+    remove(ref(rtdb, `announcements/${announcementId}`));
+  }, []);
 
   const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
-    if(user) setAnnouncements(prev => prev.map(a => a.id === announcementId ? {...a, status: 'returned', comments: [...a.comments, { userId: user.id, text: comment, date: new Date().toISOString() }]} : a));
-  }, [user, setAnnouncements]);
+    if(user) {
+        const newComment = { userId: user.id, text: comment, date: new Date().toISOString() };
+        const newCommentRef = push(ref(rtdb, `announcements/${announcementId}/comments`));
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `announcements/${announcementId}`), { status: 'returned' });
+    }
+  }, [user]);
   
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
@@ -1194,3 +1265,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
