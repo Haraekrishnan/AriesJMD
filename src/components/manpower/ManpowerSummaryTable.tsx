@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, sub } from 'date-fns';
 import { Button } from '../ui/button';
 import { Edit } from 'lucide-react';
 import type { ManpowerLog } from '@/lib/types';
