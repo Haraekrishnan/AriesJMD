@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed } from '../lib/types';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, useReducer } from 'react';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -13,18 +13,9 @@ import useLocalStorage from '@/hooks/use-local-storage';
 
 type PermissionsObject = Record<Permission, boolean>;
 
-type AppContextType = {
-  // Auth
+type AppState = {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<boolean>;
-  logout: () => void;
-  updateProfile: (name: string, email: string, avatar: string, password?: string) => void;
-
-  // Permissions
-  can: PermissionsObject;
-
-  // Data
   users: User[];
   roles: RoleDefinition[];
   tasks: Task[];
@@ -49,7 +40,19 @@ type AppContextType = {
   certificateRequests: CertificateRequest[];
   announcements: Announcement[];
   buildings: Building[];
-  
+  appName: string;
+  appLogo: string | null;
+};
+
+type AppContextType = AppState & {
+  // Auth
+  login: (email: string, pass: string) => Promise<boolean>;
+  logout: () => void;
+  updateProfile: (name: string, email: string, avatar: string, password?: string) => void;
+
+  // Permissions
+  can: PermissionsObject;
+
   // Computed Data
   pendingTaskApprovalCount: number;
   myNewTaskCount: number;
@@ -67,11 +70,6 @@ type AppContextType = {
   updatedManagementRequestCount: number;
   incidentNotificationCount: number;
   pendingAchievementCount: number;
-
-
-  // Branding
-  appName: string;
-  appLogo: string | null;
 
   // Functions
   getVisibleUsers: () => User[];
@@ -179,124 +177,120 @@ type AppContextType = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const initialState: AppState = {
+  user: null,
+  loading: true,
+  users: [],
+  roles: [],
+  tasks: [],
+  projects: [],
+  plannerEvents: [],
+  dailyPlannerComments: [],
+  achievements: [],
+  activityLogs: [],
+  vehicles: [],
+  drivers: [],
+  incidentReports: [],
+  manpowerLogs: [],
+  manpowerProfiles: [],
+  internalRequests: [],
+  managementRequests: [],
+  inventoryItems: [],
+  utMachines: [],
+  dftMachines: [],
+  mobileSims: [],
+  laptopsDesktops: [],
+  machineLogs: [],
+  certificateRequests: [],
+  announcements: [],
+  buildings: [],
+  appName: 'Aries Marine',
+  appLogo: null,
+};
+
+type Action =
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_DATA'; payload: { key: keyof AppState; value: any } }
+  | { type: 'SET_BRANDING'; payload: { appName: string; appLogo: string | null } };
+
+const appReducer = (state: AppState, action: Action): AppState => {
+  switch (action.type) {
+    case 'SET_USER':
+      return { ...state, user: action.payload };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_DATA':
+      return { ...state, [action.payload.key]: action.payload.value };
+    case 'SET_BRANDING':
+      return { ...state, appName: action.payload.appName, appLogo: action.payload.appLogo };
+    default:
+      return state;
+  }
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useLocalStorage<User | null>('aries-user-v8', null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<RoleDefinition[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [plannerEvents, setPlannerEvents] = useState<PlannerEvent[]>([]);
-  const [dailyPlannerComments, setDailyPlannerComments] = useState<DailyPlannerComment[]>([]);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [incidentReports, setIncidentReports] = useState<IncidentReport[]>([]);
-  const [manpowerLogs, setManpowerLogs] = useState<ManpowerLog[]>([]);
-  const [manpowerProfiles, setManpowerProfiles] = useState<ManpowerProfile[]>([]);
-  const [internalRequests, setInternalRequests] = useState<InternalRequest[]>([]);
-  const [managementRequests, setManagementRequests] = useState<ManagementRequest[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [utMachines, setUtMachines] = useState<UTMachine[]>([]);
-  const [dftMachines, setDftMachines] = useState<DftMachine[]>([]);
-  const [mobileSims, setMobileSims] = useState<MobileSim[]>([]);
-  const [laptopsDesktops, setLaptopsDesktops] = useState<LaptopDesktop[]>([]);
-  const [machineLogs, setMachineLogs] = useState<MachineLog[]>([]);
-  const [certificateRequests, setCertificateRequests] = useState<CertificateRequest[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [state, dispatch] = useReducer(appReducer, initialState);
+  const { user, users, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, roles, loading } = state;
   
-  const [appName, setAppName] = useState('Aries Marine');
-  const [appLogo, setAppLogo] = useState<string | null>(null);
-  
-  const [loading, setLoading] = useState(true);
+  const [storedUser, setStoredUser] = useLocalStorage<User | null>('aries-user-v8', null);
   const { toast } = useToast();
   const router = useRouter();
+  
+  useEffect(() => {
+    dispatch({ type: 'SET_USER', payload: storedUser });
+  }, [storedUser]);
 
   useEffect(() => {
     if (!rtdb) {
       console.error("Firebase Realtime Database is not initialized.");
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
-  
-    setLoading(true);
-  
-    const setupListener = (path: string, setter: Function, processData?: (data: any) => any) => {
-      const dbRef = ref(rtdb, path);
-      const unsubscribe = onValue(dbRef, (snapshot) => {
-        let data = snapshot.val();
-        if (data) {
-          if (processData) {
-            data = processData(data);
-          } else {
-            data = Object.keys(data).map(key => ({
-              id: key,
-              ...data[key]
-            }));
-          }
-          setter(data);
-        } else {
-          setter(processData ? processData({}) : []);
-        }
-      });
-      return unsubscribe;
-    };
-  
-    const processDailyComments = (data: any) => {
-      if (!data) return [];
-      return Object.keys(data).map(key => {
-          const dayData = data[key];
-          return {
-              id: key,
-              ...dayData,
-              comments: dayData.comments ? Object.keys(dayData.comments).map(commentKey => ({
-                  id: commentKey,
-                  ...dayData.comments[commentKey]
-              })) : []
-          };
-      });
-    };
-  
-    const listeners = [
-      setupListener('users', setUsers),
-      setupListener('roles', setRoles),
-      setupListener('tasks', setTasks),
-      setupListener('projects', setProjects),
-      setupListener('activityLogs', setActivityLogs),
-      setupListener('inventoryItems', setInventoryItems),
-      setupListener('utMachines', setUtMachines),
-      setupListener('dftMachines', setDftMachines),
-      setupListener('mobileSims', setMobileSims),
-      setupListener('laptopsDesktops', setLaptopsDesktops),
-      setupListener('machineLogs', setMachineLogs),
-      setupListener('certificateRequests', setCertificateRequests),
-      setupListener('manpowerLogs', setManpowerLogs),
-      setupListener('manpowerProfiles', setManpowerProfiles),
-      setupListener('vehicles', setVehicles),
-      setupListener('drivers', setDrivers),
-      setupListener('buildings', setBuildings),
-      setupListener('plannerEvents', setPlannerEvents),
-      setupListener('dailyPlannerComments', setDailyPlannerComments, processDailyComments),
-      setupListener('achievements', setAchievements),
-      setupListener('internalRequests', setInternalRequests),
-      setupListener('managementRequests', setManagementRequests),
-      setupListener('incidentReports', setIncidentReports),
-      setupListener('announcements', setAnnouncements),
+
+    dispatch({ type: 'SET_LOADING', payload: true });
+
+    const dataPaths: (keyof AppState)[] = [
+      'users', 'roles', 'tasks', 'projects', 'activityLogs', 'inventoryItems', 
+      'utMachines', 'dftMachines', 'mobileSims', 'laptopsDesktops', 'machineLogs', 
+      'certificateRequests', 'manpowerLogs', 'manpowerProfiles', 'vehicles', 
+      'drivers', 'buildings', 'plannerEvents', 'achievements', 'internalRequests', 
+      'managementRequests', 'incidentReports', 'announcements'
     ];
-    
+
+    const listeners = dataPaths.map(path => {
+      const dbRef = ref(rtdb, path);
+      return onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        const value = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        dispatch({ type: 'SET_DATA', payload: { key: path, value } });
+      });
+    });
+
+    const dailyCommentsRef = ref(rtdb, 'dailyPlannerComments');
+    const dailyCommentsListener = onValue(dailyCommentsRef, (snapshot) => {
+        const data = snapshot.val();
+        const value = data ? Object.keys(data).map(key => ({ 
+            id: key, 
+            ...data[key],
+            comments: data[key].comments ? Object.values(data[key].comments) : []
+        })) : [];
+        dispatch({ type: 'SET_DATA', payload: { key: 'dailyPlannerComments', value } });
+    });
+    listeners.push(dailyCommentsListener);
+
     const brandingRef = ref(rtdb, 'branding');
     const brandingListener = onValue(brandingRef, (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-            setAppName(data.appName || 'Aries Marine');
-            setAppLogo(data.appLogo || null);
-        }
+        dispatch({ type: 'SET_BRANDING', payload: {
+            appName: data?.appName || 'Aries Marine',
+            appLogo: data?.appLogo || null,
+        }});
     });
     listeners.push(brandingListener);
-  
-    setLoading(false);
-  
+
+    dispatch({ type: 'SET_LOADING', payload: false });
+
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
     };
@@ -316,34 +310,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, pass: string): Promise<boolean> => {
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
     const foundUser = users.find(u => u.email === email && u.password === pass);
     if (foundUser) {
-      setUser(foundUser);
+      setStoredUser(foundUser);
       addActivityLog(foundUser.id, 'User Logged In');
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
       return true;
     }
-    setLoading(false);
+    dispatch({ type: 'SET_LOADING', payload: false });
     return false;
-  }, [addActivityLog, setUser, users]);
+  }, [addActivityLog, setStoredUser, users]);
 
   const logout = useCallback(() => {
     if (user) {
       addActivityLog(user.id, 'User Logged Out');
     }
-    setUser(null);
+    setStoredUser(null);
     router.push('/login');
-  }, [user, addActivityLog, setUser, router]);
+  }, [user, addActivityLog, setStoredUser, router]);
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
     update(ref(rtdb, `users/${id}`), data);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-      if (user.id === updatedUser.id) setUser(updatedUser);
+      if (user.id === updatedUser.id) setStoredUser(updatedUser);
     }
-  }, [user, addActivityLog, setUser]);
+  }, [user, addActivityLog, setStoredUser]);
 
   const updateProfile = useCallback((name: string, email: string, avatar: string, password?: string) => {
     if (user) {
@@ -1469,8 +1463,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [achievements, user]);
 
   const value = useMemo(() => ({
-    user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount
-  }), [user, loading, login, logout, updateProfile, can, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount, router, toast]);
+    ...state,
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount
+  }), [state, login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount, router, toast]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
@@ -1482,3 +1477,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
