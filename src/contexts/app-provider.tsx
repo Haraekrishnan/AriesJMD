@@ -1329,7 +1329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateBranding = useCallback((name: string, logo: string | null) => {
     if (user) {
-      update(ref(rtdb, `branding`), { appName: name, appLogo: logo });
+      update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
       addActivityLog(user.id, 'Branding Updated');
     }
   }, [user, addActivityLog]);
@@ -1486,5 +1486,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
