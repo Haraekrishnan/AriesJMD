@@ -42,7 +42,7 @@ export default function LoginPage() {
               <h1 className="text-3xl font-bold text-primary">{appName}</h1>
             </div>
           )}
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl">Welcome</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
         <LoginForm />
