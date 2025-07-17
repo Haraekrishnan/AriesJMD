@@ -31,7 +31,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-supervisor',
     name: 'Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower'
     ],
     isEditable: false,
   },
@@ -46,7 +46,7 @@ export const ROLES: RoleDefinition[] = [
   {
     id: 'role-jr-supervisor',
     name: 'Junior Supervisor',
-    permissions: ['view_performance_reports'],
+    permissions: ['view_performance_reports', 'log_manpower'],
     isEditable: false,
   },
   {
