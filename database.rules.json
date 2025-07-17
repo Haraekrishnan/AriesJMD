@@ -1,65 +1,90 @@
 {
   "rules": {
-    // Default deny all access unless a user is authenticated.
     ".read": "auth != null",
     ".write": false,
-
-    // Helper function to check for Admin or Project Coordinator roles.
-    "isAdminOrPC": "root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'",
-
     "users": {
-      // Any authenticated user can read the user list (for names, avatars, etc.)
       ".read": "auth != null",
       "$uid": {
-        // A user can write to their own profile, or an Admin/PC can write to any profile.
-        ".write": "$uid === auth.uid || root.getRules().isAdminOrPC"
+        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'"
       }
     },
     "roles": {
       ".read": "auth != null",
-      // Only Admins/PCs can modify roles.
-      ".write": "root.getRules().isAdminOrPC"
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'"
     },
     "projects": {
       ".read": "auth != null",
-      // Only Admins/PCs can modify projects.
-      ".write": "root.getRules().isAdminOrPC"
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'"
     },
     "branding": {
-       ".read": "auth != null",
-       // Only Admins/PCs can modify branding.
-       ".write": "root.getRules().isAdminOrPC"
+      ".read": "auth != null",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'"
     },
     "tasks": {
       "$taskId": {
-        // A user can read a task if they created it, are assigned to it, or are an Admin/PC.
-        ".read": "data.child('creatorId').val() === auth.uid || data.child('assigneeIds').hasChild(auth.uid) || root.getRules().isAdminOrPC",
-        // Write access is more complex and is handled by the app's backend logic (Cloud Functions or server-side checks).
-        // For now, allow writes if the user can read it, assuming backend validation.
-        ".write": "data.child('creatorId').val() === auth.uid || data.child('assigneeIds').hasChild(auth.uid) || root.getRules().isAdminOrPC"
+        ".read": "data.child('creatorId').val() === auth.uid || data.child('assigneeIds').hasChild(auth.uid) || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'",
+        ".write": "data.child('creatorId').val() === auth.uid || data.child('assigneeIds').hasChild(auth.uid) || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Project Coordinator'"
       }
     },
-    // For other data types, a simple authenticated read/write is a good start.
-    // The application logic should prevent unauthorized actions.
-    "activityLogs": { ".write": "auth != null" },
-    "plannerEvents": { ".write": "auth != null" },
-    "dailyPlannerComments": { ".write": "auth != null" },
-    "achievements": { ".write": "auth != null" },
-    "vehicles": { ".write": "auth != null" },
-    "drivers": { ".write": "auth != null" },
-    "incidentReports": { ".write": "auth != null" },
-    "manpowerLogs": { ".write": "auth != null" },
-    "manpowerProfiles": { ".write": "auth != null" },
-    "internalRequests": { ".write": "auth != null" },
-    "managementRequests": { ".write": "auth != null" },
-    "inventoryItems": { ".write": "auth != null" },
-    "utMachines": { ".write": "auth != null" },
-    "dftMachines": { ".write": "auth != null" },
-    "mobileSims": { ".write": "auth != null" },
-    "laptopsDesktops": { ".write": "auth != null" },
-    "machineLogs": { ".write": "auth != null" },
-    "certificateRequests": { ".write": "auth != null" },
-    "announcements": { ".write": "auth != null" },
-    "buildings": { ".write": "auth != null" }
+    "activityLogs": {
+      ".write": "auth != null"
+    },
+    "plannerEvents": {
+      ".write": "auth != null"
+    },
+    "dailyPlannerComments": {
+      ".write": "auth != null"
+    },
+    "achievements": {
+      ".write": "auth != null"
+    },
+    "vehicles": {
+      ".write": "auth != null"
+    },
+    "drivers": {
+      ".write": "auth != null"
+    },
+    "incidentReports": {
+      ".write": "auth != null"
+    },
+    "manpowerLogs": {
+      ".write": "auth != null"
+    },
+    "manpowerProfiles": {
+      ".write": "auth != null"
+    },
+    "internalRequests": {
+      ".write": "auth != null"
+    },
+    "managementRequests": {
+      ".write": "auth != null"
+    },
+    "inventoryItems": {
+      ".write": "auth != null"
+    },
+    "utMachines": {
+      ".write": "auth != null"
+    },
+    "dftMachines": {
+      ".write": "auth != null"
+    },
+    "mobileSims": {
+      ".write": "auth != null"
+    },
+    "laptopsDesktops": {
+      ".write": "auth != null"
+    },
+    "machineLogs": {
+      ".write": "auth != null"
+    },
+    "certificateRequests": {
+      ".write": "auth != null"
+    },
+    "announcements": {
+      ".write": "auth != null"
+    },
+    "buildings": {
+      ".write": "auth != null"
+    }
   }
 }
