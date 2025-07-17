@@ -209,19 +209,19 @@ const initialState: AppState = {
 };
 
 type Action =
+  | { type: 'SET_STATE'; payload: Partial<AppState> }
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_DATA'; payload: { key: keyof AppState; value: any } }
   | { type: 'SET_BRANDING'; payload: { appName: string; appLogo: string | null } };
 
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
+    case 'SET_STATE':
+      return { ...state, ...action.payload };
     case 'SET_USER':
       return { ...state, user: action.payload };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
-    case 'SET_DATA':
-      return { ...state, [action.payload.key]: action.payload.value };
     case 'SET_BRANDING':
       return { ...state, appName: action.payload.appName, appLogo: action.payload.appLogo };
     default:
@@ -248,36 +248,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    dispatch({ type: 'SET_LOADING', payload: true });
+    const listeners = Object.keys(initialState).map(key => {
+        if (['user', 'loading', 'appName', 'appLogo'].includes(key)) return null;
 
-    const dataPaths: (keyof AppState)[] = [
-      'users', 'roles', 'tasks', 'projects', 'activityLogs', 'inventoryItems', 
-      'utMachines', 'dftMachines', 'mobileSims', 'laptopsDesktops', 'machineLogs', 
-      'certificateRequests', 'manpowerLogs', 'manpowerProfiles', 'vehicles', 
-      'drivers', 'buildings', 'plannerEvents', 'achievements', 'internalRequests', 
-      'managementRequests', 'incidentReports', 'announcements'
-    ];
-
-    const listeners = dataPaths.map(path => {
-      const dbRef = ref(rtdb, path);
-      return onValue(dbRef, (snapshot) => {
-        const data = snapshot.val();
-        const value = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-        dispatch({ type: 'SET_DATA', payload: { key: path, value } });
-      });
-    });
-
-    const dailyCommentsRef = ref(rtdb, 'dailyPlannerComments');
-    const dailyCommentsListener = onValue(dailyCommentsRef, (snapshot) => {
-        const data = snapshot.val();
-        const value = data ? Object.keys(data).map(key => ({ 
-            id: key, 
-            ...data[key],
-            comments: data[key].comments ? Object.values(data[key].comments) : []
-        })) : [];
-        dispatch({ type: 'SET_DATA', payload: { key: 'dailyPlannerComments', value } });
-    });
-    listeners.push(dailyCommentsListener);
+        const dbRef = ref(rtdb, key);
+        return onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            let value = [];
+            if (data) {
+                if (key === 'dailyPlannerComments') {
+                     value = Object.keys(data).map(k => ({ id: k, ...data[k], comments: data[k].comments ? Object.values(data[k].comments) : [] }));
+                } else {
+                     value = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+                }
+            }
+            dispatch({ type: 'SET_STATE', payload: { [key]: value } });
+        });
+    }).filter(Boolean);
 
     const brandingRef = ref(rtdb, 'branding');
     const brandingListener = onValue(brandingRef, (snapshot) => {
@@ -287,12 +274,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             appLogo: data?.appLogo || null,
         }});
     });
-    listeners.push(brandingListener);
-
+    
     dispatch({ type: 'SET_LOADING', payload: false });
 
     return () => {
-      listeners.forEach(unsubscribe => unsubscribe());
+      listeners.forEach(unsubscribe => unsubscribe && unsubscribe());
+      brandingListener();
     };
   }, []);
 
@@ -1477,5 +1464,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
