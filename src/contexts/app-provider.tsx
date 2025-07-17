@@ -328,9 +328,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
-    const dataToSave = { ...data };
-    if (dataToSave.supervisorId === 'none') {
-      dataToSave.supervisorId = undefined;
+    const dataToSave: any = { ...data };
+    if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
+      dataToSave.supervisorId = null;
     }
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
@@ -729,7 +729,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newUserRef = push(usersRef);
     const dataToSave: any = { ...userData };
     if (dataToSave.supervisorId === 'none') {
-        delete dataToSave.supervisorId;
+        dataToSave.supervisorId = null;
     }
     set(newUserRef, { ...dataToSave, avatar: `https://placehold.co/100x100.png` });
     addActivityLog(user?.id || 'system', 'User Added', `Added new user: ${userData.name}`);
@@ -1499,4 +1499,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+    
     
