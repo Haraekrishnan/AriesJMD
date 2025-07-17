@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -60,8 +61,8 @@ export default function AddAchievementDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Manual Achievement</DialogTitle>
-          <DialogDescription>Select a user and define the achievement details. This will be visible to everyone.</DialogDescription>
+          <DialogTitle>Award Manual Achievement</DialogTitle>
+          <DialogDescription>Select a user and define the achievement details. This will be approved and visible immediately.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">

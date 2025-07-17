@@ -652,7 +652,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (user) {
         const newAchRef = push(ref(rtdb, 'achievements'));
-        const newAchievement: Omit<Achievement, 'id'> = { ...achievementData, date: new Date().toISOString(), type: 'manual', status: 'pending', awardedById: user.id };
+        const newAchievement: Omit<Achievement, 'id'> = { ...achievementData, date: new Date().toISOString(), type: 'manual', status: 'approved', awardedById: user.id };
         set(newAchRef, newAchievement);
         addActivityLog(user.id, 'Achievement Awarded', `Awarded "${achievementData.title}"`);
     }
@@ -1459,9 +1459,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
   
   const pendingAchievementCount = useMemo(() => {
-    if (!user || (user.role !== 'Admin' && user.role !== 'Project Coordinator')) return 0;
+    if (!user || !can.manage_achievements) return 0;
     return achievements.filter(a => a.status === 'pending' && a.awardedById !== user.id).length;
-  }, [achievements, user]);
+  }, [achievements, user, can]);
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,

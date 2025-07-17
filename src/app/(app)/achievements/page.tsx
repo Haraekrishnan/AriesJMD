@@ -4,41 +4,13 @@
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import AchievementsTable from '@/components/achievements/achievements-table';
 import AddAchievementDialog from '@/components/achievements/add-achievement-dialog';
-import type { Achievement } from '@/lib/types';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import AchievementsTable from '@/components/achievements/achievements-table';
 import { isWithinInterval, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, isAfter, isPast } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AchievementsPage() {
-  const { user, users, tasks, achievements, approveAchievement, rejectAchievement, can } = useAppContext();
-  const { toast } = useToast();
-
-  const [achievementToApprove, setAchievementToApprove] = useState<Achievement | null>(null);
-  const [newPoints, setNewPoints] = useState(0);
+  const { users, tasks, achievements, can } = useAppContext();
   const [rankingFilter, setRankingFilter] = useState('all-time');
 
   const performanceData = useMemo(() => {
@@ -103,34 +75,8 @@ export default function AchievementsPage() {
   }, [users, tasks, achievements, rankingFilter]);
   
   const manualAchievements = useMemo(() => {
-    if (can.manage_achievements) {
-        return achievements.filter(ach => ach.type === 'manual');
-    }
     return achievements.filter(ach => ach.type === 'manual' && ach.status === 'approved');
-  }, [achievements, can.manage_achievements]);
-
-  const pendingAchievements = useMemo(() => {
-    if (!user || !can.manage_achievements) return [];
-    return achievements.filter(ach => ach.status === 'pending' && ach.awardedById !== user.id);
-  }, [achievements, user, can.manage_achievements]);
-
-  const handleApproveClick = (achievement: Achievement) => {
-    setAchievementToApprove(achievement);
-    setNewPoints(achievement.points);
-  };
-
-  const handleConfirmApproval = () => {
-    if (achievementToApprove) {
-      approveAchievement(achievementToApprove.id, newPoints);
-      toast({ title: 'Achievement Approved', description: 'The award has been approved and points are added.' });
-      setAchievementToApprove(null);
-    }
-  };
-
-  const handleReject = (achievementId: string) => {
-    rejectAchievement(achievementId);
-    toast({ variant: 'destructive', title: 'Achievement Rejected', description: 'The award has been removed.' });
-  };
+  }, [achievements]);
 
   return (
     <div className="space-y-8">
@@ -141,66 +87,6 @@ export default function AchievementsPage() {
         </div>
         {can.manage_achievements && <AddAchievementDialog />}
       </div>
-      
-      {can.manage_achievements && pendingAchievements.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Achievement Approvals</CardTitle>
-            <CardDescription>Review and approve manual awards.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Award</TableHead>
-                  <TableHead>Awarded By</TableHead>
-                  <TableHead className="text-right">Points</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingAchievements.map((item) => {
-                  const achievementUser = users.find(u => u.id === item.userId);
-                  const awardedBy = users.find(u => u.id === item.awardedById);
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell>{achievementUser?.name}</TableCell>
-                      <TableCell>{item.title}</TableCell>
-                      <TableCell>{awardedBy?.name}</TableCell>
-                      <TableCell className="text-right">{item.points}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" onClick={() => handleApproveClick(item)}>Approve</Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Approve Achievement</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                You are approving the achievement "{achievementToApprove?.title}" for {users.find(u=>u.id === achievementToApprove?.userId)?.name}. You can adjust the points if needed.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <div className="py-4">
-                              <Label htmlFor="points">Points</Label>
-                              <Input id="points" type="number" value={newPoints} onChange={(e) => setNewPoints(Number(e.target.value))} />
-                            </div>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel onClick={() => setAchievementToApprove(null)}>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleConfirmApproval}>Confirm Approval</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                        <Button size="sm" variant="destructive" onClick={() => handleReject(item.id)}>Reject</Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>

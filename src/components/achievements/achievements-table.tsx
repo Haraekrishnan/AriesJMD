@@ -123,9 +123,8 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
           <TableHead>Employee</TableHead>
           <TableHead>Achievement</TableHead>
           <TableHead>Awarded By</TableHead>
-          <TableHead>Status</TableHead>
           <TableHead className="text-right">Points</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          {can.manage_achievements && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -151,9 +150,6 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                 </TableCell>
                 <TableCell>{awardedBy?.name || 'System'}</TableCell>
-                <TableCell>
-                    <Badge variant={statusVariant[item.status]}>{item.status}</Badge>
-                </TableCell>
                 <TableCell className="text-right font-semibold">{item.points}</TableCell>
                 <TableCell className="text-right">
                     {can.manage_achievements && (
@@ -166,7 +162,7 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => handleEditClick(item)} disabled={item.status !== 'pending'}>
+                                    <DropdownMenuItem onSelect={() => handleEditClick(item)}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                     </DropdownMenuItem>
                                     <AlertDialogTrigger asChild>
