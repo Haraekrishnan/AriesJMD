@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -53,17 +54,18 @@ export default function RoleManagementTable() {
                 <TableBody>
                     {roles.map(role => {
                         const isActionable = can.manage_roles && (role.isEditable || user?.role === 'Admin');
+                        const permissions = role.permissions || [];
                         return (
                         <TableRow key={role.id}>
                             <TableCell className="font-medium">{role.name}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-1 max-w-md">
-                                    {role.permissions.map(permission => (
+                                    {permissions.map(permission => (
                                         <Badge key={permission} variant="secondary">
                                             {permission.replace(/_/g, ' ')}
                                         </Badge>
                                     ))}
-                                    {role.permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
+                                    {permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
                                 </div>
                             </TableCell>
                             <TableCell className="text-right">
