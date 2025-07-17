@@ -68,7 +68,7 @@ export default function TasksPage() {
     if (!user) return [];
 
     const visibleUserIds = new Set<string>();
-    if (user.role === 'Admin' || user.role === 'Manager') {
+    if (can.manage_tasks) {
       users.forEach(u => visibleUserIds.add(u.id));
     } else {
       visibleUserIds.add(user.id);
@@ -113,7 +113,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch;
     });
-  }, [tasks, filters, user, users]);
+  }, [tasks, filters, user, users, can.manage_tasks]);
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');

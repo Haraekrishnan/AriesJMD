@@ -50,7 +50,7 @@ const roleHierarchy: Record<Role, number> = {
   'Supervisor': 2,
   'HSE': 2,
   'Store in Charge': 2,
-  'Manager': 3,
+  'Project Coordinator': 3,
   'Admin': 4,
 };
 
@@ -77,7 +77,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const canEditCoreFields = isCreator || isAdmin;
   const canEditDueDate = isCreator || isAdmin;
-  const canReassign = (user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'Supervisor' || user?.role === 'HSE' || user?.role === 'Store in Charge') && (!isCompleted || isAdmin);
+  const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Supervisor' || user?.role === 'HSE' || user?.role === 'Store in Charge') && (!isCompleted || isAdmin);
 
   useEffect(() => {
     if (taskToDisplay && isOpen) {
@@ -100,7 +100,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const assignableUsers = useMemo(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Manager') {
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
       return allVisibleUsers;
     }
     
@@ -230,8 +230,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     // Supervisor of current assignee can approve.
     if (user.id === currentAssignee.supervisorId) return true;
 
-    // Creator can approve if they are a manager or admin.
-    if (user.id === taskToDisplay.creatorId && (user.role === 'Manager' || user.role === 'Admin')) return true;
+    // Creator can approve if they are a Project Coordinator or admin.
+    if (user.id === taskToDisplay.creatorId && (user.role === 'Project Coordinator' || user.role === 'Admin')) return true;
 
     // Supervisor of creator can approve if creator is not manager/admin.
     const creatorUser = users.find(u => u.id === taskToDisplay.creatorId);

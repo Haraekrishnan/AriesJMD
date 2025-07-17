@@ -12,7 +12,7 @@ import PerformanceFilters from '@/components/performance/performance-filters';
 import PerformanceReportDownloads from '@/components/performance/performance-report-downloads';
 
 export default function PerformancePage() {
-    const { user, users, tasks, getVisibleUsers, events } = useAppContext();
+    const { user, users, tasks, getVisibleUsers, events, can } = useAppContext();
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [activeFilters, setActiveFilters] = useState({
@@ -22,13 +22,8 @@ export default function PerformancePage() {
 
     const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
-    const canCompareEmployees = useMemo(() => {
-        if (!user) return false;
-        return user.role === 'Manager' || user.role === 'Admin';
-    }, [user]);
-
     const performanceData = useMemo(() => {
-        const usersToDisplay = activeFilters.userIds.length > 0 && canCompareEmployees
+        const usersToDisplay = activeFilters.userIds.length > 0 && can.view_performance_reports
             ? visibleUsers.filter(u => activeFilters.userIds.includes(u.id))
             : visibleUsers;
 
@@ -60,7 +55,7 @@ export default function PerformancePage() {
                 total: userTasks.length
             };
         });
-    }, [visibleUsers, tasks, activeFilters, canCompareEmployees]);
+    }, [visibleUsers, tasks, activeFilters, can.view_performance_reports]);
 
     const handleApplyFilters = useCallback(() => {
         setActiveFilters({ userIds: selectedUserIds, dates: dateRange });
@@ -88,7 +83,7 @@ export default function PerformancePage() {
                 onDateChange={setDateRange}
                 onApply={handleApplyFilters}
                 onClear={handleClearFilters}
-                canCompareEmployees={canCompareEmployees}
+                canCompareEmployees={can.view_performance_reports}
             />
 
             <Card>

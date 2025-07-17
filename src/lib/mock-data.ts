@@ -1,6 +1,6 @@
 
 
-import type { User, Task, PlannerEvent, Achievement, ActivityLog, DailyPlannerComment, RoleDefinition, InternalRequest, Project, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, ManagementRequest, DftMachine, MobileSim, OtherEquipment, Driver, Announcement, IncidentReport, Building } from './types';
+import type { User, Task, PlannerEvent, Achievement, ActivityLog, DailyPlannerComment, RoleDefinition, InternalRequest, Project, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, ManagementRequest, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
 
@@ -15,7 +15,7 @@ export const ROLES: RoleDefinition[] = [
   },
   {
     id: 'role-manager',
-    name: 'Manager',
+    name: 'Project Coordinator',
     permissions: [
       'manage_users', 'manage_roles', 'manage_projects', 'manage_branding',
       'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',
@@ -99,7 +99,7 @@ export const PROJECTS: Project[] = [
 
 export const USERS: User[] = [
   { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'Admin', avatar: 'https://i.pravatar.cc/150?u=1', projectId: 'proj-6', planningScore: 0 },
-  { id: '2', name: 'Manu M G', email: 'manu@ariesmarine.com', password: 'password', role: 'Manager', avatar: 'https://i.pravatar.cc/150?u=2', supervisorId: '1', projectId: 'proj-6', planningScore: 0 },
+  { id: '2', name: 'Manu M G', email: 'manu@ariesmarine.com', password: 'password', role: 'Project Coordinator', avatar: 'https://i.pravatar.cc/150?u=2', supervisorId: '1', projectId: 'proj-6', planningScore: 0 },
   { id: '3', name: 'Mujeeb', email: 'mujeeb@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=3', supervisorId: '2', projectId: 'proj-1', planningScore: 0 },
   { id: '4', name: 'Albin Raju', email: 'albin@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=4', supervisorId: '2', projectId: 'proj-2', planningScore: 0 },
   { id: '5', name: 'Arjun P', email: 'arjun@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=5', supervisorId: '2', projectId: 'proj-3', planningScore: 0 },
@@ -322,14 +322,10 @@ export const MANPOWER_LOGS: ManpowerLog[] = [
     { id: 'mp-3', date: format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 19, countOut: 0, reason: 'Full attendance', updatedBy: '3' },
 ];
 
-export const UT_MACHINES: UTMachine[] = [
-    { id: 'ut-1', machineName: 'Krautkramer USM 36', serialNumber: 'UTM-001', calibrationDueDate: add(new Date(), { months: 3 }).toISOString() },
-    { id: 'ut-2', machineName: 'Olympus EPOCH 650', serialNumber: 'UTM-002', calibrationDueDate: add(new Date(), { days: 20 }).toISOString() },
-];
-
+export const UT_MACHINES: UTMachine[] = [];
 export const DFT_MACHINES: DftMachine[] = [];
 export const MOBILE_SIMS: MobileSim[] = [];
-export const OTHER_EQUIPMENTS: OtherEquipment[] = [];
+export const LAPTOPS_DESKTOPS: LaptopDesktop[] = [];
 
 
 export const DRIVERS: Driver[] = [
@@ -338,8 +334,8 @@ export const DRIVERS: Driver[] = [
 ];
 
 export const VEHICLES: Vehicle[] = [
-    { id: 'vh-1', vehicleNumber: 'DXB 12345', driverId: 'd-1', vapValidity: add(new Date(), { months: 6 }).toISOString(), insuranceValidity: add(new Date(), { years: 1 }).toISOString(), fitnessValidity: add(new Date(), { years: 2 }).toISOString(), taxValidity: add(new Date(), { months: 3 }).toISOString(), puccValidity: add(new Date(), { months: 5 }).toISOString() },
-    { id: 'vh-2', vehicleNumber: 'SHJ 54321', driverId: 'd-2', vapValidity: add(new Date(), { days: 25 }).toISOString(), insuranceValidity: add(new Date(), { months: 8 }).toISOString(), fitnessValidity: add(new Date(), { years: 1 }).toISOString(), taxValidity: add(new Date(), { months: 2 }).toISOString(), puccValidity: add(new Date(), { months: 4 }).toISOString() },
+    { id: 'vh-1', vehicleNumber: 'DXB 12345', driverId: 'd-1', seatingCapacity: 4, vapValidity: add(new Date(), { months: 6 }).toISOString(), insuranceValidity: add(new Date(), { years: 1 }).toISOString(), fitnessValidity: add(new Date(), { years: 2 }).toISOString(), taxValidity: add(new Date(), { months: 3 }).toISOString(), puccValidity: add(new Date(), { months: 5 }).toISOString() },
+    { id: 'vh-2', vehicleNumber: 'SHJ 54321', driverId: 'd-2', seatingCapacity: 7, vapValidity: add(new Date(), { days: 25 }).toISOString(), insuranceValidity: add(new Date(), { months: 8 }).toISOString(), fitnessValidity: add(new Date(), { years: 1 }).toISOString(), taxValidity: add(new Date(), { months: 2 }).toISOString(), puccValidity: add(new Date(), { months: 4 }).toISOString() },
 ];
 
 export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'HSE', 'Supervisor', 'Document Controller', 'Cook'];

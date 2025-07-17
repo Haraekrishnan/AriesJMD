@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -373,6 +374,7 @@ export type CertificateRequest = {
   requestType: CertificateRequestType;
   itemId?: string; // For InventoryItem
   utMachineId?: string; // For UTMachine
+  dftMachineId?: string; // For DftMachine
   status: CertificateRequestStatus;
   requestDate: string; // ISO String
   completionDate?: string; // ISO String

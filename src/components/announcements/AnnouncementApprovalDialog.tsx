@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -15,7 +16,7 @@ import EditAnnouncementDialog from './EditAnnouncementDialog';
 import { Textarea } from '../ui/textarea';
 
 export default function AnnouncementApprovalDialog() {
-  const { user, users, announcements, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement } = useAppContext();
+  const { user, users, announcements, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, can } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -51,7 +52,7 @@ export default function AnnouncementApprovalDialog() {
 
   const [returnComment, setReturnComment] = useState('');
 
-  if (pendingAnnouncements.length === 0) return null;
+  if (pendingAnnouncements.length === 0 || !can.manage_announcements) return null;
 
   return (
     <>

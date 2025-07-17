@@ -21,7 +21,7 @@ import ProjectManagementTable from '@/components/account/project-management-tabl
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading } = useAppContext();
+  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -51,9 +51,9 @@ export default function AccountPage() {
   const visibleUsers = useMemo(() => {
     if (!user) return [];
     // Only show other users in the management list
-    const allVisible = user.role === 'Manager' || user.role === 'Admin' ? users : [user];
+    const allVisible = getVisibleUsers();
     return allVisible.filter(u => u.id !== user.id);
-  }, [user, users]);
+  }, [user, getVisibleUsers]);
 
   if (loading || !user || !can) {
     return (

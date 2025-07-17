@@ -54,7 +54,7 @@ export default function AchievementsPage() {
       dateRange = { start: startOfYear(now), end: endOfYear(now) };
     }
     
-    const rolesToExclude = ['Manager', 'Admin'];
+    const rolesToExclude = ['Project Coordinator', 'Admin'];
     const rankedUsers = users.filter(u => !rolesToExclude.includes(u.role));
 
     return rankedUsers
@@ -107,9 +107,9 @@ export default function AchievementsPage() {
   }, [achievements]);
 
   const pendingAchievements = useMemo(() => {
-    if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) return [];
+    if (!user || !can.manage_achievements) return [];
     return achievements.filter(ach => ach.status === 'pending' && ach.awardedById !== user.id);
-  }, [achievements, user]);
+  }, [achievements, user, can.manage_achievements]);
 
   const handleApproveClick = (achievement: Achievement) => {
     setAchievementToApprove(achievement);

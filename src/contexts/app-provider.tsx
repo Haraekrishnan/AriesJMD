@@ -441,7 +441,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (task.pendingAssigneeId) { // Reassignment
       updates.assigneeId = task.pendingAssigneeId;
       updates.assigneeIds = [task.pendingAssigneeId];
-      updates.pendingAssigneeId = null;
+      updates.pendingAssigneeId = undefined;
       updates.status = 'To Do';
       updates.approvalState = 'none';
       updates.isViewedByAssignee = false;
@@ -449,8 +449,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else { // Status change
       updates.status = task.pendingStatus || task.status;
       if (task.pendingStatus === 'Completed') updates.completionDate = new Date().toISOString();
-      updates.pendingStatus = null;
-      updates.previousStatus = null;
+      updates.pendingStatus = undefined;
+      updates.previousStatus = undefined;
       updates.approvalState = 'approved';
       addActivityLog(user.id, 'Task Status Change Approved', `Task "${updates.status}"`);
     }
@@ -467,9 +467,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const updates: Partial<Task> = { 
       status: task.previousStatus || 'To Do', 
-      pendingStatus: null, 
-      previousStatus: null, 
-      pendingAssigneeId: null, 
+      pendingStatus: undefined, 
+      previousStatus: undefined, 
+      pendingAssigneeId: undefined, 
       approvalState: 'returned' 
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -687,7 +687,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const awardedUser = users.find(u => u.id === achievement?.userId);
 
         if (achievement && awardedUser) {
-            const isPrivileged = user.role === 'Admin' || user.role === 'Manager';
+            const isPrivileged = user.role === 'Admin' || user.role === 'Project Coordinator';
             const newAnnouncement: Partial<Announcement> = {
                 title: `Achievement Unlocked: ${achievement.title}!`,
                 content: `Congratulations to ${awardedUser.name} for receiving the "${achievement.title}" award for: ${achievement.description}.`,
@@ -1329,7 +1329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
     if(user) {
-        const isPrivileged = user.role === 'Admin' || user.role === 'Manager';
+        const isPrivileged = user.role === 'Admin' || user.role === 'Project Coordinator';
         const newAnnouncement: Partial<Announcement> = { 
             ...data,
             creatorId: user.id, 
@@ -1399,14 +1399,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const pendingStoreCertRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
     if (!storeRoles.includes(user.role)) return 0;
     return certificateRequests.filter(req => req.status === 'Pending' && req.itemId).length;
   }, [certificateRequests, user]);
 
   const pendingEquipmentCertRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
     if (!storeRoles.includes(user.role)) return 0;
     return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId)).length;
   }, [certificateRequests, user]);
@@ -1461,7 +1461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
   
   const pendingAchievementCount = useMemo(() => {
-    if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) return 0;
+    if (!user || (user.role !== 'Admin' && user.role !== 'Project Coordinator')) return 0;
     return achievements.filter(a => a.status === 'pending' && a.awardedById !== user.id).length;
   }, [achievements, user]);
 
@@ -1479,12 +1479,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    
-
-
-
-    
-
-    
