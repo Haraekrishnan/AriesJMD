@@ -247,10 +247,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LOADING', payload: false });
       return;
     }
-
-    // Only set up listeners if the user is logged in.
+    
     if (!user) {
-        // Clear out data if user logs out
+        // If user logs out, clear all data but keep branding
         const resetState = Object.keys(initialState).reduce((acc, key) => {
             if (!['user', 'loading', 'appName', 'appLogo'].includes(key)) {
                 acc[key as keyof AppState] = [];
@@ -263,34 +262,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const listeners = Object.keys(initialState).map(key => {
-        if (['user', 'loading', 'appName', 'appLogo'].includes(key)) return null;
+      if (['user', 'loading', 'appName', 'appLogo'].includes(key)) return null;
 
-        const dbRef = ref(rtdb, key);
-        return onValue(dbRef, (snapshot) => {
-            const data = snapshot.val();
-            let value = [];
-            if (data) {
-                if (key === 'dailyPlannerComments') {
-                     value = Object.keys(data).map(k => ({ id: k, ...data[k], comments: data[k].comments ? Object.values(data[k].comments) : [] }));
-                } else {
-                     value = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-                }
-            }
-            dispatch({ type: 'SET_STATE', payload: { [key]: value } });
-        });
+      const dbRef = ref(rtdb, key);
+      return onValue(dbRef, (snapshot) => {
+          const data = snapshot.val();
+          let value = [];
+          if (data) {
+              value = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+          }
+          dispatch({ type: 'SET_STATE', payload: { [key]: value } });
+      }, (error) => {
+          console.error(`Error fetching ${key}:`, error);
+          dispatch({ type: 'SET_STATE', payload: { [key]: [] } });
+      });
     }).filter(Boolean);
-
+    
     const brandingRef = ref(rtdb, 'branding');
     const brandingListener = onValue(brandingRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             dispatch({ type: 'SET_BRANDING', payload: {
-                appName: data.appName,
-                appLogo: data.appLogo,
+                appName: data.appName || 'Aries Marine',
+                appLogo: data.appLogo || null,
             }});
         }
     });
-    
+
     dispatch({ type: 'SET_LOADING', payload: false });
 
     return () => {
