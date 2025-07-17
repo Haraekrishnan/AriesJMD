@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 
 
@@ -1144,10 +1144,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestType: requestData.requestType,
       status: 'Pending',
       requestDate: new Date().toISOString(),
-      comments: requestData.remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() }] : [],
       viewedByRequester: true
     };
     
+    const initialComment = requestData.remarks 
+      ? { id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() } 
+      : { id: `crc-${Date.now()}`, userId: user.id, text: 'Request created.', date: new Date().toISOString() };
+
+    newRequest.comments = [initialComment];
+
     if (requestData.itemId) newRequest.itemId = requestData.itemId;
     if (requestData.utMachineId) newRequest.utMachineId = requestData.utMachineId;
     if (requestData.dftMachineId) newRequest.dftMachineId = requestData.dftMachineId;
@@ -1156,12 +1161,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
   }, [user, addActivityLog]);
   
-  const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
+  const addCertificateRequestComment = useCallback(async (requestId: string, comment: string) => {
     if (!user) return;
-    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-    update(ref(rtdb, `certificateRequests/${requestId}`), { lastUpdated: new Date().toISOString(), viewedByRequester: false });
+    const requestRef = ref(rtdb, `certificateRequests/${requestId}`);
+    const snapshot = await get(requestRef);
+    if (!snapshot.exists()) return;
+  
+    const request = snapshot.val();
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const newCommentId = push(ref(rtdb, `certificateRequests/${requestId}/comments`)).key;
+    if (!newCommentId) return;
+
+    const newComment: Comment = { id: newCommentId, userId: user.id, text: comment, date: new Date().toISOString() };
+    const updatedComments = [...existingComments, newComment];
+  
+    update(requestRef, { 
+      comments: updatedComments,
+      lastUpdated: new Date().toISOString(), 
+      viewedByRequester: false 
+    });
   }, [user]);
 
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {

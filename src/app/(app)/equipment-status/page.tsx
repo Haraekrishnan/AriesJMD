@@ -26,6 +26,7 @@ import EditMobileSimDialog from '@/components/mobile-sim/EditMobileSimDialog';
 import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function EquipmentStatusPage() {
     const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems } = useAppContext();
@@ -175,32 +176,45 @@ export default function EquipmentStatusPage() {
                                 {myEquipmentCertRequests.map(req => {
                                     const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
                                     const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
-                                    const isFulfilled = req.status === 'Completed';
                                     const lastComment = req.comments?.[req.comments.length - 1];
-                                    const fulfiller = isFulfilled && lastComment ? users.find(u => u.id === lastComment.userId) : null;
+                                    const fulfiller = req.status === 'Completed' && lastComment ? users.find(u => u.id === lastComment.userId) : null;
+                                    const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
                                     return (
                                         <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
-                                          <div className="flex justify-between items-start">
-                                            <div>
-                                              <p className="font-semibold">{req.requestType} for {subject}</p>
-                                              <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
-                                              {isFulfilled && (
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
-                                              )}
-                                            </div>
-                                          </div>
-                                          {isFulfilled && lastComment && fulfiller && (
-                                            <div className="flex items-start gap-2 mt-2 pt-2 border-t">
-                                              <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
-                                              <div className="bg-background p-2 rounded-md w-full text-sm">
-                                                <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{fulfiller?.name}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</p></div>
-                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{lastComment?.text}</p>
-                                              </div>
-                                            </div>
-                                          )}
+                                            <Accordion type="single" collapsible>
+                                                <AccordionItem value="item-1" className="border-b-0">
+                                                    <div className="flex justify-between items-start">
+                                                        <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
+                                                            <div>
+                                                                <p className="font-semibold">{req.requestType} for {subject}</p>
+                                                                <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
+                                                            </div>
+                                                        </AccordionTrigger>
+                                                        <div className="flex items-center gap-2 pl-4">
+                                                          <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
+                                                          {req.status === 'Completed' && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
+                                                          )}
+                                                        </div>
+                                                    </div>
+                                                    <AccordionContent className="pt-2">
+                                                        <div className="space-y-2 mt-2 pt-2 border-t">
+                                                            {commentsArray.length > 0 ? commentsArray.map((c, i) => {
+                                                                const commentUser = users.find(u => u.id === c.userId);
+                                                                return (
+                                                                    <div key={i} className="flex items-start gap-2">
+                                                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                        <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
                                         </div>
                                     )
                                 })}
@@ -274,4 +288,5 @@ export default function EquipmentStatusPage() {
     );
 
     
+
 
