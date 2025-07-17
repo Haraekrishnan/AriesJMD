@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role } from '@/lib/types';
@@ -25,6 +25,7 @@ import AddMobileSimDialog from '@/components/mobile-sim/AddMobileSimDialog';
 import EditMobileSimDialog from '@/components/mobile-sim/EditMobileSimDialog';
 import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function EquipmentStatusPage() {
     const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems } = useAppContext();
@@ -59,7 +60,12 @@ export default function EquipmentStatusPage() {
         return storeRoles.includes(user.role);
     }, [user]);
 
-    const pendingCertRequests = useMemo(() => {
+    const myEquipmentCertRequests = useMemo(() => {
+        if (!user) return [];
+        return certificateRequests.filter(req => req.requesterId === user.id && (req.utMachineId || req.dftMachineId));
+    }, [certificateRequests, user]);
+    
+    const pendingCertRequestsForMe = useMemo(() => {
         if (!canManageStore) return [];
         return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId));
     }, [certificateRequests, canManageStore]);
@@ -124,7 +130,7 @@ export default function EquipmentStatusPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Fulfilled Certificate Requests</CardTitle>
-                                <CardDescription>Your recent certificate requests have been fulfilled. Please acknowledge them to clear them from this list.</CardDescription>
+                                <CardDescription>Your recent certificate requests have been fulfilled.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {myFulfilledEquipmentCertRequests.map(req => {
@@ -134,7 +140,10 @@ export default function EquipmentStatusPage() {
                                     return (
                                         <div key={req.id} className="p-3 border rounded-lg bg-muted/50 flex justify-between items-center">
                                             <div className="flex-1">
-                                                <p className="font-semibold">{req.requestType} for {machine?.machineName} (SN: {machine?.serialNumber})</p>
+                                                <div className="flex justify-between items-start">
+                                                    <p className="font-semibold">{req.requestType} for {machine?.machineName} (SN: {machine?.serialNumber})</p>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
+                                                </div>
                                                 {lastComment && (
                                                 <div className="flex items-start gap-2 mt-2">
                                                     <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
@@ -145,10 +154,6 @@ export default function EquipmentStatusPage() {
                                                 </div>
                                                 )}
                                             </div>
-                                            <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledRequest(req.id)} className="ml-4 shrink-0">
-                                                <CheckCircle className="mr-2 h-4 w-4" />
-                                                Acknowledge
-                                            </Button>
                                         </div>
                                     )
                                 })}
@@ -172,14 +177,14 @@ export default function EquipmentStatusPage() {
                             </CardContent>
                         </Card>
                     )}
-                    {canManageStore && pendingCertRequests.length > 0 && (
+                    {canManageStore && pendingCertRequestsForMe.length > 0 && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Pending Certificate Requests</CardTitle>
                                 <CardDescription>Review and action these certificate requests.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {pendingCertRequests.map(req => {
+                                {pendingCertRequestsForMe.map(req => {
                                     const requester = users.find(u => u.id === req.requesterId);
                                     const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
                                     const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
@@ -188,6 +193,26 @@ export default function EquipmentStatusPage() {
                                         <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
                                             <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
                                             <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
+                                        </div>
+                                    )
+                                })}
+                            </CardContent>
+                        </Card>
+                    )}
+                    {myEquipmentCertRequests.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>My Certificate Requests</CardTitle>
+                                <CardDescription>Status of your submitted certificate requests for equipment.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {myEquipmentCertRequests.map(req => {
+                                    const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
+                                    const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
+                                    return (
+                                        <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
+                                            <div><p><span className="font-semibold">{req.requestType}</span> for <span className="font-semibold">{subject}</span></p><p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p></div>
+                                            <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
                                         </div>
                                     )
                                 })}

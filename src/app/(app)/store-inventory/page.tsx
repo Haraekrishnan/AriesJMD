@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, CheckCircle } from 'lucide-react';
+import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -177,7 +177,7 @@ export default function StoreInventoryPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Fulfilled Certificate Requests</CardTitle>
-                        <CardDescription>Your recent certificate requests have been fulfilled. Please acknowledge them to clear them from this list.</CardDescription>
+                        <CardDescription>Your recent certificate requests have been fulfilled.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {myFulfilledCertRequests.map(req => {
@@ -188,7 +188,10 @@ export default function StoreInventoryPage() {
                             return (
                                 <div key={req.id} className="p-3 border rounded-lg bg-muted/50 flex justify-between items-center">
                                     <div className="flex-1">
-                                        <p className="font-semibold">{req.requestType} for {subject}</p>
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-semibold">{req.requestType} for {subject}</p>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
+                                        </div>
                                         {lastComment && (
                                           <div className="flex items-start gap-2 mt-2">
                                               <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
@@ -199,10 +202,6 @@ export default function StoreInventoryPage() {
                                           </div>
                                         )}
                                     </div>
-                                    <Button size="sm" variant="outline" onClick={() => acknowledgeFulfilledRequest(req.id)} className="ml-4 shrink-0">
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        Acknowledge
-                                    </Button>
                                 </div>
                             )
                         })}

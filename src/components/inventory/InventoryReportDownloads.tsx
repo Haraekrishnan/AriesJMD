@@ -14,7 +14,7 @@ interface InventoryReportDownloadsProps {
   summaryData?: any[];
 }
 
-export default function InventoryReportDownloads({ items, isSummary = false, summaryData }: InventoryReportDownloadsProps) {
+export default function InventoryReportDownloads({ items, isSummary = false, summaryData = [] }: InventoryReportDownloadsProps) {
   const { projects } = useAppContext();
 
   const handleDownloadExcel = () => {

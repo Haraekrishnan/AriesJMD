@@ -65,6 +65,14 @@ export default function InventoryTable({ items }: InventoryTableProps) {
     
     const isDatePast = (date: string) => isPast(new Date(date));
 
+    if (items.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-48 border-dashed border-2 rounded-lg">
+                <p className="text-muted-foreground">No items match the current filters.</p>
+            </div>
+        );
+    }
+
     return (
         <>
             <Accordion type="multiple" className="w-full space-y-2">
