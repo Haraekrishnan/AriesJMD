@@ -328,7 +328,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
-    update(ref(rtdb, `users/${id}`), data);
+    const dataToSave = { ...data };
+    if (dataToSave.supervisorId === 'none') {
+      dataToSave.supervisorId = undefined;
+    }
+    update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
       if (user.id === updatedUser.id) setStoredUser(updatedUser);
@@ -723,7 +727,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const usersRef = ref(rtdb, 'users');
     const newUserRef = push(usersRef);
-    const dataToSave = Object.fromEntries(Object.entries(userData).filter(([_, v]) => v !== undefined && v !== ''));
+    const dataToSave: any = { ...userData };
+    if (dataToSave.supervisorId === 'none') {
+        delete dataToSave.supervisorId;
+    }
     set(newUserRef, { ...dataToSave, avatar: `https://placehold.co/100x100.png` });
     addActivityLog(user?.id || 'system', 'User Added', `Added new user: ${userData.name}`);
   }, [user, addActivityLog]);

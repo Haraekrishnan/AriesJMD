@@ -115,10 +115,10 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
               control={form.control}
               name="supervisorId"
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value || ''}>
+                <Select onValueChange={field.onChange} value={field.value || 'none'}>
                   <SelectTrigger><SelectValue placeholder="Assign a supervisor" /></SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="">No Supervisor</SelectItem>
+                      <SelectItem value="none">No Supervisor</SelectItem>
                       {possibleSupervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
