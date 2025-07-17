@@ -44,7 +44,7 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
   });
 
   const possibleSupervisors = useMemo(() => {
-    return users.filter(u => u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor');
+    return users.filter(u => u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor' || u.role === 'HSE');
   }, [users]);
 
   const onSubmit = (data: EmployeeFormValues) => {
