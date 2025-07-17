@@ -14,6 +14,7 @@ import { format, sub } from 'date-fns';
 import ManpowerLogReportDownloads from '@/components/manpower/ManpowerLogReportDownloads';
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
+import ManpowerSummaryReportDownloads from '@/components/manpower/ManpowerSummaryReportDownloads';
 
 export default function ManpowerPage() {
     const { can } = useAppContext();
@@ -87,7 +88,7 @@ export default function ManpowerPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Generate Manpower Report</CardTitle>
-                    <CardDescription>Select a date range to generate a downloadable Excel report of daily logs.</CardDescription>
+                    <CardDescription>Select a date range to generate downloadable reports.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col sm:flex-row gap-4 items-center">
                      <Popover>
@@ -125,6 +126,7 @@ export default function ManpowerPage() {
                         </PopoverContent>
                       </Popover>
                       <ManpowerLogReportDownloads dateRange={reportDateRange} />
+                      <ManpowerSummaryReportDownloads dateRange={reportDateRange} />
                 </CardContent>
             </Card>
 
