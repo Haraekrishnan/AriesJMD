@@ -248,6 +248,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Only set up listeners if the user is logged in.
+    if (!user) {
+        // Clear out data if user logs out
+        const resetState = Object.keys(initialState).reduce((acc, key) => {
+            if (!['user', 'loading', 'appName', 'appLogo'].includes(key)) {
+                acc[key as keyof AppState] = [];
+            }
+            return acc;
+        }, {} as any);
+        dispatch({ type: 'SET_STATE', payload: resetState });
+        dispatch({ type: 'SET_LOADING', payload: false });
+        return;
+    }
+
     const listeners = Object.keys(initialState).map(key => {
         if (['user', 'loading', 'appName', 'appLogo'].includes(key)) return null;
 
@@ -269,10 +283,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const brandingRef = ref(rtdb, 'branding');
     const brandingListener = onValue(brandingRef, (snapshot) => {
         const data = snapshot.val();
-        dispatch({ type: 'SET_BRANDING', payload: {
-            appName: data?.appName || 'Aries Marine',
-            appLogo: data?.appLogo || null,
-        }});
+        if (data) {
+            dispatch({ type: 'SET_BRANDING', payload: {
+                appName: data.appName,
+                appLogo: data.appLogo,
+            }});
+        }
     });
     
     dispatch({ type: 'SET_LOADING', payload: false });
@@ -281,7 +297,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       listeners.forEach(unsubscribe => unsubscribe && unsubscribe());
       brandingListener();
     };
-  }, []);
+  }, [user]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
@@ -298,7 +314,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, pass: string): Promise<boolean> => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    const foundUser = users.find(u => u.email === email && u.password === pass);
+    // Fetch users directly to ensure we have the latest data before attempting login
+    const usersRef = ref(rtdb, 'users');
+    const snapshot = await get(usersRef);
+    const dbUsers = snapshot.val();
+    const usersArray: User[] = dbUsers ? Object.keys(dbUsers).map(k => ({ id: k, ...dbUsers[k] })) : [];
+
+    const foundUser = usersArray.find(u => u.email === email && u.password === pass);
     if (foundUser) {
       setStoredUser(foundUser);
       addActivityLog(foundUser.id, 'User Logged In');
@@ -307,7 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     dispatch({ type: 'SET_LOADING', payload: false });
     return false;
-  }, [addActivityLog, setStoredUser, users]);
+  }, [addActivityLog, setStoredUser]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -336,9 +358,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const can = useMemo(() => {
     const permissions = new Set<Permission>();
-    if (user && !loading) {
+    if (user && !loading && roles.length > 0) {
         const userRole = roles.find(r => r.name === user.role);
-        if (userRole) userRole.permissions.forEach(p => permissions.add(p));
+        if (userRole && userRole.permissions) {
+            userRole.permissions.forEach(p => permissions.add(p));
+        }
     }
     const canObject: PermissionsObject = {} as any;
     for (const p of ALL_PERMISSIONS) canObject[p] = permissions.has(p);
