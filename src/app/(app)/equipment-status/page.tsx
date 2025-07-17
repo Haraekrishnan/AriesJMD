@@ -117,13 +117,14 @@ export default function EquipmentStatusPage() {
     const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
     
     const detailedUsageData = useMemo(() => {
-        if (!activeDaysDateRange?.from) return [];
+        const defaultReturn = { dates: [], machineData: [] };
+        if (!activeDaysDateRange?.from) return defaultReturn;
 
         const machinesToReport = selectedMachineIds.length > 0 
             ? allMachines.filter(m => selectedMachineIds.includes(m.id))
             : allMachines;
 
-        if (machinesToReport.length === 0) return [];
+        if (machinesToReport.length === 0) return defaultReturn;
             
         const { from, to = from } = activeDaysDateRange;
         const daysInRange = eachDayOfInterval({ start: from, end: to });
