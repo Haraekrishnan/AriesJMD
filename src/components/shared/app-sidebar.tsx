@@ -32,7 +32,7 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount } = useAppContext();
+  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount } = useAppContext();
   const pathname = usePathname();
   
   const navItems = [
@@ -47,7 +47,7 @@ export function AppSidebar() {
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0 },
     { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0 },
-    { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: pendingAchievementCount },
+    { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0 },
     { href: '/reports', icon: FileText, label: 'Reports', notificationCount: 0 },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0 },
   ];

@@ -68,7 +68,6 @@ type AppContextType = {
   pendingManagementRequestCount: number;
   updatedManagementRequestCount: number;
   incidentNotificationCount: number;
-  pendingAchievementCount: number;
 
   // Functions
   getVisibleUsers: () => User[];
@@ -98,8 +97,6 @@ type AppContextType = {
   awardManualAchievement: (achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => void;
   updateManualAchievement: (achievement: Achievement) => void;
   deleteManualAchievement: (achievementId: string) => void;
-  approveAchievement: (achievementId: string, points: number) => void;
-  rejectAchievement: (achievementId: string) => void;
   addUser: (user: Omit<User, 'id' | 'avatar'>) => void;
   updateUser: (user: User) => void;
   updateUserPlanningScore: (userId: string, score: number) => void;
@@ -693,37 +690,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (ach) addActivityLog(user.id, 'Achievement Deleted', `Deleted "${ach.title}"`);
     }
   }, [user, achievements, addActivityLog]);
-
-  const approveAchievement = useCallback((achievementId: string, points: number) => {
-    if (user) {
-        update(ref(rtdb, `achievements/${achievementId}`), { status: 'approved', points });
-        addActivityLog(user.id, 'Achievement Approved', `Approved achievement ID: ${achievementId}`);
-
-        const achievement = achievements.find(a => a.id === achievementId);
-        const awardedUser = users.find(u => u.id === achievement?.userId);
-
-        if (achievement && awardedUser) {
-            const newAnnouncement: Partial<Announcement> = {
-                title: `New Achievement: ${achievement.title}!`,
-                content: `Congratulations to ${awardedUser.name} for receiving the "${achievement.title}" award for: ${achievement.description}.`,
-                creatorId: user.id,
-                approverId: user.id,
-                status: 'approved',
-                createdAt: new Date().toISOString(),
-                comments: [],
-            };
-            const newRef = push(ref(rtdb, 'announcements'));
-            set(newRef, newAnnouncement);
-        }
-    }
-  }, [user, addActivityLog, achievements, users]);
-
-  const rejectAchievement = useCallback((achievementId: string) => {
-    if (user) {
-        remove(ref(rtdb, `achievements/${achievementId}`));
-        addActivityLog(user.id, 'Achievement Rejected', `Rejected achievement ID: ${achievementId}`);
-    }
-  }, [user, addActivityLog]);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const usersRef = ref(rtdb, 'users');
@@ -1479,15 +1445,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     return myIncidents.filter(i => !i.viewedBy.includes(user.id)).length;
   }, [incidentReports, user]);
-  
-  const pendingAchievementCount = useMemo(() => {
-    if (!user || !can.manage_achievements) return 0;
-    return achievements.filter(a => a.status === 'pending').length;
-  }, [achievements, user, can]);
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, approveAchievement, rejectAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
