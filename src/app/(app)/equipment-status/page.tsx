@@ -126,40 +126,6 @@ export default function EquipmentStatusPage() {
                             </Button>
                         )}
                     </div>
-                     {myFulfilledEquipmentCertRequests && myFulfilledEquipmentCertRequests.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Fulfilled Certificate Requests</CardTitle>
-                                <CardDescription>Your recent certificate requests have been fulfilled.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {myFulfilledEquipmentCertRequests.map(req => {
-                                    const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
-                                    const lastComment = req.comments?.[req.comments.length-1];
-                                    const fulfiller = users.find(u => u.id === lastComment?.userId);
-                                    return (
-                                        <div key={req.id} className="p-3 border rounded-lg bg-muted/50 flex justify-between items-center">
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <p className="font-semibold">{req.requestType} for {machine?.machineName} (SN: {machine?.serialNumber})</p>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
-                                                </div>
-                                                {lastComment && (
-                                                <div className="flex items-start gap-2 mt-2">
-                                                    <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                    <div className="bg-background p-2 rounded-md w-full text-sm">
-                                                        <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{fulfiller?.name}</p><p className="text-xs text-muted-foreground">{lastComment ? formatDistanceToNow(new Date(lastComment.date), { addSuffix: true }) : ''}</p></div>
-                                                        <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{lastComment?.text}</p>
-                                                    </div>
-                                                </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </CardContent>
-                        </Card>
-                    )}
                     {can.manage_equipment_status && expiringMachines.length > 0 && (
                         <Card>
                             <CardHeader>
@@ -209,10 +175,32 @@ export default function EquipmentStatusPage() {
                                 {myEquipmentCertRequests.map(req => {
                                     const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
                                     const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
+                                    const isFulfilled = req.status === 'Completed';
+                                    const lastComment = req.comments?.[req.comments.length - 1];
+                                    const fulfiller = isFulfilled && lastComment ? users.find(u => u.id === lastComment.userId) : null;
                                     return (
-                                        <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
-                                            <div><p><span className="font-semibold">{req.requestType}</span> for <span className="font-semibold">{subject}</span></p><p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p></div>
-                                            <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
+                                        <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
+                                          <div className="flex justify-between items-start">
+                                            <div>
+                                              <p className="font-semibold">{req.requestType} for {subject}</p>
+                                              <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
+                                              {isFulfilled && (
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {isFulfilled && lastComment && fulfiller && (
+                                            <div className="flex items-start gap-2 mt-2 pt-2 border-t">
+                                              <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
+                                              <div className="bg-background p-2 rounded-md w-full text-sm">
+                                                <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{fulfiller?.name}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</p></div>
+                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{lastComment?.text}</p>
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                     )
                                 })}
@@ -286,3 +274,4 @@ export default function EquipmentStatusPage() {
     );
 
     
+
