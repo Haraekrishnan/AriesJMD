@@ -23,10 +23,10 @@ interface TeamTaskDistributionChartProps {
 
 export default function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistributionChartProps) {
   const { user } = useAppContext();
-  const [selectedUserId, setSelectedUserId] = useState(user?.id || 'all');
+  const [selectedUserId, setSelectedUserId] = useState('all');
 
   const selectedUserName = useMemo(() => {
-    if (selectedUserId === 'all') return 'All Visible Team Members';
+    if (selectedUserId === 'all') return 'All Visible Members';
     return users.find(u => u.id === selectedUserId)?.name || 'Selected User';
   }, [selectedUserId, users]);
 
@@ -53,7 +53,7 @@ export default function TeamTaskDistributionChart({ tasks, users }: TeamTaskDist
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Team Task Distribution</CardTitle>
+        <CardTitle>Task Distribution</CardTitle>
         <div className="flex flex-col gap-2 pt-2">
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger className="w-[240px]">
