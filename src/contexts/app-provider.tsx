@@ -1139,28 +1139,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
 
-    const { remarks, ...restOfData } = requestData;
-    const comments = remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: remarks, date: new Date().toISOString() }] : [];
-    
-    // Explicitly build the object to avoid undefined properties
     const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
       requesterId: user.id,
-      requestType: restOfData.requestType,
+      requestType: requestData.requestType,
       status: 'Pending',
       requestDate: new Date().toISOString(),
-      comments,
+      comments: requestData.remarks ? [{ id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() }] : [],
       viewedByRequester: true
     };
-
-    if (restOfData.itemId) {
-        newRequest.itemId = restOfData.itemId;
-    }
-    if (restOfData.utMachineId) {
-        newRequest.utMachineId = restOfData.utMachineId;
-    }
-     if (restOfData.dftMachineId) {
-        newRequest.dftMachineId = restOfData.dftMachineId;
-    }
+    
+    if (requestData.itemId) newRequest.itemId = requestData.itemId;
+    if (requestData.utMachineId) newRequest.utMachineId = requestData.utMachineId;
+    if (requestData.dftMachineId) newRequest.dftMachineId = requestData.dftMachineId;
 
     set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
     addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
@@ -1171,6 +1161,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
+    update(ref(rtdb, `certificateRequests/${requestId}`), { lastUpdated: new Date().toISOString(), viewedByRequester: false });
   }, [user]);
 
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
@@ -1383,7 +1374,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return certificateRequests.filter(req => 
       req.requesterId === user.id && 
       req.status === 'Completed' && 
-      !req.viewedByRequester && 
       (req.utMachineId || req.dftMachineId)
     );
   }, [certificateRequests, user]);
@@ -1429,7 +1419,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const pendingInternalRequestCount = useMemo(() => {
     if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
     if (!storeRoles.includes(user.role)) {
         return 0;
     }
@@ -1475,5 +1465,7 @@ export const useAppContext = (): AppContextType => {
     
 
 
+
+    
 
     
