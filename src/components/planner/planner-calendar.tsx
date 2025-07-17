@@ -27,7 +27,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const { 
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
         dailyPlannerComments, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment,
-        markPlannerCommentsAsRead, unreadPlannerCommentDays 
+        markPlannerCommentsAsRead, unreadPlannerCommentDays, can
     } = useAppContext();
     const { toast } = useToast();
 
@@ -134,7 +134,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                 <div className="space-y-2">
                                     {selectedDayEvents.map((event) => {
                                         const creator = users.find(u => u.id === event.creatorId);
-                                        const canModifyEvent = user?.id === event.creatorId || user?.role === 'Admin';
+                                        const canModifyEvent = user?.id === event.creatorId || can.manage_planner;
                                         const isEventInPast = isPast(startOfDay(new Date(event.date)));
                                         return (
                                             <div key={event.id} className="p-3 border rounded-md bg-muted/50">
