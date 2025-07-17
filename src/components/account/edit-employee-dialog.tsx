@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -31,12 +31,16 @@ interface EditEmployeeDialogProps {
 }
 
 export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit }: EditEmployeeDialogProps) {
-  const { updateUser, projects, roles } = useAppContext();
+  const { users, updateUser, projects, roles } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
   });
+
+  const possibleSupervisors = useMemo(() => {
+    return users.filter(u => u.id !== userToEdit.id && (u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor'));
+  }, [users, userToEdit]);
 
   useEffect(() => {
     if (userToEdit && isOpen) {
@@ -115,6 +119,23 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
               )}
             />
              {form.formState.errors.role && <p className="text-xs text-destructive">{form.formState.errors.role.message}</p>}
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Supervisor</Label>
+            <Controller
+              control={form.control}
+              name="supervisorId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <SelectTrigger><SelectValue placeholder="Assign a supervisor" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="">No Supervisor</SelectItem>
+                      {possibleSupervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="space-y-2">

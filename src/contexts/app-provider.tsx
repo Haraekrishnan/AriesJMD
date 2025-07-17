@@ -723,7 +723,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const usersRef = ref(rtdb, 'users');
     const newUserRef = push(usersRef);
-    set(newUserRef, { ...userData, avatar: `https://placehold.co/100x100.png` });
+    const dataToSave = Object.fromEntries(Object.entries(userData).filter(([_, v]) => v !== undefined && v !== ''));
+    set(newUserRef, { ...dataToSave, avatar: `https://placehold.co/100x100.png` });
     addActivityLog(user?.id || 'system', 'User Added', `Added new user: ${userData.name}`);
   }, [user, addActivityLog]);
   
@@ -806,8 +807,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addDriver = useCallback((driver: Omit<Driver, 'id' | 'photo'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'drivers'));
-    // Clean up undefined values before setting
-    const cleanDriver = Object.fromEntries(Object.entries(driver).filter(([_, v]) => v !== undefined));
+    const cleanDriver = Object.fromEntries(Object.entries(driver).filter(([_, v]) => v !== undefined && v !== ''));
     set(newRef, { ...cleanDriver, photo: `https://placehold.co/100x100.png` });
     addActivityLog(user.id, 'Driver Added', driver.name);
   }, [user, addActivityLog]);
@@ -815,8 +815,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateDriver = useCallback((updatedDriver: Driver) => {
     if(!user) return;
     const { id, ...data } = updatedDriver;
-    // Clean up undefined values before updating
-    const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+    const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined && v !== ''));
     update(ref(rtdb, `drivers/${id}`), cleanData);
     addActivityLog(user.id, 'Driver Updated', updatedDriver.name);
   }, [user, addActivityLog]);

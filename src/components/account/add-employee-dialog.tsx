@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { User } from '@/lib/types';
+import { useMemo } from 'react';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -29,7 +30,7 @@ interface AddEmployeeDialogProps {
 }
 
 export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDialogProps) {
-  const { addUser, projects, roles } = useAppContext();
+  const { addUser, projects, roles, users } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<EmployeeFormValues>({
@@ -41,6 +42,10 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
       role: 'Employee',
     },
   });
+
+  const possibleSupervisors = useMemo(() => {
+    return users.filter(u => u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor');
+  }, [users]);
 
   const onSubmit = (data: EmployeeFormValues) => {
     addUser(data);
@@ -102,6 +107,23 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
               )}
             />
              {form.formState.errors.role && <p className="text-xs text-destructive">{form.formState.errors.role.message}</p>}
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Supervisor</Label>
+            <Controller
+              control={form.control}
+              name="supervisorId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <SelectTrigger><SelectValue placeholder="Assign a supervisor" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="">No Supervisor</SelectItem>
+                      {possibleSupervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="space-y-2">
