@@ -29,10 +29,10 @@ interface InternalRequestTableProps {
   requests: InternalRequest[];
 }
 
-const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
   Pending: 'secondary',
   Approved: 'default',
-  Issued: 'outline',
+  Issued: 'success',
   Rejected: 'destructive',
 };
 
