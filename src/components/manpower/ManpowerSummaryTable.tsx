@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, sub } from 'date-fns';
+import { format, sub, isBefore, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
 import { Edit } from 'lucide-react';
 import type { ManpowerLog } from '@/lib/types';
@@ -28,15 +28,26 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
             const logsForProjectDay = manpowerLogs.filter(log => log.date === dateStr && log.projectId === project.id);
             const latestLog = logsForProjectDay.sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
             
+            let dayTotal = 0;
+            if (latestLog) {
+                dayTotal = latestLog.total;
+            } else {
+                // Find the most recent log for this project *before* the selected date
+                const previousLogs = manpowerLogs
+                    .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), selectedDate))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                dayTotal = previousLogs.length > 0 ? (previousLogs[0].total || 0) : 0;
+            }
+
             return {
                 projectId: project.id,
                 projectName: project.name,
                 log: latestLog,
-                total: latestLog ? latestLog.total : (manpowerLogs.find(l => l.date === format(sub(selectedDate, {days: 1}), 'yyyy-MM-dd') && l.projectId === project.id)?.total || 0),
+                total: dayTotal,
             };
         });
         
-        const overallTotal = summaryData.reduce((acc, curr) => acc + curr.total, 0);
+        const overallTotal = summaryData.reduce((acc, curr) => acc + (curr.total || 0), 0);
         
         return { summary: summaryData, overallTotal };
     }, [projects, manpowerLogs, selectedDate]);
