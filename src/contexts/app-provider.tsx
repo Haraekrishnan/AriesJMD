@@ -13,11 +13,6 @@ import useLocalStorage from '@/hooks/use-local-storage';
 
 type PermissionsObject = Record<Permission, boolean>;
 
-type BrandingState = {
-  appName: string;
-  appLogo: string | null;
-}
-
 type AppContextType = {
   // Auth
   user: User | null;
@@ -213,7 +208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
-
+  
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -1328,11 +1323,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [machineLogs]);
 
   const updateBranding = useCallback((name: string, logo: string | null) => {
-    if (user) {
-      update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
+    if (user && can.manage_branding) {
+      const brandingRef = ref(rtdb, 'branding');
+      update(brandingRef, { appName: name, appLogo: logo });
       addActivityLog(user.id, 'Branding Updated');
     }
-  }, [user, addActivityLog]);
+  }, [user, can.manage_branding, addActivityLog]);
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
     if(user) {
