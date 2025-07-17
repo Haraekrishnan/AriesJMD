@@ -659,7 +659,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const awardedUser = users.find(u => u.id === achievementData.userId);
         if (awardedUser) {
           const newAnnouncement: Partial<Announcement> = {
-              title: `Achievement Unlocked: ${newAchievement.title}!`,
+              title: `New Achievement: ${newAchievement.title}!`,
               content: `Congratulations to ${awardedUser.name} for receiving the "${newAchievement.title}" award for: ${newAchievement.description}.`,
               creatorId: user.id,
               approverId: user.id,
@@ -699,7 +699,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (achievement && awardedUser) {
             const newAnnouncement: Partial<Announcement> = {
-                title: `Achievement Unlocked: ${achievement.title}!`,
+                title: `New Achievement: ${achievement.title}!`,
                 content: `Congratulations to ${awardedUser.name} for receiving the "${achievement.title}" award for: ${achievement.description}.`,
                 creatorId: user.id,
                 approverId: user.id,
