@@ -117,14 +117,17 @@ export default function EquipmentStatusPage() {
     const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
     
     const detailedUsageData = useMemo(() => {
-        const defaultReturn = { dates: [], machineData: [] };
-        if (!activeDaysDateRange?.from) return defaultReturn;
+        if (!activeDaysDateRange?.from) {
+            return { dates: [], machineData: [] };
+        }
 
         const machinesToReport = selectedMachineIds.length > 0 
             ? allMachines.filter(m => selectedMachineIds.includes(m.id))
             : allMachines;
 
-        if (machinesToReport.length === 0) return defaultReturn;
+        if (machinesToReport.length === 0) {
+            return { dates: [], machineData: [] };
+        }
             
         const { from, to = from } = activeDaysDateRange;
         const daysInRange = eachDayOfInterval({ start: from, end: to });
@@ -152,7 +155,7 @@ export default function EquipmentStatusPage() {
     }, [activeDaysDateRange, selectedMachineIds, allMachines, machineLogs]);
 
     const activeDaysSummary = useMemo(() => {
-        if (!detailedUsageData || detailedUsageData.machineData.length === 0) return [];
+        if (!detailedUsageData || !detailedUsageData.machineData || detailedUsageData.machineData.length === 0) return [];
         return detailedUsageData.machineData.map(data => {
             const activeDays = Object.values(data.statuses).filter(s => s === 'Active').length;
             return {
@@ -165,7 +168,7 @@ export default function EquipmentStatusPage() {
     }, [detailedUsageData]);
 
     const handleExportActiveDays = () => {
-        if (!detailedUsageData || !activeDaysSummary || activeDaysSummary.length === 0) return;
+        if (!detailedUsageData || !activeDaysSummary || activeDaysSummary.length === 0 || !activeDaysDateRange?.from) return;
     
         // Summary Sheet
         const summaryToExport = activeDaysSummary.map(item => ({
@@ -175,23 +178,42 @@ export default function EquipmentStatusPage() {
         }));
         const summaryWorksheet = XLSX.utils.json_to_sheet(summaryToExport);
     
-        // Detailed Sheet
-        const detailedHeader = ['Machine Name', 'Serial Number', ...detailedUsageData.dates];
-        const detailedBody = detailedUsageData.machineData.map(data => {
-            const row: Record<string, any> = {
-                'Machine Name': data.machine.machineName,
-                'Serial Number': data.machine.serialNumber
-            };
-            detailedUsageData.dates.forEach(date => {
-                row[date] = data.statuses[date] || 'Idle';
-            });
-            return row;
+        // Detailed Log Sheet
+        const machinesToReport = selectedMachineIds.length > 0
+            ? allMachines.filter(m => selectedMachineIds.includes(m.id))
+            : allMachines;
+        
+        const { from, to = from } = activeDaysDateRange;
+        
+        const logsInRange = machineLogs.filter(log => {
+            const logDate = new Date(log.date);
+            return machinesToReport.some(m => m.id === log.machineId) && isSameDay(logDate, from) || (isAfter(logDate, from) && isBefore(logDate, to));
         });
-        const detailedWorksheet = XLSX.utils.json_to_sheet(detailedBody, { header: detailedHeader });
+
+        const detailedLogData = logsInRange.map(log => {
+            const machine = machinesToReport.find(m => m.id === log.machineId);
+            if (!machine) return null;
+            return {
+                'Date': format(new Date(log.date), 'dd-MM-yyyy'),
+                'Machine Name': machine.machineName,
+                'Serial Number': machine.serialNumber,
+                'Status': log.status,
+                'Time (From-To)': `${log.fromTime} - ${log.toTime}`,
+                'Used By': log.userName,
+                'Location': log.location,
+                'Job Description': log.jobDescription,
+                'Reason for Idle': log.status === 'Idle' ? log.reason : 'N/A',
+                'Probe Details': machine.probeDetails,
+                'Cable Details': machine.cableDetails,
+                'Calibration Due Date': format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')
+            }
+        }).filter(Boolean);
+
+        const detailedWorksheet = XLSX.utils.json_to_sheet(detailedLogData);
     
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary Report');
-        XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Daily Report');
+        XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Log Report');
     
         XLSX.writeFile(workbook, 'Machine_Usage_Report.xlsx');
     };
