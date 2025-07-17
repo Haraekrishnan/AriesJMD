@@ -173,6 +173,23 @@ type AppContextType = AppState & {
   deleteRoom: (buildingId: string, roomId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
+  
+  pendingTaskApprovalCount: number;
+  myNewTaskCount: number;
+  myFulfilledStoreCertRequestCount: number;
+  myFulfilledEquipmentCertRequests: CertificateRequest[];
+  workingManpowerCount: number;
+  onLeaveManpowerCount: number;
+  pendingStoreCertRequestCount: number;
+  pendingEquipmentCertRequestCount: number;
+  plannerNotificationCount: number;
+  unreadPlannerCommentDays: string[];
+  pendingInternalRequestCount: number;
+  updatedInternalRequestCount: number;
+  pendingManagementRequestCount: number;
+  updatedManagementRequestCount: number;
+  incidentNotificationCount: number;
+  pendingAchievementCount: number;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -243,17 +260,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!rtdb) {
-      console.error("Firebase Realtime Database is not initialized.");
-      dispatch({ type: 'SET_LOADING', payload: false });
-      return;
+        console.error("Firebase Realtime Database is not initialized.");
+        dispatch({ type: 'SET_LOADING', payload: false });
+        return;
     }
-    
+
+    const dataPaths = Object.keys(initialState).filter(key => 
+        !['user', 'loading', 'appName', 'appLogo'].includes(key)
+    );
+
     if (!user) {
-        // If user logs out, clear all data but keep branding
-        const resetState = Object.keys(initialState).reduce((acc, key) => {
-            if (!['user', 'loading', 'appName', 'appLogo'].includes(key)) {
-                acc[key as keyof AppState] = [];
-            }
+        const resetState = dataPaths.reduce((acc, key) => {
+            acc[key as keyof AppState] = [];
             return acc;
         }, {} as any);
         dispatch({ type: 'SET_STATE', payload: resetState });
@@ -261,23 +279,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    const listeners = Object.keys(initialState).map(key => {
-      if (['user', 'loading', 'appName', 'appLogo'].includes(key)) return null;
+    const listeners = dataPaths.map(key => {
+        const dbRef = ref(rtdb, key);
+        return onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            let value = [];
+            if (data) {
+                value = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+            }
+            dispatch({ type: 'SET_STATE', payload: { [key]: value } });
+        }, (error) => {
+            console.error(`Error fetching ${key}:`, error);
+            // If there's a permission error for one, don't block others. Set to empty array.
+            dispatch({ type: 'SET_STATE', payload: { [key]: [] } });
+        });
+    });
 
-      const dbRef = ref(rtdb, key);
-      return onValue(dbRef, (snapshot) => {
-          const data = snapshot.val();
-          let value = [];
-          if (data) {
-              value = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-          }
-          dispatch({ type: 'SET_STATE', payload: { [key]: value } });
-      }, (error) => {
-          console.error(`Error fetching ${key}:`, error);
-          dispatch({ type: 'SET_STATE', payload: { [key]: [] } });
-      });
-    }).filter(Boolean);
-    
     const brandingRef = ref(rtdb, 'branding');
     const brandingListener = onValue(brandingRef, (snapshot) => {
         const data = snapshot.val();
@@ -292,10 +309,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_LOADING', payload: false });
 
     return () => {
-      listeners.forEach(unsubscribe => unsubscribe && unsubscribe());
-      brandingListener();
+        listeners.forEach(unsubscribe => unsubscribe && unsubscribe());
+        if (brandingListener) brandingListener();
     };
-  }, [user]);
+}, [user]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
@@ -1486,3 +1503,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
