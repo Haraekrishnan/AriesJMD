@@ -207,9 +207,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [certificateRequests, setCertificateRequests] = useState<CertificateRequest[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [appName, setAppName] = useState('Aries Marine');
-  const [appLogo, setAppLogo] = useState<string | null>(null);
   
+  // Use local storage for branding to ensure persistence
+  const [appName, setAppName] = useLocalStorage('appName', 'Aries Marine');
+  const [appLogo, setAppLogo] = useLocalStorage<string | null>('appLogo', null);
+
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
@@ -238,29 +240,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           setter(data);
         } else {
-          setter(processData ? { appName: 'Aries Marine', appLogo: null } : []);
+          // Pass an empty object to processData for branding to handle reset
+          setter(processData ? processData({}) : []);
         }
       });
       return unsubscribe;
     };
-
+  
     const handleBrandingData = (data: { appName?: string, appLogo?: string | null }) => {
       setAppName(data.appName || 'Aries Marine');
       setAppLogo(data.appLogo || null);
     };
-
+  
     const processDailyComments = (data: any) => {
-        return Object.keys(data).map(key => {
-            const dayData = data[key];
-            return {
-                id: key,
-                ...dayData,
-                comments: dayData.comments ? Object.keys(dayData.comments).map(commentKey => ({
-                    id: commentKey,
-                    ...dayData.comments[commentKey]
-                })) : []
-            };
-        });
+      if (!data) return [];
+      return Object.keys(data).map(key => {
+          const dayData = data[key];
+          return {
+              id: key,
+              ...dayData,
+              comments: dayData.comments ? Object.keys(dayData.comments).map(commentKey => ({
+                  id: commentKey,
+                  ...dayData.comments[commentKey]
+              })) : []
+          };
+      });
     };
   
     const listeners = [
@@ -269,7 +273,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setupListener('tasks', setTasks),
       setupListener('projects', setProjects),
       setupListener('activityLogs', setActivityLogs),
-      setupListener('branding', handleBrandingData, data => data),
+      setupListener('branding', handleBrandingData, data => data || {}),
       setupListener('inventoryItems', setInventoryItems),
       setupListener('utMachines', setUtMachines),
       setupListener('dftMachines', setDftMachines),
@@ -296,7 +300,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
     };
-  }, []);
+  }, [setAppName, setAppLogo]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
