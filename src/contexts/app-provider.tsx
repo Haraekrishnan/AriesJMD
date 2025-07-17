@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1481,7 +1482,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const pendingAchievementCount = useMemo(() => {
     if (!user || !can.manage_achievements) return 0;
-    return achievements.filter(a => a.status === 'pending' && a.awardedById !== user.id).length;
+    return achievements.filter(a => a.status === 'pending').length;
   }, [achievements, user, can]);
 
   const contextValue = {
