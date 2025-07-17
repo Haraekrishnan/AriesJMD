@@ -72,10 +72,10 @@ export default function EquipmentStatusPage() {
 
 
     useEffect(() => {
-        if (myFulfilledEquipmentCertRequests?.length > 0) {
+        if (myFulfilledEquipmentCertRequests.some(req => !req.viewedByRequester)) {
             markFulfilledRequestsAsViewed('equipment');
         }
-    }, [markFulfilledRequestsAsViewed, myFulfilledEquipmentCertRequests]);
+    }, [myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed]);
 
     const expiringMachines = useMemo(() => {
         const thirtyDaysFromNow = addDays(new Date(), 30);
@@ -149,7 +149,7 @@ export default function EquipmentStatusPage() {
                                                     <Avatar className="h-7 w-7"><AvatarImage src={fulfiller?.avatar} /><AvatarFallback>{fulfiller?.name.charAt(0)}</AvatarFallback></Avatar>
                                                     <div className="bg-background p-2 rounded-md w-full text-sm">
                                                         <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{fulfiller?.name}</p><p className="text-xs text-muted-foreground">{lastComment ? formatDistanceToNow(new Date(lastComment.date), { addSuffix: true }) : ''}</p></div>
-                                                        <p className="text-foreground/80 mt-1">{lastComment?.text}</p>
+                                                        <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{lastComment?.text}</p>
                                                     </div>
                                                 </div>
                                                 )}
