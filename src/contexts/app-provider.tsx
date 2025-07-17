@@ -683,7 +683,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const awardedUser = users.find(u => u.id === achievement?.userId);
 
         if (achievement && awardedUser) {
-            const isPrivileged = user.role === 'Admin' || user.role === 'Project Coordinator';
             const newAnnouncement: Partial<Announcement> = {
                 title: `Achievement Unlocked: ${achievement.title}!`,
                 content: `Congratulations to ${awardedUser.name} for receiving the "${achievement.title}" award for: ${achievement.description}.`,
