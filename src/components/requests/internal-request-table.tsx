@@ -22,7 +22,7 @@ import { z } from 'zod';
 import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 interface InternalRequestTableProps {
@@ -47,7 +47,7 @@ const editRequestSchema = z.object({
 type EditRequestFormValues = z.infer<typeof editRequestSchema>;
 
 export default function InternalRequestTable({ requests }: InternalRequestTableProps) {
-  const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed } = useAppContext();
+  const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest } = useAppContext();
   const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
   const [action, setAction] = useState<InternalRequestStatus | null>(null);
   const [comment, setComment] = useState('');
@@ -92,6 +92,11 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     setSelectedRequest(null);
     setAction(null);
   };
+
+  const handleDelete = (requestId: string) => {
+    deleteInternalRequest(requestId);
+    toast({ variant: 'destructive', title: 'Request Deleted' });
+  };
   
   const getRequesterName = (id: string) => users.find(u => u.id === id)?.name || 'Unknown';
   
@@ -117,7 +122,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             <TableHead>Date</TableHead>
             <TableHead>Items & History</TableHead>
             <TableHead>Status</TableHead>
-            {canApprove && <TableHead className="text-right">Actions</TableHead>}
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -171,19 +176,34 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                 <TableCell>
                   <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                 </TableCell>
-                {canApprove && (
-                  <TableCell className="text-right">
+                <TableCell className="text-right">
+                  <AlertDialog>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={req.status === 'Issued' || req.status === 'Rejected'}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit Items</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>
+                        {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit Items</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>
+                          </>
+                        )}
+                        {user?.role === 'Admin' && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
-                )}
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </TableCell>
               </TableRow>
             )
           })}

@@ -126,10 +126,12 @@ type AppContextType = {
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
+  deleteInternalRequest: (requestId: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
   addManagementRequest: (request: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updateManagementRequest: (request: ManagementRequest) => void;
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
+  deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
@@ -652,44 +654,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
-    if (user) {
-        const newAchRef = push(ref(rtdb, 'achievements'));
-        const newAchievement: Omit<Achievement, 'id'> = { ...achievementData, date: new Date().toISOString(), type: 'manual', status: 'approved', awardedById: user.id };
-        set(newAchRef, newAchievement);
-        addActivityLog(user.id, 'Achievement Awarded', `Awarded "${achievementData.title}"`);
+    if (!user) return;
+    if (!can.manage_achievements) return;
 
-        const awardedUser = users.find(u => u.id === achievementData.userId);
-        if (awardedUser) {
-          const newAnnouncement: Partial<Announcement> = {
-              title: `New Achievement: ${newAchievement.title}!`,
-              content: `Congratulations to ${awardedUser.name} for receiving the "${newAchievement.title}" award for: ${newAchievement.description}.`,
-              creatorId: user.id,
-              approverId: user.id,
-              status: 'approved',
-              createdAt: new Date().toISOString(),
-              comments: [],
-          };
-          const newRef = push(ref(rtdb, 'announcements'));
-          set(newRef, newAnnouncement);
-        }
+    const newAchRef = push(ref(rtdb, 'achievements'));
+    const newAchievement: Omit<Achievement, 'id'> = { ...achievementData, date: new Date().toISOString(), type: 'manual', status: 'approved', awardedById: user.id };
+    set(newAchRef, newAchievement);
+    addActivityLog(user.id, 'Achievement Awarded', `Awarded "${achievementData.title}"`);
+
+    const awardedUser = users.find(u => u.id === achievementData.userId);
+    if (awardedUser) {
+      const newAnnouncement: Partial<Announcement> = {
+          title: `New Achievement: ${newAchievement.title}!`,
+          content: `Congratulations to ${awardedUser.name} for receiving the "${newAchievement.title}" award for: ${newAchievement.description}.`,
+          creatorId: user.id,
+          approverId: user.id,
+          status: 'approved',
+          createdAt: new Date().toISOString(),
+          comments: [],
+      };
+      const newRef = push(ref(rtdb, 'announcements'));
+      set(newRef, newAnnouncement);
     }
-  }, [user, users, addActivityLog]);
+  }, [user, users, can.manage_achievements, addActivityLog]);
 
   const updateManualAchievement = useCallback((updatedAchievement: Achievement) => {
-    if (user) {
+    if (user && can.manage_achievements) {
         const { id, ...data } = updatedAchievement;
         update(ref(rtdb, `achievements/${id}`), data);
         addActivityLog(user.id, 'Achievement Updated', `Updated "${updatedAchievement.title}"`);
     }
-  }, [user, addActivityLog]);
+  }, [user, can.manage_achievements, addActivityLog]);
 
   const deleteManualAchievement = useCallback((achievementId: string) => {
-    if (user) {
+    if (user && can.manage_achievements) {
         const ach = achievements.find(a => a.id === achievementId);
         remove(ref(rtdb, `achievements/${achievementId}`));
         if (ach) addActivityLog(user.id, 'Achievement Deleted', `Deleted "${ach.title}"`);
     }
-  }, [user, achievements, addActivityLog]);
+  }, [user, can.manage_achievements, achievements, addActivityLog]);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const usersRef = ref(rtdb, 'users');
@@ -1035,6 +1038,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const deleteInternalRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `internalRequests/${requestId}`));
+    addActivityLog(user.id, 'Internal Request Deleted', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
+
   const markInternalRequestAsViewed = useCallback((requestId: string) => {
     update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
   }, []);
@@ -1071,6 +1080,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
     }
   }, [user, managementRequests]);
+
+  const deleteManagementRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `managementRequests/${requestId}`));
+    addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
 
   const markManagementRequestAsViewed = useCallback((requestId: string) => {
     update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
@@ -1448,7 +1463,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
@@ -1461,5 +1476,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-    
-    

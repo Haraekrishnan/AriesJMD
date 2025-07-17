@@ -7,7 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, MessagesSquare, Edit } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, MessagesSquare, Edit, Trash2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { ManagementRequest, ManagementRequestStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -32,7 +32,7 @@ const statusVariant: Record<ManagementRequestStatus, 'default' | 'secondary' | '
 };
 
 export default function ManagementRequestTable({ requests }: ManagementRequestTableProps) {
-  const { user, users, updateManagementRequestStatus, markManagementRequestAsViewed } = useAppContext();
+  const { user, users, updateManagementRequestStatus, markManagementRequestAsViewed, deleteManagementRequest } = useAppContext();
   const [selectedRequest, setSelectedRequest] = useState<ManagementRequest | null>(null);
   const [editingRequest, setEditingRequest] = useState<ManagementRequest | null>(null);
   const [action, setAction] = useState<'Approved' | 'Rejected' | null>(null);
@@ -60,6 +60,11 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
     setSelectedRequest(null);
     setAction(null);
   }
+
+  const handleDelete = (requestId: string) => {
+    deleteManagementRequest(requestId);
+    toast({ variant: 'destructive', title: 'Request Deleted' });
+  };
 
   const handleAccordionToggle = (req: ManagementRequest) => {
     if (user?.id === req.requesterId && !req.viewedByRequester) {
@@ -131,16 +136,27 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    {(isRecipient && req.status === 'Pending') || (user?.role === 'Admin') ? (
+                    <AlertDialog>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent>
-                            {canEdit && <DropdownMenuItem onClick={() => setEditingRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
-                            {isRecipient && req.status === 'Pending' && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
-                            {isRecipient && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
+                                {canEdit && <DropdownMenuItem onClick={() => setEditingRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                                {isRecipient && req.status === 'Pending' && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
+                                {isRecipient && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
+                                {user?.role === 'Admin' && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    ) : null}
+                         <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this management request.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </TableCell>
                 </TableRow>
               )
