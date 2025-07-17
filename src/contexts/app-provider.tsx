@@ -208,9 +208,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   
-  // Use local storage for branding to ensure persistence
-  const [appName, setAppName] = useLocalStorage('appName', 'Aries Marine');
-  const [appLogo, setAppLogo] = useLocalStorage<string | null>('appLogo', null);
+  const [appName, setAppName] = useState('Aries Marine');
+  const [appLogo, setAppLogo] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -300,7 +299,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
     };
-  }, [setAppName, setAppLogo]);
+  }, []);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
@@ -1324,12 +1323,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateBranding = useCallback((name: string, logo: string | null) => {
     if (user) {
-      setAppName(name);
-      setAppLogo(logo);
       update(ref(rtdb, `branding`), { appName: name, appLogo: logo });
       addActivityLog(user.id, 'Branding Updated');
     }
-  }, [user, setAppName, setAppLogo, addActivityLog]);
+  }, [user, addActivityLog]);
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
     if(user) {
