@@ -816,10 +816,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const yesterdayCount = logsForYesterday.length > 0 ? logsForYesterday[0].total : 0;
     
-    const newTotal = yesterdayCount + logData.countIn - logData.countOut;
+    const countIn = Number(logData.countIn) || 0;
+    const countOut = Number(logData.countOut) || 0;
+    const newTotal = yesterdayCount + countIn - countOut;
 
     const newLog: Omit<ManpowerLog, 'id'> = {
         ...logData,
+        countIn,
+        countOut,
         updatedBy: user.id,
         date: dateStr,
         yesterdayCount: yesterdayCount,
@@ -866,9 +870,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const logToUpdate = manpowerLogs.find(l => l.id === logId);
       if(!logToUpdate) return;
   
-      const newTotal = logToUpdate.yesterdayCount + (data.countIn ?? logToUpdate.countIn) - (data.countOut ?? logToUpdate.countOut);
+      const countIn = Number(data.countIn) || 0;
+      const countOut = Number(data.countOut) || 0;
+      const newTotal = logToUpdate.yesterdayCount + countIn - countOut;
   
-      const updates = { ...data, total: newTotal, updatedBy: user.id };
+      const updates = { ...data, countIn, countOut, total: newTotal, updatedBy: user.id };
   
       await update(ref(rtdb, `manpowerLogs/${logId}`), updates);
       addActivityLog(user.id, 'Manpower Log Updated', `Log ID: ${logId}`);
