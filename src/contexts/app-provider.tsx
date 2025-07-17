@@ -655,8 +655,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const newAchievement: Omit<Achievement, 'id'> = { ...achievementData, date: new Date().toISOString(), type: 'manual', status: 'approved', awardedById: user.id };
         set(newAchRef, newAchievement);
         addActivityLog(user.id, 'Achievement Awarded', `Awarded "${achievementData.title}"`);
+
+        const awardedUser = users.find(u => u.id === achievementData.userId);
+        if (awardedUser) {
+          const newAnnouncement: Partial<Announcement> = {
+              title: `Achievement Unlocked: ${newAchievement.title}!`,
+              content: `Congratulations to ${awardedUser.name} for receiving the "${newAchievement.title}" award for: ${newAchievement.description}.`,
+              creatorId: user.id,
+              approverId: user.id,
+              status: 'approved',
+              createdAt: new Date().toISOString(),
+              comments: [],
+          };
+          const newRef = push(ref(rtdb, 'announcements'));
+          set(newRef, newAnnouncement);
+        }
     }
-  }, [user, addActivityLog]);
+  }, [user, users, addActivityLog]);
 
   const updateManualAchievement = useCallback((updatedAchievement: Achievement) => {
     if (user) {
