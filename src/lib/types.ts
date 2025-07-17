@@ -365,6 +365,8 @@ export type MachineLog = {
     toTime: string; // HH:mm
     location: string;
     jobDescription: string;
+    status: 'Active' | 'Idle';
+    reason?: string;
 };
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';

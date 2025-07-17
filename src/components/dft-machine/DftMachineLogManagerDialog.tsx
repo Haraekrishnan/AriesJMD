@@ -1,6 +1,7 @@
+
 'use client';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
@@ -15,6 +16,8 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Textarea } from '../ui/textarea';
 
 const logSchema = z.object({
   date: z.string().min(1, 'Date is required'),
@@ -23,6 +26,16 @@ const logSchema = z.object({
   location: z.string().min(1, 'Location is required'),
   jobDescription: z.string().min(1, 'Description is required'),
   userName: z.string().min(1, 'User name is required'),
+  status: z.enum(['Active', 'Idle'], { required_error: "Status is required." }),
+  reason: z.string().optional(),
+}).refine(data => {
+    if (data.status === 'Idle' && !data.reason) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'Reason is required when status is Idle.',
+    path: ['reason'],
 });
 type LogFormValues = z.infer<typeof logSchema>;
 
@@ -47,8 +60,12 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
       location: '',
       jobDescription: '',
       userName: '',
+      status: 'Active',
+      reason: '',
     },
   });
+
+  const watchStatus = form.watch('status');
 
   const onSubmit = (data: LogFormValues) => {
     if (!user) return;
@@ -102,6 +119,18 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
                         <Label htmlFor="jobDescription">Job Description</Label>
                         <Input id="jobDescription" {...form.register('jobDescription')} />
                     </div>
+                    <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Controller control={form.control} name="status" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Active">Active</SelectItem><SelectItem value="Idle">Idle</SelectItem></SelectContent></Select>)}/>
+                        {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
+                    </div>
+                    {watchStatus === 'Idle' && (
+                        <div className="space-y-2">
+                            <Label>Reason for Idle</Label>
+                            <Textarea {...form.register('reason')} />
+                            {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+                        </div>
+                    )}
                     <Button type="submit" className="w-full">Add Log</Button>
                 </form>
             </div>
@@ -112,6 +141,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Job & Date</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>User</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>
@@ -124,6 +154,10 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
                                         <TableCell>
                                             <p className="font-medium">{log.jobDescription}</p>
                                             <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
+                                        </TableCell>
+                                        <TableCell>
+                                            <p>{log.status}</p>
+                                            {log.reason && <p className="text-xs text-muted-foreground">{log.reason}</p>}
                                         </TableCell>
                                         <TableCell>
                                             <p className="font-medium">{log.userName}</p>
@@ -154,7 +188,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
                                 )
                             })}
                              {machineLogs.length === 0 && (
-                                <TableRow><TableCell colSpan={3} className="text-center">No logs found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} className="text-center">No logs found.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

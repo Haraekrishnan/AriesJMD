@@ -5,12 +5,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
-import { addDays, isBefore, format, formatDistanceToNow } from 'date-fns';
+import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,9 +27,12 @@ import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import type { DateRange } from 'react-day-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import * as XLSX from 'xlsx';
 
 export default function EquipmentStatusPage() {
-    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems } = useAppContext();
+    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -54,6 +57,7 @@ export default function EquipmentStatusPage() {
     const [selectedLaptopDesktop, setSelectedLaptopDesktop] = useState<LaptopDesktop | null>(null);
 
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
+    const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
 
     const canManageStore = useMemo(() => {
         if(!user) return false;
@@ -102,6 +106,48 @@ export default function EquipmentStatusPage() {
     const handleEditLaptopDesktop = (item: LaptopDesktop) => { setSelectedLaptopDesktop(item); setIsEditLaptopDesktopOpen(true); };
     const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
 
+    const activeDaysData = useMemo(() => {
+        if (!activeDaysDateRange?.from) return [];
+    
+        const allMachines = [...utMachines, ...dftMachines];
+        const { from, to = from } = activeDaysDateRange;
+        const daysInRange = eachDayOfInterval({ start: from, end: to });
+    
+        return allMachines.map(machine => {
+            const activeLogs = machineLogs.filter(log =>
+                log.machineId === machine.id &&
+                log.status === 'Active'
+            );
+    
+            const activeDates = new Set(activeLogs.map(log => format(new Date(log.date), 'yyyy-MM-dd')));
+            const activeDaysCount = daysInRange.filter(day =>
+                activeDates.has(format(day, 'yyyy-MM-dd'))
+            ).length;
+    
+            return {
+                id: machine.id,
+                name: machine.machineName,
+                serialNumber: machine.serialNumber,
+                activeDays: activeDaysCount,
+            };
+        });
+    }, [activeDaysDateRange, utMachines, dftMachines, machineLogs]);
+
+    const handleExportActiveDays = () => {
+        if (activeDaysData.length === 0) return;
+    
+        const dataToExport = activeDaysData.map(item => ({
+          'Machine Name': item.name,
+          'Serial Number': item.serialNumber,
+          'Active Days': item.activeDays,
+        }));
+    
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Active Days Report');
+        XLSX.writeFile(workbook, 'Machine_Active_Days_Report.xlsx');
+    };
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -110,6 +156,41 @@ export default function EquipmentStatusPage() {
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Usage Report</CardTitle>
+                    <CardDescription>Count active usage days for machines within a date range.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row gap-4 items-center">
+                    <DateRangePicker date={activeDaysDateRange} onDateChange={setActiveDaysDateRange} />
+                    <Button onClick={handleExportActiveDays} disabled={!activeDaysDateRange?.from || activeDaysData.length === 0}>
+                        <FileDown className="mr-2 h-4 w-4" /> Export Excel
+                    </Button>
+                </CardContent>
+                {activeDaysDateRange?.from && (
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Machine Name</TableHead>
+                                    <TableHead>Serial Number</TableHead>
+                                    <TableHead className="text-right">Active Days</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {activeDaysData.map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell>{item.name}</TableCell>
+                                        <TableCell>{item.serialNumber}</TableCell>
+                                        <TableCell className="text-right font-bold">{item.activeDays}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                )}
+            </Card>
 
             <Tabs defaultValue="ut-machines" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
