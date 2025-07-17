@@ -33,6 +33,7 @@ import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
   const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingAchievementCount } = useAppContext();
+  const pathname = usePathname();
   
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0 },
