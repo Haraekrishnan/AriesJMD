@@ -254,6 +254,8 @@ export type ManpowerLog = {
   personOutName?: string;
   reason: string;
   updatedBy: string;
+  yesterdayCount: number;
+  total: number;
 };
 
 export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued';

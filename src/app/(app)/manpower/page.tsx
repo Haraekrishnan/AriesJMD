@@ -10,7 +10,7 @@ import { PlusCircle, Users, Calendar as CalendarIcon } from 'lucide-react';
 import ManpowerLogDialog from '@/components/manpower/ManpowerLogDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, sub } from 'date-fns';
 import ManpowerLogReportDownloads from '@/components/manpower/ManpowerLogReportDownloads';
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
@@ -56,7 +56,7 @@ export default function ManpowerPage() {
                                     : `Manpower Summary for ${summaryDate ? format(summaryDate, 'dd LLL, yyyy') : '...'}`
                                 }
                             </CardTitle>
-                            <CardDescription>An overview of manpower counts across all projects for the selected date.</CardDescription>
+                            <CardDescription>A cumulative overview of manpower counts across all projects for the selected date.</CardDescription>
                         </div>
                         <Popover>
                             <PopoverTrigger asChild>

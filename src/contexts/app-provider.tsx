@@ -119,7 +119,8 @@ type AppContextType = {
   publishIncident: (incidentId: string, comment: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
   markIncidentAsViewed: (incidentId: string) => void;
-  addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date'>) => void;
+  addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>, logDate?: Date) => Promise<void>;
+  updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason'>>) => Promise<void>;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   deleteManpowerProfile: (profileId: string) => void;
@@ -804,12 +805,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (driver) addActivityLog(user.id, 'Driver Deleted', driver.name);
   }, [user, drivers, addActivityLog]);
 
-  const addManpowerLog = useCallback((logData: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date'>) => {
+  const addManpowerLog = useCallback(async (logData: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>, logDate = new Date()) => {
     if(!user) return;
+    const dateStr = format(logDate, 'yyyy-MM-dd');
+    const yesterdayStr = format(sub(logDate, { days: 1 }), 'yyyy-MM-dd');
+    
+    const logsForYesterday = manpowerLogs
+      .filter(l => l.date === yesterdayStr && l.projectId === logData.projectId)
+      .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime()); // Assuming updatedBy is ISO string
+    
+    const yesterdayCount = logsForYesterday.length > 0 ? logsForYesterday[0].total : 0;
+    
+    const newTotal = yesterdayCount + logData.countIn - logData.countOut;
+
+    const newLog: Omit<ManpowerLog, 'id'> = {
+        ...logData,
+        updatedBy: user.id,
+        date: dateStr,
+        yesterdayCount: yesterdayCount,
+        total: newTotal
+    };
+    
     const newLogRef = push(ref(rtdb, 'manpowerLogs'));
-    set(newLogRef, { ...logData, updatedBy: user.id, date: format(new Date(), 'yyyy-MM-dd') });
+    await set(newLogRef, newLog);
+    
     addActivityLog(user.id, 'Manpower Logged', `Project ID: ${logData.projectId}`);
-  }, [user, addActivityLog]);
+
+    // After adding/updating a log, we might need to recalculate subsequent logs
+    await updateSubsequentManpowerLogs(logDate, logData.projectId);
+  }, [user, addActivityLog, manpowerLogs]);
+
+  const updateSubsequentManpowerLogs = useCallback(async (startDate: Date, projectId: string) => {
+    // Get all logs for the project from the day after startDate, ordered by date
+    const subsequentLogs = manpowerLogs
+        .filter(l => l.projectId === projectId && isAfter(new Date(l.date), startDate))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (subsequentLogs.length === 0) return;
+
+    let previousDayTotal = (manpowerLogs.find(l => l.date === format(startDate, 'yyyy-MM-dd') && l.projectId === projectId))?.total || 0;
+
+    const updates: {[key:string]: any} = {};
+
+    for (const log of subsequentLogs) {
+        const newTotal = previousDayTotal + log.countIn - log.countOut;
+        if (log.total !== newTotal || log.yesterdayCount !== previousDayTotal) {
+            updates[`/manpowerLogs/${log.id}/total`] = newTotal;
+            updates[`/manpowerLogs/${log.id}/yesterdayCount`] = previousDayTotal;
+        }
+        previousDayTotal = newTotal;
+    }
+
+    if (Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+    }
+}, [manpowerLogs]);
+
+  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason'>>) => {
+      if(!user) return;
+      const logToUpdate = manpowerLogs.find(l => l.id === logId);
+      if(!logToUpdate) return;
+  
+      const newTotal = logToUpdate.yesterdayCount + (data.countIn ?? logToUpdate.countIn) - (data.countOut ?? logToUpdate.countOut);
+  
+      const updates = { ...data, total: newTotal, updatedBy: user.id };
+  
+      await update(ref(rtdb, `manpowerLogs/${logId}`), updates);
+      addActivityLog(user.id, 'Manpower Log Updated', `Log ID: ${logId}`);
+  
+      // After updating, recalculate subsequent logs
+      await updateSubsequentManpowerLogs(new Date(logToUpdate.date), logToUpdate.projectId);
+  }, [user, addActivityLog, manpowerLogs, updateSubsequentManpowerLogs]);
 
   const addManpowerProfile = useCallback((profile: Omit<ManpowerProfile, 'id'>) => {
     if(!user) return;
@@ -1463,7 +1529,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

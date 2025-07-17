@@ -1,73 +1,97 @@
+
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { Button } from '../ui/button';
+import { Edit } from 'lucide-react';
+import type { ManpowerLog } from '@/lib/types';
+import EditManpowerLogDialog from './EditManpowerLogDialog';
 
 interface ManpowerSummaryTableProps {
   selectedDate?: Date;
 }
 
 export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTableProps) {
-  const { projects, manpowerLogs } = useAppContext();
+  const { projects, manpowerLogs, can } = useAppContext();
+  const [editingLog, setEditingLog] = useState<ManpowerLog | null>(null);
 
     const summary = useMemo(() => {
         if (!selectedDate) {
-            return { summary: [], totalIn: 0, totalOut: 0 };
+            return { summary: [], totalIn: 0, totalOut: 0, overallTotal: 0 };
         }
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        const logsForDate = manpowerLogs.filter(log => log.date === dateStr);
-
-        let totalIn = 0;
-        let totalOut = 0;
         
         const summaryData = projects.map(project => {
-            const log = logsForDate.find(l => l.projectId === project.id);
-            totalIn += log?.countIn || 0;
-            totalOut += log?.countOut || 0;
+            const logsForProjectDay = manpowerLogs.filter(log => log.date === dateStr && log.projectId === project.id);
+            const latestLog = logsForProjectDay.sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
+            
             return {
                 projectId: project.id,
                 projectName: project.name,
-                countIn: log?.countIn || 0,
-                countOut: log?.countOut || 0,
+                log: latestLog,
+                total: latestLog ? latestLog.total : (manpowerLogs.find(l => l.date === format(sub(selectedDate, {days: 1}), 'yyyy-MM-dd') && l.projectId === project.id)?.total || 0),
             };
         });
         
-        return { summary: summaryData, totalIn, totalOut };
+        const overallTotal = summaryData.reduce((acc, curr) => acc + curr.total, 0);
+        
+        return { summary: summaryData, overallTotal };
     }, [projects, manpowerLogs, selectedDate]);
 
     if (!selectedDate) {
         return <p className="text-muted-foreground text-center py-4">Please select a date to view the summary.</p>;
     }
     
-    if (summary.totalIn === 0 && summary.totalOut === 0) {
-        return <p className="text-muted-foreground text-center py-8">No manpower logged for {selectedDate ? format(selectedDate, 'dd LLL, yyyy') : 'the selected date'}.</p>;
+    if (summary.overallTotal === 0 && !manpowerLogs.some(l => l.date === format(selectedDate, 'yyyy-MM-dd'))) {
+        return <p className="text-muted-foreground text-center py-8">No manpower logged for {format(selectedDate, 'dd LLL, yyyy')}.</p>;
     }
 
     return (
+        <>
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead>Project / Location</TableHead>
-                    <TableHead className="text-center">Manpower In</TableHead>
-                    <TableHead className="text-center">Manpower Out</TableHead>
+                    <TableHead className="text-center">In</TableHead>
+                    <TableHead className="text-center">Out</TableHead>
+                    <TableHead className="text-center">Reason</TableHead>
+                    <TableHead className="text-center">Day Total</TableHead>
+                    {can.manage_manpower && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {summary.summary.map(row => (
                     <TableRow key={row.projectId}>
                         <TableCell className="font-medium">{row.projectName}</TableCell>
-                        <TableCell className="text-center">{row.countIn}</TableCell>
-                        <TableCell className="text-center">{row.countOut}</TableCell>
+                        <TableCell className="text-center">{row.log?.countIn || 0}</TableCell>
+                        <TableCell className="text-center">{row.log?.countOut || 0}</TableCell>
+                        <TableCell className="text-center text-xs text-muted-foreground">{row.log?.reason || 'No log entry'}</TableCell>
+                        <TableCell className="text-center font-bold">{row.total}</TableCell>
+                        {can.manage_manpower && (
+                            <TableCell className="text-right">
+                                {row.log && (
+                                    <Button variant="ghost" size="icon" onClick={() => setEditingLog(row.log!)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </TableCell>
+                        )}
                     </TableRow>
                 ))}
                 <TableRow className="font-bold bg-muted/50">
-                    <TableCell>Total</TableCell>
-                    <TableCell className="text-center">{summary.totalIn}</TableCell>
-                    <TableCell className="text-center">{summary.totalOut}</TableCell>
+                    <TableCell>Overall Total</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-center">{summary.overallTotal}</TableCell>
+                    {can.manage_manpower && <TableCell></TableCell>}
                 </TableRow>
             </TableBody>
         </Table>
+        {editingLog && <EditManpowerLogDialog isOpen={!!editingLog} setIsOpen={() => setEditingLog(null)} log={editingLog} />}
+        </>
     );
 }
