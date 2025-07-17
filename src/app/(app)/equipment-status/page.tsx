@@ -176,8 +176,6 @@ export default function EquipmentStatusPage() {
                                 {myEquipmentCertRequests.map(req => {
                                     const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
                                     const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
-                                    const lastComment = req.comments?.[req.comments.length - 1];
-                                    const fulfiller = req.status === 'Completed' && lastComment ? users.find(u => u.id === lastComment.userId) : null;
                                     const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
                                     return (
                                         <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
@@ -286,7 +284,4 @@ export default function EquipmentStatusPage() {
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
-
-    
-
-
+}
