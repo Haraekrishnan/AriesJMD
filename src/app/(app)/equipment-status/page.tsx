@@ -5,12 +5,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
-import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval } from 'date-fns';
+import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,6 +31,10 @@ import type { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import * as XLSX from 'xlsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function EquipmentStatusPage() {
     const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs } = useAppContext();
@@ -58,7 +62,12 @@ export default function EquipmentStatusPage() {
     const [selectedLaptopDesktop, setSelectedLaptopDesktop] = useState<LaptopDesktop | null>(null);
 
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
+    
+    // Report State
     const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
+    const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
+
+    const allMachines = useMemo(() => [...utMachines, ...dftMachines], [utMachines, dftMachines]);
 
     const canManageStore = useMemo(() => {
         if(!user) return false;
@@ -106,47 +115,84 @@ export default function EquipmentStatusPage() {
     // Laptop/Desktop Handlers
     const handleEditLaptopDesktop = (item: LaptopDesktop) => { setSelectedLaptopDesktop(item); setIsEditLaptopDesktopOpen(true); };
     const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
-
-    const activeDaysData = useMemo(() => {
-        if (!activeDaysDateRange?.from) return [];
     
-        const allMachines = [...utMachines, ...dftMachines];
+    const detailedUsageData = useMemo(() => {
+        if (!activeDaysDateRange?.from) return [];
+
+        const machinesToReport = selectedMachineIds.length > 0 
+            ? allMachines.filter(m => selectedMachineIds.includes(m.id))
+            : allMachines;
+
+        if (machinesToReport.length === 0) return [];
+            
         const { from, to = from } = activeDaysDateRange;
         const daysInRange = eachDayOfInterval({ start: from, end: to });
-    
-        return allMachines.map(machine => {
-            const activeLogs = machineLogs.filter(log =>
-                log.machineId === machine.id &&
-                log.status === 'Active'
-            );
-    
-            const activeDates = new Set(activeLogs.map(log => format(new Date(log.date), 'yyyy-MM-dd')));
-            const activeDaysCount = daysInRange.filter(day =>
-                activeDates.has(format(day, 'yyyy-MM-dd'))
-            ).length;
-    
+
+        const data: Record<string, { machine: any; statuses: Record<string, string> }> = {};
+
+        machinesToReport.forEach(machine => {
+            data[machine.id] = { machine, statuses: {} };
+        });
+
+        daysInRange.forEach(day => {
+            const dayStr = format(day, 'yyyy-MM-dd');
+            machinesToReport.forEach(machine => {
+                const dayLog = machineLogs.find(log => 
+                    log.machineId === machine.id && isSameDay(new Date(log.date), day)
+                );
+                data[machine.id].statuses[dayStr] = dayLog ? dayLog.status : 'Idle';
+            });
+        });
+
+        return {
+            dates: daysInRange.map(d => format(d, 'yyyy-MM-dd')),
+            machineData: Object.values(data)
+        };
+    }, [activeDaysDateRange, selectedMachineIds, allMachines, machineLogs]);
+
+    const activeDaysSummary = useMemo(() => {
+        if (!detailedUsageData || detailedUsageData.machineData.length === 0) return [];
+        return detailedUsageData.machineData.map(data => {
+            const activeDays = Object.values(data.statuses).filter(s => s === 'Active').length;
             return {
-                id: machine.id,
-                name: machine.machineName,
-                serialNumber: machine.serialNumber,
-                activeDays: activeDaysCount,
+                id: data.machine.id,
+                name: data.machine.machineName,
+                serialNumber: data.machine.serialNumber,
+                activeDays,
             };
         });
-    }, [activeDaysDateRange, utMachines, dftMachines, machineLogs]);
+    }, [detailedUsageData]);
 
     const handleExportActiveDays = () => {
-        if (activeDaysData.length === 0) return;
+        if (!detailedUsageData || !activeDaysSummary || activeDaysSummary.length === 0) return;
     
-        const dataToExport = activeDaysData.map(item => ({
+        // Summary Sheet
+        const summaryToExport = activeDaysSummary.map(item => ({
           'Machine Name': item.name,
           'Serial Number': item.serialNumber,
-          'Active Days': item.activeDays,
+          'Total Active Days': item.activeDays,
         }));
+        const summaryWorksheet = XLSX.utils.json_to_sheet(summaryToExport);
     
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        // Detailed Sheet
+        const detailedHeader = ['Machine Name', 'Serial Number', ...detailedUsageData.dates];
+        const detailedBody = detailedUsageData.machineData.map(data => {
+            const row: Record<string, any> = {
+                'Machine Name': data.machine.machineName,
+                'Serial Number': data.machine.serialNumber
+            };
+            detailedUsageData.dates.forEach(date => {
+                row[date] = data.statuses[date] || 'Idle';
+            });
+            return row;
+        });
+        const detailedWorksheet = XLSX.utils.json_to_sheet(detailedBody, { header: detailedHeader });
+    
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Active Days Report');
-        XLSX.writeFile(workbook, 'Machine_Active_Days_Report.xlsx');
+        XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary Report');
+        XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Daily Report');
+    
+        XLSX.writeFile(workbook, 'Machine_Usage_Report.xlsx');
     };
 
     return (
@@ -163,9 +209,45 @@ export default function EquipmentStatusPage() {
                     <CardTitle>Usage Report</CardTitle>
                     <CardDescription>Count active usage days for machines within a date range.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row gap-4 items-center">
+                <CardContent className="flex flex-col sm:flex-row gap-4 items-center flex-wrap">
                     <DateRangePicker date={activeDaysDateRange} onDateChange={setActiveDaysDateRange} />
-                    <Button onClick={handleExportActiveDays} disabled={!activeDaysDateRange?.from || activeDaysData.length === 0}>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-[260px] justify-between">
+                                {selectedMachineIds.length > 0 ? `${selectedMachineIds.length} machine(s) selected` : "Select machines..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[260px] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search machines..." />
+                                <CommandEmpty>No machines found.</CommandEmpty>
+                                <CommandGroup>
+                                    <CommandList>
+                                        {allMachines.map((machine) => (
+                                        <CommandItem
+                                            key={machine.id}
+                                            value={machine.machineName}
+                                            onSelect={() => {
+                                                const selected = new Set(selectedMachineIds);
+                                                if (selected.has(machine.id)) {
+                                                    selected.delete(machine.id);
+                                                } else {
+                                                    selected.add(machine.id);
+                                                }
+                                                setSelectedMachineIds(Array.from(selected));
+                                            }}
+                                        >
+                                            <Check className={cn("mr-2 h-4 w-4", selectedMachineIds.includes(machine.id) ? "opacity-100" : "opacity-0")}/>
+                                            {machine.machineName} (SN: {machine.serialNumber})
+                                        </CommandItem>
+                                        ))}
+                                    </CommandList>
+                                </CommandGroup>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    <Button onClick={handleExportActiveDays} disabled={!activeDaysDateRange?.from || activeDaysSummary.length === 0}>
                         <FileDown className="mr-2 h-4 w-4" /> Export Excel
                     </Button>
                 </CardContent>
@@ -176,17 +258,25 @@ export default function EquipmentStatusPage() {
                                 <TableRow>
                                     <TableHead>Machine Name</TableHead>
                                     <TableHead>Serial Number</TableHead>
-                                    <TableHead className="text-right">Active Days</TableHead>
+                                    <TableHead className="text-right">Total Active Days</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {activeDaysData.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>{item.name}</TableCell>
-                                        <TableCell>{item.serialNumber}</TableCell>
-                                        <TableCell className="text-right font-bold">{item.activeDays}</TableCell>
+                                {activeDaysSummary.length > 0 ? (
+                                    activeDaysSummary.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.name}</TableCell>
+                                            <TableCell>{item.serialNumber}</TableCell>
+                                            <TableCell className="text-right font-bold">{item.activeDays}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                            No active days recorded for selected machines in this period.
+                                        </TableCell>
                                     </TableRow>
-                                ))}
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
