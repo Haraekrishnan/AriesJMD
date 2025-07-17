@@ -6,13 +6,14 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Award, Medal, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
-import type { User, Achievement } from '@/lib/types';
+import type { User, Achievement, AchievementStatus } from '@/lib/types';
 import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditAchievementDialog from './edit-achievement-dialog';
+import { Badge } from '../ui/badge';
 
 interface PerformanceData {
   user: User;
@@ -28,8 +29,15 @@ interface AchievementsTableProps {
   type: 'performance' | 'manual';
 }
 
+const statusVariant: Record<AchievementStatus, 'default' | 'secondary' | 'destructive'> = {
+  pending: 'secondary',
+  approved: 'default',
+  rejected: 'destructive',
+};
+
+
 export default function AchievementsTable({ data, type }: AchievementsTableProps) {
-  const { user, users, deleteManualAchievement } = useAppContext();
+  const { user, users, can, deleteManualAchievement } = useAppContext();
   const { toast } = useToast();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
@@ -115,7 +123,7 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
           <TableHead>Employee</TableHead>
           <TableHead>Achievement</TableHead>
           <TableHead>Awarded By</TableHead>
-          <TableHead>Date</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead className="text-right">Points</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -124,7 +132,6 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
         {(data as Achievement[]).map((item) => {
             const achievementUser = users.find(u => u.id === item.userId);
             const awardedBy = users.find(u => u.id === item.awardedById);
-            const canManage = user?.role === 'Manager' || user?.role === 'Admin';
 
             return (
                 <TableRow key={item.id}>
@@ -144,10 +151,12 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
                     <p className="text-sm text-muted-foreground">{item.description}</p>
                 </TableCell>
                 <TableCell>{awardedBy?.name || 'System'}</TableCell>
-                <TableCell>{format(new Date(item.date), 'dd-MM-yyyy')}</TableCell>
+                <TableCell>
+                    <Badge variant={statusVariant[item.status]}>{item.status}</Badge>
+                </TableCell>
                 <TableCell className="text-right font-semibold">{item.points}</TableCell>
                 <TableCell className="text-right">
-                    {canManage && (
+                    {can.manage_achievements && (
                          <AlertDialog>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -157,7 +166,7 @@ export default function AchievementsTable({ data, type }: AchievementsTableProps
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => handleEditClick(item)}>
+                                    <DropdownMenuItem onSelect={() => handleEditClick(item)} disabled={item.status !== 'pending'}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                     </DropdownMenuItem>
                                     <AlertDialogTrigger asChild>

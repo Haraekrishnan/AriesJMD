@@ -103,8 +103,11 @@ export default function AchievementsPage() {
   }, [users, tasks, achievements, rankingFilter]);
   
   const manualAchievements = useMemo(() => {
+    if (can.manage_achievements) {
+        return achievements.filter(ach => ach.type === 'manual');
+    }
     return achievements.filter(ach => ach.type === 'manual' && ach.status === 'approved');
-  }, [achievements]);
+  }, [achievements, can.manage_achievements]);
 
   const pendingAchievements = useMemo(() => {
     if (!user || !can.manage_achievements) return [];
