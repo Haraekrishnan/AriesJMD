@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
-import type { Task } from '@/lib/types';
+import type { Task, Role } from '@/lib/types';
 
 export default function TasksPage() {
   const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, can } = useAppContext();
@@ -52,6 +52,7 @@ export default function TasksPage() {
     if (!user) return [];
 
     const mySubordinateIds = new Set(users.filter(u => u.supervisorId === user.id).map(u => u.id));
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
 
     return tasks.filter(task => {
       // Don't show pending tasks on the main board
@@ -64,11 +65,10 @@ export default function TasksPage() {
       if (showMyTasksOnly) {
           if (!task.assigneeIds?.includes(user.id)) return false;
       } else {
-          // General visibility rule: I can see tasks assigned to me or my direct subordinates.
           const isMyTask = task.assigneeIds?.includes(user.id);
           const isMySubordinatesTask = task.assigneeIds?.some(id => mySubordinateIds.has(id));
           
-          if (!isMyTask && !isMySubordinatesTask && user.role !== 'Admin' && user.role !== 'Project Coordinator') {
+          if (!isMyTask && !isMySubordinatesTask && !privilegedRoles.includes(user.role)) {
               return false;
           }
       }
@@ -92,7 +92,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch;
     });
-  }, [tasks, filters, user, users, can.manage_tasks]);
+  }, [tasks, filters, user, users]);
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
