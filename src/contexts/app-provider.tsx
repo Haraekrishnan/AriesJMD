@@ -363,10 +363,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (can.manage_users) return users;
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') return users;
     const subordinates = users.filter(u => u.supervisorId === user.id);
     return [user, ...subordinates];
-  }, [user, users, can]);
+  }, [user, users]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
     if(!user) return;
@@ -809,7 +809,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Get all logs for the project from the day after startDate, ordered by date
     const subsequentLogs = manpowerLogs
         .filter(l => l.projectId === projectId && isAfter(new Date(l.date), startDate))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (subsequentLogs.length === 0) return;
 
@@ -870,8 +870,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const logToUpdate = manpowerLogs.find(l => l.id === logId);
       if(!logToUpdate) return;
   
-      const countIn = Number(data.countIn ?? logToUpdate.countIn);
-      const countOut = Number(data.countOut ?? logToUpdate.countOut);
+      const countIn = Number(data.countIn ?? logToUpdate.countIn) || 0;
+      const countOut = Number(data.countOut ?? logToUpdate.countOut) || 0;
       const newTotal = (logToUpdate.yesterdayCount || 0) + countIn - countOut;
   
       const updates = { ...data, countIn, countOut, total: newTotal, updatedBy: user.id };
@@ -1547,4 +1547,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
