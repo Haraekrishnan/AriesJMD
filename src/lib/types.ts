@@ -237,6 +237,7 @@ export type LeaveRecord = {
     plannedEndDate?: string; // ISO String
     leaveEndDate?: string; // ISO String
     rejoinedDate?: string; // ISO String
+    remarks?: string;
 };
 
 export type Skill = {

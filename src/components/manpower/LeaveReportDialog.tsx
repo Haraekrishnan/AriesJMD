@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -13,6 +14,7 @@ import { Label } from '../ui/label';
 import { TransferList } from '../ui/transfer-list';
 import type { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
+import { Textarea } from '../ui/textarea';
 
 const leaveSchema = z.object({
   manpowerIds: z.array(z.string()).min(1, 'Please select at least one employee.'),
@@ -21,6 +23,7 @@ const leaveSchema = z.object({
       from: z.date({ required_error: 'Please select a start date.' }),
       to: z.date({ required_error: 'Please select an end date.' }),
   }, { required_error: 'Please select a date range.' }),
+  remarks: z.string().optional(),
 });
 
 type LeaveFormValues = z.infer<typeof leaveSchema>;
@@ -36,18 +39,18 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
 
   const form = useForm<LeaveFormValues>({
     resolver: zodResolver(leaveSchema),
-    defaultValues: { manpowerIds: [], leaveType: 'Annual' },
+    defaultValues: { manpowerIds: [], leaveType: 'Annual', remarks: '' },
   });
 
   const onSubmit = (data: LeaveFormValues) => {
-    addLeaveForManpower(data.manpowerIds, data.leaveType, data.dateRange.from, data.dateRange.to);
+    addLeaveForManpower(data.manpowerIds, data.leaveType, data.dateRange.from, data.dateRange.to, data.remarks);
     toast({ title: 'Leave Planned', description: `Leave has been recorded for ${data.manpowerIds.length} employee(s).` });
     setIsOpen(false);
     form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
-    if (!open) form.reset({ manpowerIds: [], leaveType: 'Annual' });
+    if (!open) form.reset({ manpowerIds: [], leaveType: 'Annual', remarks: '' });
     setIsOpen(open);
   };
 
@@ -109,6 +112,11 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
                 />
                  {form.formState.errors.dateRange && <p className="text-xs text-destructive">{form.formState.errors.dateRange.message}</p>}
              </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Remarks / Reason</Label>
+            <Textarea {...form.register('remarks')} placeholder="Add any notes for this leave plan..." />
           </div>
           
           <DialogFooter>

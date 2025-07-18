@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -124,7 +125,7 @@ type AppContextType = {
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   deleteManpowerProfile: (profileId: string) => void;
-  addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date) => void;
+  addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date, remarks?: string) => void;
   confirmManpowerLeave: (manpowerId: string, leaveId: string) => void;
   cancelManpowerLeave: (manpowerId: string, leaveId: string) => void;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
@@ -920,7 +921,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (profile) addActivityLog(user.id, 'Manpower Profile Deleted', profile.name);
   }, [user, manpowerProfiles, addActivityLog]);
 
-  const addLeaveForManpower = useCallback((manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date) => {
+  const addLeaveForManpower = useCallback((manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date, remarks?: string) => {
     if(!user) return;
     
     const updates: { [key: string]: any } = {};
@@ -929,12 +930,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const profile = manpowerProfiles.find(p => p.id === id);
         if(!profile) return;
         
-        const newLeave = {
+        const newLeave: any = {
             id: `leave-${Date.now()}-${id.substring(0,4)}`,
             leaveType,
             leaveStartDate: startDate.toISOString(),
             plannedEndDate: endDate.toISOString(),
         };
+
+        if (remarks) {
+          newLeave.remarks = remarks;
+        }
 
         const existingHistory = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : [];
         updates[`/manpowerProfiles/${id}/leaveHistory`] = [...existingHistory, newLeave];

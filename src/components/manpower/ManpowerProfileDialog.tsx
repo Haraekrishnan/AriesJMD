@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -45,6 +46,7 @@ const leaveSchema = z.object({
   plannedEndDate: z.date().optional(),
   leaveEndDate: z.date().optional(),
   rejoinedDate: z.date().optional(),
+  remarks: z.string().optional(),
 });
 
 const profileSchema = z.object({
@@ -286,33 +288,33 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                 <div className="text-sm text-muted-foreground">Setting a rejoining date will automatically set the leave end date and change status to 'Working'.</div>
                             </div>
                         )}
-                        {watchedLeaveHistory && watchedLeaveHistory.filter(l => l.rejoinedDate && l.leaveEndDate).length > 0 && (
+                        {watchedLeaveHistory && watchedLeaveHistory.filter(l => l.leaveEndDate).length > 0 && (
                             <div className="space-y-2">
                                 <h4 className='font-semibold flex items-center gap-2'><History className="h-4 w-4"/>Leave History</h4>
                                 <div className="p-2 border rounded-md space-y-2 bg-muted/50 max-h-40 overflow-y-auto">
                                     {watchedLeaveHistory.filter(l => l.leaveEndDate).map((leave, index) => (
-                                        <div key={leave.id} className="text-xs p-2 bg-background rounded flex justify-between items-center">
-                                            <div>
-                                                <p><strong>{leave.leaveType || 'Leave'}</strong> from {format(new Date(leave.leaveStartDate), 'dd-MM-yy')} to {format(new Date(leave.leaveEndDate as Date), 'dd-MM-yy')}</p>
-                                                <p>Planned End: {leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yy') : 'N/A'}, Rejoined: {leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yy') : 'N/A'}</p>
+                                        <div key={leave.id} className="text-xs p-2 bg-background rounded">
+                                            <div className="flex justify-between items-center font-semibold">
+                                                <p>{leave.leaveType || 'Leave'} from {format(new Date(leave.leaveStartDate), 'dd-MM-yy')} to {format(new Date(leave.leaveEndDate as Date), 'dd-MM-yy')}</p>
+                                                {isAdmin && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this leave record.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => removeLeave(index)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
                                             </div>
-                                            {isAdmin && (
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>This action cannot be undone. This will permanently delete this leave record.</AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => removeLeave(index)}>Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            )}
+                                            <p className="text-muted-foreground mt-1">{leave.remarks || 'No remarks.'}</p>
                                         </div>
                                     ))}
                                 </div>
