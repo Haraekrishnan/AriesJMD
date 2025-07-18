@@ -1,7 +1,115 @@
 
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null"
+    ".read": false,
+    ".write": false,
+    "users": {
+      ".read": true,
+      ".write": true
+    },
+    "roles": {
+      ".read": true,
+      ".write": true
+    },
+    "tasks": {
+      ".read": true,
+      ".write": true
+    },
+    "projects": {
+      ".read": true,
+      ".write": true
+    },
+    "activityLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "plannerEvents": {
+      ".read": true,
+      ".write": true
+    },
+    "dailyPlannerComments": {
+      ".read": true,
+      ".write": true
+    },
+    "achievements": {
+      ".read": true,
+      ".write": true
+    },
+    "incidentReports": {
+      ".read": true,
+      ".write": true
+    },
+    "inventoryItems": {
+      ".read": true,
+      ".write": true
+    },
+    "utMachines": {
+      ".read": true,
+      ".write": true
+    },
+    "dftMachines": {
+      ".read": true,
+      ".write": true
+    },
+    "mobileSims": {
+      ".read": true,
+      ".write": true
+    },
+    "laptopsDesktops": {
+      ".read": true,
+      ".write": true
+    },
+    "digitalCameras": {
+       ".read": true,
+       ".write": true
+    },
+    "anemometers": {
+       ".read": true,
+       ".write": true
+    },
+    "machineLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "certificateRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "announcements": {
+      ".read": true,
+      ".write": true
+    },
+    "buildings": {
+      ".read": true,
+      ".write": true
+    },
+    "manpowerLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "manpowerProfiles": {
+      ".read": true,
+      ".write": true
+    },
+    "internalRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "managementRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "vehicles": {
+      ".read": true,
+      ".write": true
+    },
+    "drivers": {
+      ".read": true,
+      ".write": true
+    },
+    "branding": {
+      ".read": true,
+      ".write": true
+    }
   }
 }
