@@ -1,34 +1,25 @@
 
 
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Megaphone, X } from 'lucide-react';
 
 export default function AnnouncementFeed() {
-    const { announcements } = useAppContext();
-    const [hiddenIds, setHiddenIds] = useState<string[]>([]);
-    
-    useEffect(() => {
-        const storedHiddenIds = sessionStorage.getItem('hiddenAnnouncementIds');
-        if (storedHiddenIds) {
-            setHiddenIds(JSON.parse(storedHiddenIds));
-        }
-    }, []);
+    const { user, announcements, dismissAnnouncement } = useAppContext();
 
     const handleHide = (id: string) => {
-        const newHiddenIds = [...hiddenIds, id];
-        setHiddenIds(newHiddenIds);
-        sessionStorage.setItem('hiddenAnnouncementIds', JSON.stringify(newHiddenIds));
+        dismissAnnouncement(id);
     };
     
     const visibleAnnouncements = useMemo(() => {
+        if (!user) return [];
         return announcements
-            .filter(a => a.status === 'approved' && !hiddenIds.includes(a.id))
+            .filter(a => a.status === 'approved' && !(a.dismissedBy || []).includes(user.id))
             .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [announcements, hiddenIds]);
+    }, [announcements, user]);
 
     if (visibleAnnouncements.length === 0) return null;
 

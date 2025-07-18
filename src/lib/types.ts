@@ -35,10 +35,10 @@ export type Task = {
   };
   approvalState: ApprovalState;
   approverId?: string; // New field
-  pendingStatus?: TaskStatus;
-  previousStatus?: TaskStatus;
+  pendingStatus?: TaskStatus | null;
+  previousStatus?: TaskStatus | null;
   completionDate?: string; // ISO String
-  pendingAssigneeId?: string;
+  pendingAssigneeId?: string | null;
 };
 
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
@@ -403,6 +403,7 @@ export type Announcement = {
     text: string;
     date: string;
   }[];
+  dismissedBy?: string[];
 };
 
 export type DailyPlannerComment = {

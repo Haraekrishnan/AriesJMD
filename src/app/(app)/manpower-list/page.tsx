@@ -1,10 +1,11 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile } from '@/lib/types';
@@ -13,10 +14,13 @@ import ManpowerFilters, { type ManpowerFilterValues } from '@/components/manpowe
 import { isWithinInterval, addDays, isBefore, format, parseISO } from 'date-fns';
 import ManpowerReportDownloads from '@/components/manpower/ManpowerReportDownloads';
 import { Input } from '@/components/ui/input';
+import LeaveReportDialog from '@/components/manpower/LeaveReportDialog';
+import * as XLSX from 'xlsx';
 
 export default function ManpowerListPage() {
     const { user, roles, manpowerProfiles, projects } = useAppContext();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+    const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState<ManpowerFilterValues>({
@@ -101,20 +105,43 @@ export default function ManpowerListPage() {
         });
     }, [manpowerProfiles, filters, projects, searchTerm]);
 
-
     const handleEdit = (profile: ManpowerProfile) => {
         setSelectedProfile(profile);
-        setIsDialogOpen(true);
+        setIsProfileDialogOpen(true);
     };
 
     const handleAdd = () => {
         setSelectedProfile(null);
-        setIsDialogOpen(true);
+        setIsProfileDialogOpen(true);
     };
 
     const handleCloseDialog = () => {
-        setIsDialogOpen(false);
+        setIsProfileDialogOpen(false);
         setSelectedProfile(null);
+    };
+    
+    const handleDownloadLeaveReport = () => {
+        const leaveData = manpowerProfiles.flatMap(profile => 
+            (profile.leaveHistory || []).map(leave => ({
+                'Employee Name': profile.name,
+                'Trade': profile.trade,
+                'Leave Type': leave.leaveType || 'N/A',
+                'Start Date': leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : '',
+                'Planned End Date': leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : '',
+                'Actual End Date': leave.leaveEndDate ? format(new Date(leave.leaveEndDate), 'dd-MM-yyyy') : '',
+                'Rejoined Date': leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : '',
+            }))
+        );
+
+        if (leaveData.length === 0) {
+            alert('No leave data to export.');
+            return;
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(leaveData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Leave Report');
+        XLSX.writeFile(workbook, 'Manpower_Leave_Report.xlsx');
     };
 
     if (!canManage) {
@@ -140,6 +167,8 @@ export default function ManpowerListPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <ManpowerReportDownloads profiles={filteredProfiles} />
+                     <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
+                     <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
                     <Button onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Manpower
@@ -201,9 +230,13 @@ export default function ManpowerListPage() {
             </Card>
 
             <ManpowerProfileDialog
-                isOpen={isDialogOpen}
+                isOpen={isProfileDialogOpen}
                 setIsOpen={handleCloseDialog}
                 profile={selectedProfile}
+            />
+            <LeaveReportDialog 
+                isOpen={isLeaveDialogOpen} 
+                setIsOpen={setIsLeaveDialogOpen}
             />
         </div>
     );

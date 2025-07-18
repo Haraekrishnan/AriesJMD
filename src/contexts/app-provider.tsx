@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -125,6 +124,7 @@ type AppContextType = {
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   deleteManpowerProfile: (profileId: string) => void;
+  addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date) => void;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
@@ -160,12 +160,13 @@ type AppContextType = {
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
   updateBranding: (name: string, logo: string | null) => void;
-  addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => void;
+  addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => void;
   updateAnnouncement: (announcement: Announcement) => void;
   approveAnnouncement: (announcementId: string) => void;
   rejectAnnouncement: (announcementId: string) => void;
   deleteAnnouncement: (announcementId: string) => void;
   returnAnnouncement: (announcementId: string, comment: string) => void;
+  dismissAnnouncement: (announcementId: string) => void;
   addBuilding: (buildingNumber: string) => void;
   updateBuilding: (building: Building) => void;
   deleteBuilding: (buildingId: string) => void;
@@ -423,7 +424,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, commentText);
 
-    // The approval request should go to the person who created the task.
     const approverId = task.creatorId;
 
     const updates: Partial<Task> = { 
@@ -437,7 +437,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (attachment) {
       updates.attachment = attachment;
     }
-
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
   }, [user, tasks, addActivityLog, addComment]);
@@ -918,6 +917,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `manpowerProfiles/${profileId}`));
     if (profile) addActivityLog(user.id, 'Manpower Profile Deleted', profile.name);
   }, [user, manpowerProfiles, addActivityLog]);
+
+  const addLeaveForManpower = useCallback((manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date) => {
+    if(!user) return;
+    
+    const updates: { [key: string]: any } = {};
+
+    manpowerIds.forEach(id => {
+        const profile = manpowerProfiles.find(p => p.id === id);
+        if(!profile) return;
+        
+        const newLeave = {
+            id: `leave-${Date.now()}-${id.substring(0,4)}`,
+            leaveType,
+            leaveStartDate: startDate.toISOString(),
+            plannedEndDate: endDate.toISOString(),
+        };
+
+        const existingHistory = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : [];
+        updates[`/manpowerProfiles/${id}/leaveHistory`] = [...existingHistory, newLeave];
+        
+        // If the leave starts today, update their status immediately
+        if (isSameDay(startDate, new Date())) {
+            updates[`/manpowerProfiles/${id}/status`] = 'On Leave';
+        }
+    });
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Leave Planned', `Planned leave for ${manpowerIds.length} employee(s)`);
+  }, [user, manpowerProfiles, addActivityLog]);
+  
+  // Effect to handle automatic status changes for leave
+  useEffect(() => {
+    const today = startOfDay(new Date());
+    const updates: { [key: string]: any } = {};
+
+    manpowerProfiles.forEach(profile => {
+        // Check for leave starting today
+        if (profile.status === 'Working' && profile.leaveHistory) {
+            const leaveStartingToday = profile.leaveHistory.find(l => isSameDay(new Date(l.leaveStartDate), today) && !l.rejoinedDate);
+            if (leaveStartingToday) {
+                updates[`/manpowerProfiles/${profile.id}/status`] = 'On Leave';
+            }
+        }
+    });
+
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
+  }, [manpowerProfiles]); // This will run whenever profiles data changes, which is fine for this use case.
 
   const addBuilding = useCallback((buildingNumber: string) => {
     if(!user) return;
@@ -1415,7 +1463,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, can.manage_branding, addActivityLog]);
 
-  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId'>) => {
+  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
     if(user) {
         const isPrivileged = user.role === 'Admin' || user.role === 'Project Coordinator';
         const newAnnouncement: Partial<Announcement> = { 
@@ -1423,7 +1471,560 @@ export function AppProvider({ children }: { children: ReactNode }) {
             creatorId: user.id, 
             status: isPrivileged ? 'approved' : 'pending', 
             createdAt: new Date().toISOString(), 
-            comments: [] 
+            comments: [],
+            dismissedBy: []
+        };
+        if (!isPrivileged) {
+          newAnnouncement.approverId = user.supervisorId || '';
+        }
+
+        const newRef = push(ref(rtdb, 'announcements'));
+        set(newRef, newAnnouncement);
+    }
+  }, [user]);
+
+  const updateAnnouncement = useCallback((announcement: Announcement) => {
+    const { id, ...data } = announcement;
+    update(ref(rtdb, `announcements/${id}`), data);
+  }, []);
+
+  const approveAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'approved' });
+  }, []);
+
+  const rejectAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'rejected' });
+  }, []);
+
+  const deleteAnnouncement = useCallback((announcementId: string) => {
+    remove(ref(rtdb, `announcements/${announcementId}`));
+  }, []);
+
+  const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
+    if(user) {
+        const newComment = { userId: user.id, text: comment, date: new Date().toISOString() };
+        const newCommentRef = push(ref(rtdb, `announcements/${announcementId}/comments`));
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `announcements/${announcementId}`), { status: 'returned' });
+    }
+  }, [user]);
+
+  const dismissAnnouncement = useCallback((announcementId: string) => {
+    if (!user) return;
+    const announcement = announcements.find(a => a.id === announcementId);
+    if (!announcement) return;
+    const dismissedBy = announcement.dismissedBy || [];
+    if (!dismissedBy.includes(user.id)) {
+        update(ref(rtdb, `announcements/${announcementId}`), { dismissedBy: [...dismissedBy, user.id] });
+    }
+  }, [user, announcements]);
+
+  const addBuilding = useCallback((buildingNumber: string) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'buildings'));
+    set(newRef, { buildingNumber, rooms: [] });
+    addActivityLog(user.id, 'Building Added', buildingNumber);
+  }, [user, addActivityLog]);
+
+  const updateBuilding = useCallback((building: Building) => {
+    if(!user) return;
+    const { id, ...data } = building;
+    update(ref(rtdb, `buildings/${id}`), data);
+    addActivityLog(user.id, 'Building Updated', building.buildingNumber);
+  }, [user, addActivityLog]);
+
+  const deleteBuilding = useCallback((buildingId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    remove(ref(rtdb, `buildings/${buildingId}`));
+    if (building) addActivityLog(user.id, 'Building Deleted', building.buildingNumber);
+  }, [user, buildings, addActivityLog]);
+
+  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+
+    const newRoom: Room = { 
+      id: `room-${Date.now()}`,
+      roomNumber: roomData.roomNumber, 
+      beds: Array.from({ length: roomData.numberOfBeds }).map((_, i) => ({ 
+        id: `bed-${Date.now()}-${i}`, 
+        bedNumber: String.fromCharCode(65 + i), 
+        bedType: 'Bunk' 
+      })) 
+    };
+
+    const updatedRooms = [...(building.rooms || []), newRoom];
+    update(ref(rtdb, `buildings/${buildingId}`), { rooms: updatedRooms });
+    addActivityLog(user.id, 'Room Added', `Room ${roomData.roomNumber} to Building ${building.buildingNumber}`);
+  }, [user, buildings, addActivityLog]);
+
+  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    const room = building.rooms.find(r => r.id === roomId);
+    const updatedRooms = building.rooms.filter(r => r.id !== roomId);
+    update(ref(rtdb, `buildings/${buildingId}`), { rooms: updatedRooms });
+    if(room) addActivityLog(user.id, 'Room Deleted', `Room ${room.roomNumber} from Building ${building.buildingNumber}`);
+  }, [user, buildings, addActivityLog]);
+
+  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    const occupant = manpowerProfiles.find(p => p.id === occupantId);
+    const updatedRooms = (building.rooms || []).map(r => r.id === roomId ? { ...r, beds: r.beds.map(b => b.id === bedId ? { ...b, occupantId } : b) } : r);
+    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    addActivityLog(user.id, 'Occupant Assigned', `${occupant?.name} to bed in Building ${building.buildingNumber}`);
+  }, [user, buildings, manpowerProfiles, addActivityLog]);
+
+  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    
+    let occupantName = '';
+    const updatedRooms = (building.rooms || []).map(r => {
+      if (r.id === roomId) {
+        return {
+          ...r,
+          beds: r.beds.map(bed => {
+            if (bed.id === bedId) {
+              const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
+              occupantName = occupant?.name || 'occupant';
+              return { ...bed, occupantId: undefined };
+            }
+            return bed;
+          })
+        };
+      }
+      return r;
+    });
+    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    addActivityLog(user.id, 'Occupant Unassigned', `${occupantName} from bed in Building ${building.buildingNumber}`);
+  }, [user, buildings, manpowerProfiles, addActivityLog]);
+
+  const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
+    if (user) {
+        const recipients = new Set<string>();
+        if (user.supervisorId) recipients.add(user.supervisorId);
+        const hseUser = users.find(u => u.role === 'HSE');
+        if (hseUser) recipients.add(hseUser.id);
+        const now = new Date().toISOString();
+        const newIncidentRef = push(ref(rtdb, 'incidentReports'));
+        const newIncident: Omit<IncidentReport, 'id'> = {
+            ...incidentData,
+            reporterId: user.id,
+            reportTime: now,
+            status: 'New',
+            isPublished: false,
+            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now }],
+            reportedToUserIds: Array.from(recipients),
+            lastUpdated: now,
+            viewedBy: [user.id]
+        };
+        set(newIncidentRef, newIncident);
+    }
+  }, [user, users]);
+
+  const updateIncident = useCallback((incident: IncidentReport, commentText: string) => {
+      if (!user) return;
+      const now = new Date().toISOString();
+      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+      
+      const existingComments = Array.isArray(incident.comments) 
+        ? incident.comments 
+        : Object.values(incident.comments || {});
+
+      const updatedIncident = {
+          ...incident,
+          lastUpdated: now,
+          viewedBy: [user.id],
+          comments: [...existingComments, newComment]
+      };
+      
+      const { id, ...data } = updatedIncident;
+      update(ref(rtdb, `incidentReports/${id}`), data);
+  }, [user]);
+
+
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
+      if (!user) return;
+      const now = new Date().toISOString();
+      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: now };
+      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `incidentReports/${incidentId}`), { lastUpdated: now, viewedBy: [user.id] });
+  }, [user]);
+
+  const publishIncident = useCallback((incidentId: string, commentText: string) => {
+      if (!user) return;
+      const now = new Date().toISOString();
+      const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `incidentReports/${incidentId}`), { isPublished: true, lastUpdated: now, viewedBy: [user.id] });
+  }, [user]);
+
+  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], commentText: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+    const updatedUserIds = [...new Set([...(incident.reportedToUserIds || []), ...userIds])];
+    
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    set(newCommentRef, newComment);
+    update(ref(rtdb, `incidentReports/${incidentId}`), { reportedToUserIds: updatedUserIds, lastUpdated: now, viewedBy: [user.id] });
+  }, [user, incidentReports]);
+  
+  const markIncidentAsViewed = useCallback((incidentId: string) => {
+      if (!user) return;
+      const incident = incidentReports.find(i => i.id === incidentId);
+      if (incident && !incident.viewedBy.includes(user.id)) {
+          update(ref(rtdb, `incidentReports/${incidentId}`), { viewedBy: [...incident.viewedBy, user.id] });
+      }
+  }, [user, incidentReports]);
+
+  
+  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if(user) {
+        const newRequestRef = push(ref(rtdb, 'internalRequests'));
+        const newRequest: Omit<InternalRequest, 'id'> = { ...requestData, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true };
+        set(newRequestRef, newRequest);
+        addActivityLog(user.id, 'Internal Request Created');
+    }
+  }, [user, addActivityLog]);
+
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = internalRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/status`] = status;
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    updates[`internalRequests/${requestId}/comments`] = [...existingComments, newComment];
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequests]);
+
+  const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
+    if (user) {
+        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request items updated by store keeper.', date: new Date().toISOString() };
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `internalRequests/${requestId}`), { items, viewedByRequester: false });
+    }
+  }, [user]);
+
+  const deleteInternalRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `internalRequests/${requestId}`));
+    addActivityLog(user.id, 'Internal Request Deleted', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
+
+  const markInternalRequestAsViewed = useCallback((requestId: string) => {
+    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
+  }, []);
+  
+  const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if (user) {
+        const newRequestRef = push(ref(rtdb, 'managementRequests'));
+        const newRequest: Omit<ManagementRequest, 'id'> = { ...requestData, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true };
+        set(newRequestRef, newRequest);
+        addActivityLog(user.id, 'Management Request Created');
+    }
+  }, [user, addActivityLog]);
+  
+  const updateManagementRequest = useCallback((request: ManagementRequest) => {
+    if(!user) return;
+    const { id, ...data } = request;
+    update(ref(rtdb, `managementRequests/${id}`), data);
+    addActivityLog(user.id, 'Management Request Updated', request.subject);
+  }, [user, addActivityLog]);
+
+  const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
+    if (user) {
+        const request = managementRequests.find(r => r.id === requestId);
+        if (!request) return;
+
+        const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+        const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+
+        const updates: { [key: string]: any } = {};
+        updates[`managementRequests/${requestId}/status`] = status;
+        updates[`managementRequests/${requestId}/viewedByRequester`] = false;
+        updates[`managementRequests/${requestId}/comments`] = [...existingComments, newComment];
+
+        update(ref(rtdb), updates);
+    }
+  }, [user, managementRequests]);
+
+  const deleteManagementRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `managementRequests/${requestId}`));
+    addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
+
+  const markManagementRequestAsViewed = useCallback((requestId: string) => {
+    update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
+  }, []);
+
+  const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'inventoryItems'));
+    set(newItemRef, { ...itemData, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Added', `Added ${itemData.name} (SN: ${itemData.serialNumber})`);
+  }, [user, addActivityLog]);
+  
+  const deleteInventoryItem = useCallback((itemId: string) => {
+    if (!user) return;
+    const item = inventoryItems.find(i => i.id === itemId);
+    remove(ref(rtdb, `inventoryItems/${itemId}`));
+    if(item) addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
+  }, [user, inventoryItems, addActivityLog]);
+  
+  const addMultipleInventoryItems = useCallback((itemsToImport: any[]): number => {
+    if (!user) return 0;
+    let importedCount = 0;
+    const updates: { [key: string]: any } = {};
+    itemsToImport.forEach(item => {
+        try {
+            const serialNumber = item['SERIAL NUMBER']?.toString();
+            if (!serialNumber) return;
+            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+            const project = projects.find(p => p.name.toLowerCase() === item['PROJECT']?.toLowerCase());
+            if (!project) return;
+            const newItemData = { name: item['ITEM NAME'], serialNumber, chestCrollNo: item['CHEST CROLL NO']?.toString(), ariesId: item['ARIES ID']?.toString(), inspectionDate: new Date(item['INSPECTION DATE']).toISOString(), inspectionDueDate: new Date(item['INSPECTION DUE DATE']).toISOString(), tpInspectionDueDate: new Date(item['TP INSPECTION DUE DATE']).toISOString(), status: item['STATUS'] as InventoryItemStatus || 'In Store', projectId: project.id, lastUpdated: new Date().toISOString() };
+            
+            const key = existingItem ? existingItem.id : push(ref(rtdb, 'inventoryItems')).key;
+            if (key) {
+              updates[`/inventoryItems/${key}`] = existingItem ? { ...existingItem, ...newItemData } : { ...newItemData, id: key };
+              importedCount++;
+            }
+        } catch(e) { console.error("Skipping invalid row:", item, e); }
+    });
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Bulk Inventory Import', `Imported ${importedCount} items.`);
+    return importedCount;
+  }, [user, inventoryItems, projects, addActivityLog]);
+  
+  const updateInventoryItem = useCallback((item: InventoryItem) => {
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Updated', `Updated ${item.name} (SN: ${item.serialNumber})`);
+  }, [user, addActivityLog]);
+  
+  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'certificateRequests'));
+
+    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
+      requesterId: user.id,
+      requestType: requestData.requestType,
+      status: 'Pending',
+      requestDate: new Date().toISOString(),
+      viewedByRequester: true
+    };
+    
+    const initialComment = requestData.remarks 
+      ? { id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() } 
+      : { id: `crc-${Date.now()}`, userId: user.id, text: 'Request created.', date: new Date().toISOString() };
+
+    newRequest.comments = [initialComment];
+
+    if (requestData.itemId) newRequest.itemId = requestData.itemId;
+    if (requestData.utMachineId) newRequest.utMachineId = requestData.utMachineId;
+    if (requestData.dftMachineId) newRequest.dftMachineId = requestData.dftMachineId;
+
+    set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
+    addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
+  }, [user, addActivityLog]);
+  
+  const addCertificateRequestComment = useCallback(async (requestId: string, comment: string) => {
+    if (!user) return;
+    const requestRef = ref(rtdb, `certificateRequests/${requestId}`);
+    const snapshot = await get(requestRef);
+    if (!snapshot.exists()) return;
+  
+    const request = snapshot.val();
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const newCommentId = push(ref(rtdb, `certificateRequests/${requestId}/comments`)).key;
+    if (!newCommentId) return;
+
+    const newComment: Comment = { id: newCommentId, userId: user.id, text: comment, date: new Date().toISOString() };
+    const updatedComments = [...existingComments, newComment];
+  
+    update(requestRef, { 
+      comments: updatedComments,
+      lastUpdated: new Date().toISOString(), 
+      viewedByRequester: false 
+    });
+  }, [user]);
+
+  const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    addCertificateRequestComment(requestId, comment);
+    update(ref(rtdb, `certificateRequests/${requestId}`), { 
+      status: 'Completed', 
+      completionDate: new Date().toISOString(),
+      viewedByRequester: false 
+    });
+    addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
+  }, [user, addActivityLog, addCertificateRequestComment]);
+  
+  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+  }, []);
+  
+  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    certificateRequests.forEach(req => {
+      const isStoreReq = !!req.itemId;
+      const isEquipmentReq = !!req.utMachineId || !!req.dftMachineId;
+
+      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) {
+        if ((requestType === 'store' && isStoreReq) || (requestType === 'equipment' && isEquipmentReq)) {
+            updates[`/certificateRequests/${req.id}/viewedByRequester`] = true;
+        }
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, certificateRequests]);
+  
+  const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
+    if (!user) return;
+    const newMachineRef = push(ref(rtdb, 'utMachines'));
+    set(newMachineRef, machine);
+    addActivityLog(user.id, 'UT Machine Added', `Added ${machine.machineName}`);
+  }, [user, addActivityLog]);
+  
+  const updateUTMachine = useCallback((machine: UTMachine) => {
+    if (!user) return;
+    const { id, ...data } = machine;
+    update(ref(rtdb, `utMachines/${id}`), data);
+    addActivityLog(user.id, 'UT Machine Updated', `Updated ${machine.machineName}`);
+  }, [user, addActivityLog]);
+
+  const deleteUTMachine = useCallback((machineId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `utMachines/${machineId}`));
+    addActivityLog(user.id, 'UT Machine Deleted', `Machine ID: ${machineId}`);
+  }, [user, addActivityLog]);
+
+  const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
+    if (!user) return;
+    const newMachineRef = push(ref(rtdb, 'dftMachines'));
+    set(newMachineRef, machine);
+    addActivityLog(user.id, 'DFT Machine Added', `Added ${machine.machineName}`);
+  }, [user, addActivityLog]);
+
+  const updateDftMachine = useCallback((machine: DftMachine) => {
+    if (!user) return;
+    const { id, ...data } = machine;
+    update(ref(rtdb, `dftMachines/${id}`), data);
+    addActivityLog(user.id, 'DFT Machine Updated', `Updated ${machine.machineName}`);
+  }, [user, addActivityLog]);
+
+  const deleteDftMachine = useCallback((machineId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `dftMachines/${machineId}`));
+    addActivityLog(user.id, 'DFT Machine Deleted', `Machine ID: ${machineId}`);
+  }, [user, addActivityLog]);
+
+  const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'mobileSims'));
+    set(newItemRef, item);
+    addActivityLog(user.id, 'Mobile/SIM Added', `Added ${item.type} with number ${item.number}`);
+  }, [user, addActivityLog]);
+  
+  const updateMobileSim = useCallback((item: MobileSim) => {
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `mobileSims/${id}`), data);
+    addActivityLog(user.id, 'Mobile/SIM Updated', `Updated ${item.number}`);
+  }, [user, addActivityLog]);
+  
+  const deleteMobileSim = useCallback((itemId: string) => {
+    if (!user) return;
+    const item = mobileSims.find(i => i.id === itemId);
+    remove(ref(rtdb, `mobileSims/${itemId}`));
+    if(item) addActivityLog(user.id, 'Mobile/SIM Deleted', `Deleted ${item.number}`);
+  }, [user, mobileSims, addActivityLog]);
+  
+  const addLaptopDesktop = useCallback((item: Omit<LaptopDesktop, 'id'>) => {
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'laptopsDesktops'));
+    set(newItemRef, item);
+    addActivityLog(user.id, 'Laptop/Desktop Added', `Added ${item.make} ${item.model}`);
+  }, [user, addActivityLog]);
+
+  const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `laptopsDesktops/${id}`), data);
+    addActivityLog(user.id, 'Laptop/Desktop Updated', `Updated ${item.make} ${item.model}`);
+  }, [user, addActivityLog]);
+
+  const deleteLaptopDesktop = useCallback((itemId: string) => {
+    if (!user) return;
+    const item = laptopsDesktops.find(i => i.id === itemId);
+    remove(ref(rtdb, `laptopsDesktops/${itemId}`));
+    if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', `Deleted ${item.make} ${item.model}`);
+  }, [user, laptopsDesktops, addActivityLog]);
+
+  const addMachineLog = useCallback((log: Omit<MachineLog, 'id'>) => {
+    if(user) {
+        const newLogRef = push(ref(rtdb, 'machineLogs'));
+        set(newLogRef, log);
+    }
+  }, [user]);
+
+  const deleteMachineLog = useCallback((logId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({ title: "Permission Denied", variant: "destructive" });
+      return;
+    }
+    remove(ref(rtdb, `machineLogs/${logId}`));
+    addActivityLog(user.id, 'Machine Log Deleted', `Log ID: ${logId}`);
+  }, [user, addActivityLog, toast]);
+  
+  const getMachineLogs = useCallback((machineId: string) => {
+    return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [machineLogs]);
+
+  const updateBranding = useCallback((name: string, logo: string | null) => {
+    if (user && can.manage_branding) {
+      const brandingRef = ref(rtdb, 'branding');
+      update(brandingRef, { appName: name, appLogo: logo });
+      addActivityLog(user.id, 'Branding Updated');
+    }
+  }, [user, can.manage_branding, addActivityLog]);
+
+  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
+    if(user) {
+        const isPrivileged = user.role === 'Admin' || user.role === 'Project Coordinator';
+        const newAnnouncement: Partial<Announcement> = { 
+            ...data,
+            creatorId: user.id, 
+            status: isPrivileged ? 'approved' : 'pending', 
+            createdAt: new Date().toISOString(), 
+            comments: [],
+            dismissedBy: []
         };
         if (!isPrivileged) {
           newAnnouncement.approverId = user.supervisorId || '';
@@ -1460,6 +2061,568 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
   
+  const dismissAnnouncement = useCallback((announcementId: string) => {
+    if (!user) return;
+    const announcement = announcements.find(a => a.id === announcementId);
+    if (!announcement) return;
+    const dismissedBy = announcement.dismissedBy || [];
+    if (!dismissedBy.includes(user.id)) {
+        update(ref(rtdb, `announcements/${announcementId}`), { dismissedBy: [...dismissedBy, user.id] });
+    }
+  }, [user, announcements]);
+
+  const addBuilding = useCallback((buildingNumber: string) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'buildings'));
+    set(newRef, { buildingNumber, rooms: [] });
+    addActivityLog(user.id, 'Building Added', buildingNumber);
+  }, [user, addActivityLog]);
+
+  const updateBuilding = useCallback((building: Building) => {
+    if(!user) return;
+    const { id, ...data } = building;
+    update(ref(rtdb, `buildings/${id}`), data);
+    addActivityLog(user.id, 'Building Updated', building.buildingNumber);
+  }, [user, addActivityLog]);
+
+  const deleteBuilding = useCallback((buildingId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    remove(ref(rtdb, `buildings/${buildingId}`));
+    if (building) addActivityLog(user.id, 'Building Deleted', building.buildingNumber);
+  }, [user, buildings, addActivityLog]);
+
+  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+
+    const newRoom: Room = { 
+      id: `room-${Date.now()}`,
+      roomNumber: roomData.roomNumber, 
+      beds: Array.from({ length: roomData.numberOfBeds }).map((_, i) => ({ 
+        id: `bed-${Date.now()}-${i}`, 
+        bedNumber: String.fromCharCode(65 + i), 
+        bedType: 'Bunk' 
+      })) 
+    };
+
+    const updatedRooms = [...(building.rooms || []), newRoom];
+    update(ref(rtdb, `buildings/${buildingId}`), { rooms: updatedRooms });
+    addActivityLog(user.id, 'Room Added', `Room ${roomData.roomNumber} to Building ${building.buildingNumber}`);
+  }, [user, buildings, addActivityLog]);
+
+  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    const room = building.rooms.find(r => r.id === roomId);
+    const updatedRooms = building.rooms.filter(r => r.id !== roomId);
+    update(ref(rtdb, `buildings/${buildingId}`), { rooms: updatedRooms });
+    if(room) addActivityLog(user.id, 'Room Deleted', `Room ${room.roomNumber} from Building ${building.buildingNumber}`);
+  }, [user, buildings, addActivityLog]);
+
+  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    const occupant = manpowerProfiles.find(p => p.id === occupantId);
+    const updatedRooms = (building.rooms || []).map(r => r.id === roomId ? { ...r, beds: r.beds.map(b => b.id === bedId ? { ...b, occupantId } : b) } : r);
+    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    addActivityLog(user.id, 'Occupant Assigned', `${occupant?.name} to bed in Building ${building.buildingNumber}`);
+  }, [user, buildings, manpowerProfiles, addActivityLog]);
+
+  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
+    if(!user) return;
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return;
+    
+    let occupantName = '';
+    const updatedRooms = (building.rooms || []).map(r => {
+      if (r.id === roomId) {
+        return {
+          ...r,
+          beds: r.beds.map(bed => {
+            if (bed.id === bedId) {
+              const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
+              occupantName = occupant?.name || 'occupant';
+              return { ...bed, occupantId: undefined };
+            }
+            return bed;
+          })
+        };
+      }
+      return r;
+    });
+    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    addActivityLog(user.id, 'Occupant Unassigned', `${occupantName} from bed in Building ${building.buildingNumber}`);
+  }, [user, buildings, manpowerProfiles, addActivityLog]);
+
+  const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
+    if (user) {
+        const recipients = new Set<string>();
+        if (user.supervisorId) recipients.add(user.supervisorId);
+        const hseUser = users.find(u => u.role === 'HSE');
+        if (hseUser) recipients.add(hseUser.id);
+        const now = new Date().toISOString();
+        const newIncidentRef = push(ref(rtdb, 'incidentReports'));
+        const newIncident: Omit<IncidentReport, 'id'> = {
+            ...incidentData,
+            reporterId: user.id,
+            reportTime: now,
+            status: 'New',
+            isPublished: false,
+            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now }],
+            reportedToUserIds: Array.from(recipients),
+            lastUpdated: now,
+            viewedBy: [user.id]
+        };
+        set(newIncidentRef, newIncident);
+    }
+  }, [user, users]);
+
+  const updateIncident = useCallback((incident: IncidentReport, commentText: string) => {
+      if (!user) return;
+      const now = new Date().toISOString();
+      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+      
+      const existingComments = Array.isArray(incident.comments) 
+        ? incident.comments 
+        : Object.values(incident.comments || {});
+
+      const updatedIncident = {
+          ...incident,
+          lastUpdated: now,
+          viewedBy: [user.id],
+          comments: [...existingComments, newComment]
+      };
+      
+      const { id, ...data } = updatedIncident;
+      update(ref(rtdb, `incidentReports/${id}`), data);
+  }, [user]);
+
+
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
+      if (!user) return;
+      const now = new Date().toISOString();
+      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: now };
+      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `incidentReports/${incidentId}`), { lastUpdated: now, viewedBy: [user.id] });
+  }, [user]);
+
+  const publishIncident = useCallback((incidentId: string, commentText: string) => {
+      if (!user) return;
+      const now = new Date().toISOString();
+      const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `incidentReports/${incidentId}`), { isPublished: true, lastUpdated: now, viewedBy: [user.id] });
+  }, [user]);
+
+  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], commentText: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+    const updatedUserIds = [...new Set([...(incident.reportedToUserIds || []), ...userIds])];
+    
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    set(newCommentRef, newComment);
+    update(ref(rtdb, `incidentReports/${incidentId}`), { reportedToUserIds: updatedUserIds, lastUpdated: now, viewedBy: [user.id] });
+  }, [user, incidentReports]);
+  
+  const markIncidentAsViewed = useCallback((incidentId: string) => {
+      if (!user) return;
+      const incident = incidentReports.find(i => i.id === incidentId);
+      if (incident && !incident.viewedBy.includes(user.id)) {
+          update(ref(rtdb, `incidentReports/${incidentId}`), { viewedBy: [...incident.viewedBy, user.id] });
+      }
+  }, [user, incidentReports]);
+
+  
+  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if(user) {
+        const newRequestRef = push(ref(rtdb, 'internalRequests'));
+        const newRequest: Omit<InternalRequest, 'id'> = { ...requestData, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true };
+        set(newRequestRef, newRequest);
+        addActivityLog(user.id, 'Internal Request Created');
+    }
+  }, [user, addActivityLog]);
+
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = internalRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/status`] = status;
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    updates[`internalRequests/${requestId}/comments`] = [...existingComments, newComment];
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequests]);
+
+  const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
+    if (user) {
+        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request items updated by store keeper.', date: new Date().toISOString() };
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `internalRequests/${requestId}`), { items, viewedByRequester: false });
+    }
+  }, [user]);
+
+  const deleteInternalRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `internalRequests/${requestId}`));
+    addActivityLog(user.id, 'Internal Request Deleted', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
+
+  const markInternalRequestAsViewed = useCallback((requestId: string) => {
+    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
+  }, []);
+  
+  const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
+    if (user) {
+        const newRequestRef = push(ref(rtdb, 'managementRequests'));
+        const newRequest: Omit<ManagementRequest, 'id'> = { ...requestData, requesterId: user.id, date: format(new Date(), 'yyyy-MM-dd'), status: 'Pending', comments: [], viewedByRequester: true };
+        set(newRequestRef, newRequest);
+        addActivityLog(user.id, 'Management Request Created');
+    }
+  }, [user, addActivityLog]);
+  
+  const updateManagementRequest = useCallback((request: ManagementRequest) => {
+    if(!user) return;
+    const { id, ...data } = request;
+    update(ref(rtdb, `managementRequests/${id}`), data);
+    addActivityLog(user.id, 'Management Request Updated', request.subject);
+  }, [user, addActivityLog]);
+
+  const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
+    if (user) {
+        const request = managementRequests.find(r => r.id === requestId);
+        if (!request) return;
+
+        const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+        const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+
+        const updates: { [key: string]: any } = {};
+        updates[`managementRequests/${requestId}/status`] = status;
+        updates[`managementRequests/${requestId}/viewedByRequester`] = false;
+        updates[`managementRequests/${requestId}/comments`] = [...existingComments, newComment];
+
+        update(ref(rtdb), updates);
+    }
+  }, [user, managementRequests]);
+
+  const deleteManagementRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `managementRequests/${requestId}`));
+    addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
+
+  const markManagementRequestAsViewed = useCallback((requestId: string) => {
+    update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
+  }, []);
+
+  const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'inventoryItems'));
+    set(newItemRef, { ...itemData, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Added', `Added ${itemData.name} (SN: ${itemData.serialNumber})`);
+  }, [user, addActivityLog]);
+  
+  const deleteInventoryItem = useCallback((itemId: string) => {
+    if (!user) return;
+    const item = inventoryItems.find(i => i.id === itemId);
+    remove(ref(rtdb, `inventoryItems/${itemId}`));
+    if(item) addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
+  }, [user, inventoryItems, addActivityLog]);
+  
+  const addMultipleInventoryItems = useCallback((itemsToImport: any[]): number => {
+    if (!user) return 0;
+    let importedCount = 0;
+    const updates: { [key: string]: any } = {};
+    itemsToImport.forEach(item => {
+        try {
+            const serialNumber = item['SERIAL NUMBER']?.toString();
+            if (!serialNumber) return;
+            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+            const project = projects.find(p => p.name.toLowerCase() === item['PROJECT']?.toLowerCase());
+            if (!project) return;
+            const newItemData = { name: item['ITEM NAME'], serialNumber, chestCrollNo: item['CHEST CROLL NO']?.toString(), ariesId: item['ARIES ID']?.toString(), inspectionDate: new Date(item['INSPECTION DATE']).toISOString(), inspectionDueDate: new Date(item['INSPECTION DUE DATE']).toISOString(), tpInspectionDueDate: new Date(item['TP INSPECTION DUE DATE']).toISOString(), status: item['STATUS'] as InventoryItemStatus || 'In Store', projectId: project.id, lastUpdated: new Date().toISOString() };
+            
+            const key = existingItem ? existingItem.id : push(ref(rtdb, 'inventoryItems')).key;
+            if (key) {
+              updates[`/inventoryItems/${key}`] = existingItem ? { ...existingItem, ...newItemData } : { ...newItemData, id: key };
+              importedCount++;
+            }
+        } catch(e) { console.error("Skipping invalid row:", item, e); }
+    });
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Bulk Inventory Import', `Imported ${importedCount} items.`);
+    return importedCount;
+  }, [user, inventoryItems, projects, addActivityLog]);
+  
+  const updateInventoryItem = useCallback((item: InventoryItem) => {
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Updated', `Updated ${item.name} (SN: ${item.serialNumber})`);
+  }, [user, addActivityLog]);
+  
+  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'certificateRequests'));
+
+    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
+      requesterId: user.id,
+      requestType: requestData.requestType,
+      status: 'Pending',
+      requestDate: new Date().toISOString(),
+      viewedByRequester: true
+    };
+    
+    const initialComment = requestData.remarks 
+      ? { id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() } 
+      : { id: `crc-${Date.now()}`, userId: user.id, text: 'Request created.', date: new Date().toISOString() };
+
+    newRequest.comments = [initialComment];
+
+    if (requestData.itemId) newRequest.itemId = requestData.itemId;
+    if (requestData.utMachineId) newRequest.utMachineId = requestData.utMachineId;
+    if (requestData.dftMachineId) newRequest.dftMachineId = requestData.dftMachineId;
+
+    set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
+    addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
+  }, [user, addActivityLog]);
+  
+  const addCertificateRequestComment = useCallback(async (requestId: string, comment: string) => {
+    if (!user) return;
+    const requestRef = ref(rtdb, `certificateRequests/${requestId}`);
+    const snapshot = await get(requestRef);
+    if (!snapshot.exists()) return;
+  
+    const request = snapshot.val();
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const newCommentId = push(ref(rtdb, `certificateRequests/${requestId}/comments`)).key;
+    if (!newCommentId) return;
+
+    const newComment: Comment = { id: newCommentId, userId: user.id, text: comment, date: new Date().toISOString() };
+    const updatedComments = [...existingComments, newComment];
+  
+    update(requestRef, { 
+      comments: updatedComments,
+      lastUpdated: new Date().toISOString(), 
+      viewedByRequester: false 
+    });
+  }, [user]);
+
+  const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    addCertificateRequestComment(requestId, comment);
+    update(ref(rtdb, `certificateRequests/${requestId}`), { 
+      status: 'Completed', 
+      completionDate: new Date().toISOString(),
+      viewedByRequester: false 
+    });
+    addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
+  }, [user, addActivityLog, addCertificateRequestComment]);
+  
+  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+  }, []);
+  
+  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    certificateRequests.forEach(req => {
+      const isStoreReq = !!req.itemId;
+      const isEquipmentReq = !!req.utMachineId || !!req.dftMachineId;
+
+      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) {
+        if ((requestType === 'store' && isStoreReq) || (requestType === 'equipment' && isEquipmentReq)) {
+            updates[`/certificateRequests/${req.id}/viewedByRequester`] = true;
+        }
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, certificateRequests]);
+  
+  const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
+    if (!user) return;
+    const newMachineRef = push(ref(rtdb, 'utMachines'));
+    set(newMachineRef, machine);
+    addActivityLog(user.id, 'UT Machine Added', `Added ${machine.machineName}`);
+  }, [user, addActivityLog]);
+  
+  const updateUTMachine = useCallback((machine: UTMachine) => {
+    if (!user) return;
+    const { id, ...data } = machine;
+    update(ref(rtdb, `utMachines/${id}`), data);
+    addActivityLog(user.id, 'UT Machine Updated', `Updated ${machine.machineName}`);
+  }, [user, addActivityLog]);
+
+  const deleteUTMachine = useCallback((machineId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `utMachines/${machineId}`));
+    addActivityLog(user.id, 'UT Machine Deleted', `Machine ID: ${machineId}`);
+  }, [user, addActivityLog]);
+
+  const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
+    if (!user) return;
+    const newMachineRef = push(ref(rtdb, 'dftMachines'));
+    set(newMachineRef, machine);
+    addActivityLog(user.id, 'DFT Machine Added', `Added ${machine.machineName}`);
+  }, [user, addActivityLog]);
+
+  const updateDftMachine = useCallback((machine: DftMachine) => {
+    if (!user) return;
+    const { id, ...data } = machine;
+    update(ref(rtdb, `dftMachines/${id}`), data);
+    addActivityLog(user.id, 'DFT Machine Updated', `Updated ${machine.machineName}`);
+  }, [user, addActivityLog]);
+
+  const deleteDftMachine = useCallback((machineId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `dftMachines/${machineId}`));
+    addActivityLog(user.id, 'DFT Machine Deleted', `Machine ID: ${machineId}`);
+  }, [user, addActivityLog]);
+
+  const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'mobileSims'));
+    set(newItemRef, item);
+    addActivityLog(user.id, 'Mobile/SIM Added', `Added ${item.type} with number ${item.number}`);
+  }, [user, addActivityLog]);
+  
+  const updateMobileSim = useCallback((item: MobileSim) => {
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `mobileSims/${id}`), data);
+    addActivityLog(user.id, 'Mobile/SIM Updated', `Updated ${item.number}`);
+  }, [user, addActivityLog]);
+  
+  const deleteMobileSim = useCallback((itemId: string) => {
+    if (!user) return;
+    const item = mobileSims.find(i => i.id === itemId);
+    remove(ref(rtdb, `mobileSims/${itemId}`));
+    if(item) addActivityLog(user.id, 'Mobile/SIM Deleted', `Deleted ${item.number}`);
+  }, [user, mobileSims, addActivityLog]);
+  
+  const addLaptopDesktop = useCallback((item: Omit<LaptopDesktop, 'id'>) => {
+    if (!user) return;
+    const newItemRef = push(ref(rtdb, 'laptopsDesktops'));
+    set(newItemRef, item);
+    addActivityLog(user.id, 'Laptop/Desktop Added', `Added ${item.make} ${item.model}`);
+  }, [user, addActivityLog]);
+
+  const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
+    if (!user) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `laptopsDesktops/${id}`), data);
+    addActivityLog(user.id, 'Laptop/Desktop Updated', `Updated ${item.make} ${item.model}`);
+  }, [user, addActivityLog]);
+
+  const deleteLaptopDesktop = useCallback((itemId: string) => {
+    if (!user) return;
+    const item = laptopsDesktops.find(i => i.id === itemId);
+    remove(ref(rtdb, `laptopsDesktops/${itemId}`));
+    if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', `Deleted ${item.make} ${item.model}`);
+  }, [user, laptopsDesktops, addActivityLog]);
+
+  const addMachineLog = useCallback((log: Omit<MachineLog, 'id'>) => {
+    if(user) {
+        const newLogRef = push(ref(rtdb, 'machineLogs'));
+        set(newLogRef, log);
+    }
+  }, [user]);
+
+  const deleteMachineLog = useCallback((logId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({ title: "Permission Denied", variant: "destructive" });
+      return;
+    }
+    remove(ref(rtdb, `machineLogs/${logId}`));
+    addActivityLog(user.id, 'Machine Log Deleted', `Log ID: ${logId}`);
+  }, [user, addActivityLog, toast]);
+  
+  const getMachineLogs = useCallback((machineId: string) => {
+    return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [machineLogs]);
+
+  const updateBranding = useCallback((name: string, logo: string | null) => {
+    if (user && can.manage_branding) {
+      const brandingRef = ref(rtdb, 'branding');
+      update(brandingRef, { appName: name, appLogo: logo });
+      addActivityLog(user.id, 'Branding Updated');
+    }
+  }, [user, can.manage_branding, addActivityLog]);
+
+  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
+    if(user) {
+        const isPrivileged = user.role === 'Admin' || user.role === 'Project Coordinator';
+        const newAnnouncement: Partial<Announcement> = { 
+            ...data,
+            creatorId: user.id, 
+            status: isPrivileged ? 'approved' : 'pending', 
+            createdAt: new Date().toISOString(), 
+            comments: [],
+            dismissedBy: []
+        };
+        if (!isPrivileged) {
+          newAnnouncement.approverId = user.supervisorId || '';
+        }
+
+        const newRef = push(ref(rtdb, 'announcements'));
+        set(newRef, newAnnouncement);
+    }
+  }, [user]);
+
+  const updateAnnouncement = useCallback((announcement: Announcement) => {
+    const { id, ...data } = announcement;
+    update(ref(rtdb, `announcements/${id}`), data);
+  }, []);
+
+  const approveAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'approved' });
+  }, []);
+
+  const rejectAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'rejected' });
+  }, []);
+
+  const deleteAnnouncement = useCallback((announcementId: string) => {
+    remove(ref(rtdb, `announcements/${announcementId}`));
+  }, []);
+
+  const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
+    if(user) {
+        const newComment = { userId: user.id, text: comment, date: new Date().toISOString() };
+        const newCommentRef = push(ref(rtdb, `announcements/${announcementId}/comments`));
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `announcements/${announcementId}`), { status: 'returned' });
+    }
+  }, [user]);
+  
+  const dismissAnnouncement = useCallback((announcementId: string) => {
+    if (!user) return;
+    const announcement = announcements.find(a => a.id === announcementId);
+    if (!announcement) return;
+    const dismissedBy = announcement.dismissedBy || [];
+    if (!dismissedBy.includes(user.id)) {
+        update(ref(rtdb, `announcements/${announcementId}`), { dismissedBy: [...dismissedBy, user.id] });
+    }
+  }, [user, announcements]);
+
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
     return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id).length;
@@ -1472,7 +2635,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => task.assigneeId === user.id && task.status === 'Pending Approval').length;
+    return tasks.filter(task => task.creatorId === user.id && task.status === 'Pending Approval').length;
   }, [tasks, user]);
   
   const myFulfilledEquipmentCertRequests = useMemo(() => {
@@ -1541,7 +2704,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
 
     if (todayLogs.length > 0) {
-      // Sum up the latest total for each project today
       const latestTotals = projects.map(project => {
         const projectLogs = todayLogs
           .filter(log => log.projectId === project.id)
@@ -1552,7 +2714,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return latestTotals.reduce((sum, total) => sum + total, 0);
     }
 
-    // If no logs today, calculate from manpower profiles
     return manpowerProfiles.filter(p => p.status === 'Working').length;
   }, [manpowerLogs, manpowerProfiles, projects]);
   
@@ -1569,7 +2730,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
@@ -1582,5 +2743,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
