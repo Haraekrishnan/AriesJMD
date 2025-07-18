@@ -32,13 +32,13 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount } = useAppContext();
+  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount } = useAppContext();
   const pathname = usePathname();
   
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0 },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount },
-    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount },
+    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount + myPendingTaskRequestCount },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0 },

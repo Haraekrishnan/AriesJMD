@@ -33,8 +33,10 @@ const roleHierarchy: Record<Role, number> = {
   'HSE': 2,
   'Store in Charge': 2,
   'Project Coordinator': 3,
+  'Document Controller': 2,
   'Admin': 4,
 };
+
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -69,8 +71,8 @@ export default function CreateTaskDialog() {
       return allVisibleUsers;
     }
 
-    if (user.role === 'Store in Charge') {
-      // Store in Charge can assign to anyone except Admin and Project Coordinator.
+    if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
+      // Store personnel can assign to anyone except Admin and Project Coordinator.
       return allVisibleUsers.filter(assignee => 
         assignee.role !== 'Admin' && assignee.role !== 'Project Coordinator'
       );

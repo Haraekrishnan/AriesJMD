@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -13,7 +14,7 @@ import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount } = useAppContext();
 
   const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
@@ -51,7 +52,7 @@ export default function DashboardPage() {
 
       <AnnouncementFeed />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard 
           title="Completed Tasks" 
           value={completedTasks.toString()} 
@@ -69,6 +70,12 @@ export default function DashboardPage() {
           value={avgTasksPerPerson} 
           icon={Users}
           description="Average tasks across your team"
+        />
+        <StatCard 
+          title="Today's Manpower" 
+          value={workingManpowerCount.toString()} 
+          icon={Users}
+          description="Total active manpower for today"
         />
       </div>
 
