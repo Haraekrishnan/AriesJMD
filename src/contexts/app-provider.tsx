@@ -422,7 +422,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, commentText);
 
-    // The approval request should go to the original creator of the task.
+    // The approval request should go to the person who created the task.
     const approverId = task.creatorId;
 
     const updates: Partial<Task> = { 
@@ -430,9 +430,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         approvalState: 'pending', 
         previousStatus: task.status, 
         pendingStatus: newStatus,
-        attachment: attachment || task.attachment,
         approverId: approverId
     };
+
+    const finalAttachment = attachment || task.attachment;
+    if (finalAttachment) {
+      updates.attachment = finalAttachment;
+    }
+
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
   }, [user, tasks, addActivityLog, addComment]);
@@ -495,7 +500,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       status: 'Pending Approval',
       approvalState: 'pending',
       previousStatus: task.status,
-      pendingAssigneeId: newAssigneeId
+      pendingAssigneeId: newAssigneeId,
+      approverId: task.creatorId
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Reassignment Requested', `Task "${task.title}" to ${users.find(u => u.id === newAssigneeId)?.name}`);
@@ -1463,10 +1469,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
-    // A task is a "pending request" for me if I am the assignee and it's waiting for approval.
-    return tasks.filter(task => task.status === 'Pending Approval' && task.assigneeId === user.id).length;
+    return tasks.filter(task => task.assigneeId === user.id && task.status === 'Pending Approval').length;
   }, [tasks, user]);
-
+  
   const myFulfilledEquipmentCertRequests = useMemo(() => {
     if (!user) return [];
     return certificateRequests.filter(req => 
@@ -1574,3 +1579,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
