@@ -52,6 +52,7 @@ const leaveSchema = z.object({
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   trade: z.string().min(1, 'Trade is required'),
+  otherTrade: z.string().optional(),
   hardCopyFileNo: z.string().optional(),
   documentFolderUrl: z.string().url().optional().or(z.literal('')),
   documents: z.array(documentSchema),
@@ -79,6 +80,14 @@ const profileSchema = z.object({
   terminationDate: z.date().optional(),
   resignationDate: z.date().optional(),
   feedback: z.string().optional(),
+}).refine(data => {
+    if (data.trade === 'Others') {
+        return !!data.otherTrade && data.otherTrade.trim().length > 0;
+    }
+    return true;
+}, {
+    message: 'Please specify the trade',
+    path: ['otherTrade'],
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -152,8 +161,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   useEffect(() => {
     if (isOpen) {
         if (profile) {
+            const isOtherTrade = !TRADES.includes(profile.trade as Trade);
             form.reset({
                 ...profile,
+                trade: isOtherTrade ? 'Others' : profile.trade,
+                otherTrade: isOtherTrade ? profile.trade : '',
                 hasSkills: !!profile.skills && profile.skills.length > 0,
                 leaveHistory: profile.leaveHistory?.map(l => ({
                     ...l,
@@ -222,6 +234,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
 
   const onSubmit = (data: ProfileFormValues) => {
+    const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
+
     // This helper function cleans the object to remove undefined values, which Firebase doesn't allow.
     const cleanDataForFirebase = (obj: any) => {
       const newObj: any = {};
@@ -241,7 +255,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
       return newObj;
     };
     
-    const dataToSubmit = cleanDataForFirebase(data);
+    const dataToSubmit = cleanDataForFirebase({ ...data, trade: finalTrade, otherTrade: undefined });
 
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
@@ -265,7 +279,24 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold border-b pb-2">Personal Details</h3>
                         <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
-                        <div><Label>Trade</Label><Controller control={form.control} name="trade" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select trade..." /></SelectTrigger><SelectContent>{TRADES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>)}/></div>
+                        <div>
+                            <Label>Trade</Label>
+                            <Controller control={form.control} name="trade" render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger><SelectValue placeholder="Select trade..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {TRADES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            )}/>
+                        </div>
+                        {watchedTrade === 'Others' && (
+                            <div>
+                                <Label>Please Specify Trade</Label>
+                                <Input {...form.register('otherTrade')} />
+                                {form.formState.errors.otherTrade && <p className="text-xs text-destructive">{form.formState.errors.otherTrade.message}</p>}
+                            </div>
+                        )}
                         <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
                         <div><Label>EP Number</Label><Input {...form.register('epNumber')} /></div>
                         <div><Label>Plant Name</Label><Input {...form.register('plantName')} /></div>
