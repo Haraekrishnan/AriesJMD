@@ -422,8 +422,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, commentText);
 
-    const assignee = users.find(u => u.id === task.assigneeId);
-    const approverId = assignee?.supervisorId || task.creatorId;
+    const approverId = task.creatorId;
 
     const updates: Partial<Task> = { 
         status: 'Pending Approval', 
@@ -435,7 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
-  }, [user, users, tasks, addActivityLog, addComment]);
+  }, [user, tasks, addActivityLog, addComment]);
 
   const approveTaskStatusChange = useCallback((taskId: string, commentText: string) => {
     if (!user) return;

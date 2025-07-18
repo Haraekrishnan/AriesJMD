@@ -50,6 +50,7 @@ const roleHierarchy: Record<Role, number> = {
   'Supervisor': 2,
   'HSE': 2,
   'Store in Charge': 2,
+  'Document Controller': 2,
   'Project Coordinator': 3,
   'Admin': 4,
 };
@@ -215,30 +216,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const isApprover = useMemo(() => {
     if (!user) return false;
-    
-    // If it's a reassignment request, only the creator can approve.
-    if (taskToDisplay.pendingAssigneeId) {
-        return user.id === taskToDisplay.creatorId;
-    }
-
-    // For status changes, the creator or the current assignee's supervisor can approve.
-    if (user.id === taskToDisplay.assigneeId) return false;
-    
-    const currentAssignee = users.find(u => u.id === taskToDisplay.assigneeId);
-    if (!currentAssignee) return false;
-
-    // Supervisor of current assignee can approve.
-    if (user.id === currentAssignee.supervisorId) return true;
-
-    // Creator can approve if they are a Project Coordinator or admin.
-    if (user.id === taskToDisplay.creatorId && (user.role === 'Project Coordinator' || user.role === 'Admin')) return true;
-
-    // Supervisor of creator can approve if creator is not manager/admin.
-    const creatorUser = users.find(u => u.id === taskToDisplay.creatorId);
-    if (creatorUser && user.id === creatorUser.supervisorId) return true;
-    
-    return false;
-  }, [user, users, taskToDisplay]);
+    return user.id === taskToDisplay.approverId;
+  }, [user, taskToDisplay]);
 
 
   const isAssignee = user?.id === taskToDisplay.assigneeId;
@@ -253,7 +232,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
             )
         }
-        return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {creator?.name}</p>
+        return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.approverId)?.name || 'manager'}</p>
     }
     if (isAssignee && !isCompleted) {
         if (taskToDisplay.status === 'To Do') {
