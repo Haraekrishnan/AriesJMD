@@ -5,20 +5,22 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile } from '@/lib/types';
 import ManpowerSummary from '@/components/manpower/ManpowerSummary';
 import ManpowerFilters, { type ManpowerFilterValues } from '@/components/manpower/ManpowerFilters';
-import { isWithinInterval, addDays, isBefore, format, parseISO } from 'date-fns';
+import { isWithinInterval, addDays, isBefore, format, parseISO, isToday, isPast } from 'date-fns';
 import ManpowerReportDownloads from '@/components/manpower/ManpowerReportDownloads';
 import { Input } from '@/components/ui/input';
 import LeaveReportDialog from '@/components/manpower/LeaveReportDialog';
 import * as XLSX from 'xlsx';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+
 
 export default function ManpowerListPage() {
-    const { user, roles, manpowerProfiles, projects } = useAppContext();
+    const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave } = useAppContext();
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
@@ -61,6 +63,14 @@ export default function ManpowerListPage() {
             return { profile: p, expiringDocs };
         }).filter(item => item.expiringDocs.length > 0);
     }, [manpowerProfiles, canManage]);
+    
+    const leavesStartingToday = useMemo(() => {
+        return manpowerProfiles.flatMap(p => 
+            (p.leaveHistory || [])
+                .filter(l => p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
+                .map(l => ({ profile: p, leave: l }))
+        );
+    }, [manpowerProfiles]);
 
     const filteredProfiles = useMemo(() => {
         return manpowerProfiles.filter(profile => {
@@ -176,6 +186,40 @@ export default function ManpowerListPage() {
                 </div>
             </div>
 
+            {leavesStartingToday.length > 0 && (
+                 <Card className="border-blue-500">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Plane className="text-blue-500"/>Leave Starting Soon</CardTitle>
+                        <CardDescription>The following employees are scheduled for leave. Please confirm or modify their status.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {leavesStartingToday.map(({ profile, leave }) => (
+                            <div key={leave.id} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                <p className="text-sm">
+                                    <span className="font-semibold">{profile.name}</span> is scheduled for {leave.leaveType} leave from <span className="font-medium">{format(parseISO(leave.leaveStartDate), 'dd MMM, yyyy')}</span>.
+                                </p>
+                                <div className="flex gap-2 flex-shrink-0">
+                                    <Button size="sm" variant="default" onClick={() => confirmManpowerLeave(profile.id, leave.id)}><CheckCircle className="mr-2 h-4 w-4" /> Confirm</Button>
+                                    <Button size="sm" variant="outline" onClick={() => handleEdit(profile)}><Pencil className="mr-2 h-4 w-4" /> Modify</Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button size="sm" variant="destructive"><XCircle className="mr-2 h-4 w-4" /> Cancel</Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Cancel Leave Plan?</AlertDialogTitle><AlertDialogDescription>This will remove the planned leave for {profile.name}. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Close</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => cancelManpowerLeave(profile.id, leave.id)}>Confirm Cancellation</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
             {expiringProfiles.length > 0 && (
                 <Card>
                     <CardHeader>
@@ -241,3 +285,4 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+

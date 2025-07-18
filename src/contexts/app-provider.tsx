@@ -125,6 +125,8 @@ type AppContextType = {
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   deleteManpowerProfile: (profileId: string) => void;
   addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date) => void;
+  confirmManpowerLeave: (manpowerId: string, leaveId: string) => void;
+  cancelManpowerLeave: (manpowerId: string, leaveId: string) => void;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
@@ -936,37 +938,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const existingHistory = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : [];
         updates[`/manpowerProfiles/${id}/leaveHistory`] = [...existingHistory, newLeave];
-        
-        // If the leave starts today, update their status immediately
-        if (isSameDay(startDate, new Date())) {
-            updates[`/manpowerProfiles/${id}/status`] = 'On Leave';
-        }
     });
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Leave Planned', `Planned leave for ${manpowerIds.length} employee(s)`);
   }, [user, manpowerProfiles, addActivityLog]);
   
-  // Effect to handle automatic status changes for leave
-  useEffect(() => {
-    const today = startOfDay(new Date());
-    const updates: { [key: string]: any } = {};
+  const confirmManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
+      const profile = manpowerProfiles.find(p => p.id === manpowerId);
+      if (!profile) return;
+      
+      const updates: { [key: string]: any } = {
+          [`/manpowerProfiles/${manpowerId}/status`]: 'On Leave'
+      };
+      
+      const leaveIndex = (profile.leaveHistory || []).findIndex(l => l.id === leaveId);
+      if (leaveIndex > -1) {
+          updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveIndex}/leaveStartDate`] = new Date().toISOString();
+      }
+      
+      update(ref(rtdb), updates);
+  }, [manpowerProfiles]);
 
-    manpowerProfiles.forEach(profile => {
-        // Check for leave starting today
-        if (profile.status === 'Working' && profile.leaveHistory) {
-            const leaveStartingToday = profile.leaveHistory.find(l => isSameDay(new Date(l.leaveStartDate), today) && !l.rejoinedDate);
-            if (leaveStartingToday) {
-                updates[`/manpowerProfiles/${profile.id}/status`] = 'On Leave';
-            }
-        }
-    });
+  const cancelManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
+      const profile = manpowerProfiles.find(p => p.id === manpowerId);
+      if (!profile || !profile.leaveHistory) return;
 
-    if (Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates);
-    }
-  }, [manpowerProfiles]); // This will run whenever profiles data changes, which is fine for this use case.
-
+      const updatedLeaveHistory = profile.leaveHistory.filter(l => l.id !== leaveId);
+      
+      update(ref(rtdb, `/manpowerProfiles/${manpowerId}`), { leaveHistory: updatedLeaveHistory });
+  }, [manpowerProfiles]);
+  
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
     if(user) {
         const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -1531,7 +1533,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => (task.creatorId === user.id) && task.status === 'Pending Approval').length;
+    return tasks.filter(task => task.creatorId === user.id && task.status === 'Pending Approval').length;
   }, [tasks, user]);
   
   const myFulfilledEquipmentCertRequests = useMemo(() => {
@@ -1626,7 +1628,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, confirmManpowerLeave, cancelManpowerLeave, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
