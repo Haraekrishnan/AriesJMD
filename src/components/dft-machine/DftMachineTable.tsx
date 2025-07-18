@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -15,6 +16,16 @@ import { useToast } from '@/hooks/use-toast';
 interface DftMachineTableProps {
   onEdit: (machine: DftMachine) => void;
   onLogManager: (machine: DftMachine) => void;
+}
+
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
+    switch (status) {
+        case 'In Service': return 'success';
+        case 'Under Maintenance': return 'secondary';
+        case 'Damaged': return 'destructive';
+        case 'Out of Service': return 'destructive';
+        default: return 'outline';
+    }
 }
 
 export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTableProps) {
@@ -60,7 +71,7 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
                         <TableCell className={cn(isDatePast(machine.calibrationDueDate) && 'text-destructive font-bold')}>
                             {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
                         </TableCell>
-                        <TableCell><Badge variant="secondary">{machine.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
                         <TableCell className="text-right">
                              <AlertDialog>
                                 <DropdownMenu>

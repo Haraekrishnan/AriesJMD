@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,9 +13,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { CalendarIcon } from 'lucide-react';
-import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Calendar } from '../ui/calendar';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -34,12 +35,15 @@ interface AddAnemometerDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+
 export default function AddAnemometerDialog({ isOpen, setIsOpen }: AddAnemometerDialogProps) {
   const { users, projects, addAnemometer } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
+    defaultValues: { status: 'In Service' },
   });
 
   const onSubmit = (data: FormValues) => {
@@ -53,7 +57,7 @@ export default function AddAnemometerDialog({ isOpen, setIsOpen }: AddAnemometer
   };
   
   const handleOpenChange = (open: boolean) => {
-      if (!open) form.reset();
+      if (!open) form.reset({ status: 'In Service' });
       setIsOpen(open);
   }
 
@@ -103,7 +107,14 @@ export default function AddAnemometerDialog({ isOpen, setIsOpen }: AddAnemometer
                 </div>
                  <div className="space-y-2">
                     <Label>Status</Label>
-                    <Input {...form.register('status')} placeholder="e.g., In Service, Damaged"/>
+                     <Controller control={form.control} name="status" render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                            <SelectContent>
+                                {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    )}/>
                     {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
                 </div>
             </div>

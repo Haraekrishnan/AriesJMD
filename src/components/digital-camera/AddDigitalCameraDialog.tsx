@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,12 +29,15 @@ interface AddDigitalCameraDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+
 export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigitalCameraDialogProps) {
   const { users, projects, addDigitalCamera } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
+    defaultValues: { status: 'In Service' },
   });
 
   const onSubmit = (data: FormValues) => {
@@ -47,7 +51,7 @@ export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigital
   };
   
   const handleOpenChange = (open: boolean) => {
-      if (!open) form.reset();
+      if (!open) form.reset({ status: 'In Service' });
       setIsOpen(open);
   }
 
@@ -97,7 +101,14 @@ export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigital
                 </div>
                  <div className="space-y-2">
                     <Label>Status</Label>
-                    <Input {...form.register('status')} placeholder="e.g., In Service, Damaged"/>
+                     <Controller control={form.control} name="status" render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                            <SelectContent>
+                                {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    )}/>
                     {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
                 </div>
             </div>

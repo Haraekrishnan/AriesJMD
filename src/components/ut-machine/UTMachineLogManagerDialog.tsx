@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '.
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { Badge } from '../ui/badge';
 
 
 const logSchema = z.object({
@@ -158,8 +159,8 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                                             <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
                                         </TableCell>
                                         <TableCell>
-                                            <p>{log.status}</p>
-                                            {log.reason && <p className="text-xs text-muted-foreground">{log.reason}</p>}
+                                            <Badge variant={log.status === 'Active' ? 'success' : 'secondary'}>{log.status}</Badge>
+                                            {log.reason && <p className="text-xs text-muted-foreground mt-1">{log.reason}</p>}
                                         </TableCell>
                                         <TableCell>
                                             <p className="font-medium">{log.userName}</p>

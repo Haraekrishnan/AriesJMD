@@ -1,3 +1,4 @@
+
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,6 +13,16 @@ import { Badge } from '../ui/badge';
 
 interface DigitalCameraTableProps {
   onEdit: (item: DigitalCamera) => void;
+}
+
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
+    switch (status) {
+        case 'In Service': return 'success';
+        case 'Under Maintenance': return 'secondary';
+        case 'Damaged': return 'destructive';
+        case 'Out of Service': return 'destructive';
+        default: return 'outline';
+    }
 }
 
 export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) {
@@ -61,7 +72,7 @@ export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) 
                         </div>
                     </TableCell>
                     <TableCell>{project?.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{item.status}</Badge></TableCell>
+                    <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
                     {can.manage_equipment_status && (
                     <TableCell className="text-right">
                         <AlertDialog>

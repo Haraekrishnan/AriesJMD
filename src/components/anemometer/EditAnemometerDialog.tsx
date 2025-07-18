@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -36,6 +37,8 @@ interface EditAnemometerDialogProps {
   setIsOpen: (open: boolean) => void;
   item: Anemometer;
 }
+
+const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
 
 export default function EditAnemometerDialog({ isOpen, setIsOpen, item }: EditAnemometerDialogProps) {
   const { users, projects, updateAnemometer } = useAppContext();
@@ -109,7 +112,14 @@ export default function EditAnemometerDialog({ isOpen, setIsOpen, item }: EditAn
               </div>
                <div className="space-y-2">
                   <Label>Status</Label>
-                  <Input {...form.register('status')} placeholder="e.g., In Service, Damaged"/>
+                  <Controller control={form.control} name="status" render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                        <SelectContent>
+                            {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  )}/>
                   {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
               </div>
           </div>

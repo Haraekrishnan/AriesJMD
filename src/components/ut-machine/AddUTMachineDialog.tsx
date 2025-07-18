@@ -34,6 +34,8 @@ interface AddUTMachineDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+
 export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDialogProps) {
   const { projects, addUTMachine } = useAppContext();
   const { toast } = useToast();
@@ -82,7 +84,17 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
             <div><Label>Probe Details</Label><Input {...form.register('probeDetails')} />{form.formState.errors.probeDetails && <p className="text-xs text-destructive">{form.formState.errors.probeDetails.message}</p>}</div>
             <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} />{form.formState.errors.cableDetails && <p className="text-xs text-destructive">{form.formState.errors.cableDetails.message}</p>}</div>
           </div>
-           <div><Label>Status</Label><Input {...form.register('status')} placeholder="e.g., In Service, Under Maintenance" />{form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}</div>
+           <div><Label>Status</Label>
+             <Controller control={form.control} name="status" render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                    <SelectContent>
+                        {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            )}/>
+            {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
+           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Add Machine</Button>

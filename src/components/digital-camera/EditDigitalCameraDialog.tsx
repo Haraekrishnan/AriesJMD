@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -30,6 +31,8 @@ interface EditDigitalCameraDialogProps {
   setIsOpen: (open: boolean) => void;
   item: DigitalCamera;
 }
+
+const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
 
 export default function EditDigitalCameraDialog({ isOpen, setIsOpen, item }: EditDigitalCameraDialogProps) {
   const { users, projects, updateDigitalCamera } = useAppContext();
@@ -100,7 +103,14 @@ export default function EditDigitalCameraDialog({ isOpen, setIsOpen, item }: Edi
               </div>
                <div className="space-y-2">
                   <Label>Status</Label>
-                  <Input {...form.register('status')} placeholder="e.g., In Service, Damaged"/>
+                  <Controller control={form.control} name="status" render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                        <SelectContent>
+                            {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  )}/>
                   {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
               </div>
           </div>

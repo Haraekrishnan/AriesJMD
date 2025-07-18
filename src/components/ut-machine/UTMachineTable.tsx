@@ -9,7 +9,7 @@ import { MoreHorizontal, Edit, Trash2, FileText, BadgeHelp } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { format, isAfter, isPast } from 'date-fns';
+import { format, isPast } from 'date-fns';
 import { UTMachine } from '@/lib/types';
 import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,16 @@ import { Badge } from '../ui/badge';
 interface UTMachineTableProps {
   onEdit: (machine: UTMachine) => void;
   onLogManager: (machine: UTMachine) => void;
+}
+
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
+    switch (status) {
+        case 'In Service': return 'success';
+        case 'Under Maintenance': return 'secondary';
+        case 'Damaged': return 'destructive';
+        case 'Out of Service': return 'destructive';
+        default: return 'outline';
+    }
 }
 
 export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableProps) {
@@ -79,7 +89,7 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
             <TableCell className={cn(isDatePast(machine.calibrationDueDate) && 'text-destructive font-bold')}>
                 {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
             </TableCell>
-            <TableCell><Badge variant="secondary">{machine.status}</Badge></TableCell>
+            <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
             <TableCell className="text-right">
                 <AlertDialog>
                   <DropdownMenu>

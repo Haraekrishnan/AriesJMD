@@ -1,3 +1,4 @@
+
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,6 +15,16 @@ import { cn } from '@/lib/utils';
 
 interface AnemometerTableProps {
   onEdit: (item: Anemometer) => void;
+}
+
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
+    switch (status) {
+        case 'In Service': return 'success';
+        case 'Under Maintenance': return 'secondary';
+        case 'Damaged': return 'destructive';
+        case 'Out of Service': return 'destructive';
+        default: return 'outline';
+    }
 }
 
 export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
@@ -66,7 +77,7 @@ export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
                         </div>
                     </TableCell>
                     <TableCell>{project?.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{item.status}</Badge></TableCell>
+                    <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
                     <TableCell className={cn(isDatePast(item.calibrationDueDate) && 'text-destructive font-bold')}>
                         {item.calibrationDueDate ? format(new Date(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A'}
                     </TableCell>
