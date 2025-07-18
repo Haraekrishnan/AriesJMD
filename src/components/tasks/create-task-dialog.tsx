@@ -69,13 +69,10 @@ export default function CreateTaskDialog() {
     }
 
     if (user.role === 'Store in Charge') {
-      const supervisorLevel = roleHierarchy['Supervisor'];
-      return allVisibleUsers.filter(assignee => {
-        const assigneeRoleLevel = roleHierarchy[assignee.role];
-        const isAssignableLevel = assigneeRoleLevel <= supervisorLevel;
-        const isNotAdminOrCoordinator = assignee.role !== 'Admin' && assignee.role !== 'Project Coordinator';
-        return (assignee.id === user.id || (isAssignableLevel && isNotAdminOrCoordinator));
-      });
+      // Store in Charge can assign to anyone except Admin and Project Coordinator.
+      return allVisibleUsers.filter(assignee => 
+        assignee.role !== 'Admin' && assignee.role !== 'Project Coordinator'
+      );
     }
     
     const userRoleLevel = roleHierarchy[user.role];
