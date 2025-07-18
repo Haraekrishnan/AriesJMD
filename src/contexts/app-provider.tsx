@@ -419,16 +419,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, commentText);
 
+    const assignee = users.find(u => u.id === task.assigneeId);
+    const approverId = assignee?.supervisorId || task.creatorId;
+
     const updates: Partial<Task> = { 
         status: 'Pending Approval', 
         approvalState: 'pending', 
         previousStatus: task.status, 
         pendingStatus: newStatus,
-        attachment: attachment || task.attachment
+        attachment: attachment || task.attachment,
+        approverId: approverId
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
-  }, [user, tasks, addActivityLog, addComment]);
+  }, [user, users, tasks, addActivityLog, addComment]);
 
   const approveTaskStatusChange = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
@@ -1447,13 +1451,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
     return tasks.filter(task => {
-        if (task.status !== 'Pending Approval') return false;
-        if (task.pendingAssigneeId) return task.creatorId === user.id;
-        const assignee = users.find(u => u.id === task.assigneeId);
-        if (!assignee || task.assigneeId === user.id) return false;
-        return task.creatorId === user.id || assignee.supervisorId === user.id;
+        if (task.status !== 'Pending Approval' || !task.approverId) return false;
+        return task.approverId === user.id;
     }).length;
-  }, [tasks, user, users]);
+  }, [tasks, user]);
 
   const myNewTaskCount = useMemo(() => {
     if (!user) return 0;
@@ -1547,5 +1548,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 

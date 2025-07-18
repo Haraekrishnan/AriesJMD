@@ -35,26 +35,10 @@ export default function TasksPage() {
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        if (task.status !== 'Pending Approval') return false;
-
-        const isCreatorOfReassignment = task.pendingAssigneeId && task.creatorId === user.id;
-        if(isCreatorOfReassignment) return true;
-        
-        if(task.pendingAssigneeId) return false;
-
-        const assignee = users.find(u => u.id === task.assigneeId);
-        if (!assignee) return false;
-
-        if (task.assigneeId === user.id) {
-            return false;
-        }
-
-        const isCreator = task.creatorId === user.id;
-        const isSupervisor = assignee.supervisorId === user.id;
-
-        return isCreator || isSupervisor;
+        if (task.status !== 'Pending Approval' || !task.approverId) return false;
+        return task.approverId === user.id;
     });
-  }, [tasks, user, users]);
+  }, [tasks, user]);
   
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
@@ -67,31 +51,26 @@ export default function TasksPage() {
   const filteredTasks = useMemo(() => {
     if (!user) return [];
 
-    const visibleUserIds = new Set<string>();
-    if (can.manage_tasks) {
-      users.forEach(u => visibleUserIds.add(u.id));
-    } else {
-      visibleUserIds.add(user.id);
-      users.forEach(u => {
-        if (u.supervisorId === user.id) {
-          visibleUserIds.add(u.id);
-        }
-      });
-    }
+    const mySubordinateIds = new Set(users.filter(u => u.supervisorId === user.id).map(u => u.id));
 
     return tasks.filter(task => {
-      if (!task.assigneeIds || !task.assigneeIds.some(id => visibleUserIds.has(id))) {
-        return false;
-      }
-      
+      // Don't show pending tasks on the main board
       if (task.status === 'Pending Approval') {
         return false;
       }
       
       const { status, priority, dateRange, showMyTasksOnly } = filters;
 
-      if (showMyTasksOnly && task.assigneeIds && !task.assigneeIds.includes(user.id)) {
-        return false;
+      if (showMyTasksOnly) {
+          if (!task.assigneeIds?.includes(user.id)) return false;
+      } else {
+          // General visibility rule: I can see tasks assigned to me or my direct subordinates.
+          const isMyTask = task.assigneeIds?.includes(user.id);
+          const isMySubordinatesTask = task.assigneeIds?.some(id => mySubordinateIds.has(id));
+          
+          if (!isMyTask && !isMySubordinatesTask && user.role !== 'Admin' && user.role !== 'Project Coordinator') {
+              return false;
+          }
       }
       
       let statusMatch = status === 'all' || task.status === status;

@@ -34,6 +34,7 @@ export type Task = {
     url: string; // data URI
   };
   approvalState: ApprovalState;
+  approverId?: string; // New field
   pendingStatus?: TaskStatus;
   previousStatus?: TaskStatus;
   completionDate?: string; // ISO String
