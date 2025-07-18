@@ -364,7 +364,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Project Coordinator' || user.role === 'Store in Charge' || user.role === 'Document Controller') {
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Store in Charge', 'Document Controller'];
+    if (privilegedRoles.includes(user.role)) {
       return users;
     }
     const subordinates = users.filter(u => u.supervisorId === user.id);
@@ -433,9 +434,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         approverId: approverId
     };
 
-    const finalAttachment = attachment || task.attachment;
-    if (finalAttachment) {
-      updates.attachment = finalAttachment;
+    if (attachment) {
+      updates.attachment = attachment;
     }
 
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -449,12 +449,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     addComment(taskId, commentText);
 
-    const updates: Partial<Task> = {};
+    const updates: Partial<Task> = {
+        status: task.pendingStatus || task.status,
+        approvalState: 'approved',
+        pendingStatus: null,
+        previousStatus: null,
+    };
 
     if (task.pendingAssigneeId) { // Reassignment
       updates.assigneeId = task.pendingAssigneeId;
       updates.assigneeIds = [task.pendingAssigneeId];
-      updates.pendingAssigneeId = undefined;
+      updates.pendingAssigneeId = null;
       updates.status = 'To Do';
       updates.approvalState = 'none';
       updates.isViewedByAssignee = false;
@@ -462,8 +467,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else { // Status change
       updates.status = task.pendingStatus || task.status;
       if (task.pendingStatus === 'Completed') updates.completionDate = new Date().toISOString();
-      updates.pendingStatus = undefined;
-      updates.previousStatus = undefined;
       updates.approvalState = 'approved';
       addActivityLog(user.id, 'Task Status Change Approved', `Task "${updates.status}"`);
     }
@@ -480,9 +483,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const updates: Partial<Task> = { 
       status: task.previousStatus || 'To Do', 
-      pendingStatus: undefined, 
-      previousStatus: undefined, 
-      pendingAssigneeId: undefined, 
+      pendingStatus: null, 
+      previousStatus: null, 
+      pendingAssigneeId: null, 
       approvalState: 'returned' 
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -1579,4 +1582,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
