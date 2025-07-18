@@ -9,7 +9,6 @@ import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile } from '@/lib/types';
-import ManpowerSummary from '@/components/manpower/ManpowerSummary';
 import ManpowerFilters, { type ManpowerFilterValues } from '@/components/manpower/ManpowerFilters';
 import { isWithinInterval, addDays, isBefore, format, parseISO, isToday, isPast } from 'date-fns';
 import ManpowerReportDownloads from '@/components/manpower/ManpowerReportDownloads';
@@ -237,8 +236,6 @@ export default function ManpowerListPage() {
                     </CardContent>
                 </Card>
             )}
-
-            <ManpowerSummary />
             
             <Card>
                 <CardHeader>
@@ -285,4 +282,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
