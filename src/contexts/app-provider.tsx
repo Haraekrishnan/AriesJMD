@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,8 @@ type AppContextType = {
   dftMachines: DftMachine[];
   mobileSims: MobileSim[];
   laptopsDesktops: LaptopDesktop[];
+  digitalCameras: DigitalCamera[];
+  anemometers: Anemometer[];
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   announcements: Announcement[];
@@ -159,6 +161,12 @@ type AppContextType = {
   addLaptopDesktop: (item: Omit<LaptopDesktop, 'id'>) => void;
   updateLaptopDesktop: (item: LaptopDesktop) => void;
   deleteLaptopDesktop: (itemId: string) => void;
+  addDigitalCamera: (camera: Omit<DigitalCamera, 'id'>) => void;
+  updateDigitalCamera: (camera: DigitalCamera) => void;
+  deleteDigitalCamera: (cameraId: string) => void;
+  addAnemometer: (anemometer: Omit<Anemometer, 'id'>) => void;
+  updateAnemometer: (anemometer: Anemometer) => void;
+  deleteAnemometer: (anemometerId: string) => void;
   addMachineLog: (log: Omit<MachineLog, 'id'>) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
@@ -216,6 +224,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [dftMachines, setDftMachines] = useState<DftMachine[]>([]);
   const [mobileSims, setMobileSims] = useState<MobileSim[]>([]);
   const [laptopsDesktops, setLaptopsDesktops] = useState<LaptopDesktop[]>([]);
+  const [digitalCameras, setDigitalCameras] = useState<DigitalCamera[]>([]);
+  const [anemometers, setAnemometers] = useState<Anemometer[]>([]);
   const [machineLogs, setMachineLogs] = useState<MachineLog[]>([]);
   const [certificateRequests, setCertificateRequests] = useState<CertificateRequest[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -244,7 +254,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setVehicles([]); setDrivers([]); setIncidentReports([]); setManpowerLogs([]);
       setManpowerProfiles([]); setInternalRequests([]); setManagementRequests([]);
       setInventoryItems([]); setUtMachines([]); setDftMachines([]); setMobileSims([]);
-      setLaptopsDesktops([]); setMachineLogs([]); setCertificateRequests([]);
+      setLaptopsDesktops([]); setDigitalCameras([]); setAnemometers([]); setMachineLogs([]); setCertificateRequests([]);
       setAnnouncements([]); setBuildings([]);
       return;
     }
@@ -270,6 +280,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createDataListener('dftMachines', setDftMachines),
       createDataListener('mobileSims', setMobileSims),
       createDataListener('laptopsDesktops', setLaptopsDesktops),
+      createDataListener('digitalCameras', setDigitalCameras),
+      createDataListener('anemometers', setAnemometers),
       createDataListener('machineLogs', setMachineLogs),
       createDataListener('certificateRequests', setCertificateRequests),
       createDataListener('announcements', setAnnouncements),
@@ -1270,6 +1282,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `laptopsDesktops/${itemId}`));
     if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', `Deleted ${item.make} ${item.model}`);
   }, [user, laptopsDesktops, addActivityLog]);
+  
+  const addDigitalCamera = useCallback((camera: Omit<DigitalCamera, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'digitalCameras'));
+    set(newRef, camera);
+    addActivityLog(user.id, 'Digital Camera Added', `Added ${camera.make} ${camera.model}`);
+  }, [user, addActivityLog]);
+
+  const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
+    if (!user) return;
+    const { id, ...data } = camera;
+    update(ref(rtdb, `digitalCameras/${id}`), data);
+    addActivityLog(user.id, 'Digital Camera Updated', `Updated ${camera.make} ${camera.model}`);
+  }, [user, addActivityLog]);
+
+  const deleteDigitalCamera = useCallback((cameraId: string) => {
+    if (!user) return;
+    const camera = digitalCameras.find(c => c.id === cameraId);
+    remove(ref(rtdb, `digitalCameras/${cameraId}`));
+    if (camera) addActivityLog(user.id, 'Digital Camera Deleted', `Deleted ${camera.make} ${camera.model}`);
+  }, [user, addActivityLog, digitalCameras]);
+
+  const addAnemometer = useCallback((anemometer: Omit<Anemometer, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'anemometers'));
+    set(newRef, anemometer);
+    addActivityLog(user.id, 'Anemometer Added', `Added ${anemometer.make} ${anemometer.model}`);
+  }, [user, addActivityLog]);
+
+  const updateAnemometer = useCallback((anemometer: Anemometer) => {
+    if (!user) return;
+    const { id, ...data } = anemometer;
+    update(ref(rtdb, `anemometers/${id}`), data);
+    addActivityLog(user.id, 'Anemometer Updated', `Updated ${anemometer.make} ${anemometer.model}`);
+  }, [user, addActivityLog]);
+
+  const deleteAnemometer = useCallback((anemometerId: string) => {
+    if (!user) return;
+    const anemometer = anemometers.find(a => a.id === anemometerId);
+    remove(ref(rtdb, `anemometers/${anemometerId}`));
+    if (anemometer) addActivityLog(user.id, 'Anemometer Deleted', `Deleted ${anemometer.make} ${anemometer.model}`);
+  }, [user, addActivityLog, anemometers]);
+
 
   const addMachineLog = useCallback((log: Omit<MachineLog, 'id'>) => {
     if(user) {
@@ -1612,7 +1667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .filter(log => log.projectId === project.id)
           .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
         const latestLog = projectLogs[0];
-        return latestLog ? (latestLog.total || 0) : 0;
+        return latestLog?.total || 0;
       });
       return latestTotals.reduce((sum, total) => sum + total, 0);
     }
@@ -1632,8 +1687,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [incidentReports, user]);
 
   const contextValue = {
-    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, confirmManpowerLeave, cancelManpowerLeave, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, confirmManpowerLeave, cancelManpowerLeave, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

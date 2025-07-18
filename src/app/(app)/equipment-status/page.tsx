@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role } from '@/lib/types';
+import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay, isAfter } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -35,9 +35,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AddDigitalCameraDialog from '@/components/digital-camera/AddDigitalCameraDialog';
+import EditDigitalCameraDialog from '@/components/digital-camera/EditDigitalCameraDialog';
+import DigitalCameraTable from '@/components/digital-camera/DigitalCameraTable';
+import AddAnemometerDialog from '@/components/anemometer/AddAnemometerDialog';
+import EditAnemometerDialog from '@/components/anemometer/EditAnemometerDialog';
+import AnemometerTable from '@/components/anemometer/AnemometerTable';
+
 
 export default function EquipmentStatusPage() {
-    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs } = useAppContext();
+    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -60,6 +67,16 @@ export default function EquipmentStatusPage() {
     const [isAddLaptopDesktopOpen, setIsAddLaptopDesktopOpen] = useState(false);
     const [isEditLaptopDesktopOpen, setIsEditLaptopDesktopOpen] = useState(false);
     const [selectedLaptopDesktop, setSelectedLaptopDesktop] = useState<LaptopDesktop | null>(null);
+
+    // Digital Camera State
+    const [isAddDigitalCameraOpen, setIsAddDigitalCameraOpen] = useState(false);
+    const [isEditDigitalCameraOpen, setIsEditDigitalCameraOpen] = useState(false);
+    const [selectedDigitalCamera, setSelectedDigitalCamera] = useState<DigitalCamera | null>(null);
+
+    // Anemometer State
+    const [isAddAnemometerOpen, setIsAddAnemometerOpen] = useState(false);
+    const [isEditAnemometerOpen, setIsEditAnemometerOpen] = useState(false);
+    const [selectedAnemometer, setSelectedAnemometer] = useState<Anemometer | null>(null);
 
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     
@@ -115,6 +132,14 @@ export default function EquipmentStatusPage() {
     // Laptop/Desktop Handlers
     const handleEditLaptopDesktop = (item: LaptopDesktop) => { setSelectedLaptopDesktop(item); setIsEditLaptopDesktopOpen(true); };
     const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
+
+    // Digital Camera Handlers
+    const handleEditDigitalCamera = (item: DigitalCamera) => { setSelectedDigitalCamera(item); setIsEditDigitalCameraOpen(true); };
+    const handleAddDigitalCamera = () => { setSelectedDigitalCamera(null); setIsAddDigitalCameraOpen(true); };
+
+    // Anemometer Handlers
+    const handleEditAnemometer = (item: Anemometer) => { setSelectedAnemometer(item); setIsEditAnemometerOpen(true); };
+    const handleAddAnemometer = () => { setSelectedAnemometer(null); setIsAddAnemometerOpen(true); };
     
     const detailedUsageData = useMemo(() => {
         if (!activeDaysDateRange?.from) {
@@ -307,9 +332,11 @@ export default function EquipmentStatusPage() {
             </Card>
 
             <Tabs defaultValue="ut-machines" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
+                    <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
+                    <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
                     <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
                     <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
                 </TabsList>
@@ -433,6 +460,34 @@ export default function EquipmentStatusPage() {
                         <CardContent><DftMachineTable onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
                     </Card>
                 </TabsContent>
+                <TabsContent value="digital-camera" className="mt-4 space-y-4">
+                     <div className="flex justify-end">
+                        {can.manage_equipment_status && (
+                            <Button onClick={handleAddDigitalCamera}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Digital Camera
+                            </Button>
+                        )}
+                    </div>
+                    <Card>
+                        <CardHeader><CardTitle>Digital Cameras</CardTitle><CardDescription>List of all company-provided digital cameras.</CardDescription></CardHeader>
+                        <CardContent><DigitalCameraTable onEdit={handleEditDigitalCamera} /></CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="anemometer" className="mt-4 space-y-4">
+                     <div className="flex justify-end">
+                        {can.manage_equipment_status && (
+                            <Button onClick={handleAddAnemometer}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Anemometer
+                            </Button>
+                        )}
+                    </div>
+                    <Card>
+                        <CardHeader><CardTitle>Anemometers</CardTitle><CardDescription>List of all company-provided anemometers.</CardDescription></CardHeader>
+                        <CardContent><AnemometerTable onEdit={handleEditAnemometer} /></CardContent>
+                    </Card>
+                </TabsContent>
                 <TabsContent value="mobile-sim" className="mt-4 space-y-4">
                      <div className="flex justify-end">
                         {can.manage_equipment_status && (
@@ -476,6 +531,13 @@ export default function EquipmentStatusPage() {
         
             {can.manage_equipment_status && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
             {selectedLaptopDesktop && can.manage_equipment_status && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
+            
+            {can.manage_equipment_status && <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />}
+            {selectedDigitalCamera && can.manage_equipment_status && <EditDigitalCameraDialog isOpen={isEditDigitalCameraOpen} setIsOpen={setIsEditDigitalCameraOpen} item={selectedDigitalCamera} />}
+
+            {can.manage_equipment_status && <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />}
+            {selectedAnemometer && can.manage_equipment_status && <EditAnemometerDialog isOpen={isEditAnemometerOpen} setIsOpen={setIsEditAnemometerOpen} item={selectedAnemometer} />}
+
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );

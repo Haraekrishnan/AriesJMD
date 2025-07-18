@@ -264,6 +264,7 @@ export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issue
 export type InternalRequestItem = {
     description: string;
     quantity: number;
+    unit: string;
     remarks: string;
 };
 export type InternalRequest = {
@@ -331,6 +332,29 @@ export type DftMachine = {
     probeDetails: string;
     cableDetails: string;
     status: string;
+};
+
+export type DigitalCamera = {
+  id: string;
+  make: string;
+  model: string;
+  serialNumber: string;
+  allottedTo: string; // User ID
+  status: string;
+  projectId: string;
+  remarks?: string;
+};
+
+export type Anemometer = {
+  id: string;
+  make: string;
+  model: string;
+  serialNumber: string;
+  allottedTo: string; // User ID
+  status: string;
+  projectId: string;
+  calibrationDueDate?: string; // ISO String
+  remarks?: string;
 };
 
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';

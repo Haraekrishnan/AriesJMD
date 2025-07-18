@@ -15,6 +15,7 @@ import { Textarea } from '../ui/textarea';
 const requestItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  unit: z.string().min(1, 'Unit is required. (e.g., pcs, box, m)'),
   remarks: z.string().optional(),
 });
 
@@ -36,7 +37,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
     defaultValues: {
-      items: [{ description: '', quantity: 1, remarks: '' }],
+      items: [{ description: '', quantity: 1, unit: 'pcs', remarks: '' }],
     },
   });
 
@@ -57,14 +58,14 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ items: [{ description: '', quantity: 1, remarks: '' }] });
+      form.reset({ items: [{ description: '', quantity: 1, unit: 'pcs', remarks: '' }] });
     }
     setIsOpen(open);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>New Internal Store Request</DialogTitle>
           <DialogDescription>List the items you need from the internal store.</DialogDescription>
@@ -72,21 +73,31 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <ScrollArea className="max-h-[60vh] p-1">
             <div className="space-y-4 p-4">
+              <div className="grid grid-cols-12 gap-2 items-center px-2">
+                <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
+                <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
+                <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
+                <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
+                <div className="col-span-1"></div>
+              </div>
               {fields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                  <div className="col-span-6 space-y-1">
-                    <Label htmlFor={`items.${index}.description`} className="text-xs">Item Description</Label>
+                  <div className="col-span-5">
                     <Textarea id={`items.${index}.description`} {...form.register(`items.${index}.description`)} rows={1} />
+                    {form.formState.errors.items?.[index]?.description && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.description?.message}</p>}
                   </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label htmlFor={`items.${index}.quantity`} className="text-xs">Quantity</Label>
+                  <div className="col-span-2">
                     <Input id={`items.${index}.quantity`} type="number" {...form.register(`items.${index}.quantity`)} />
+                     {form.formState.errors.items?.[index]?.quantity && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.quantity?.message}</p>}
                   </div>
-                  <div className="col-span-3 space-y-1">
-                    <Label htmlFor={`items.${index}.remarks`} className="text-xs">Remarks</Label>
+                   <div className="col-span-2">
+                    <Input id={`items.${index}.unit`} {...form.register(`items.${index}.unit`)} placeholder="e.g., pcs" />
+                     {form.formState.errors.items?.[index]?.unit && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.unit?.message}</p>}
+                  </div>
+                  <div className="col-span-2">
                     <Input id={`items.${index}.remarks`} {...form.register(`items.${index}.remarks`)} />
                   </div>
-                  <div className="col-span-1 flex items-end h-full">
+                  <div className="col-span-1 flex items-center h-full">
                      <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -95,7 +106,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
               ))}
                {form.formState.errors.items?.root && <p className="text-xs text-destructive">{form.formState.errors.items.root.message}</p>}
 
-              <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, remarks: '' })}>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Item
               </Button>
