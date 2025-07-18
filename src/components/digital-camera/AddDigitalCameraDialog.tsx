@@ -29,7 +29,7 @@ interface AddDigitalCameraDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
 
 export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigitalCameraDialogProps) {
   const { users, projects, addDigitalCamera } = useAppContext();

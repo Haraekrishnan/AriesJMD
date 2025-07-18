@@ -17,10 +17,10 @@ interface AnemometerTableProps {
   onEdit: (item: Anemometer) => void;
 }
 
-const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" => {
     switch (status) {
         case 'In Service': return 'success';
-        case 'Under Maintenance': return 'secondary';
+        case 'Idle': return 'warning';
         case 'Damaged': return 'destructive';
         case 'Out of Service': return 'destructive';
         default: return 'outline';

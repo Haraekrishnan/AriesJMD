@@ -37,7 +37,7 @@ interface EditUTMachineDialogProps {
   machine: UTMachine;
 }
 
-const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
 
 export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: EditUTMachineDialogProps) {
   const { projects, updateUTMachine } = useAppContext();

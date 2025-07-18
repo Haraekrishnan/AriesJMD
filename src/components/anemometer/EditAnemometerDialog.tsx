@@ -38,7 +38,7 @@ interface EditAnemometerDialogProps {
   item: Anemometer;
 }
 
-const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
 
 export default function EditAnemometerDialog({ isOpen, setIsOpen, item }: EditAnemometerDialogProps) {
   const { users, projects, updateAnemometer } = useAppContext();

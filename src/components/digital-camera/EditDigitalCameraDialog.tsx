@@ -32,7 +32,7 @@ interface EditDigitalCameraDialogProps {
   item: DigitalCamera;
 }
 
-const statusOptions = ["In Service", "Under Maintenance", "Damaged", "Out of Service"];
+const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
 
 export default function EditDigitalCameraDialog({ isOpen, setIsOpen, item }: EditDigitalCameraDialogProps) {
   const { users, projects, updateDigitalCamera } = useAppContext();
