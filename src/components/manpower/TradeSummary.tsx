@@ -11,34 +11,37 @@ export default function TradeSummary() {
 
   const tradeCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    const activeProfiles = manpowerProfiles.filter(p => p.status === 'Working' || p.status === 'On Leave');
+    const activeProfiles = manpowerProfiles.filter(p => p.status === 'Working');
     
     activeProfiles.forEach(profile => {
-        counts.set(profile.trade, (counts.get(profile.trade) || 0) + 1);
+        const tradeKey = TRADES.includes(profile.trade) ? profile.trade : 'Others';
+        counts.set(tradeKey, (counts.get(tradeKey) || 0) + 1);
     });
 
     return counts;
   }, [manpowerProfiles]);
 
-  const totalManpower = useMemo(() => {
+  const totalWorkingManpower = useMemo(() => {
       return Array.from(tradeCounts.values()).reduce((sum, count) => sum + count, 0);
   }, [tradeCounts]);
+  
+  const allTradesToDisplay = [...TRADES, 'Others'];
 
   return (
     <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
        <StatCard 
-          title="Total Manpower" 
-          value={totalManpower} 
+          title="Total Working" 
+          value={totalWorkingManpower} 
           icon={Users} 
           description="Total active workforce"
         />
-        {TRADES.filter(trade => tradeCounts.has(trade)).map(trade => (
+        {allTradesToDisplay.filter(trade => tradeCounts.has(trade)).map(trade => (
              <StatCard 
                 key={trade}
                 title={trade}
                 value={tradeCounts.get(trade) || 0}
                 icon={HardHat}
-                description={`Total in ${trade} trade`}
+                description={`Total working in ${trade} trade`}
             />
         ))}
     </div>
