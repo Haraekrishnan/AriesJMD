@@ -276,6 +276,7 @@ export type InternalRequest = {
   approverId?: string;
   comments: Comment[];
   viewedByRequester: boolean;
+  acknowledgedByRequester?: boolean;
 };
 
 export type ManagementRequestStatus = 'Pending' | 'Approved' | 'Rejected';

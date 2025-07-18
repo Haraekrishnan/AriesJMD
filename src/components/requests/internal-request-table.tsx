@@ -47,7 +47,7 @@ const editRequestSchema = z.object({
 type EditRequestFormValues = z.infer<typeof editRequestSchema>;
 
 export default function InternalRequestTable({ requests }: InternalRequestTableProps) {
-  const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest } = useAppContext();
+  const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
   const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
   const [action, setAction] = useState<InternalRequestStatus | null>(null);
   const [comment, setComment] = useState('');
@@ -127,11 +127,13 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         </TableHeader>
         <TableBody>
           {requests.map(req => {
-            const hasUpdate = req.requesterId === user?.id && !req.viewedByRequester;
+            const isRequester = req.requesterId === user?.id;
+            const hasUpdate = isRequester && !req.viewedByRequester;
             const canEditRequest = user?.role === 'Admin' || req.status === 'Pending';
             const commentsArray = Array.isArray(req.comments) 
               ? req.comments 
               : Object.values(req.comments || {});
+            const needsAcknowledgement = isRequester && req.status === 'Issued' && !req.acknowledgedByRequester;
             
             return (
               <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
@@ -149,7 +151,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                             <ul className="list-disc pl-4 text-sm mb-4">
                               {req.items.map((item, index) => (
                                 <li key={index}>
-                                  {item.quantity}x {item.description}
+                                  {item.quantity} {item.unit} {item.description}
                                   {item.remarks && <span className="text-muted-foreground text-xs"> ({item.remarks})</span>}
                                 </li>
                               ))}
@@ -174,7 +176,11 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                   </Accordion>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                  {needsAcknowledgement ? (
+                    <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge Receipt</Button>
+                  ) : (
+                    <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <AlertDialog>
