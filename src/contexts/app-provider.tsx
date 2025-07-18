@@ -381,12 +381,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
+  
     const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Store in Charge', 'Document Controller'];
     if (privilegedRoles.includes(user.role)) {
       return users;
     }
-    const subordinates = users.filter(u => u.supervisorId === user.id);
-    return [user, ...subordinates];
+  
+    const visibleUserIds = new Set<string>();
+    visibleUserIds.add(user.id);
+  
+    // Simple direct subordinates
+    users.forEach(u => {
+      if (u.supervisorId === user.id) {
+        visibleUserIds.add(u.id);
+      }
+    });
+  
+    // Supervisor peer group logic
+    if (user.role === 'Supervisor') {
+      const leadSupervisorId = user.supervisorId;
+      if (leadSupervisorId) {
+        // This user is part of a peer group.
+        // Add the lead supervisor.
+        visibleUserIds.add(leadSupervisorId);
+        
+        // Find all users under this lead supervisor (peers and their juniors).
+        users.forEach(u => {
+          if (u.supervisorId === leadSupervisorId) {
+            visibleUserIds.add(u.id); // Add peer supervisors/juniors
+          }
+        });
+      } else {
+        // This user might BE a lead supervisor. Find everyone under them.
+        users.forEach(u => {
+          if (u.supervisorId === user.id) {
+            visibleUserIds.add(u.id);
+          }
+        });
+      }
+    }
+  
+    return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {

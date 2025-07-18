@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -25,7 +26,6 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
-
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
@@ -41,19 +41,6 @@ interface EditTaskDialogProps {
   setIsOpen: (open: boolean) => void;
   task: Task;
 }
-
-const roleHierarchy: Record<Role, number> = {
-  'Team Member': 0,
-  'Junior Supervisor': 1,
-  'Junior HSE': 1,
-  'Assistant Store Incharge': 1,
-  'Supervisor': 2,
-  'HSE': 2,
-  'Store in Charge': 2,
-  'Document Controller': 2,
-  'Project Coordinator': 3,
-  'Admin': 4,
-};
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
   const { user, users, tasks, updateTask, deleteTask, getVisibleUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment } = useAppContext();
@@ -97,21 +84,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     }
   }, [taskToDisplay, form, isOpen, user, markTaskAsViewed]);
 
-  const allVisibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
-
   const assignableUsers = useMemo(() => {
-    if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
-      return allVisibleUsers;
-    }
-    
-    const userRoleLevel = roleHierarchy[user.role];
-
-    return allVisibleUsers.filter(assignee => {
-      const assigneeRoleLevel = roleHierarchy[assignee.role];
-      return assignee.id === user.id || assigneeRoleLevel < userRoleLevel;
-    });
-  }, [user, allVisibleUsers]);
+    return getVisibleUsers();
+  }, [getVisibleUsers]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

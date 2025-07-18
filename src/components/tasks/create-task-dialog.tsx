@@ -22,21 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { PlusCircle } from 'lucide-react';
-import type { Role } from '@/lib/types';
-
-const roleHierarchy: Record<Role, number> = {
-  'Team Member': 0,
-  'Junior Supervisor': 1,
-  'Junior HSE': 1,
-  'Assistant Store Incharge': 1,
-  'Supervisor': 2,
-  'HSE': 2,
-  'Store in Charge': 2,
-  'Project Coordinator': 3,
-  'Document Controller': 2,
-  'Admin': 4,
-};
-
+import type { Role, User } from '@/lib/types';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -63,28 +49,9 @@ export default function CreateTaskDialog() {
     },
   });
 
-  const allVisibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
-
   const assignableUsers = useMemo(() => {
-    if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
-      return allVisibleUsers;
-    }
-
-    if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
-      // Store personnel can assign to anyone except Admin and Project Coordinator.
-      return allVisibleUsers.filter(assignee => 
-        assignee.role !== 'Admin' && assignee.role !== 'Project Coordinator'
-      );
-    }
-    
-    const userRoleLevel = roleHierarchy[user.role];
-
-    return allVisibleUsers.filter(assignee => {
-      const assigneeRoleLevel = roleHierarchy[assignee.role];
-      return assignee.id === user.id || assigneeRoleLevel < userRoleLevel;
-    });
-  }, [user, allVisibleUsers]);
+    return getVisibleUsers();
+  }, [getVisibleUsers]);
 
   const onSubmit = (data: TaskFormValues) => {
     createTask(data);
