@@ -1531,6 +1531,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
   const updatedManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [managementRequests, user]);
+  
   const workingManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
@@ -1541,7 +1542,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const projectLogs = todayLogs
           .filter(log => log.projectId === project.id)
           .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
-        return latestLog.total || 0;
+        const latestLog = projectLogs[0];
+        return latestLog ? latestLog.total || 0 : 0;
       });
       return latestTotals.reduce((sum, total) => sum + total, 0);
     }
@@ -1549,6 +1551,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // If no logs today, calculate from manpower profiles
     return manpowerProfiles.filter(p => p.status === 'Working').length;
   }, [manpowerLogs, manpowerProfiles, projects]);
+  
   const onLeaveManpowerCount = useMemo(() => manpowerProfiles.filter(p => p.status === 'On Leave').length, [manpowerProfiles]);
 
   const incidentNotificationCount = useMemo(() => {
