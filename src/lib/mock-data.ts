@@ -17,7 +17,6 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-manager',
     name: 'Project Coordinator',
     permissions: [
-      'manage_users', 'manage_roles', 'manage_projects', 'manage_branding',
       'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',
       'manage_vehicles', 'manage_manpower', 'manage_manpower_list', 'manage_accommodation',
       'approve_store_requests', 'manage_inventory',
