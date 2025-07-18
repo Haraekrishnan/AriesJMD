@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import LeaveReportDialog from '@/components/manpower/LeaveReportDialog';
 import * as XLSX from 'xlsx';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import TradeSummary from '@/components/manpower/TradeSummary';
 
 
 export default function ManpowerListPage() {
@@ -184,6 +185,8 @@ export default function ManpowerListPage() {
                     </Button>
                 </div>
             </div>
+
+            <TradeSummary />
 
             {leavesStartingToday.length > 0 && (
                  <Card className="border-blue-500">
