@@ -25,7 +25,7 @@ export default function TradeSummary() {
       return Array.from(tradeCounts.values()).reduce((sum, count) => sum + count, 0);
   }, [tradeCounts]);
   
-  const allTradesToDisplay = [...TRADES, 'Others'];
+  const allTradesToDisplay = [...TRADES];
 
   return (
     <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
