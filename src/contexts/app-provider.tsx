@@ -363,7 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') return users;
+    if (user.role === 'Admin' || user.role === 'Project Coordinator' || user.role === 'Store in Charge') return users;
     const subordinates = users.filter(u => u.supervisorId === user.id);
     return [user, ...subordinates];
   }, [user, users]);
@@ -1548,6 +1548,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 
