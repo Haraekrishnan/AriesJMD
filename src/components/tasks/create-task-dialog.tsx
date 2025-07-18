@@ -31,7 +31,7 @@ const roleHierarchy: Record<Role, number> = {
   'Supervisor': 2,
   'HSE': 2,
   'Store in Charge': 2,
-  'Manager': 3,
+  'Project Coordinator': 3,
   'Admin': 4,
 };
 
@@ -64,7 +64,7 @@ export default function CreateTaskDialog() {
 
   const assignableUsers = useMemo(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Manager') {
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
       return allVisibleUsers;
     }
     
