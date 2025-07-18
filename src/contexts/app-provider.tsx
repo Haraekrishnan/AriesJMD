@@ -422,6 +422,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, commentText);
 
+    // The approval request should go to the original creator of the task.
     const approverId = task.creatorId;
 
     const updates: Partial<Task> = { 
@@ -1452,10 +1453,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => {
-        if (task.status !== 'Pending Approval' || !task.approverId) return false;
-        return task.approverId === user.id;
-    }).length;
+    return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id).length;
   }, [tasks, user]);
 
   const myNewTaskCount = useMemo(() => {
@@ -1465,9 +1463,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => {
-        return task.status === 'Pending Approval' && task.assigneeId === user.id;
-    }).length;
+    // A task is a "pending request" for me if I am the assignee and it's waiting for approval.
+    return tasks.filter(task => task.status === 'Pending Approval' && task.assigneeId === user.id).length;
   }, [tasks, user]);
 
   const myFulfilledEquipmentCertRequests = useMemo(() => {
@@ -1542,7 +1539,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .filter(log => log.projectId === project.id)
           .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
         const latestLog = projectLogs[0];
-        return latestLog ? latestLog.total || 0 : 0;
+        return latestLog ? (latestLog.total || 0) : 0;
       });
       return latestTotals.reduce((sum, total) => sum + total, 0);
     }
