@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ManpowerSummaryTable from '@/components/manpower/ManpowerSummaryTable';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, Users, Calendar as CalendarIcon, Plane } from 'lucide-react';
 import ManpowerLogDialog from '@/components/manpower/ManpowerLogDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -39,10 +39,16 @@ export default function ManpowerPage() {
                         </Button>
                     )}
                     {can.log_manpower && (
-                        <Button onClick={() => setIsLogDialogOpen(true)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Log Manpower
-                        </Button>
+                        <>
+                            <Button variant="outline" onClick={() => setIsLogDialogOpen(true)}>
+                                <Plane className="mr-2 h-4 w-4" />
+                                Log Daily Leave
+                            </Button>
+                            <Button onClick={() => setIsLogDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Log Manpower
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
