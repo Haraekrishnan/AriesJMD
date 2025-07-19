@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -269,7 +270,7 @@ export type ManpowerLog = {
   personInName?: string;
   countOut: number;
   personOutName?: string;
-  countOnLeave?: number;
+  countOnLeave: number;
   personOnLeaveName?: string;
   reason: string;
   updatedBy: string;

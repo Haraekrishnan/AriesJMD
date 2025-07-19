@@ -122,7 +122,7 @@ type AppContextType = {
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
   markIncidentAsViewed: (incidentId: string) => void;
   addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>, logDate?: Date) => Promise<void>;
-  updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason'>>) => Promise<void>;
+  updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => Promise<void>;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   addMultipleManpowerProfiles: (profiles: any[]) => number;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
@@ -931,7 +931,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await updateSubsequentManpowerLogs(logDate, logData.projectId);
   }, [user, addActivityLog, manpowerLogs, updateSubsequentManpowerLogs]);
 
-  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason'>>) => {
+  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => {
       if(!user) return;
       const logToUpdate = manpowerLogs.find(l => l.id === logId);
       if(!logToUpdate) return;
@@ -1798,7 +1798,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const startingCount = logsForProjectBeforeToday[0]?.total || 0;
         
         const logsForProjectToday = manpowerLogs
-            .filter(l => l.projectId === project.id && l.date === todayStr)
+            .filter(l => l.projectId === project.id && l.date === todayStr && l.countOnLeave === 0)
             .sort((a, b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
         
         const latestLogToday = logsForProjectToday[0];

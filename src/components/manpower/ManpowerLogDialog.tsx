@@ -18,8 +18,6 @@ const logSchema = z.object({
   personInName: z.string().optional(),
   countOut: z.coerce.number().min(0, 'Count Out must be non-negative'),
   personOutName: z.string().optional(),
-  countOnLeave: z.coerce.number().min(0, 'Leave count must be non-negative'),
-  personOnLeaveName: z.string().optional(),
   reason: z.string().min(1, 'Reason is required'),
 });
 
@@ -42,8 +40,6 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
       personInName: '',
       countOut: 0,
       personOutName: '',
-      countOnLeave: 0,
-      personOnLeaveName: '',
       reason: '',
     },
   });
@@ -64,8 +60,6 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
         personInName: '',
         countOut: 0,
         personOutName: '',
-        countOnLeave: 0,
-        personOnLeaveName: '',
         reason: '',
       });
       setIsOpen(open);
@@ -76,7 +70,7 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Log Daily Manpower</DialogTitle>
-          <DialogDescription>Update the manpower count for today.</DialogDescription>
+          <DialogDescription>Update the manpower count for today. This will affect the overall total.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div>
@@ -118,22 +112,10 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
               <Input id="personOutName" {...form.register('personOutName')} placeholder="e.g., Peter" />
             </div>
           </div>
-
-           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="countOnLeave">On Leave</Label>
-              <Input id="countOnLeave" type="number" {...form.register('countOnLeave')} />
-              {form.formState.errors.countOnLeave && <p className="text-xs text-destructive">{form.formState.errors.countOnLeave.message}</p>}
-            </div>
-             <div>
-              <Label htmlFor="personOnLeaveName">Person on Leave Name(s)</Label>
-              <Input id="personOnLeaveName" {...form.register('personOnLeaveName')} placeholder="e.g., Sam" />
-            </div>
-          </div>
           
           <div>
             <Label htmlFor="reason">Reason for Change</Label>
-            <Textarea id="reason" {...form.register('reason')} placeholder="e.g., Full attendance, 1 sick leave"/>
+            <Textarea id="reason" {...form.register('reason')} placeholder="e.g., Full attendance, new joiners"/>
             {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
           </div>
           

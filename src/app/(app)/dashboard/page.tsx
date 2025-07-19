@@ -31,6 +31,8 @@ export default function DashboardPage() {
       if (employees.length === 0) return '0';
       return (visibleTasks.length / employees.length).toFixed(1);
   }, [visibleTasks, visibleUsers]);
+  
+  const activeManpowerToday = workingManpowerCount - onLeaveManpowerCount;
 
   return (
     <div className="space-y-6">
@@ -72,10 +74,10 @@ export default function DashboardPage() {
           description="Average tasks across your team"
         />
         <StatCard 
-          title="Manpower Today" 
+          title="Manpower" 
           value={workingManpowerCount.toString()}
           icon={Users}
-          description={`${workingManpowerCount - onLeaveManpowerCount} active, ${onLeaveManpowerCount} on leave`}
+          description={`${activeManpowerToday} active, ${onLeaveManpowerCount} on leave`}
         />
       </div>
 

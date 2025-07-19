@@ -15,10 +15,12 @@ import ManpowerLogReportDownloads from '@/components/manpower/ManpowerLogReportD
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 import ManpowerSummaryReportDownloads from '@/components/manpower/ManpowerSummaryReportDownloads';
+import LogLeaveDialog from '@/components/manpower/LogLeaveDialog';
 
 export default function ManpowerPage() {
     const { can } = useAppContext();
     const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+    const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());
 
@@ -40,7 +42,7 @@ export default function ManpowerPage() {
                     )}
                     {can.log_manpower && (
                         <>
-                            <Button variant="outline" onClick={() => setIsLogDialogOpen(true)}>
+                            <Button variant="outline" onClick={() => setIsLeaveDialogOpen(true)}>
                                 <Plane className="mr-2 h-4 w-4" />
                                 Log Daily Leave
                             </Button>
@@ -137,6 +139,7 @@ export default function ManpowerPage() {
             </Card>
 
             <ManpowerLogDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} />
+            <LogLeaveDialog isOpen={isLeaveDialogOpen} setIsOpen={setIsLeaveDialogOpen} />
         </div>
     );
 }
