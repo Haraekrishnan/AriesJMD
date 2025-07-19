@@ -19,7 +19,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
 
     const summary = useMemo(() => {
         if (!selectedDate) {
-            return { summary: [], totalIn: 0, totalOut: 0, overallTotal: 0 };
+            return { summary: [], totalIn: 0, totalOut: 0, overallTotal: 0, totalOnLeave: 0 };
         }
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -44,12 +44,14 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                 projectName: project.name,
                 log: latestLog,
                 total: dayTotal,
+                onLeave: latestLog?.countOnLeave || 0
             };
         });
         
         const overallTotal = summaryData.reduce((acc, curr) => acc + (curr.total || 0), 0);
+        const totalOnLeave = summaryData.reduce((acc, curr) => acc + (curr.onLeave || 0), 0);
         
-        return { summary: summaryData, overallTotal };
+        return { summary: summaryData, overallTotal, totalOnLeave };
     }, [projects, manpowerLogs, selectedDate]);
 
     if (!selectedDate) {
@@ -68,6 +70,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                     <TableHead>Project / Location</TableHead>
                     <TableHead className="text-center">In</TableHead>
                     <TableHead className="text-center">Out</TableHead>
+                    <TableHead className="text-center">On Leave</TableHead>
                     <TableHead className="text-center">Reason</TableHead>
                     <TableHead className="text-center">Day Total</TableHead>
                     {can.manage_manpower && <TableHead className="text-right">Actions</TableHead>}
@@ -79,6 +82,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                         <TableCell className="font-medium">{row.projectName}</TableCell>
                         <TableCell className="text-center">{row.log?.countIn || 0}</TableCell>
                         <TableCell className="text-center">{row.log?.countOut || 0}</TableCell>
+                        <TableCell className="text-center">{row.onLeave}</TableCell>
                         <TableCell className="text-center text-xs text-muted-foreground">{row.log?.reason || 'No log entry'}</TableCell>
                         <TableCell className="text-center font-bold">{row.total}</TableCell>
                         {can.manage_manpower && (
@@ -96,6 +100,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                     <TableCell>Overall Total</TableCell>
                     <TableCell></TableCell>
                     <TableCell></TableCell>
+                    <TableCell className="text-center">{summary.totalOnLeave}</TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-center">{summary.overallTotal}</TableCell>
                     {can.manage_manpower && <TableCell></TableCell>}
