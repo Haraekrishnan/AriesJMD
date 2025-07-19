@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -391,32 +389,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const visibleUserIds = new Set<string>();
     visibleUserIds.add(user.id);
   
-    // Simple direct subordinates
-    users.forEach(u => {
-      if (u.supervisorId === user.id) {
-        visibleUserIds.add(u.id);
-      }
-    });
+    // Find all users who are direct subordinates of the current user
+    const findSubordinates = (supervisorId: string) => {
+      users.forEach(u => {
+        if (u.supervisorId === supervisorId) {
+          visibleUserIds.add(u.id);
+          // Recursively find subordinates of subordinates if needed, but keeping it simple for now.
+        }
+      });
+    };
+  
+    findSubordinates(user.id);
   
     // Supervisor peer group logic
-    if (user.role === 'Supervisor') {
+    if (user.role === 'Supervisor' || user.role === 'HSE') {
       const leadSupervisorId = user.supervisorId;
       if (leadSupervisorId) {
-        // This user is part of a peer group.
+        // This user is part of a peer group under a lead supervisor.
         // Add the lead supervisor.
         visibleUserIds.add(leadSupervisorId);
         
         // Find all users under this lead supervisor (peers and their juniors).
         users.forEach(u => {
           if (u.supervisorId === leadSupervisorId) {
-            visibleUserIds.add(u.id); // Add peer supervisors/juniors
-          }
-        });
-      } else {
-        // This user might BE a lead supervisor. Find everyone under them.
-        users.forEach(u => {
-          if (u.supervisorId === user.id) {
-            visibleUserIds.add(u.id);
+            visibleUserIds.add(u.id); // Add peer supervisors/HSE
+            findSubordinates(u.id); // Add juniors of peers
           }
         });
       }
@@ -963,50 +960,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     profilesToImport.forEach(item => {
         try {
-            const hardCopyFileNo = item['Hard Copy File No']?.toString();
+            const hardCopyFileNo = item[24]?.toString(); // Column Y
             if (!hardCopyFileNo) return; 
 
             const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === hardCopyFileNo);
 
-            const parseDate = (dateStr: string | number | undefined): string | undefined => {
-              if (!dateStr) return undefined;
-              try {
-                // XLSX can return dates as numbers (Excel date serial numbers) or strings
-                const date = new Date(dateStr);
-                // Basic validation for a reasonable date range
-                if (date.getFullYear() > 1950 && date.getFullYear() < 2100) {
-                  return date.toISOString();
+            const parseDate = (dateInput: string | number | undefined): string | undefined => {
+                if (!dateInput) return undefined;
+                if (typeof dateInput === 'number') { // Handle Excel date serial numbers
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const date = new Date(excelEpoch.getTime() + dateInput * 24 * 60 * 60 * 1000);
+                    return isValid(date) ? date.toISOString() : undefined;
                 }
-              } catch (e) {
-                // If parsing fails, return undefined
-              }
-              return undefined;
+                if (typeof dateInput === 'string') {
+                    const parsedDate = parse(dateInput, 'dd-MM-yyyy', new Date());
+                    return isValid(parsedDate) ? parsedDate.toISOString() : undefined;
+                }
+                if (dateInput instanceof Date && isValid(dateInput)) {
+                    return dateInput.toISOString();
+                }
+                return undefined;
             };
 
             const profileData: Partial<ManpowerProfile> = {
-                name: item['Name'],
-                trade: item['Trade'],
-                status: item['Status'] || 'Working',
-                hardCopyFileNo: hardCopyFileNo,
-                epNumber: item['EP Number'],
-                plantName: item['Plant Name'],
-                eicName: item['EIC Name'],
-                passIssueDate: parseDate(item['Pass Issue Date']),
-                joiningDate: parseDate(item['Joining Date']),
-                woValidity: parseDate(item['WO Expiry']),
-                wcPolicyValidity: parseDate(item['WC Policy Expiry']),
-                labourContractValidity: parseDate(item['Labour Contract Expiry']),
-                medicalExpiryDate: parseDate(item['Medical Expiry']),
-                safetyExpiryDate: parseDate(item['Safety Expiry']),
-                irataValidity: parseDate(item['IRATA Expiry']),
-                contractValidity: parseDate(item['Contract Expiry']),
-                remarks: item['Remarks'],
-                feedback: item['Feedback'],
-                resignationDate: parseDate(item['Resignation Date']),
-                terminationDate: parseDate(item['Termination Date']),
-                documentFolderUrl: item['Document Folder URL'],
-                documents: [], // Handle documents separately if needed
-                skills: [], // Handle skills separately if needed
+                name: item[0],
+                mobileNumber: item[1]?.toString(),
+                gender: item[2],
+                workOrderNumber: item[3]?.toString(),
+                labourLicenseNo: item[4]?.toString(),
+                eic: item[5],
+                workOrderExpiryDate: parseDate(item[6]),
+                labourLicenseExpiryDate: parseDate(item[7]),
+                joiningDate: parseDate(item[8]),
+                epNumber: item[9]?.toString(),
+                aadharNumber: item[10]?.toString(),
+                dob: parseDate(item[11]),
+                uanNumber: item[12]?.toString(),
+                wcPolicyNumber: item[13]?.toString(),
+                wcPolicyExpiryDate: parseDate(item[14]),
+                cardCategory: item[15],
+                cardType: item[16],
             };
 
             const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v != null && v !== ''));
@@ -1015,7 +1008,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (key) {
               updates[`/manpowerProfiles/${key}`] = existingProfile 
                 ? { ...existingProfile, ...cleanProfileData } 
-                : { documents: [], skills: [], leaveHistory: [], ...cleanProfileData };
+                : { documents: [], skills: [], leaveHistory: [], ...cleanProfileData, trade: 'Others', otherTrade: 'Imported', status: 'Working' };
               importedCount++;
             }
         } catch(e) { console.error("Skipping invalid manpower row:", item, e); }
@@ -1624,6 +1617,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...incidentData,
             reporterId: user.id,
             reportTime: now,
+            incidentTime: now,
+            projectId: incidentData.projectId,
+            unitArea: incidentData.unitArea,
+            incidentDetails: incidentData.incidentDetails,
             status: 'New',
             isPublished: false,
             comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now }],

@@ -1,5 +1,3 @@
-
-
 export type User = {
   id: string;
   name: string;
@@ -133,6 +131,7 @@ export type Driver = {
   name: string;
   photo: string;
   licenseNumber: string;
+  licenseExpiry?: string;
   epNumber?: string;
   sdpNumber?: string;
   epExpiry?: string;
@@ -203,7 +202,7 @@ export type ManpowerProfile = {
   // Work Details
   workOrderNumber?: string;
   labourLicenseNo?: string;
-  eic?: string; // Replaces eicName
+  eic?: string; 
   joiningDate?: string; // ISO
 
   // Policy & Card Details

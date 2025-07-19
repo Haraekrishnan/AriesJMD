@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -19,13 +17,26 @@ import { Separator } from '../ui/separator';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, parse } from 'date-fns';
+import { format, parse, isValid } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
+import { DateRangePicker } from '../ui/date-range-picker';
+import { Textarea } from '../ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 const documentSchema = z.object({
   name: z.string(),
   details: z.string().optional(),
   status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']),
+});
+
+const leaveSchema = z.object({
+  leaveType: z.enum(['Annual', 'Emergency']),
+  dateRange: z.object({
+      from: z.date(),
+      to: z.date().optional(),
+  }),
+  rejoinedDate: z.date().optional(),
+  remarks: z.string().optional(),
 });
 
 const profileSchema = z.object({
@@ -51,6 +62,10 @@ const profileSchema = z.object({
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
   documents: z.array(documentSchema).optional(),
+  resignationDate: z.date().optional(),
+  terminationDate: z.date().optional(),
+  feedback: z.string().optional(),
+  currentLeave: leaveSchema.optional(),
 }).refine(data => {
     if (data.trade === 'Others') {
         return !!data.otherTrade && data.otherTrade.length > 0;
@@ -82,8 +97,8 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
         const [inputValue, setInputValue] = useState(field.value ? format(new Date(field.value), 'dd-MM-yyyy') : '');
 
         useEffect(() => {
-          if (field.value && field.value instanceof Date) {
-            setInputValue(format(field.value, 'dd-MM-yyyy'));
+          if (field.value && isValid(new Date(field.value))) {
+            setInputValue(format(new Date(field.value), 'dd-MM-yyyy'));
           } else if (!field.value) {
             setInputValue('');
           }
@@ -91,9 +106,13 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 
         const handleDateChange = (dateStr: string) => {
           setInputValue(dateStr);
-          const parsedDate = parse(dateStr, 'dd-MM-yyyy', new Date());
-          if (!isNaN(parsedDate.getTime())) {
-            field.onChange(parsedDate);
+          if (dateStr.length === 10) {
+            const parsedDate = parse(dateStr, 'dd-MM-yyyy', new Date());
+            if (isValid(parsedDate)) {
+              field.onChange(parsedDate);
+            } else {
+              field.onChange(undefined);
+            }
           } else if(dateStr === '') {
             field.onChange(undefined);
           }
@@ -152,9 +171,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   });
   
   const watchTrade = form.watch('trade');
+  const watchStatus = form.watch('status');
 
   const parseDate = (dateString?: string) => {
-    return dateString ? new Date(dateString) : undefined;
+    return dateString && isValid(new Date(dateString)) ? new Date(dateString) : undefined;
   };
   
   const allRequiredDocs = useMemo(() => {
@@ -201,6 +221,20 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
 
+    let finalLeaveHistory = profile?.leaveHistory || [];
+
+    if (data.status === 'On Leave' && data.currentLeave) {
+        const leaveRecord: LeaveRecord = {
+            id: `leave-${Date.now()}`,
+            leaveType: data.currentLeave.leaveType,
+            leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
+            plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
+            rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
+            remarks: data.currentLeave.remarks,
+        };
+        finalLeaveHistory.push(leaveRecord);
+    }
+    
     const cleanDataForFirebase = (obj: any) => {
       const newObj: any = {};
       for (const key in obj) {
@@ -213,8 +247,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
       return newObj;
     };
     
-    const dataToSubmit = cleanDataForFirebase({...data, trade: finalTrade });
+    const dataToSubmit = cleanDataForFirebase({...data, trade: finalTrade, leaveHistory: finalLeaveHistory });
     delete dataToSubmit.otherTrade;
+    delete dataToSubmit.currentLeave;
 
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
@@ -222,7 +257,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     } else {
       const newProfileData = {
         skills: [],
-        leaveHistory: [],
         ...dataToSubmit
       } as Omit<ManpowerProfile, 'id'>
       addManpowerProfile(newProfileData);
@@ -323,6 +357,55 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </div>
                         ))}
                     </div>
+
+                    {(watchStatus === 'Resigned' || watchStatus === 'Terminated') && (
+                        <div className="space-y-4 md:col-span-2 lg:col-span-3">
+                           <Separator />
+                           <h3 className="text-lg font-semibold border-b pb-2">{watchStatus} Details</h3>
+                           <div className="grid grid-cols-2 gap-4">
+                               <div>
+                                  <Label>{watchStatus} Date</Label>
+                                  <DatePickerController name={watchStatus === 'Resigned' ? 'resignationDate' : 'terminationDate'} control={form.control} />
+                               </div>
+                               <div className='col-span-2'>
+                                  <Label>Reason / Feedback</Label>
+                                  <Textarea {...form.register('feedback')} />
+                               </div>
+                           </div>
+                        </div>
+                    )}
+                    {watchStatus === 'On Leave' && (
+                        <div className="space-y-4 md:col-span-2 lg:col-span-3">
+                           <Separator />
+                           <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                               <div><Label>Leave Type</Label><Controller name="currentLeave.leaveType" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Annual">Annual</SelectItem><SelectItem value="Emergency">Emergency</SelectItem></SelectContent></Select>)}/></div>
+                               <div><Label>Leave Period</Label><Controller name="currentLeave.dateRange" control={form.control} render={({ field }) => (<DateRangePicker date={field.value} onDateChange={field.onChange}/>)}/></div>
+                               <div><Label>Actual Rejoining Date</Label><DatePickerController name="currentLeave.rejoinedDate" control={form.control}/></div>
+                               <div className="col-span-3"><Label>Remarks</Label><Textarea {...form.register('currentLeave.remarks')}/></div>
+                            </div>
+                        </div>
+                    )}
+                     {(profile?.leaveHistory || []).length > 0 && (
+                        <div className="space-y-4 md:col-span-3">
+                            <Separator />
+                            <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {profile?.leaveHistory?.map(leave => (
+                                        <TableRow key={leave.id}>
+                                            <TableCell>{leave.leaveType}</TableCell>
+                                            <TableCell>{format(new Date(leave.leaveStartDate), 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                            <TableCell>{leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                     )}
+
                 </div>
             </ScrollArea>
             <DialogFooter className="mt-4 pt-4 border-t">
