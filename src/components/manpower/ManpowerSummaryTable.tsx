@@ -19,7 +19,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
 
     const summary = useMemo(() => {
         if (!selectedDate) {
-            return { summary: [], totalIn: 0, totalOut: 0, overallTotal: 0, totalOnLeave: 0 };
+            return { summary: [], totalIn: 0, totalOut: 0, overallTotal: 0, totalOnLeave: 0, totalActive: 0 };
         }
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -39,19 +39,24 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                 dayTotal = previousLogs.length > 0 ? (previousLogs[0].total || 0) : 0;
             }
 
+            const onLeave = latestLog?.countOnLeave || 0;
+            const active = dayTotal - onLeave;
+
             return {
                 projectId: project.id,
                 projectName: project.name,
                 log: latestLog,
                 total: dayTotal,
-                onLeave: latestLog?.countOnLeave || 0
+                onLeave,
+                active,
             };
         });
         
         const overallTotal = summaryData.reduce((acc, curr) => acc + (curr.total || 0), 0);
         const totalOnLeave = summaryData.reduce((acc, curr) => acc + (curr.onLeave || 0), 0);
+        const totalActive = summaryData.reduce((acc, curr) => acc + (curr.active || 0), 0);
         
-        return { summary: summaryData, overallTotal, totalOnLeave };
+        return { summary: summaryData, overallTotal, totalOnLeave, totalActive };
     }, [projects, manpowerLogs, selectedDate]);
 
     if (!selectedDate) {
@@ -70,9 +75,10 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                     <TableHead>Project / Location</TableHead>
                     <TableHead className="text-center">In</TableHead>
                     <TableHead className="text-center">Out</TableHead>
-                    <TableHead className="text-center">On Leave</TableHead>
                     <TableHead className="text-center">Reason</TableHead>
                     <TableHead className="text-center">Day Total</TableHead>
+                    <TableHead className="text-center">Today's Leave</TableHead>
+                    <TableHead className="text-center">Today's Active</TableHead>
                     {can.manage_manpower && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
             </TableHeader>
@@ -82,9 +88,10 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                         <TableCell className="font-medium">{row.projectName}</TableCell>
                         <TableCell className="text-center">{row.log?.countIn || 0}</TableCell>
                         <TableCell className="text-center">{row.log?.countOut || 0}</TableCell>
-                        <TableCell className="text-center">{row.onLeave}</TableCell>
                         <TableCell className="text-center text-xs text-muted-foreground">{row.log?.reason || 'No log entry'}</TableCell>
                         <TableCell className="text-center font-bold">{row.total}</TableCell>
+                        <TableCell className="text-center">{row.onLeave}</TableCell>
+                        <TableCell className="text-center font-bold">{row.active}</TableCell>
                         {can.manage_manpower && (
                             <TableCell className="text-right">
                                 {row.log && (
@@ -100,9 +107,10 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                     <TableCell>Overall Total</TableCell>
                     <TableCell></TableCell>
                     <TableCell></TableCell>
-                    <TableCell className="text-center">{summary.totalOnLeave}</TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-center">{summary.overallTotal}</TableCell>
+                    <TableCell className="text-center">{summary.totalOnLeave}</TableCell>
+                    <TableCell className="text-center">{summary.totalActive}</TableCell>
                     {can.manage_manpower && <TableCell></TableCell>}
                 </TableRow>
             </TableBody>
