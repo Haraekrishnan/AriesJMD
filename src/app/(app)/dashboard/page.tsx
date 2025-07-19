@@ -72,10 +72,10 @@ export default function DashboardPage() {
           description="Average tasks across your team"
         />
         <StatCard 
-          title="Active Manpower Today" 
-          value={(workingManpowerCount - onLeaveManpowerCount).toString()}
+          title="Manpower Today" 
+          value={workingManpowerCount.toString()}
           icon={Users}
-          description={`${onLeaveManpowerCount} person(s) on leave today`}
+          description={`${workingManpowerCount - onLeaveManpowerCount} active, ${onLeaveManpowerCount} on leave`}
         />
       </div>
 
