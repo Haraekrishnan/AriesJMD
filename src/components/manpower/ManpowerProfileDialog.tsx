@@ -22,7 +22,7 @@ import { Textarea } from '../ui/textarea';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, subDays } from 'date-fns';
+import { format, subDays, parse } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -98,23 +98,70 @@ interface ManpowerProfileDialogProps {
   profile: ManpowerProfile | null;
 }
 
-const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => (
+const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {
+  return (
     <Controller
-        name={name}
-        control={control}
-        render={({ field }) => (
+      name={name}
+      control={control}
+      render={({ field }) => {
+        const [inputValue, setInputValue] = useState(field.value ? format(new Date(field.value), 'dd-MM-yyyy') : '');
+
+        useEffect(() => {
+          if (field.value) {
+            setInputValue(format(new Date(field.value), 'dd-MM-yyyy'));
+          } else {
+            setInputValue('');
+          }
+        }, [field.value]);
+
+        const handleDateChange = (dateStr: string) => {
+          setInputValue(dateStr);
+          const parsedDate = parse(dateStr, 'dd-MM-yyyy', new Date());
+          if (!isNaN(parsedDate.getTime())) {
+            field.onChange(parsedDate);
+          } else if(dateStr === '') {
+            field.onChange(undefined);
+          }
+        };
+
+        const handleCalendarSelect = (date: Date | undefined) => {
+            field.onChange(date);
+            if(date) {
+                setInputValue(format(date, 'dd-MM-yyyy'));
+            }
+        };
+
+        return (
+          <div className="relative">
+            <Input
+              type="text"
+              value={inputValue}
+              onChange={(e) => handleDateChange(e.target.value)}
+              placeholder="DD-MM-YYYY"
+              disabled={disabled}
+            />
             <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')} disabled={disabled}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(new Date(field.value), 'dd-MM-yyyy') : <span>Pick a date</span>}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={field.onChange} initialFocus /></PopoverContent>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" disabled={disabled}>
+                  <CalendarIcon className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={field.value ? new Date(field.value) : undefined}
+                  onSelect={handleCalendarSelect}
+                  initialFocus
+                />
+              </PopoverContent>
             </Popover>
-        )}
+          </div>
+        );
+      }}
     />
-);
+  );
+};
+
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
   const { user, addManpowerProfile, updateManpowerProfile } = useAppContext();
