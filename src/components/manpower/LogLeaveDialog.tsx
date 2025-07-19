@@ -42,10 +42,9 @@ export default function LogLeaveDialog({ isOpen, setIsOpen }: LogLeaveDialogProp
   const onSubmit = (data: LeaveLogFormValues) => {
     addManpowerLog({
         projectId: data.projectId,
-        countIn: 0,
-        countOut: 0,
-        reason: 'Daily Leave Entry',
-        ...data
+        countOnLeave: data.countOnLeave,
+        personOnLeaveName: data.personOnLeaveName,
+        reason: 'Daily Leave Entry'
     });
     toast({ title: 'Daily Leave Logged', description: `Today's leave count has been updated.` });
     setIsOpen(false);

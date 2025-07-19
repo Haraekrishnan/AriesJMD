@@ -122,7 +122,7 @@ type AppContextType = {
   publishIncident: (incidentId: string, comment: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
   markIncidentAsViewed: (incidentId: string) => void;
-  addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>, logDate?: Date) => Promise<void>;
+  addManpowerLog: (log: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate?: Date) => Promise<void>;
   updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => Promise<void>;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   addMultipleManpowerProfiles: (profiles: any[]) => number;
@@ -897,39 +897,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [manpowerLogs]);
 
-  const addManpowerLog = useCallback(async (logData: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>, logDate = new Date()) => {
-    if(!user) return;
+  const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate = new Date()) => {
+    if (!user) return;
     const dateStr = format(logDate, 'yyyy-MM-dd');
-    const yesterdayStr = format(sub(logDate, { days: 1 }), 'yyyy-MM-dd');
-    
-    const logsForYesterday = manpowerLogs
-      .filter(l => l.date === yesterdayStr && l.projectId === logData.projectId)
-      .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
-    
-    const yesterdayLog = logsForYesterday[0];
-    const yesterdayCount = yesterdayLog ? (yesterdayLog.total || 0) : 0;
-    
-    const countIn = Number(logData.countIn) || 0;
-    const countOut = Number(logData.countOut) || 0;
-    const newTotal = yesterdayCount + countIn - countOut;
 
-    const newLog: Omit<ManpowerLog, 'id'> = {
-        ...logData,
-        countIn,
-        countOut,
-        countOnLeave: logData.countOnLeave || 0,
-        updatedBy: user.id,
-        date: dateStr,
-        yesterdayCount: yesterdayCount,
-        total: newTotal
-    };
-    
-    const newLogRef = push(ref(rtdb, 'manpowerLogs'));
-    await set(newLogRef, newLog);
-    
-    addActivityLog(user.id, 'Manpower Logged', `Project ID: ${logData.projectId}`);
+    const logsForDay = manpowerLogs.filter(l => l.date === dateStr && l.projectId === logData.projectId);
+    const existingLog = logsForDay.sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
 
-    await updateSubsequentManpowerLogs(logDate, logData.projectId);
+    if (existingLog) {
+        // Update existing log
+        const updates: Partial<ManpowerLog> = { ...logData, updatedBy: user.id };
+        // If countIn or countOut are being changed, recalculate total
+        if (data.hasOwnProperty('countIn') || data.hasOwnProperty('countOut')) {
+          const countIn = data.countIn ?? existingLog.countIn;
+          const countOut = data.countOut ?? existingLog.countOut;
+          updates.total = (existingLog.yesterdayCount ?? 0) + countIn - countOut;
+        }
+        await update(ref(rtdb, `manpowerLogs/${existingLog.id}`), updates);
+        addActivityLog(user.id, 'Manpower Log Updated', `Project ID: ${logData.projectId}`);
+        await updateSubsequentManpowerLogs(logDate, logData.projectId);
+    } else {
+        // Create new log
+        const yesterdayStr = format(sub(logDate, { days: 1 }), 'yyyy-MM-dd');
+        const logsForYesterday = manpowerLogs
+            .filter(l => l.date === yesterdayStr && l.projectId === logData.projectId)
+            .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
+        
+        const yesterdayLog = logsForYesterday[0];
+        const yesterdayCount = yesterdayLog?.total || 0;
+        
+        const countIn = logData.countIn || 0;
+        const countOut = logData.countOut || 0;
+        const newTotal = yesterdayCount + countIn - countOut;
+
+        const newLog: Omit<ManpowerLog, 'id'> = {
+            projectId: logData.projectId,
+            countIn,
+            personInName: logData.personInName || '',
+            countOut,
+            personOutName: logData.personOutName || '',
+            countOnLeave: logData.countOnLeave || 0,
+            personOnLeaveName: logData.personOnLeaveName || '',
+            reason: logData.reason || '',
+            updatedBy: user.id,
+            date: dateStr,
+            yesterdayCount: yesterdayCount,
+            total: newTotal
+        };
+        
+        const newLogRef = push(ref(rtdb, 'manpowerLogs'));
+        await set(newLogRef, newLog);
+        addActivityLog(user.id, 'Manpower Logged', `Project ID: ${logData.projectId}`);
+        await updateSubsequentManpowerLogs(logDate, logData.projectId);
+    }
   }, [user, addActivityLog, manpowerLogs, updateSubsequentManpowerLogs]);
 
   const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => {
