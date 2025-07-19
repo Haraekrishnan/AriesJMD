@@ -23,7 +23,7 @@ export default function DashboardPage() {
     return allTasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
   }, [allTasks, visibleUserIds]);
 
-  const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length, [visibleTasks]);
+  const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done').length, [visibleTasks]);
   const openTasks = useMemo(() => visibleTasks.length - completedTasks, [visibleTasks, completedTasks]);
   
   const avgTasksPerPerson = useMemo(() => {

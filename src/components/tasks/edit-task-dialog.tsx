@@ -59,7 +59,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     resolver: zodResolver(taskSchema),
   });
 
-  const isCompleted = taskToDisplay.status === 'Completed';
+  const isCompleted = taskToDisplay.status === 'Done';
   const isAdmin = user?.role === 'Admin';
   const isCreator = user?.id === taskToDisplay.creatorId;
   

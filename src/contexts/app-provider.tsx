@@ -506,7 +506,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addComment(taskId, commentText);
 
     const updates: Partial<Task> = {
-        status: task.pendingStatus || task.status,
         approvalState: 'approved',
         pendingStatus: null,
         previousStatus: null,
@@ -521,7 +520,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updates.isViewedByAssignee = false;
       addActivityLog(user.id, 'Task Reassignment Approved', `Task "${task.title}" to ${users.find(u => u.id === task.pendingAssigneeId)?.name}`);
     } else { // Status change
-      updates.status = task.pendingStatus || task.status;
+      updates.status = task.pendingStatus === 'Completed' ? 'Done' : (task.pendingStatus || task.status);
       if (task.pendingStatus === 'Completed') updates.completionDate = new Date().toISOString();
       updates.approvalState = 'approved';
       addActivityLog(user.id, 'Task Status Change Approved', `Task "${updates.status}"`);
@@ -906,7 +905,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate = new Date()) => {
     if (!user) return;
     const dateStr = format(logDate, 'yyyy-MM-dd');
-
     const logsForDay = manpowerLogs.filter(l => l.date === dateStr && l.projectId === logData.projectId);
     const existingLog = logsForDay.sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
 
@@ -1821,21 +1819,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const onLeaveManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const projectLeaveCounts = new Map<string, number>();
-
+    let totalLeave = 0;
     projects.forEach(project => {
-        const todayLogsForProject = manpowerLogs
+        const latestLogForProjectDay = manpowerLogs
             .filter(log => log.date === todayStr && log.projectId === project.id)
-            .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
-
-        if (todayLogsForProject.length > 0) {
-            projectLeaveCounts.set(project.id, todayLogsForProject[0].countOnLeave || 0);
-        } else {
-            projectLeaveCounts.set(project.id, 0);
+            .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
+        
+        if (latestLogForProjectDay) {
+            totalLeave += (latestLogForProjectDay.countOnLeave || 0);
         }
     });
-
-    return Array.from(projectLeaveCounts.values()).reduce((sum, count) => sum + count, 0);
+    return totalLeave;
   }, [manpowerLogs, projects]);
 
   const workingManpowerCount = useMemo(() => {
