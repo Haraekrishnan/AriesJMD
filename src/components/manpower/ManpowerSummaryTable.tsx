@@ -79,7 +79,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                     <TableHead className="text-center">Day Total</TableHead>
                     <TableHead className="text-center">Today's Leave</TableHead>
                     <TableHead className="text-center">Today's Active</TableHead>
-                    {can.manage_manpower && <TableHead className="text-right">Actions</TableHead>}
+                    {can.log_manpower && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,7 +92,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                         <TableCell className="text-center font-bold">{row.total}</TableCell>
                         <TableCell className="text-center">{row.onLeave}</TableCell>
                         <TableCell className="text-center font-bold">{row.active}</TableCell>
-                        {can.manage_manpower && (
+                        {can.log_manpower && (
                             <TableCell className="text-right">
                                 {row.log && (
                                     <Button variant="ghost" size="icon" onClick={() => setEditingLog(row.log!)}>
@@ -111,7 +111,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                     <TableCell className="text-center">{summary.overallTotal}</TableCell>
                     <TableCell className="text-center">{summary.totalOnLeave}</TableCell>
                     <TableCell className="text-center">{summary.totalActive}</TableCell>
-                    {can.manage_manpower && <TableCell></TableCell>}
+                    {can.log_manpower && <TableCell></TableCell>}
                 </TableRow>
             </TableBody>
         </Table>

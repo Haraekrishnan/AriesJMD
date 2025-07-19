@@ -81,7 +81,7 @@ export const ROLES: RoleDefinition[] = [
   {
     id: 'role-document-controller',
     name: 'Document Controller',
-    permissions: ['manage_manpower_list', 'manage_tasks'],
+    permissions: ['manage_manpower_list', 'manage_tasks', 'log_manpower'],
     isEditable: true,
   }
 ];

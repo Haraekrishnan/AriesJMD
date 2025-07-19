@@ -66,7 +66,7 @@ export default function LogLeaveDialog({ isOpen, setIsOpen }: LogLeaveDialogProp
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Log Daily Leave</DialogTitle>
-          <DialogDescription>Record employees on leave for today. This will not affect the total manpower count.</DialogDescription>
+          <DialogDescription>Record or overwrite the leave count for today. This will not affect the total manpower count.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div>
