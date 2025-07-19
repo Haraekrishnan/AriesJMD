@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import type { ManpowerProfile } from '@/lib/types';
@@ -39,7 +40,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
         if (requiredDocs.length === 0) return 100;
 
         const collectedCount = requiredDocs.filter(docName => {
-            const doc = profile.documents.find(d => d.name === docName);
+            const doc = (profile.documents || []).find(d => d.name === docName);
             return doc && doc.status !== 'Pending';
         }).length;
         
@@ -60,7 +61,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
         const pending: string[] = [];
 
         requiredDocs.forEach(docName => {
-            const doc = profile.documents.find(d => d.name === docName);
+            const doc = (profile.documents || []).find(d => d.name === docName);
             if(doc && doc.status !== 'Pending') {
                 collected.push(docName);
             } else {
