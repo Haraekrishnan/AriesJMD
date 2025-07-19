@@ -193,7 +193,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             });
         } else {
              const defaultDocs = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
-            form.reset({ documents: defaultDocs });
+            form.reset({ documents: defaultDocs, status: 'Working' });
         }
     }
   }, [profile, isOpen, form, allRequiredDocs]);
@@ -221,7 +221,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
       toast({ title: 'Profile Updated' });
     } else {
       const newProfileData = {
-        status: 'Working',
         skills: [],
         leaveHistory: [],
         ...dataToSubmit
@@ -250,7 +249,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                 <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue placeholder="Select trade..."/></SelectTrigger>
                                 <SelectContent>
-                                    {[...TRADES, 'Others'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                    {TRADES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
                                 </Select>
                             )}/>
