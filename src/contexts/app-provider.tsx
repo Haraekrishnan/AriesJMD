@@ -962,10 +962,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     profilesToImport.forEach(item => {
         try {
-            const hardCopyFileNo = item[24]?.toString(); // Column Y
-            if (!hardCopyFileNo) return; 
+            const fullName = item[0]?.toString();
+            if (!fullName) return; 
 
-            const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === hardCopyFileNo);
+            const existingProfile = manpowerProfiles.find(p => p.name === fullName);
 
             const parseDate = (dateInput: string | number | undefined): string | undefined => {
                 if (!dateInput) return undefined;
@@ -985,8 +985,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
 
             const profileData: Partial<ManpowerProfile> = {
-                hardCopyFileNo: hardCopyFileNo,
-                name: item[0],
+                name: fullName,
                 mobileNumber: item[1]?.toString(),
                 gender: item[2],
                 workOrderNumber: item[3]?.toString(),
