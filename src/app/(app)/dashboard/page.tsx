@@ -7,14 +7,14 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import StatCard from '@/components/dashboard/stat-card';
-import { FileText, Users, CheckCircle, ListTodo, Megaphone, PlusCircle } from 'lucide-react';
+import { FileText, Users, CheckCircle, ListTodo, Megaphone, PlusCircle, UserMinus } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
 
   const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
@@ -72,10 +72,10 @@ export default function DashboardPage() {
           description="Average tasks across your team"
         />
         <StatCard 
-          title="Today's Manpower" 
+          title="Active Manpower Today" 
           value={workingManpowerCount.toString()} 
           icon={Users}
-          description="Total active manpower for today"
+          description={`${onLeaveManpowerCount} person(s) on leave today`}
         />
       </div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +18,8 @@ const logSchema = z.object({
   personInName: z.string().optional(),
   countOut: z.coerce.number().min(0, 'Count Out must be non-negative'),
   personOutName: z.string().optional(),
+  countOnLeave: z.coerce.number().min(0, 'Leave count must be non-negative'),
+  personOnLeaveName: z.string().optional(),
   reason: z.string().min(1, 'Reason is required'),
 });
 
@@ -39,6 +42,8 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
       personInName: '',
       countOut: 0,
       personOutName: '',
+      countOnLeave: 0,
+      personOnLeaveName: '',
       reason: '',
     },
   });
@@ -59,6 +64,8 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
         personInName: '',
         countOut: 0,
         personOutName: '',
+        countOnLeave: 0,
+        personOnLeaveName: '',
         reason: '',
       });
       setIsOpen(open);
@@ -109,6 +116,18 @@ export default function ManpowerLogDialog({ isOpen, setIsOpen }: ManpowerLogDial
              <div>
               <Label htmlFor="personOutName">Person Out Name(s)</Label>
               <Input id="personOutName" {...form.register('personOutName')} placeholder="e.g., Peter" />
+            </div>
+          </div>
+
+           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="countOnLeave">On Leave</Label>
+              <Input id="countOnLeave" type="number" {...form.register('countOnLeave')} />
+              {form.formState.errors.countOnLeave && <p className="text-xs text-destructive">{form.formState.errors.countOnLeave.message}</p>}
+            </div>
+             <div>
+              <Label htmlFor="personOnLeaveName">Person on Leave Name(s)</Label>
+              <Input id="personOnLeaveName" {...form.register('personOnLeaveName')} placeholder="e.g., Sam" />
             </div>
           </div>
           

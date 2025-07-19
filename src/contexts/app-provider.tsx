@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
@@ -915,6 +916,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...logData,
         countIn,
         countOut,
+        countOnLeave: logData.countOnLeave || 0,
         updatedBy: user.id,
         date: dateStr,
         yesterdayCount: yesterdayCount,
@@ -983,6 +985,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
 
             const profileData: Partial<ManpowerProfile> = {
+                hardCopyFileNo: hardCopyFileNo,
                 name: item[0],
                 mobileNumber: item[1]?.toString(),
                 gender: item[2],
@@ -1769,26 +1772,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
   const updatedManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [managementRequests, user]);
   
+  const onLeaveManpowerCount = useMemo(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayLogForLeave = manpowerLogs.find(log => log.date === todayStr);
+    return todayLogForLeave?.countOnLeave || 0;
+  }, [manpowerLogs]);
+
   const workingManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
 
+    let totalManpower = 0;
     if (todayLogs.length > 0) {
-      const latestTotals = projects.map(project => {
-        const projectLogs = todayLogs
-          .filter(log => log.projectId === project.id)
-          .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
-        const latestLog = projectLogs[0];
-        return latestLog?.total || 0;
+      const projectTotals = new Map<string, number>();
+      todayLogs.forEach(log => {
+        // Find the latest log for each project for today
+        const latestLog = projectTotals.get(log.projectId);
+        if (!latestLog || new Date(log.updatedBy) > new Date(latestLog)) {
+          projectTotals.set(log.projectId, log.total || 0);
+        }
       });
-      return latestTotals.reduce((sum, total) => sum + total, 0);
+      totalManpower = Array.from(projectTotals.values()).reduce((sum, total) => sum + total, 0);
+    } else {
+      totalManpower = manpowerProfiles.filter(p => p.status === 'Working').length;
     }
 
-    return manpowerProfiles.filter(p => p.status === 'Working').length;
-  }, [manpowerLogs, manpowerProfiles, projects]);
+    return totalManpower - onLeaveManpowerCount;
+  }, [manpowerLogs, manpowerProfiles, onLeaveManpowerCount]);
   
-  const onLeaveManpowerCount = useMemo(() => manpowerProfiles.filter(p => p.status === 'On Leave').length, [manpowerProfiles]);
-
   const incidentNotificationCount = useMemo(() => {
     if (!user) return 0;
     const myIncidents = incidentReports.filter(i => {
