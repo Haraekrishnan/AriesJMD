@@ -67,6 +67,10 @@
        ".read": true,
        ".write": true
     },
+    "otherEquipments": {
+       ".read": true,
+       ".write": true
+    },
     "machineLogs": {
       ".read": true,
       ".write": true

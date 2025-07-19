@@ -1,5 +1,6 @@
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -397,6 +398,14 @@ export type LaptopDesktop = {
     serialNumber: string;
     allottedTo: string; // User ID
     ariesId?: string;
+    remarks?: string;
+};
+
+export type OtherEquipment = {
+    id: string;
+    equipmentName: string;
+    serialNumber: string;
+    allottedTo: string; // User ID
     remarks?: string;
 };
 
