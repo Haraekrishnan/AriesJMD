@@ -133,7 +133,6 @@ export type Driver = {
   name: string;
   photo: string;
   licenseNumber: string;
-  licenseExpiry?: string;
   epNumber?: string;
   sdpNumber?: string;
   epExpiry?: string;
@@ -190,12 +189,29 @@ export type ManpowerProfile = {
   status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated';
   photo?: string;
   
+  // Personal Details
+  mobileNumber?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  dob?: string; // Date of Birth
+  aadharNumber?: string;
+  uanNumber?: string;
+
   // Identifiers
   hardCopyFileNo?: string;
   documentFolderUrl?: string;
+  
+  // Work Details
+  workOrderNumber?: string;
+  labourLicenseNo?: string;
+  eic?: string; // Replaces eicName
+  joiningDate?: string; // ISO
+
+  // Policy & Card Details
+  wcPolicyNumber?: string;
+  cardCategory?: string;
+  cardType?: string;
   epNumber?: string;
   plantName?: string;
-  eicName?: string;
   
   // Documents and Skills
   documents: ManpowerDocument[];
@@ -203,10 +219,9 @@ export type ManpowerProfile = {
 
   // Validity Dates
   passIssueDate?: string; // ISO
-  joiningDate?: string; // ISO
-  woValidity?: string; // ISO
-  wcPolicyValidity?: string; // ISO
-  labourContractValidity?: string; // ISO
+  workOrderExpiryDate?: string; // ISO, replaces woValidity
+  wcPolicyExpiryDate?: string; // ISO, replaces wcPolicyValidity
+  labourLicenseExpiryDate?: string; // ISO, new
   medicalExpiryDate?: string; // ISO
   safetyExpiryDate?: string; // ISO
   irataValidity?: string; // ISO

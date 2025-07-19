@@ -1,3 +1,4 @@
+
 'use client';
 import type { ManpowerProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -25,11 +26,11 @@ export default function ManpowerReportDownloads({ profiles }: ManpowerReportDown
           'Hard Copy File No': p.hardCopyFileNo || 'N/A',
           'EP Number': p.epNumber || 'N/A',
           'Plant Name': p.plantName || 'N/A',
-          'EIC Name': p.eicName || 'N/A',
+          'EIC': p.eic || 'N/A',
           'Pass Issue Date': p.passIssueDate ? format(new Date(p.passIssueDate), 'dd-MM-yyyy') : 'N/A',
           'Joining Date': p.joiningDate ? format(new Date(p.joiningDate), 'dd-MM-yyyy') : 'N/A',
-          'WO Expiry': p.woValidity ? format(new Date(p.woValidity), 'dd-MM-yyyy') : 'N/A',
-          'WC Policy Expiry': p.wcPolicyValidity ? format(new Date(p.wcPolicyValidity), 'dd-MM-yyyy') : 'N/A',
+          'WO Expiry': p.workOrderExpiryDate ? format(new Date(p.workOrderExpiryDate), 'dd-MM-yyyy') : 'N/A',
+          'WC Policy Expiry': p.wcPolicyExpiryDate ? format(new Date(p.wcPolicyExpiryDate), 'dd-MM-yyyy') : 'N/A',
           'Labour Contract Expiry': p.labourContractValidity ? format(new Date(p.labourContractValidity), 'dd-MM-yyyy') : 'N/A',
           'Medical Expiry': p.medicalExpiryDate ? format(new Date(p.medicalExpiryDate), 'dd-MM-yyyy') : 'N/A',
           'Safety Expiry': p.safetyExpiryDate ? format(new Date(p.safetyExpiryDate), 'dd-MM-yyyy') : 'N/A',

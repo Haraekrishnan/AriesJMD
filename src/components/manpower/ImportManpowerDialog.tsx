@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -38,7 +39,7 @@ export default function ImportManpowerDialog({ isOpen, setIsOpen }: ImportManpow
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+                const json: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1, range: 1 });
                 
                 const importedCount = addMultipleManpowerProfiles(json);
 
@@ -66,29 +67,28 @@ export default function ImportManpowerDialog({ isOpen, setIsOpen }: ImportManpow
                     <FileWarning className="h-4 w-4" />
                     <AlertTitle>File Format Instructions</AlertTitle>
                     <AlertDescription>
-                        <p className="mb-2">The first row of your Excel sheet must be a header row with the exact column names below. Dates should be in YYYY-MM-DD format.</p>
+                        <p className="mb-2">The first row of your Excel sheet must be a header row. Data is read from the second row onwards. The columns must be in the following order:</p>
                         <ul className="list-disc list-inside text-xs space-y-1">
-                            <li>Name</li>
-                            <li>Trade</li>
-                            <li>Status (Working, On Leave, Resigned, Terminated)</li>
-                            <li>Hard Copy File No</li>
-                            <li>EP Number</li>
-                            <li>Plant Name</li>
-                            <li>EIC Name</li>
-                            <li>Pass Issue Date</li>
-                            <li>Joining Date</li>
-                            <li>WO Expiry</li>
-                            <li>WC Policy Expiry</li>
-                            <li>Labour Contract Expiry</li>
-                            <li>Medical Expiry</li>
-                            <li>Safety Expiry</li>
-                            <li>IRATA Expiry</li>
-                            <li>Contract Expiry</li>
-                            <li>Remarks</li>
-                            <li>Feedback</li>
-                            <li>Resignation Date</li>
-                            <li>Termination Date</li>
-                            <li>Document Folder URL</li>
+                            <li><b>Column A:</b> Full Name</li>
+                            <li><b>Column B:</b> Mobile Number</li>
+                            <li><b>Column C:</b> Gender</li>
+                            <li><b>Column D:</b> Work Order Number</li>
+                            <li><b>Column E:</b> Labour License No</li>
+                            <li><b>Column F:</b> EIC</li>
+                            <li><b>Column G:</b> Work Order Expiry Date (Format: YYYY-MM-DD)</li>
+                            <li><b>Column H:</b> Labour License Expiry Date (Format: YYYY-MM-DD)</li>
+                            <li><b>Column I:</b> Joining Date (Format: YYYY-MM-DD)</li>
+                            <li><b>Column J:</b> EP Number</li>
+                            <li><b>Column K:</b> Aadhar Number</li>
+                            <li><b>Column L:</b> Date Of Birth (Format: YYYY-MM-DD)</li>
+                            <li><b>Column M:</b> UAN Number</li>
+                            <li><b>Column N:</b> WC Policy Number</li>
+                            <li><b>Column O:</b> WC Policy Expiry Date (Format: YYYY-MM-DD)</li>
+                            <li><b>Column P:</b> Card Category</li>
+                            <li><b>Column Q:</b> Card Type</li>
+                            <li><b>Column R:</b> Labour License Expiry Date (Duplicate - can be empty)</li>
+                            <li><b>Column S:</b> Work Order Expiry Date (Duplicate - can be empty)</li>
+                            <li><b>Column T:</b> WC Policy Expiry Date (Duplicate - can be empty)</li>
                         </ul>
                     </AlertDescription>
                 </Alert>
