@@ -73,7 +73,7 @@ export default function DashboardPage() {
         />
         <StatCard 
           title="Active Manpower Today" 
-          value={workingManpowerCount.toString()} 
+          value={(workingManpowerCount - onLeaveManpowerCount).toString()}
           icon={Users}
           description={`${onLeaveManpowerCount} person(s) on leave today`}
         />

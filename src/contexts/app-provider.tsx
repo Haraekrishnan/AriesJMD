@@ -1773,8 +1773,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const onLeaveManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todayLogForLeave = manpowerLogs.find(log => log.date === todayStr);
-    return todayLogForLeave?.countOnLeave || 0;
+    const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
+    
+    // Sum up leave counts, ensuring each project is counted only once for its latest log of the day.
+    const projectLeaveCounts = new Map<string, number>();
+    todayLogs.forEach(log => {
+      const existing = manpowerLogs.find(l => l.projectId === log.projectId && l.date === log.date && new Date(l.updatedBy) > new Date(log.updatedBy));
+      if (!existing) {
+        projectLeaveCounts.set(log.projectId, log.countOnLeave || 0);
+      }
+    });
+
+    return Array.from(projectLeaveCounts.values()).reduce((sum, count) => sum + count, 0);
   }, [manpowerLogs]);
 
   const workingManpowerCount = useMemo(() => {
@@ -1786,8 +1796,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const projectTotals = new Map<string, number>();
       todayLogs.forEach(log => {
         // Find the latest log for each project for today
-        const latestLog = projectTotals.get(log.projectId);
-        if (!latestLog || new Date(log.updatedBy) > new Date(latestLog)) {
+        const existingLogForProject = manpowerLogs.find(l => l.projectId === log.projectId && l.date === log.date && new Date(l.updatedBy) > new Date(log.updatedBy));
+        if (!existingLogForProject) {
           projectTotals.set(log.projectId, log.total || 0);
         }
       });
@@ -1796,8 +1806,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       totalManpower = manpowerProfiles.filter(p => p.status === 'Working').length;
     }
 
-    return totalManpower - onLeaveManpowerCount;
-  }, [manpowerLogs, manpowerProfiles, onLeaveManpowerCount]);
+    return totalManpower;
+  }, [manpowerLogs, manpowerProfiles]);
   
   const incidentNotificationCount = useMemo(() => {
     if (!user) return 0;
