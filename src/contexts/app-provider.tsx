@@ -1778,8 +1778,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Sum up leave counts, ensuring each project is counted only once for its latest log of the day.
     const projectLeaveCounts = new Map<string, number>();
     todayLogs.forEach(log => {
-      const existing = manpowerLogs.find(l => l.projectId === log.projectId && l.date === log.date && new Date(l.updatedBy) > new Date(log.updatedBy));
-      if (!existing) {
+      const existingLogForProject = manpowerLogs.find(l => l.projectId === log.projectId && l.date === log.date && new Date(l.updatedBy) > new Date(log.updatedBy));
+      if (!existingLogForProject) {
         projectLeaveCounts.set(log.projectId, log.countOnLeave || 0);
       }
     });
@@ -1789,25 +1789,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const workingManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
-
-    let totalManpower = 0;
-    if (todayLogs.length > 0) {
-      const projectTotals = new Map<string, number>();
-      todayLogs.forEach(log => {
-        // Find the latest log for each project for today
-        const existingLogForProject = manpowerLogs.find(l => l.projectId === log.projectId && l.date === log.date && new Date(l.updatedBy) > new Date(log.updatedBy));
-        if (!existingLogForProject) {
-          projectTotals.set(log.projectId, log.total || 0);
-        }
+    const yesterdayStr = format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd');
+    
+    // Calculate total from previous day across all projects
+    const previousDayTotals = new Map<string, number>();
+    manpowerLogs
+      .filter(log => log.date <= yesterdayStr)
+      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .forEach(log => {
+          previousDayTotals.set(log.projectId, log.total);
       });
-      totalManpower = Array.from(projectTotals.values()).reduce((sum, total) => sum + total, 0);
-    } else {
-      totalManpower = manpowerProfiles.filter(p => p.status === 'Working').length;
-    }
+    const startingTotal = Array.from(previousDayTotals.values()).reduce((sum, total) => sum + total, 0);
 
-    return totalManpower;
-  }, [manpowerLogs, manpowerProfiles]);
+    // Calculate changes for today
+    let inCountToday = 0;
+    let outCountToday = 0;
+    
+    const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
+    const latestProjectLogs = new Map<string, ManpowerLog>();
+    todayLogs.forEach(log => {
+        const existing = latestProjectLogs.get(log.projectId);
+        if (!existing || new Date(log.updatedBy) > new Date(existing.updatedBy)) {
+            latestProjectLogs.set(log.projectId, log);
+        }
+    });
+    
+    latestProjectLogs.forEach(log => {
+        inCountToday += log.countIn;
+        outCountToday += log.countOut;
+    });
+
+    // If there are no logs for today, the total is the same as yesterday's.
+    if (todayLogs.length === 0) {
+      return startingTotal;
+    }
+    
+    // Otherwise, it's yesterday's total adjusted for today's ins and outs.
+    return startingTotal + inCountToday - outCountToday;
+
+  }, [manpowerLogs, projects]);
   
   const incidentNotificationCount = useMemo(() => {
     if (!user) return 0;
