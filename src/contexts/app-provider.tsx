@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1417,7 +1418,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addAnemometer = useCallback((anemometer: Omit<Anemometer, 'id'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'anemometers'));
-    set(newRef, anemometer);
+    const dataToSave = {
+        ...anemometer,
+        calibrationDueDate: anemometer.calibrationDueDate || null
+    };
+    set(newRef, dataToSave);
     addActivityLog(user.id, 'Anemometer Added', `Added ${anemometer.make} ${anemometer.model}`);
   }, [user, addActivityLog]);
 
@@ -1795,16 +1800,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .filter(l => l.projectId === project.id && l.date <= yesterdayStr)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-        const startingCount = logsForProjectBeforeToday[0]?.total || 0;
+        let startingCount = 0;
+        if(logsForProjectBeforeToday.length > 0) {
+          startingCount = logsForProjectBeforeToday[0].total || 0;
+        }
         
         const logsForProjectToday = manpowerLogs
-            .filter(l => l.projectId === project.id && l.date === todayStr && l.countOnLeave === 0)
+            .filter(l => l.projectId === project.id && l.date === todayStr)
             .sort((a, b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
         
         const latestLogToday = logsForProjectToday[0];
 
         if (latestLogToday) {
-            projectTotals.set(project.id, latestLogToday.total);
+            const dayCountIn = logsForProjectToday.reduce((sum, log) => sum + (log.countIn || 0), 0);
+            const dayCountOut = logsForProjectToday.reduce((sum, log) => sum + (log.countOut || 0), 0);
+            projectTotals.set(project.id, startingCount + dayCountIn - dayCountOut);
         } else {
             projectTotals.set(project.id, startingCount);
         }
