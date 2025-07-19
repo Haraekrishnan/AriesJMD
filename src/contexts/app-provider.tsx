@@ -911,9 +911,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const existingLog = logsForDay.sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
 
     if (existingLog) {
-        // Update existing log
         const updates: Partial<ManpowerLog> = { ...logData, updatedBy: user.id };
-        // If countIn or countOut are being changed, recalculate total
         if (logData.hasOwnProperty('countIn') || logData.hasOwnProperty('countOut')) {
           const countIn = logData.countIn ?? existingLog.countIn;
           const countOut = logData.countOut ?? existingLog.countOut;
@@ -923,7 +921,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addActivityLog(user.id, 'Manpower Log Updated', `Project ID: ${logData.projectId}`);
         await updateSubsequentManpowerLogs(logDate, logData.projectId);
     } else {
-        // Create new log
         const yesterdayStr = format(sub(logDate, { days: 1 }), 'yyyy-MM-dd');
         const logsForYesterday = manpowerLogs
             .filter(l => l.projectId === logData.projectId && l.date === yesterdayStr)
@@ -1446,7 +1443,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRef = push(ref(rtdb, 'anemometers'));
     const dataToSave = {
         ...anemometer,
-        calibrationDueDate: anemometer.calibrationDueDate || null
+        calibrationDueDate: anemometer.calibrationDueDate ? new Date(anemometer.calibrationDueDate).toISOString() : null
     };
     set(newRef, dataToSave);
     addActivityLog(user.id, 'Anemometer Added', `Added ${anemometer.make} ${anemometer.model}`);
@@ -1824,16 +1821,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const onLeaveManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todayLogs = manpowerLogs.filter(log => log.date === todayStr);
-    
-    // Sum up leave counts, ensuring each project is counted only once for its latest log of the day.
     const projectLeaveCounts = new Map<string, number>();
-    todayLogs.forEach(log => {
-      projectLeaveCounts.set(log.projectId, log.countOnLeave || 0);
+
+    projects.forEach(project => {
+        const todayLogsForProject = manpowerLogs
+            .filter(log => log.date === todayStr && log.projectId === project.id)
+            .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
+
+        if (todayLogsForProject.length > 0) {
+            projectLeaveCounts.set(project.id, todayLogsForProject[0].countOnLeave || 0);
+        } else {
+            projectLeaveCounts.set(project.id, 0);
+        }
     });
 
     return Array.from(projectLeaveCounts.values()).reduce((sum, count) => sum + count, 0);
-  }, [manpowerLogs]);
+  }, [manpowerLogs, projects]);
 
   const workingManpowerCount = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -1858,9 +1861,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const latestLogToday = logsForProjectToday[0];
 
         if (latestLogToday) {
-            const dayCountIn = logsForProjectToday.reduce((sum, log) => sum + (log.countIn || 0), 0);
-            const dayCountOut = logsForProjectToday.reduce((sum, log) => sum + (log.countOut || 0), 0);
-            projectTotals.set(project.id, startingCount + dayCountIn - dayCountOut);
+            projectTotals.set(project.id, latestLogToday.total);
         } else {
             projectTotals.set(project.id, startingCount);
         }
