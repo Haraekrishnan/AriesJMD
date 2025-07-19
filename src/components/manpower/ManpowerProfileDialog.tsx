@@ -12,18 +12,28 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
-import type { ManpowerProfile, Trade, LeaveRecord } from '@/lib/types';
+import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parse } from 'date-fns';
+import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
+
+const documentSchema = z.object({
+  name: z.string(),
+  details: z.string().optional(),
+  status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']),
+});
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   hardCopyFileNo: z.string().optional(),
+  trade: z.string(),
+  otherTrade: z.string().optional(),
+  status: z.enum(['Working', 'On Leave', 'Resigned', 'Terminated']),
   mobileNumber: z.string().optional(),
   gender: z.enum(['Male', 'Female', 'Other']).optional(),
   dob: z.date().optional(),
@@ -40,6 +50,15 @@ const profileSchema = z.object({
   cardCategory: z.string().optional(),
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
+  documents: z.array(documentSchema).optional(),
+}).refine(data => {
+    if (data.trade === 'Others') {
+        return !!data.otherTrade && data.otherTrade.length > 0;
+    }
+    return true;
+}, {
+    message: 'Please specify the trade',
+    path: ['otherTrade'],
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -49,6 +68,10 @@ interface ManpowerProfileDialogProps {
   setIsOpen: (open: boolean) => void;
   profile: ManpowerProfile | null;
 }
+
+const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
+const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated'];
+
 
 const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {
   return (
@@ -123,13 +146,33 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     resolver: zodResolver(profileSchema),
   });
   
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "documents"
+  });
+  
+  const watchTrade = form.watch('trade');
+
   const parseDate = (dateString?: string) => {
     return dateString ? new Date(dateString) : undefined;
   };
-
+  
+  const allRequiredDocs = useMemo(() => {
+      const docs = [...MANDATORY_DOCS];
+      if(profile?.trade && RA_TRADES.includes(profile.trade)) {
+        docs.push('IRATA Certificate');
+      }
+      return docs;
+  }, [profile]);
+  
   useEffect(() => {
     if (isOpen) {
         if (profile) {
+            const initialDocs = allRequiredDocs.map(docName => {
+                const existingDoc = profile.documents?.find(d => d.name === docName);
+                return existingDoc || { name: docName, status: 'Pending', details: '' };
+            });
+
             form.reset({
                 ...profile,
                 dob: parseDate(profile.dob),
@@ -137,14 +180,27 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 workOrderExpiryDate: parseDate(profile.workOrderExpiryDate),
                 labourLicenseExpiryDate: parseDate(profile.labourLicenseExpiryDate),
                 wcPolicyExpiryDate: parseDate(profile.wcPolicyExpiryDate),
+                passIssueDate: parseDate(profile.passIssueDate),
+                medicalExpiryDate: parseDate(profile.medicalExpiryDate),
+                safetyExpiryDate: parseDate(profile.safetyExpiryDate),
+                irataValidity: parseDate(profile.irataValidity),
+                contractValidity: parseDate(profile.contractValidity),
+                resignationDate: parseDate(profile.resignationDate),
+                terminationDate: parseDate(profile.terminationDate),
+                documents: initialDocs,
+                trade: TRADES.includes(profile.trade) ? profile.trade : 'Others',
+                otherTrade: TRADES.includes(profile.trade) ? '' : profile.trade,
             });
         } else {
-            form.reset({});
+             const defaultDocs = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
+            form.reset({ documents: defaultDocs });
         }
     }
-  }, [profile, isOpen, form]);
+  }, [profile, isOpen, form, allRequiredDocs]);
   
   const onSubmit = (data: ProfileFormValues) => {
+    const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
+
     const cleanDataForFirebase = (obj: any) => {
       const newObj: any = {};
       for (const key in obj) {
@@ -157,16 +213,15 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
       return newObj;
     };
     
-    const dataToSubmit = cleanDataForFirebase(data);
+    const dataToSubmit = cleanDataForFirebase({...data, trade: finalTrade });
+    delete dataToSubmit.otherTrade;
 
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
       toast({ title: 'Profile Updated' });
     } else {
       const newProfileData = {
-        trade: 'Others', // Default trade
         status: 'Working',
-        documents: [],
         skills: [],
         leaveHistory: [],
         ...dataToSubmit
@@ -186,9 +241,31 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 pr-4">
                     
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold border-b pb-2">Personal Details</h3>
+                        <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                         <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
                         <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
+                        <div>
+                            <Label>Trade</Label>
+                            <Controller control={form.control} name="trade" render={({field}) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select trade..."/></SelectTrigger>
+                                <SelectContent>
+                                    {[...TRADES, 'Others'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                            )}/>
+                        </div>
+                        {watchTrade === 'Others' && (
+                             <div><Label>Specify Trade</Label><Input {...form.register('otherTrade')} />{form.formState.errors.otherTrade && <p className="text-xs text-destructive">{form.formState.errors.otherTrade.message}</p>}</div>
+                        )}
+                         <div><Label>Status</Label>
+                            <Controller control={form.control} name="status" render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                                <SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                </Select>
+                            )}/>
+                        </div>
                         <div><Label>Mobile Number</Label><Input {...form.register('mobileNumber')} /></div>
                         <div><Label>Gender</Label>
                             <Controller control={form.control} name="gender" render={({ field }) => (
@@ -208,7 +285,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     </div>
                     
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold border-b pb-2">Work & Contract Details</h3>
+                        <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
                         <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                         <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
                         <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
@@ -217,15 +294,35 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <div><Label>Joining Date</Label><DatePickerController name="joiningDate" control={form.control} /></div>
                         <div><Label>Work Order Expiry Date</Label><DatePickerController name="workOrderExpiryDate" control={form.control} /></div>
                         <div><Label>Labour License Expiry Date</Label><DatePickerController name="labourLicenseExpiryDate" control={form.control} /></div>
+                        <Separator className="my-4" />
+                        <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
+                        <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
+                        <div><Label>Card Category</Label><Input {...form.register('cardCategory')} /></div>
+                        <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
                     </div>
                     
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold border-b pb-2">Policy & Card Details</h3>
-                        <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
-                        <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
-                        <Separator className="my-4" />
-                        <div><Label>Card Category</Label><Input {...form.register('cardCategory')} /></div>
-                        <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
+                        <h3 className="text-lg font-semibold border-b pb-2">Document Status</h3>
+                         {fields.map((field, index) => (
+                          <div key={field.id}>
+                            <Label>{field.name}</Label>
+                            <div className="flex gap-2">
+                                <Controller
+                                    name={`documents.${index}.status`}
+                                    control={form.control}
+                                    render={({ field: selectField }) => (
+                                        <Select onValueChange={selectField.onChange} value={selectField.value}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {documentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                        </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                <Input placeholder="Doc No. / Details" {...form.register(`documents.${index}.details`)} />
+                            </div>
+                          </div>
+                        ))}
                     </div>
                 </div>
             </ScrollArea>
