@@ -1,11 +1,10 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile } from '@/lib/types';
@@ -17,12 +16,14 @@ import LeaveReportDialog from '@/components/manpower/LeaveReportDialog';
 import * as XLSX from 'xlsx';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import TradeSummary from '@/components/manpower/TradeSummary';
+import ImportManpowerDialog from '@/components/manpower/ImportManpowerDialog';
 
 
 export default function ManpowerListPage() {
     const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave } = useAppContext();
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState<ManpowerFilterValues>({
@@ -179,6 +180,7 @@ export default function ManpowerListPage() {
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                      <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                      <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
+                     <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
                     <Button onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Manpower
@@ -281,6 +283,10 @@ export default function ManpowerListPage() {
             <LeaveReportDialog 
                 isOpen={isLeaveDialogOpen} 
                 setIsOpen={setIsLeaveDialogOpen}
+            />
+            <ImportManpowerDialog
+                isOpen={isImportDialogOpen}
+                setIsOpen={setIsImportDialogOpen}
             />
         </div>
     );

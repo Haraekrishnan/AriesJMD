@@ -5,7 +5,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
@@ -125,6 +125,7 @@ type AppContextType = {
   addManpowerLog: (log: Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>, logDate?: Date) => Promise<void>;
   updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason'>>) => Promise<void>;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
+  addMultipleManpowerProfiles: (profiles: any[]) => number;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   deleteManpowerProfile: (profileId: string) => void;
   addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date, remarks?: string) => void;
@@ -954,6 +955,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newProfileRef, profile);
     addActivityLog(user.id, 'Manpower Profile Added', profile.name);
   }, [user, addActivityLog]);
+  
+  const addMultipleManpowerProfiles = useCallback((profilesToImport: any[]): number => {
+    if (!user) return 0;
+    let importedCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    profilesToImport.forEach(item => {
+        try {
+            const hardCopyFileNo = item['Hard Copy File No']?.toString();
+            if (!hardCopyFileNo) return; 
+
+            const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === hardCopyFileNo);
+
+            const parseDate = (dateStr: string | number | undefined): string | undefined => {
+              if (!dateStr) return undefined;
+              try {
+                // XLSX can return dates as numbers (Excel date serial numbers) or strings
+                const date = new Date(dateStr);
+                // Basic validation for a reasonable date range
+                if (date.getFullYear() > 1950 && date.getFullYear() < 2100) {
+                  return date.toISOString();
+                }
+              } catch (e) {
+                // If parsing fails, return undefined
+              }
+              return undefined;
+            };
+
+            const profileData: Partial<ManpowerProfile> = {
+                name: item['Name'],
+                trade: item['Trade'],
+                status: item['Status'] || 'Working',
+                hardCopyFileNo: hardCopyFileNo,
+                epNumber: item['EP Number'],
+                plantName: item['Plant Name'],
+                eicName: item['EIC Name'],
+                passIssueDate: parseDate(item['Pass Issue Date']),
+                joiningDate: parseDate(item['Joining Date']),
+                woValidity: parseDate(item['WO Expiry']),
+                wcPolicyValidity: parseDate(item['WC Policy Expiry']),
+                labourContractValidity: parseDate(item['Labour Contract Expiry']),
+                medicalExpiryDate: parseDate(item['Medical Expiry']),
+                safetyExpiryDate: parseDate(item['Safety Expiry']),
+                irataValidity: parseDate(item['IRATA Expiry']),
+                contractValidity: parseDate(item['Contract Expiry']),
+                remarks: item['Remarks'],
+                feedback: item['Feedback'],
+                resignationDate: parseDate(item['Resignation Date']),
+                terminationDate: parseDate(item['Termination Date']),
+                documentFolderUrl: item['Document Folder URL'],
+                documents: [], // Handle documents separately if needed
+                skills: [], // Handle skills separately if needed
+            };
+
+            const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v != null && v !== ''));
+
+            const key = existingProfile ? existingProfile.id : push(ref(rtdb, 'manpowerProfiles')).key;
+            if (key) {
+              updates[`/manpowerProfiles/${key}`] = existingProfile 
+                ? { ...existingProfile, ...cleanProfileData } 
+                : { documents: [], skills: [], leaveHistory: [], ...cleanProfileData };
+              importedCount++;
+            }
+        } catch(e) { console.error("Skipping invalid manpower row:", item, e); }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+    addActivityLog(user.id, 'Bulk Manpower Import', `Imported/updated ${importedCount} profiles.`);
+    return importedCount;
+  }, [user, addActivityLog, manpowerProfiles]);
 
   const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
     if(!user) return;
@@ -1731,7 +1803,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, machineLogs, certificateRequests, announcements, buildings, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, confirmManpowerLeave, cancelManpowerLeave, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
+    login, logout, updateProfile, can, getVisibleUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, confirmManpowerLeave, cancelManpowerLeave, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
