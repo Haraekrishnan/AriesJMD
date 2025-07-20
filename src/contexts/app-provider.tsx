@@ -399,21 +399,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return users;
     }
   
-    const visibleUserIds = new Set<string>([user.id]);
+    const visibleUserIds = new Set<string>();
     
-    // Find all users who report to the current user, recursively
+    // Recursive function to find all subordinates
     const findSubordinates = (supervisorId: string) => {
       const directSubordinates = users.filter(u => u.supervisorId === supervisorId);
       directSubordinates.forEach(subordinate => {
         if (!visibleUserIds.has(subordinate.id)) {
           visibleUserIds.add(subordinate.id);
-          findSubordinates(subordinate.id); // Recursive call
+          findSubordinates(subordinate.id); // Continue finding subordinates of subordinates
         }
       });
     };
   
     findSubordinates(user.id);
   
+    // The user should always see themselves, even if they have no subordinates
+    visibleUserIds.add(user.id);
+
     return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users]);
 
@@ -425,20 +428,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return users;
     }
   
-    const assignableUserIds = new Set<string>([user.id]);
-  
-    // Find all users who report to the current user, recursively.
-    const findSubordinates = (supervisorId: string) => {
-      const directSubordinates = users.filter(u => u.supervisorId === supervisorId);
-      directSubordinates.forEach(subordinate => {
-        if (!assignableUserIds.has(subordinate.id)) {
-          assignableUserIds.add(subordinate.id);
-          findSubordinates(subordinate.id);
-        }
-      });
-    };
-  
-    findSubordinates(user.id);
+    // Supervisors can assign to themselves or their direct reports.
+    const assignableUserIds = new Set<string>();
+    assignableUserIds.add(user.id);
+    const directSubordinates = users.filter(u => u.supervisorId === user.id);
+    directSubordinates.forEach(u => assignableUserIds.add(u.id));
   
     return users.filter(u => assignableUserIds.has(u.id));
   }, [user, users]);
