@@ -3,7 +3,6 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
-import logo from '/public/aries_logo.png'; // Import the logo directly
 
 export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
@@ -32,19 +31,21 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
                 doc.addImage(dataUrl, 'PNG', 14, 12, 50, 10);
                 resolve();
             };
-            img.onerror = () => {
-                // If image fails to load, add text as a fallback
+            img.onerror = (err) => {
+                console.error("Failed to load image for PDF", err);
+                // If image fails, add text as a fallback
                 doc.setFontSize(16);
                 doc.setFont("helvetica", "bold");
                 doc.text("ARIES", 14, 20);
                 resolve(); // Resolve anyway so the PDF can still be generated
             };
-            img.src = imgUrl;
+            // Use the public path for the logo
+            img.src = '/aries_logo.png';
         });
     };
 
-    // Add the logo using the helper and the imported static path
-    await addImageToPdf(logo.src);
+    // Add the logo
+    await addImageToPdf('/aries_logo.png');
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "normal");
