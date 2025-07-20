@@ -8,44 +8,40 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
     
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Helper function to load image and add to canvas
-    const addImageToPdf = (imgUrl: string): Promise<void> => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    // Fallback to text if canvas fails
-                    doc.setFontSize(16);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("ARIES", 14, 20);
-                    resolve();
-                    return;
-                }
-                ctx.drawImage(img, 0, 0);
-                const dataUrl = canvas.toDataURL('image/png');
-                doc.addImage(dataUrl, 'PNG', 14, 12, 50, 10);
-                resolve();
-            };
-            img.onerror = (err) => {
-                console.error("Failed to load image for PDF", err);
-                // If image fails, add text as a fallback
-                doc.setFontSize(16);
-                doc.setFont("helvetica", "bold");
-                doc.text("ARIES", 14, 20);
-                resolve(); // Resolve anyway so the PDF can still be generated
-            };
-            // Use the public path for the logo
-            img.src = '/aries_logo.png';
-        });
+    // Helper function to load image via fetch and convert to Base64
+    const addImageToPdf = async (): Promise<void> => {
+        try {
+            const response = await fetch('/aries_logo.png');
+            if (!response.ok) {
+                throw new Error('Logo not found');
+            }
+            const blob = await response.blob();
+            const reader = new FileReader();
+            
+            return new Promise((resolve, reject) => {
+                reader.onloadend = () => {
+                    const base64data = reader.result;
+                    if (typeof base64data === 'string') {
+                        doc.addImage(base64data, 'PNG', 14, 12, 50, 10);
+                        resolve();
+                    } else {
+                        reject(new Error('Failed to read image as Base64.'));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error("Failed to load image for PDF:", error);
+            // Fallback to text if image loading fails
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.text("ARIES", 14, 20);
+        }
     };
 
     // Add the logo
-    await addImageToPdf('/aries_logo.png');
+    await addImageToPdf();
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "normal");
