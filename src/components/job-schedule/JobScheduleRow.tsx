@@ -14,7 +14,7 @@ import { Check, ChevronsUpDown, PlusCircle, Save, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
@@ -48,9 +48,13 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: {
-      items: schedule?.items ?? [],
+      items: [],
     },
   });
+
+  useEffect(() => {
+    form.reset({ items: schedule?.items ?? [] });
+  }, [schedule, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -165,22 +169,16 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
       ))}
       {isEditable && (
          <TableRow>
-            <TableCell colSpan={11} className="p-2">
-                 <Button type="button" variant="secondary" className="w-full" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '', clientContact: '', vehicleId: 'none', remarks: '' })}>
+            <TableCell colSpan={11} className="p-2 space-x-2 text-right">
+                 <Button type="button" variant="outline" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '', clientContact: '', vehicleId: 'none', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Row
+                </Button>
+                <Button type="button" onClick={form.handleSubmit(onSubmit)}>
+                    <Save className="mr-2 h-4 w-4"/>
+                    Save Schedule
                 </Button>
             </TableCell>
          </TableRow>
-      )}
-      {isEditable && (
-        <TableRow>
-            <TableCell colSpan={11} className="text-right p-2">
-              <Button type="button" onClick={form.handleSubmit(onSubmit)}>
-                  <Save className="mr-2 h-4 w-4"/>
-                  Save Schedule
-              </Button>
-            </TableCell>
-        </TableRow>
       )}
     </>
   );
