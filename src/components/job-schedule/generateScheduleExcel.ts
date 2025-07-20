@@ -34,13 +34,23 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
     
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
+    // Define merges for the header rows
     ws['!merges'] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, 
         { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
     ];
     
-    ws['J1'] = { v: "Job Schedule", t: 's', s: { font: { bold: true, sz: 16 }, alignment: { horizontal: "right" } } };
-    ws['A1'] = { v: "ARIES", t: 's', s: { font: { bold: true, sz: 16 } } };
+    // Apply styling to header cells
+    const boldStyle = { font: { bold: true, sz: 16 } };
+    const rightAlignStyle = { ...boldStyle, alignment: { horizontal: "right" } };
+
+    if(!ws['A1']) ws['A1'] = {t:'s', v:''};
+    ws['A1'].s = boldStyle;
+    ws['A1'].v = "ARIES";
+    
+    if(!ws['J1']) ws['J1'] = {t:'s', v:''};
+    ws['J1'].s = rightAlignStyle;
+    ws['J1'].v = "Job Schedule";
 
     // Set column widths for better readability
     ws['!cols'] = [

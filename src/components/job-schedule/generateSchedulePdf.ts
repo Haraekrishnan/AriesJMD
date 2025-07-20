@@ -8,23 +8,42 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
     
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Fetch the logo from the public folder
-    const response = await fetch('/aries_logo.png');
-    const blob = await response.blob();
-    const reader = new FileReader();
+    // Helper function to load image and add to canvas
+    const addImageToPdf = (imgUrl: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0);
+                const dataUrl = canvas.toDataURL('image/png');
+                doc.addImage(dataUrl, 'PNG', 14, 12, 50, 10);
+                resolve();
+            };
+            img.onerror = (err) => {
+                console.error("Failed to load image for PDF", err);
+                // If image fails, add text as a fallback
+                doc.setFontSize(16);
+                doc.setFont("helvetica", "bold");
+                doc.text("ARIES", 14, 20);
+                resolve(); // Resolve anyway so the PDF can still be generated
+            };
+            img.src = imgUrl;
+        });
+    };
 
-    reader.readAsDataURL(blob);
-    await new Promise<void>(resolve => {
-        reader.onloadend = () => {
-            const base64data = reader.result;
-            if (typeof base64data === 'string') {
-                doc.addImage(base64data, 'PNG', 14, 12, 50, 10);
-            }
-            resolve();
-        };
-    });
+    // Add the logo using the helper
+    await addImageToPdf('/aries_logo.png');
     
     doc.setFontSize(18);
+    doc.setFont("helvetica", "normal");
     doc.text("Job Schedule", 280, 20, { align: 'right' });
     
     doc.setDrawColor(0, 0, 255); 
