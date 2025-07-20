@@ -428,9 +428,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return users;
     }
   
-    // Supervisors can assign to themselves or their direct reports.
+    // Find all direct subordinates for the current user.
     const assignableUserIds = new Set<string>();
-    assignableUserIds.add(user.id);
+    assignableUserIds.add(user.id); // Can always assign to self
     const directSubordinates = users.filter(u => u.supervisorId === user.id);
     directSubordinates.forEach(u => assignableUserIds.add(u.id));
   
@@ -1903,4 +1903,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
