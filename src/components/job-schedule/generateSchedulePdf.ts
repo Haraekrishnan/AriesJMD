@@ -4,33 +4,13 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
-// Draws a simplified vector logo directly onto the PDF
-const addVectorLogo = (doc: jsPDF) => {
-    const x = 14;
-    const y = 15;
-    const height = 10;
-    
-    doc.setDrawColor(33, 150, 243); // A nice blue color
-    doc.setLineWidth(1.2);
-
-    // Letter 'A'
-    doc.line(x, y + height, x + height / 2, y);
-    doc.line(x + height / 2, y, x + height, y + height);
-    doc.line(x + height * 0.25, y + height / 2, x + height * 0.75, y + height / 2);
-
-    // Simple wave/swoosh underneath
-    doc.setLineWidth(0.8);
-    const swooshY = y + height + 2;
-    doc.arc(x + height / 2, swooshY, height / 2, 2.1, 3.14, 'S');
-};
-
-
 export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Add the logo
-    addVectorLogo(doc);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("ARIES", 14, 20);
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "normal");
