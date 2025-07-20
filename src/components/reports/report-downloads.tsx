@@ -1,3 +1,4 @@
+
 'use client';
 import type { Task } from '@/lib/types';
 import { useAppContext } from '@/contexts/app-provider';
@@ -19,7 +20,7 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       'Assignee': task.assigneeIds && task.assigneeIds.length > 0 ? users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A' : 'N/A',
       'Status': task.status,
       'Priority': task.priority,
-      'Due Date': format(new Date(task.dueDate), 'dd-MM-yyyy'),
+      'Due Date': task.dueDate ? format(new Date(task.dueDate), 'dd-MM-yyyy') : 'N/A',
       'Description': task.description,
     }));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -44,7 +45,7 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
         task.assigneeIds && task.assigneeIds.length > 0 ? users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A' : 'N/A',
         task.status,
         task.priority,
-        format(new Date(task.dueDate), 'dd-MM-yyyy'),
+        task.dueDate ? format(new Date(task.dueDate), 'dd-MM-yyyy') : 'N/A',
       ]),
       startY: 20,
     });
