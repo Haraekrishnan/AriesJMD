@@ -425,7 +425,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return users;
     }
   
-    // Normal users can assign tasks to themselves and their direct reports.
+    // For other roles, they can assign tasks to themselves and their direct subordinates.
     const assignableUserIds = new Set<string>();
     assignableUserIds.add(user.id); // Can always assign to self
   
