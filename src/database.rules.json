@@ -114,6 +114,10 @@
     "branding": {
       ".read": true,
       ".write": true
+    },
+    "jobSchedules": {
+      ".read": true,
+      ".write": true
     }
   }
 }
