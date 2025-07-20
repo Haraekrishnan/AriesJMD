@@ -38,7 +38,7 @@ export function AppSidebar() {
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0 },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount },
-    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount + myPendingTaskRequestCount },
+    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0 },
@@ -48,7 +48,6 @@ export function AppSidebar() {
     { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0 },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0 },
-    { href: '/reports', icon: FileText, label: 'Reports', notificationCount: 0 },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0 },
   ];
 

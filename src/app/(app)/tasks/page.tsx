@@ -17,6 +17,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
+import ReportDownloads from '@/components/reports/report-downloads';
 
 export default function TasksPage() {
   const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, can } = useAppContext();
@@ -24,6 +25,7 @@ export default function TasksPage() {
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
     priority: 'all',
+    assigneeId: 'all',
     dateRange: undefined,
     showMyTasksOnly: false,
   });
@@ -60,17 +62,23 @@ export default function TasksPage() {
         return false;
       }
       
-      const { status, priority, dateRange, showMyTasksOnly } = filters;
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId } = filters;
+
+      if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
+        return false;
+      }
 
       if (showMyTasksOnly) {
           if (!task.assigneeIds?.includes(user.id)) return false;
       } else {
+        if (assigneeId === 'all') { // Only apply visibility logic if not filtering by a specific assignee
           const isMyTask = task.assigneeIds?.includes(user.id);
           const isMySubordinatesTask = task.assigneeIds?.some(id => mySubordinateIds.has(id));
           
           if (!isMyTask && !isMySubordinatesTask && !privilegedRoles.includes(user.role)) {
               return false;
           }
+        }
       }
       
       let statusMatch = status === 'all' || task.status === status;
@@ -111,9 +119,10 @@ export default function TasksPage() {
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
-            <p className="text-muted-foreground">Drag and drop tasks to change their status.</p>
+            <p className="text-muted-foreground">Drag and drop tasks to change their status, or use filters to generate a report.</p>
           </div>
           <div className="flex items-center gap-2">
+              <ReportDownloads tasks={filteredTasks} />
               {mySubmittedTasks.length > 0 && (
                 <Button variant="outline" onClick={() => setIsMyRequestsDialogOpen(true)}>
                     <History className="mr-2 h-4 w-4" />

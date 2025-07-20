@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -8,10 +9,12 @@ import { TaskStatus } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
+import { useAppContext } from '@/contexts/app-provider';
 
 export interface TaskFilters {
   status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';
   priority: 'all' | 'Low' | 'Medium' | 'High';
+  assigneeId: string;
   dateRange?: DateRange;
   showMyTasksOnly: boolean;
 }
@@ -22,7 +25,9 @@ interface TaskFiltersProps {
 }
 
 export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
+  const { getVisibleUsers } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
+  const visibleUsers = getVisibleUsers();
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -36,6 +41,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
     const clearedFilters = {
         status: 'all',
         priority: 'all',
+        assigneeId: 'all',
         dateRange: undefined,
         showMyTasksOnly: false,
     } as const;
@@ -46,8 +52,19 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
   return (
     <div className="p-4 border rounded-lg bg-card">
         <div className="flex flex-wrap gap-4 items-center">
+            <Select value={filters.assigneeId} onValueChange={value => handleFilterChange('assigneeId', value)}>
+                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All Users" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    {visibleUsers.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
             <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value as TaskFilters['status'])}>
-                <SelectTrigger className="w-full sm:w-auto"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="All Statuses" /></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="To Do">To Do</SelectItem>
@@ -58,7 +75,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
             </Select>
 
             <Select value={filters.priority} onValueChange={value => handleFilterChange('priority', value as TaskFilters['priority'])}>
-                <SelectTrigger className="w-full sm:w-auto"><SelectValue placeholder="All Priorities"/></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="All Priorities"/></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Priorities</SelectItem>
                     <SelectItem value="Low">Low</SelectItem>
