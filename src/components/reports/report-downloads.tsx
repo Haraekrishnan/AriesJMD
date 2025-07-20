@@ -16,7 +16,7 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
   const handleDownloadExcel = () => {
     const dataToExport = tasks.map(task => ({
       'Task Title': task.title,
-      'Assignee': users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A',
+      'Assignee': task.assigneeIds && task.assigneeIds.length > 0 ? users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A' : 'N/A',
       'Status': task.status,
       'Priority': task.priority,
       'Due Date': format(new Date(task.dueDate), 'dd-MM-yyyy'),
@@ -41,7 +41,7 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       head: [['Task Title', 'Assignee', 'Status', 'Priority', 'Due Date']],
       body: tasks.map(task => [
         task.title,
-        users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A',
+        task.assigneeIds && task.assigneeIds.length > 0 ? users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A' : 'N/A',
         task.status,
         task.priority,
         format(new Date(task.dueDate), 'dd-MM-yyyy'),
