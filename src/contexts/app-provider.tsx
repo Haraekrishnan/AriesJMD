@@ -399,54 +399,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return users;
     }
   
-    const visibleUserIds = new Set<string>();
-    visibleUserIds.add(user.id);
-  
-    // Find all users who are direct subordinates of the current user
+    const visibleUserIds = new Set<string>([user.id]);
+    
+    // Find all users who report to the current user, recursively
     const findSubordinates = (supervisorId: string) => {
-      users.forEach(u => {
-        if (u.supervisorId === supervisorId) {
-          visibleUserIds.add(u.id);
-          // Recursively find subordinates of subordinates if needed, but keeping it simple for now.
+      const directSubordinates = users.filter(u => u.supervisorId === supervisorId);
+      directSubordinates.forEach(subordinate => {
+        if (!visibleUserIds.has(subordinate.id)) {
+          visibleUserIds.add(subordinate.id);
+          findSubordinates(subordinate.id); // Recursive call
         }
       });
     };
   
     findSubordinates(user.id);
   
-    // Supervisor peer group logic
-    if (user.role === 'Supervisor' || user.role === 'HSE') {
-      const leadSupervisorId = user.supervisorId;
-      if (leadSupervisorId) {
-        // This user is part of a peer group under a lead supervisor.
-        // Add the lead supervisor.
-        visibleUserIds.add(leadSupervisorId);
-        
-        // Find all users under this lead supervisor (peers and their juniors).
-        users.forEach(u => {
-          if (u.supervisorId === leadSupervisorId) {
-            visibleUserIds.add(u.id); // Add peer supervisors/HSE
-            findSubordinates(u.id); // Add juniors of peers
-          }
-        });
-      }
-    }
-  
     return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    
-    // Admins and Project Coordinators can assign to anyone
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
+  
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
+    if (privilegedRoles.includes(user.role)) {
         return users;
     }
-
-    const myDirectSubordinates = users.filter(u => u.supervisorId === user.id);
-    const assignable = new Set([user, ...myDirectSubordinates]);
-
-    return users.filter(u => assignable.has(u.id));
+  
+    const assignableUserIds = new Set<string>([user.id]);
+  
+    // Find all users who report to the current user, recursively.
+    const findSubordinates = (supervisorId: string) => {
+      const directSubordinates = users.filter(u => u.supervisorId === supervisorId);
+      directSubordinates.forEach(subordinate => {
+        if (!assignableUserIds.has(subordinate.id)) {
+          assignableUserIds.add(subordinate.id);
+          findSubordinates(subordinate.id);
+        }
+      });
+    };
+  
+    findSubordinates(user.id);
+  
+    return users.filter(u => assignableUserIds.has(u.id));
   }, [user, users]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
@@ -1915,3 +1909,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+

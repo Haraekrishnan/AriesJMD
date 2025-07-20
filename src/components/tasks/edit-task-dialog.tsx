@@ -66,6 +66,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const canEditCoreFields = isCreator || isAdmin;
   const canEditDueDate = isCreator || isAdmin;
   const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Supervisor' || user?.role === 'HSE' || user?.role === 'Store in Charge') && (!isCompleted || isAdmin);
+  
+  const assignableUsers = useMemo(() => {
+    return getAssignableUsers();
+  }, [getAssignableUsers]);
 
   useEffect(() => {
     if (taskToDisplay && isOpen) {
@@ -83,10 +87,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       }
     }
   }, [taskToDisplay, form, isOpen, user, markTaskAsViewed]);
-
-  const assignableUsers = useMemo(() => {
-    return getAssignableUsers();
-  }, [getAssignableUsers]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

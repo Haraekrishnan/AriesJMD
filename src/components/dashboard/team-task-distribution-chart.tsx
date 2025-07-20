@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,14 +22,14 @@ interface TeamTaskDistributionChartProps {
     users: User[];
 }
 
-export default function TeamTaskDistributionChart({ tasks, users }: TeamTaskDistributionChartProps) {
+export default function TeamTaskDistributionChart({ tasks, users: visibleUsers }: TeamTaskDistributionChartProps) {
   const { user } = useAppContext();
   const [selectedUserId, setSelectedUserId] = useState('all');
 
   const selectedUserName = useMemo(() => {
     if (selectedUserId === 'all') return 'All Visible Members';
-    return users.find(u => u.id === selectedUserId)?.name || 'Selected User';
-  }, [selectedUserId, users]);
+    return visibleUsers.find(u => u.id === selectedUserId)?.name || 'Selected User';
+  }, [selectedUserId, visibleUsers]);
 
   const chartData = useMemo(() => {
     const relevantTasks = selectedUserId === 'all'
@@ -48,7 +49,7 @@ export default function TeamTaskDistributionChart({ tasks, users }: TeamTaskDist
       .filter(d => d.value > 0);
   }, [tasks, selectedUserId]);
 
-  const canSelectAll = users.length > 1;
+  const canSelectAll = visibleUsers.length > 1;
 
   return (
     <Card>
@@ -61,7 +62,7 @@ export default function TeamTaskDistributionChart({ tasks, users }: TeamTaskDist
             </SelectTrigger>
             <SelectContent>
                 {canSelectAll && <SelectItem value="all">All Visible Members</SelectItem>}
-                {users.map(u => (
+                {visibleUsers.map(u => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
             </SelectContent>
