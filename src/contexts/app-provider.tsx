@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -391,53 +390,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return canObject;
   }, [user, roles, loading]);
 
-  const getVisibleUsers = useCallback(() => {
-    if (!user) return [];
-
+  const getTeamRoster = useCallback((forUser: User): User[] => {
     const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
-    if (privilegedRoles.includes(user.role)) {
+    if (privilegedRoles.includes(forUser.role)) {
       return users;
     }
 
-    // A user can see themself and their full reporting chain below them.
-    const visibleUserIds = new Set<string>();
-    visibleUserIds.add(user.id);
-    const queue = [user.id];
+    let teamLeader = forUser;
+    let current = forUser;
+    while (current.supervisorId) {
+      const supervisor = users.find(u => u.id === current.supervisorId);
+      if (!supervisor || privilegedRoles.includes(supervisor.role)) {
+        break;
+      }
+      teamLeader = supervisor;
+      current = supervisor;
+    }
     
+    const teamSet = new Set<string>();
+    const queue = [teamLeader.id];
+    teamSet.add(teamLeader.id);
+
     while (queue.length > 0) {
-        const currentId = queue.shift();
-        const subordinates = users.filter(u => u.supervisorId === currentId);
-        subordinates.forEach(s => {
-            if (!visibleUserIds.has(s.id)) {
-                visibleUserIds.add(s.id);
-                queue.push(s.id);
-            }
-        });
+      const currentId = queue.shift();
+      const subordinates = users.filter(u => u.supervisorId === currentId);
+      subordinates.forEach(s => {
+        if (!teamSet.has(s.id)) {
+          teamSet.add(s.id);
+          queue.push(s.id);
+        }
+      });
     }
 
-    return users.filter(u => visibleUserIds.has(u.id));
-  }, [user, users]);
+    return users.filter(u => teamSet.has(u.id));
+  }, [users]);
+  
+  const getVisibleUsers = useCallback(() => {
+    if (!user) return [];
+    return getTeamRoster(user);
+  }, [user, getTeamRoster]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
+    return getTeamRoster(user);
+  }, [user, getTeamRoster]);
 
-    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
-    if (privilegedRoles.includes(user.role)) {
-        return users;
-    }
-
-    // A user can assign tasks to themself and their direct subordinates.
-    const assignableUserIds = new Set<string>();
-    assignableUserIds.add(user.id);
-    
-    users.forEach(u => {
-        if (u.supervisorId === user.id) {
-            assignableUserIds.add(u.id);
-        }
-    });
-
-    return users.filter(u => assignableUserIds.has(u.id));
-  }, [user, users]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
     if(!user) return;
@@ -1907,4 +1904,6 @@ export const useAppContext = (): AppContextType => {
 };
 
     
+    
+
     
