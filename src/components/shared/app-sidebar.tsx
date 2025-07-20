@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -33,24 +34,24 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount } = useAppContext();
+  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount } = useAppContext();
   const pathname = usePathname();
   
   const navItems = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0 },
-    { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount },
-    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount },
-    { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0 },
-    { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount },
-    { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length },
-    { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0 },
-    { href: '/schedule', icon: CalendarDays, label: 'Schedule', notificationCount: plannerNotificationCount },
-    { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0 },
-    { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0 },
-    { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount },
-    { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0 },
-    { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0 },
-    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0 },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
+    { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount, show: true },
+    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: pendingTaskApprovalCount + myNewTaskCount, show: true },
+    { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
+    { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount, show: true },
+    { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
+    { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
+    { href: '/schedule', icon: CalendarDays, label: 'Schedule', notificationCount: plannerNotificationCount, show: true },
+    { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
+    { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
+    { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount, show: true },
+    { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
+    { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
+    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0, show: true },
   ];
 
   return (
@@ -70,23 +71,25 @@ export function AppSidebar() {
       <nav className="flex-1 px-4 overflow-y-auto">
         <ul className="space-y-2">
           {navItems.map(item => (
-            <li key={item.href}>
-              <Button
-                asChild
-                variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
-                className="w-full justify-start text-base py-6"
-              >
-                <Link href={item.href} className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </div>
-                   {item.notificationCount > 0 && (
-                    <Badge variant="destructive" className="h-6 w-6 flex items-center justify-center p-0">{item.notificationCount}</Badge>
-                  )}
-                </Link>
-              </Button>
-            </li>
+            item.show && (
+              <li key={item.href}>
+                <Button
+                  asChild
+                  variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
+                  className="w-full justify-start text-base py-6"
+                >
+                  <Link href={item.href} className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.notificationCount > 0 && (
+                      <Badge variant="destructive" className="h-6 w-6 flex items-center justify-center p-0">{item.notificationCount}</Badge>
+                    )}
+                  </Link>
+                </Button>
+              </li>
+            )
           ))}
         </ul>
       </nav>

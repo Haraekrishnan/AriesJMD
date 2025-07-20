@@ -3,6 +3,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -92,7 +93,8 @@ export const ALL_PERMISSIONS = [
   'view_performance_reports',
   'view_activity_logs',
   'manage_accommodation',
-  'log_manpower'
+  'log_manpower',
+  'manage_job_schedule'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];

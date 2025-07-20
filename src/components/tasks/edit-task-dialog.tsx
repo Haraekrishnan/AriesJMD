@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -43,7 +44,7 @@ interface EditTaskDialogProps {
 }
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
-  const { user, users, tasks, updateTask, deleteTask, getVisibleUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment } = useAppContext();
+  const { user, users, tasks, updateTask, deleteTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment } = useAppContext();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -85,8 +86,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   }, [taskToDisplay, form, isOpen, user, markTaskAsViewed]);
 
   const assignableUsers = useMemo(() => {
-    return getVisibleUsers();
-  }, [getVisibleUsers]);
+    return getAssignableUsers();
+  }, [getAssignableUsers]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

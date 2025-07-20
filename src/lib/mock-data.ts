@@ -1,5 +1,6 @@
 
 
+
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
@@ -22,7 +23,7 @@ export const ROLES: RoleDefinition[] = [
       'approve_store_requests', 'manage_inventory',
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
-      'log_manpower'
+      'log_manpower', 'manage_job_schedule'
     ],
     isEditable: false,
   },
@@ -30,7 +31,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-supervisor',
     name: 'Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule'
     ],
     isEditable: false,
   },
@@ -118,7 +119,7 @@ export const USERS: User[] = [
   { id: '19', name: 'Aparna M R', email: 'aparna@ariesmarine.com', password: 'password', role: 'Team Member', avatar: 'https://i.pravatar.cc/150?u=19', supervisorId: '11', projectId: 'proj-1', planningScore: 0 },
   { id: '20', name: 'John Safety', email: 'john.safety@ariesmarine.com', password: 'password', role: 'HSE', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2', projectId: 'proj-6', planningScore: 0 },
   { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Junior HSE', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20', projectId: 'proj-6', planningScore: 0 },
-  { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2', projectId: 'proj-6', planningScore: 0 },
+    { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2', projectId: 'proj-6', planningScore: 0 },
   { id: '23', name: 'Asst. Store Keeper', email: 'asst.store@ariesmarine.com', password: 'password', role: 'Assistant Store Incharge', avatar: 'https://i.pravatar.cc/150?u=23', supervisorId: '22', projectId: 'proj-6', planningScore: 0 },
 ];
 
@@ -257,8 +258,8 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
         id: 'ireq-1',
         requesterId: '19', 
         items: [
-          { description: 'A4 paper ream', quantity: 5, remarks: '' },
-          { description: 'Blue and black pens', quantity: 2, remarks: '1 box each' }
+          { description: 'A4 paper ream', quantity: 5, unit: 'pcs', remarks: '' },
+          { description: 'Blue and black pens', quantity: 2, unit: 'box', remarks: '1 box each' }
         ],
         status: 'Pending',
         date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
@@ -269,7 +270,7 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
         id: 'ireq-2',
         requesterId: '12', 
         items: [
-          { description: 'Fluke Multimeters', quantity: 2, remarks: 'The old ones are malfunctioning.' }
+          { description: 'Fluke Multimeters', quantity: 2, unit: 'pcs', remarks: 'The old ones are malfunctioning.' }
         ],
         status: 'Approved',
         approverId: '22',
@@ -316,9 +317,9 @@ export const CERTIFICATE_REQUESTS: CertificateRequest[] = [
 ];
 
 export const MANPOWER_LOGS: ManpowerLog[] = [
-    { id: 'mp-1', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 20, countOut: 1, reason: '1 person sick leave', updatedBy: '3', personOutName: 'David' },
-    { id: 'mp-2', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-2', countIn: 15, countOut: 0, reason: 'Full attendance', updatedBy: '4' },
-    { id: 'mp-3', date: format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 19, countOut: 0, reason: 'Full attendance', updatedBy: '3' },
+    { id: 'mp-1', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 20, countOut: 1, reason: '1 person sick leave', updatedBy: '3', yesterdayCount: 19, total: 38, countOnLeave: 1, personOnLeaveName: 'David' },
+    { id: 'mp-2', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-2', countIn: 15, countOut: 0, reason: 'Full attendance', updatedBy: '4', yesterdayCount: 15, total: 30, countOnLeave: 0 },
+    { id: 'mp-3', date: format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 19, countOut: 0, reason: 'Full attendance', updatedBy: '3', yesterdayCount: 19, total: 38, countOnLeave: 0 },
 ];
 
 export const UT_MACHINES: UTMachine[] = [];

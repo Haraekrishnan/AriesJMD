@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, FileDown } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { generateScheduleExcel } from '@/components/job-schedule/generateSchedul
 import { generateSchedulePdf } from '@/components/job-schedule/generateSchedulePdf';
 
 export default function JobSchedulePage() {
-    const { user, projects, jobSchedules, manpowerProfiles, vehicles } = useAppContext();
+    const { user, projects, jobSchedules, manpowerProfiles, vehicles, can } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
 
     const visibleProjects = useMemo(() => {
@@ -59,6 +59,20 @@ export default function JobSchedulePage() {
         } : undefined;
         generateSchedulePdf(scheduleWithNames, projectName, selectedDate);
     };
+
+    if (!can.manage_job_schedule) {
+        return (
+            <Card className="w-full max-w-md mx-auto mt-20">
+               <CardHeader className="text-center items-center">
+                   <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                       <AlertTriangle className="h-10 w-10 text-destructive" />
+                   </div>
+                   <CardTitle>Access Denied</CardTitle>
+                   <CardDescription>You do not have permission to view the job schedule.</CardDescription>
+               </CardHeader>
+           </Card>
+        );
+    }
 
     return (
         <div className="space-y-8">

@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -35,7 +36,7 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function CreateTaskDialog() {
-  const { user, createTask, getVisibleUsers } = useAppContext();
+  const { user, createTask, getAssignableUsers } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -50,8 +51,8 @@ export default function CreateTaskDialog() {
   });
 
   const assignableUsers = useMemo(() => {
-    return getVisibleUsers();
-  }, [getVisibleUsers]);
+    return getAssignableUsers();
+  }, [getAssignableUsers]);
 
   const onSubmit = (data: TaskFormValues) => {
     createTask(data);
