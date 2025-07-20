@@ -4,15 +4,25 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
-export function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
+export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Add the Aries text as a header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text("ARIES", 14, 20);
-    doc.setFont('helvetica', 'normal');
+    // Fetch the logo from the public folder
+    const response = await fetch('/aries_logo.png');
+    const blob = await response.blob();
+    const reader = new FileReader();
+
+    reader.readAsDataURL(blob);
+    await new Promise<void>(resolve => {
+        reader.onloadend = () => {
+            const base64data = reader.result;
+            if (typeof base64data === 'string') {
+                doc.addImage(base64data, 'PNG', 14, 12, 50, 10);
+            }
+            resolve();
+        };
+    });
     
     doc.setFontSize(18);
     doc.text("Job Schedule", 280, 20, { align: 'right' });

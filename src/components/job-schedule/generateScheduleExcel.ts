@@ -13,15 +13,15 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
     
     const body = (schedule?.items || []).map((item, index) => [
         index + 1,
-        item.manpowerIds.join(', '), // Placeholder, replace with actual names
-        item.jobType,
-        item.jobNo,
-        item.projectVesselName,
-        item.location,
-        item.reportingTime,
-        item.clientContact,
-        item.vehicleId, // Placeholder, replace with actual vehicle number
-        item.remarks
+        Array.isArray(item.manpowerIds) ? item.manpowerIds.join(', ') : '', 
+        item.jobType || '',
+        item.jobNo || '',
+        item.projectVesselName || '',
+        item.location || '',
+        item.reportingTime || '',
+        item.clientContact || '',
+        item.vehicleId || 'N/A',
+        item.remarks || ''
     ]);
 
     const ws_data = [
@@ -39,6 +39,9 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
         { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
     ];
     
+    ws['J1'] = { v: "Job Schedule", t: 's', s: { font: { bold: true, sz: 16 }, alignment: { horizontal: "right" } } };
+    ws['A1'] = { v: "ARIES", t: 's', s: { font: { bold: true, sz: 16 } } };
+
     // Set column widths for better readability
     ws['!cols'] = [
         { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, 

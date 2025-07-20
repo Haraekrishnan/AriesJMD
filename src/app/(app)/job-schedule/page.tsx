@@ -14,7 +14,7 @@ import { generateScheduleExcel } from '@/components/job-schedule/generateSchedul
 import { generateSchedulePdf } from '@/components/job-schedule/generateSchedulePdf';
 
 export default function JobSchedulePage() {
-    const { user, projects, jobSchedules, manpowerProfiles } = useAppContext();
+    const { user, projects, jobSchedules, manpowerProfiles, vehicles } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
 
     const visibleProjects = useMemo(() => {
@@ -26,16 +26,20 @@ export default function JobSchedulePage() {
     }, [user, projects]);
 
     const [selectedProjectId, setSelectedProjectId] = useState<string>(visibleProjects[0]?.id || 'all');
+    
+    const scheduleForExport = useMemo(() => {
+        return jobSchedules.find(s => s.date === format(selectedDate, 'yyyy-MM-dd') && s.projectId === selectedProjectId);
+    }, [jobSchedules, selectedDate, selectedProjectId]);
 
     const handleExportExcel = () => {
-        const schedule = jobSchedules.find(s => s.date === format(selectedDate, 'yyyy-MM-dd') && s.projectId === selectedProjectId);
         const projectName = projects.find(p => p.id === selectedProjectId)?.name || 'All Projects';
         
-        const scheduleWithNames = schedule ? {
-            ...schedule,
-            items: schedule.items.map(item => ({
+        const scheduleWithNames = scheduleForExport ? {
+            ...scheduleForExport,
+            items: scheduleForExport.items.map(item => ({
                 ...item,
-                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id)
+                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id),
+                vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
             }))
         } : undefined;
 
@@ -43,14 +47,14 @@ export default function JobSchedulePage() {
     };
 
     const handleExportPdf = () => {
-        const schedule = jobSchedules.find(s => s.date === format(selectedDate, 'yyyy-MM-dd') && s.projectId === selectedProjectId);
         const projectName = projects.find(p => p.id === selectedProjectId)?.name || 'All Projects';
 
-        const scheduleWithNames = schedule ? {
-            ...schedule,
-            items: schedule.items.map(item => ({
+        const scheduleWithNames = scheduleForExport ? {
+            ...scheduleForExport,
+            items: scheduleForExport.items.map(item => ({
                 ...item,
-                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id)
+                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id),
+                vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
             }))
         } : undefined;
         generateSchedulePdf(scheduleWithNames, projectName, selectedDate);
@@ -64,8 +68,8 @@ export default function JobSchedulePage() {
                     <p className="text-muted-foreground">Plan and view the daily job schedule.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={handleExportExcel} disabled={selectedProjectId === 'all'}><FileDown className="mr-2 h-4 w-4" /> Export Excel</Button>
-                    <Button variant="outline" onClick={handleExportPdf} disabled={selectedProjectId === 'all'}><FileDown className="mr-2 h-4 w-4" /> Export PDF</Button>
+                    <Button variant="outline" onClick={handleExportExcel} disabled={selectedProjectId === 'all' || !scheduleForExport}><FileDown className="mr-2 h-4 w-4" /> Export Excel</Button>
+                    <Button variant="outline" onClick={handleExportPdf} disabled={selectedProjectId === 'all' || !scheduleForExport}><FileDown className="mr-2 h-4 w-4" /> Export PDF</Button>
                 </div>
             </div>
 
