@@ -4,44 +4,33 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
+// Draws a simplified vector logo directly onto the PDF
+const addVectorLogo = (doc: jsPDF) => {
+    const x = 14;
+    const y = 15;
+    const height = 10;
+    
+    doc.setDrawColor(33, 150, 243); // A nice blue color
+    doc.setLineWidth(1.2);
+
+    // Letter 'A'
+    doc.line(x, y + height, x + height / 2, y);
+    doc.line(x + height / 2, y, x + height, y + height);
+    doc.line(x + height * 0.25, y + height / 2, x + height * 0.75, y + height / 2);
+
+    // Simple wave/swoosh underneath
+    doc.setLineWidth(0.8);
+    const swooshY = y + height + 2;
+    doc.arc(x + height / 2, swooshY, height / 2, 2.1, 3.14, 'S');
+};
+
+
 export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Helper function to load image via fetch and convert to Base64
-    const addImageToPdf = async (): Promise<void> => {
-        try {
-            const response = await fetch('/aries_logo.png');
-            if (!response.ok) {
-                throw new Error('Logo not found');
-            }
-            const blob = await response.blob();
-            const reader = new FileReader();
-            
-            return new Promise((resolve, reject) => {
-                reader.onloadend = () => {
-                    const base64data = reader.result;
-                    if (typeof base64data === 'string') {
-                        doc.addImage(base64data, 'PNG', 14, 12, 50, 10);
-                        resolve();
-                    } else {
-                        reject(new Error('Failed to read image as Base64.'));
-                    }
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        } catch (error) {
-            console.error("Failed to load image for PDF:", error);
-            // Fallback to text if image loading fails
-            doc.setFontSize(16);
-            doc.setFont("helvetica", "bold");
-            doc.text("ARIES", 14, 20);
-        }
-    };
-
     // Add the logo
-    await addImageToPdf();
+    addVectorLogo(doc);
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "normal");
@@ -62,7 +51,7 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
     const tableColumn = ["Sr.No", "Name", "Job Type", "Job No.", "Project/Vessel's", "Location", "Reporting Time", "Client/Contact", "Vehicle", "Remarks"];
     const tableRows = (schedule?.items || []).map((item, index) => [
         index + 1,
-        item.manpowerIds.join(', '), 
+        Array.isArray(item.manpowerIds) ? item.manpowerIds.join(', ') : '', 
         item.jobType,
         item.jobNo,
         item.projectVesselName,
