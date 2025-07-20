@@ -15,6 +15,7 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
   const { user, users, projects, jobSchedules, manpowerProfiles, can } = useAppContext();
 
   const schedulesToShow = useMemo(() => {
+    if (!jobSchedules) return []; // Guard against undefined
     if (projectId === 'all') {
       return jobSchedules.filter(s => s.date === selectedDate);
     }
