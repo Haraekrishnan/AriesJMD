@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
+import logo from '/public/aries_logo.png'; // Import the logo directly
 
 export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
@@ -10,7 +11,7 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
 
     // Helper function to load image and add to canvas
     const addImageToPdf = (imgUrl: string): Promise<void> => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "Anonymous";
             img.onload = () => {
@@ -19,7 +20,11 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
                 canvas.height = img.height;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
-                    reject(new Error('Could not get canvas context'));
+                    // Fallback to text if canvas fails
+                    doc.setFontSize(16);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("ARIES", 14, 20);
+                    resolve();
                     return;
                 }
                 ctx.drawImage(img, 0, 0);
@@ -27,9 +32,8 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
                 doc.addImage(dataUrl, 'PNG', 14, 12, 50, 10);
                 resolve();
             };
-            img.onerror = (err) => {
-                console.error("Failed to load image for PDF", err);
-                // If image fails, add text as a fallback
+            img.onerror = () => {
+                // If image fails to load, add text as a fallback
                 doc.setFontSize(16);
                 doc.setFont("helvetica", "bold");
                 doc.text("ARIES", 14, 20);
@@ -39,8 +43,8 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
         });
     };
 
-    // Add the logo using the helper
-    await addImageToPdf('/aries_logo.png');
+    // Add the logo using the helper and the imported static path
+    await addImageToPdf(logo.src);
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "normal");
