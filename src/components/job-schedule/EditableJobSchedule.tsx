@@ -1,3 +1,4 @@
+
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,9 +63,9 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
   
   const manpowerOptions = useMemo(() => 
     manpowerProfiles
-        .filter(p => p.eic === projectId && p.status === 'Working')
+        .filter(p => p.status === 'Working')
         .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` })),
-    [manpowerProfiles, projectId]
+    [manpowerProfiles]
   );
   
   const vehicleOptions = useMemo(() => vehicles, [vehicles]);
