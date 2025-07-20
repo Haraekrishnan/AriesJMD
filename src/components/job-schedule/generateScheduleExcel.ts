@@ -25,7 +25,7 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
     ]);
 
     const ws_data = [
-        ["Aries Marine", null, null, null, null, null, null, null, null, "Job Schedule"],
+        ["ARIES", null, null, null, null, null, null, null, null, "Job Schedule"],
         [`Project: ${projectName}`, null, null, null, null, null, null, null, null, `Date: ${format(selectedDate, 'dd-MM-yyyy')}`],
         [],
         header,
@@ -39,6 +39,7 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
         { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
     ];
     
+    // Set column widths for better readability
     ws['!cols'] = [
         { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, 
         { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 30 }
