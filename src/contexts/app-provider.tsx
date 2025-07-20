@@ -400,23 +400,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   
     const visibleUserIds = new Set<string>();
-    
+    visibleUserIds.add(user.id);
+  
     // Recursive function to find all subordinates
     const findSubordinates = (supervisorId: string) => {
-      const directSubordinates = users.filter(u => u.supervisorId === supervisorId);
-      directSubordinates.forEach(subordinate => {
-        if (!visibleUserIds.has(subordinate.id)) {
-          visibleUserIds.add(subordinate.id);
-          findSubordinates(subordinate.id); // Continue finding subordinates of subordinates
+      users.forEach(u => {
+        if (u.supervisorId === supervisorId && !visibleUserIds.has(u.id)) {
+          visibleUserIds.add(u.id);
+          findSubordinates(u.id); // Recursively find their subordinates
         }
       });
     };
   
     findSubordinates(user.id);
   
-    // The user should always see themselves, even if they have no subordinates
-    visibleUserIds.add(user.id);
-
     return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users]);
 
@@ -425,12 +422,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
     if (privilegedRoles.includes(user.role)) {
-        return users;
+      return users;
     }
   
-    // Find all direct subordinates for the current user.
+    // Normal users can assign tasks to themselves and their direct reports.
     const assignableUserIds = new Set<string>();
     assignableUserIds.add(user.id); // Can always assign to self
+  
     const directSubordinates = users.filter(u => u.supervisorId === user.id);
     directSubordinates.forEach(u => assignableUserIds.add(u.id));
   
