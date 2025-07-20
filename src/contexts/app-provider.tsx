@@ -390,51 +390,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return canObject;
   }, [user, roles, loading]);
 
-  const getTeamRoster = useCallback((forUser: User): User[] => {
-    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
-    if (privilegedRoles.includes(forUser.role)) {
-      return users;
+  const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
+    const subordinates = new Set<string>();
+    const queue = [userId];
+    while(queue.length > 0) {
+        const currentId = queue.shift()!;
+        const directReports = allUsers.filter(u => u.supervisorId === currentId);
+        directReports.forEach(report => {
+            if (!subordinates.has(report.id)) {
+                subordinates.add(report.id);
+                queue.push(report.id);
+            }
+        });
     }
-
-    let teamLeader = forUser;
-    let current = forUser;
-    while (current.supervisorId) {
-      const supervisor = users.find(u => u.id === current.supervisorId);
-      if (!supervisor || privilegedRoles.includes(supervisor.role)) {
-        break;
-      }
-      teamLeader = supervisor;
-      current = supervisor;
-    }
-    
-    const teamSet = new Set<string>();
-    const queue = [teamLeader.id];
-    teamSet.add(teamLeader.id);
-
-    while (queue.length > 0) {
-      const currentId = queue.shift();
-      const subordinates = users.filter(u => u.supervisorId === currentId);
-      subordinates.forEach(s => {
-        if (!teamSet.has(s.id)) {
-          teamSet.add(s.id);
-          queue.push(s.id);
-        }
-      });
-    }
-
-    return users.filter(u => teamSet.has(u.id));
-  }, [users]);
+    return subordinates;
+  }, []);
   
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    return getTeamRoster(user);
-  }, [user, getTeamRoster]);
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
+        return users;
+    }
+
+    const subordinateIds = getSubordinateChain(user.id, users);
+    return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
+  }, [user, users, getSubordinateChain]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    return getTeamRoster(user);
-  }, [user, getTeamRoster]);
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
+        return users.filter(u => u.role !== 'Admin');
+    }
 
+    const subordinateIds = getSubordinateChain(user.id, users);
+    return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
+  }, [user, users, getSubordinateChain]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
     if(!user) return;
@@ -1794,7 +1784,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myFulfilledStoreCertRequestCount = useMemo(() => {
       if (!user) return 0;
-      return certificateRequests.filter(req => req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester && req.itemId).length;
+      return certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && !r.viewedByRequester && r.itemId).length;
   }, [certificateRequests, user]);
 
   const unreadPlannerCommentDays = useMemo(() => {
