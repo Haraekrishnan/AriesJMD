@@ -48,7 +48,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: {
-      items: [],
+      items: schedule?.items ?? [],
     },
   });
 
@@ -67,6 +67,10 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
         .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` })),
     [manpowerProfiles]
   );
+
+  const assignedManpowerIds = useMemo(() => {
+    return new Set(form.getValues().items.flatMap(item => item.manpowerIds));
+  }, [form.watch('items')]);
   
   const vehicleOptions = useMemo(() => vehicles, [vehicles]);
 
@@ -127,17 +131,27 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
                           <CommandList>
                             <CommandEmpty>No results found.</CommandEmpty>
                             <CommandGroup>
-                              {manpowerOptions.map(option => (
+                              {manpowerOptions.map(option => {
+                                const isSelected = controllerField.value?.includes(option.value);
+                                const isDisabled = assignedManpowerIds.has(option.value) && !isSelected;
+                                return (
                                 <CommandItem key={option.value} onSelect={() => {
                                     const selected = new Set(controllerField.value);
-                                    if (selected.has(option.value)) selected.delete(option.value);
-                                    else selected.add(option.value);
+                                    if (isSelected) {
+                                      selected.delete(option.value);
+                                    } else {
+                                      selected.add(option.value);
+                                    }
                                     controllerField.onChange(Array.from(selected));
-                                }}>
-                                  <Check className={cn("mr-2 h-4 w-4", controllerField.value?.includes(option.value) ? "opacity-100" : "opacity-0")} />
+                                }}
+                                disabled={isDisabled}
+                                className={cn(isDisabled && 'opacity-50 cursor-not-allowed')}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
                                   {option.label}
                                 </CommandItem>
-                              ))}
+                                )
+                              })}
                             </CommandGroup>
                           </CommandList>
                         </Command>
