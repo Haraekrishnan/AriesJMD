@@ -398,41 +398,90 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (privilegedRoles.includes(user.role)) {
       return users;
     }
+    
+    const visibleUserIds = new Set<string>([user.id]);
+    const queue = [user.id];
   
-    const visibleUserIds = new Set<string>();
-    visibleUserIds.add(user.id);
-  
-    // Recursive function to find all subordinates
-    const findSubordinates = (supervisorId: string) => {
-      users.forEach(u => {
-        if (u.supervisorId === supervisorId && !visibleUserIds.has(u.id)) {
-          visibleUserIds.add(u.id);
-          findSubordinates(u.id); // Recursively find their subordinates
+    while (queue.length > 0) {
+      const currentSupervisorId = queue.shift();
+      const directSubordinates = users.filter(u => u.supervisorId === currentSupervisorId);
+      for (const subordinate of directSubordinates) {
+        if (!visibleUserIds.has(subordinate.id)) {
+          visibleUserIds.add(subordinate.id);
+          queue.push(subordinate.id);
         }
-      });
-    };
-  
-    findSubordinates(user.id);
+      }
+    }
   
     return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-  
+
     const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
     if (privilegedRoles.includes(user.role)) {
-      return users;
+        return users;
     }
-  
-    // For other roles, they can assign tasks to themselves and their direct subordinates.
+
     const assignableUserIds = new Set<string>();
-    assignableUserIds.add(user.id); // Can always assign to self
-  
-    const directSubordinates = users.filter(u => u.supervisorId === user.id);
-    directSubordinates.forEach(u => assignableUserIds.add(u.id));
-  
-    return users.filter(u => assignableUserIds.has(u.id));
+
+    if (user.role === 'Supervisor' && user.supervisorId) {
+        // Find the top-most supervisor of this user's team
+        let teamSupervisor = users.find(u => u.id === user.supervisorId);
+        // This handles cases where supervisors report to other supervisors
+        while (teamSupervisor && teamSupervisor.supervisorId && (teamSupervisor.role === 'Supervisor' || teamSupervisor.role === 'Project Coordinator')) {
+            const nextUp = users.find(u => u.id === teamSupervisor.supervisorId);
+            if(nextUp && (nextUp.role === 'Supervisor' || nextUp.role === 'Project Coordinator')) {
+              teamSupervisor = nextUp;
+            } else {
+              break;
+            }
+        }
+        
+        // The top supervisor of the team can assign to all below them.
+        // We need to gather all supervisors at that level and all their subordinates.
+        const topSupervisorId = teamSupervisor ? teamSupervisor.id : user.supervisorId;
+
+        // Get all users who report to the top supervisor (these are the team leads/peers)
+        const teamLeads = users.filter(u => u.supervisorId === topSupervisorId);
+        teamLeads.forEach(lead => assignableUserIds.add(lead.id));
+        if(teamSupervisor) {
+          assignableUserIds.add(teamSupervisor.id); // Add the top supervisor themselves
+        }
+
+        const queue = teamLeads.map(l => l.id);
+        if(teamSupervisor) queue.push(teamSupervisor.id);
+        const visited = new Set(queue);
+
+        while (queue.length > 0) {
+            const currentSupervisorId = queue.shift();
+            const directSubordinates = users.filter(u => u.supervisorId === currentSupervisorId);
+            for (const subordinate of directSubordinates) {
+                if (!visited.has(subordinate.id)) {
+                    assignableUserIds.add(subordinate.id);
+                    queue.push(subordinate.id);
+                    visited.add(subordinate.id);
+                }
+            }
+        }
+    } else {
+        // For other roles, they can only assign to themselves or their direct reports.
+        assignableUserIds.add(user.id);
+        const queue = [user.id];
+        while (queue.length > 0) {
+            const currentSupervisorId = queue.shift();
+            const directSubordinates = users.filter(u => u.supervisorId === currentSupervisorId);
+            for (const subordinate of directSubordinates) {
+                if (!assignableUserIds.has(subordinate.id)) {
+                    assignableUserIds.add(subordinate.id);
+                    queue.push(subordinate.id);
+                }
+            }
+        }
+    }
+
+    return Array.from(assignableUserIds).map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
   }, [user, users]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
