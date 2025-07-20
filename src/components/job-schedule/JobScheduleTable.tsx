@@ -3,7 +3,8 @@
 import React, { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import JobScheduleRow from './JobScheduleRow';
+import ReadOnlyJobSchedule from './ReadOnlyJobSchedule';
+import EditableJobSchedule from './EditableJobSchedule';
 
 interface JobScheduleTableProps {
   selectedDate: string; // YYYY-MM-DD
@@ -11,10 +12,10 @@ interface JobScheduleTableProps {
 }
 
 export default function JobScheduleTable({ selectedDate, projectId }: JobScheduleTableProps) {
-  const { user, users, projects, jobSchedules, manpowerProfiles, can } = useAppContext();
+  const { user, projects, jobSchedules, can } = useAppContext();
 
   const schedulesToShow = useMemo(() => {
-    if (!jobSchedules) return []; // Guard against undefined
+    if (!jobSchedules) return [];
     if (projectId === 'all') {
       return jobSchedules.filter(s => s.date === selectedDate);
     }
@@ -29,48 +30,39 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
     return projects;
   }, [projects, projectId]);
 
-  const isSupervisor = user?.role === 'Supervisor';
+  const isSupervisorForProject = (projId: string) => {
+    return (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') && user?.projectId === projId;
+  }
 
   return (
     <div className="space-y-6">
       {projectsToDisplay.map(project => {
         const scheduleForProject = schedulesToShow.find(s => s.projectId === project.id);
-        const canEdit = isSupervisor && user?.projectId === project.id;
+        const canEdit = isSupervisorForProject(project.id);
         
         return (
           <div key={project.id}>
             <h3 className="text-lg font-semibold mb-2">{project.name}</h3>
             <div className="border rounded-lg">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[50px]">Sr.No</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Job Type</TableHead>
-                            <TableHead>Job No.</TableHead>
-                            <TableHead>Project/Vessel's Name</TableHead>
-                            <TableHead>Location</TableHead>
-                            <TableHead>Reporting Time</TableHead>
-                            <TableHead>Client/Contact</TableHead>
-                            <TableHead>Vehicle</TableHead>
-                            <TableHead>Remarks</TableHead>
-                            {canEdit && <TableHead className="w-[50px]"></TableHead>}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <JobScheduleRow
-                            schedule={scheduleForProject}
-                            projectId={project.id}
-                            selectedDate={selectedDate}
-                            isEditable={canEdit}
-                        />
-                    </TableBody>
-                </Table>
+              {canEdit ? (
+                <EditableJobSchedule
+                  schedule={scheduleForProject}
+                  projectId={project.id}
+                  selectedDate={selectedDate}
+                />
+              ) : (
+                <ReadOnlyJobSchedule schedule={scheduleForProject} />
+              )}
             </div>
           </div>
         );
       })}
-      {projectsToDisplay.length === 0 && <p className="text-center text-muted-foreground p-8">Select a project to view or edit its schedule.</p>}
+      {projectsToDisplay.length === 0 && projectId !== 'all' && (
+        <p className="text-center text-muted-foreground p-8">No project selected.</p>
+      )}
+      {projectsToDisplay.length === 0 && projectId === 'all' && (
+        <p className="text-center text-muted-foreground p-8">No schedules found for this date.</p>
+      )}
     </div>
   );
 }
