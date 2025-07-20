@@ -3,14 +3,16 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
-import { ARIES_LOGO_BASE64 } from '@/lib/logo';
 
 export function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Add the Aries logo image
-    doc.addImage(ARIES_LOGO_BASE64, 'PNG', 14, 12, 50, 10);
+    // Add the Aries text as a header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("ARIES", 14, 20);
+    doc.setFont('helvetica', 'normal');
     
     doc.setFontSize(18);
     doc.text("Job Schedule", 280, 20, { align: 'right' });
