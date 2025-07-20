@@ -1,4 +1,3 @@
-
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,14 +13,19 @@ import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, PlusCircle, Save, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useMemo } from 'react';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
-  client: z.string().min(1, "Required"),
-  jobDescription: z.string().min(1, "Required"),
-  location: z.string().min(1, "Required"),
-  manpowerIds: z.array(z.string()),
-  equipment: z.string().optional(),
+  manpowerIds: z.array(z.string()).min(1, "Select at least one person"),
+  jobType: z.string().optional(),
+  jobNo: z.string().optional(),
+  projectVesselName: z.string().optional(),
+  location: z.string().optional(),
+  reportingTime: z.string().optional(),
+  clientContact: z.string().optional(),
+  vehicleId: z.string().optional(),
   remarks: z.string().optional(),
 });
 
@@ -39,7 +43,7 @@ interface JobScheduleRowProps {
 }
 
 export default function JobScheduleRow({ schedule, projectId, selectedDate, isEditable }: JobScheduleRowProps) {
-  const { user, manpowerProfiles, saveJobSchedule } = useAppContext();
+  const { user, manpowerProfiles, vehicles, saveJobSchedule } = useAppContext();
   
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleSchema),
@@ -48,14 +52,19 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'items',
   });
   
-  const manpowerOptions = manpowerProfiles
-    .filter(p => p.eic === projectId && p.status === 'Working')
-    .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` }));
+  const manpowerOptions = useMemo(() => 
+    manpowerProfiles
+        .filter(p => p.eic === projectId && p.status === 'Working')
+        .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` })),
+    [manpowerProfiles, projectId]
+  );
+  
+  const vehicleOptions = useMemo(() => vehicles, [vehicles]);
 
   const onSubmit = (data: ScheduleFormValues) => {
     saveJobSchedule({
@@ -67,12 +76,13 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
       updatedAt: new Date().toISOString(),
       items: data.items,
     });
+    // Add toast notification from the context after save
   };
 
   if (!isEditable && (!schedule || schedule.items.length === 0)) {
     return (
       <TableRow>
-        <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+        <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
           No schedule has been set for this project on this date.
         </TableCell>
       </TableRow>
@@ -84,9 +94,6 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
       {fields.map((field, index) => (
         <TableRow key={field.id}>
           <TableCell className="font-medium text-center">{index + 1}</TableCell>
-          <TableCell><Textarea {...form.register(`items.${index}.client`)} disabled={!isEditable} className="min-h-[20px]"/></TableCell>
-          <TableCell><Textarea {...form.register(`items.${index}.jobDescription`)} disabled={!isEditable} className="min-h-[20px]"/></TableCell>
-          <TableCell><Textarea {...form.register(`items.${index}.location`)} disabled={!isEditable} className="min-h-[20px]"/></TableCell>
           <TableCell>
             <Controller
               name={`items.${index}.manpowerIds`}
@@ -94,13 +101,13 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
               render={({ field: controllerField }) => (
                 <Popover>
                   <PopoverTrigger asChild disabled={!isEditable}>
-                    <Button variant="outline" className="w-full justify-start h-auto min-h-10">
+                    <Button variant="outline" className="w-full justify-start h-auto min-h-10 text-left">
                       <div className="flex flex-wrap gap-1">
-                        {controllerField.value.length > 0
+                        {controllerField.value?.length > 0
                           ? controllerField.value.map(id => (
                               <Badge key={id} variant="secondary">{manpowerProfiles.find(p => p.id === id)?.name}</Badge>
                             ))
-                          : "Select manpower..."}
+                          : <span className="text-muted-foreground">Select...</span>}
                       </div>
                     </Button>
                   </PopoverTrigger>
@@ -111,19 +118,13 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
                         <CommandEmpty>No results found.</CommandEmpty>
                         <CommandGroup>
                           {manpowerOptions.map(option => (
-                            <CommandItem
-                              key={option.value}
-                              onSelect={() => {
+                            <CommandItem key={option.value} onSelect={() => {
                                 const selected = new Set(controllerField.value);
-                                if (selected.has(option.value)) {
-                                  selected.delete(option.value);
-                                } else {
-                                  selected.add(option.value);
-                                }
+                                if (selected.has(option.value)) selected.delete(option.value);
+                                else selected.add(option.value);
                                 controllerField.onChange(Array.from(selected));
-                              }}
-                            >
-                              <Check className={cn("mr-2 h-4 w-4", controllerField.value.includes(option.value) ? "opacity-100" : "opacity-0")} />
+                            }}>
+                              <Check className={cn("mr-2 h-4 w-4", controllerField.value?.includes(option.value) ? "opacity-100" : "opacity-0")} />
                               {option.label}
                             </CommandItem>
                           ))}
@@ -135,7 +136,23 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
               )}
             />
           </TableCell>
-          <TableCell><Textarea {...form.register(`items.${index}.equipment`)} disabled={!isEditable} className="min-h-[20px]"/></TableCell>
+          <TableCell><Input {...form.register(`items.${index}.jobType`)} disabled={!isEditable} /></TableCell>
+          <TableCell><Input {...form.register(`items.${index}.jobNo`)} disabled={!isEditable} /></TableCell>
+          <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} disabled={!isEditable} /></TableCell>
+          <TableCell><Input {...form.register(`items.${index}.location`)} disabled={!isEditable} /></TableCell>
+          <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} disabled={!isEditable} /></TableCell>
+          <TableCell><Input {...form.register(`items.${index}.clientContact`)} disabled={!isEditable} /></TableCell>
+          <TableCell>
+             <Controller name={`items.${index}.vehicleId`} control={form.control} render={({ field: controllerField }) => (
+                <Select onValueChange={controllerField.onChange} value={controllerField.value} disabled={!isEditable}>
+                    <SelectTrigger><SelectValue placeholder="N/A" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">N/A</SelectItem>
+                        {vehicleOptions.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+             )} />
+          </TableCell>
           <TableCell><Textarea {...form.register(`items.${index}.remarks`)} disabled={!isEditable} className="min-h-[20px]"/></TableCell>
           {isEditable && (
             <TableCell>
@@ -148,21 +165,23 @@ export default function JobScheduleRow({ schedule, projectId, selectedDate, isEd
       ))}
       {isEditable && (
          <TableRow>
-            <TableCell colSpan={8} className="p-2">
-                 <Button type="button" variant="secondary" className="w-full" onClick={() => append({ id: `item-${Date.now()}`, client: '', jobDescription: '', location: '', manpowerIds: [], equipment: '', remarks: '' })}>
+            <TableCell colSpan={11} className="p-2">
+                 <Button type="button" variant="secondary" className="w-full" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '', clientContact: '', vehicleId: 'none', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Row
                 </Button>
             </TableCell>
          </TableRow>
       )}
-      <TableRow>
-          <TableCell colSpan={8} className="text-right p-2">
-            <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={!isEditable && !schedule}>
-                <Save className="mr-2 h-4 w-4"/>
-                Save Schedule
-            </Button>
-          </TableCell>
-      </TableRow>
+      {isEditable && (
+        <TableRow>
+            <TableCell colSpan={11} className="text-right p-2">
+              <Button type="button" onClick={form.handleSubmit(onSubmit)}>
+                  <Save className="mr-2 h-4 w-4"/>
+                  Save Schedule
+              </Button>
+            </TableCell>
+        </TableRow>
+      )}
     </>
   );
 }

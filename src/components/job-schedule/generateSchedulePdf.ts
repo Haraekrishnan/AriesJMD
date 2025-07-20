@@ -2,50 +2,43 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
+import type { JobSchedule } from '@/lib/types';
 
-export function generateSchedulePdf(projectId: string, selectedDate: Date) {
-    // This is a placeholder for where you'd fetch real data.
-    // In a real app, you would pass the actual schedule data here.
-    const scheduleData = {
-        // Mock data for demonstration
-        items: [
-            { client: "Client A", jobDescription: "UT/MPI Inspection", location: "Area 1", manpower: "John (L1), Doe (L2)", equipment: "UT Kit, MPI Yoke", remarks: "Night shift" },
-            { client: "Client B", jobDescription: "Anchor Point Testing", location: "Rooftop", manpower: "Peter (L3)", equipment: "Load Cell", remarks: "Requires permit" }
-        ]
-    };
+export function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
     
-    // Placeholder for logo - In a real scenario, you'd load a base64 image
     doc.setFontSize(22);
-    doc.setTextColor(255, 0, 0); // Red color for "ARIES"
+    doc.setTextColor(255, 0, 0); 
     doc.text("ARIES", 14, 20);
-    doc.setTextColor(0, 0, 0); // Reset color
+    doc.setTextColor(0, 0, 0); 
     
     doc.setFontSize(18);
     doc.text("Job Schedule", 280, 20, { align: 'right' });
     
-    doc.setDrawColor(0, 0, 255); // Blue line
+    doc.setDrawColor(0, 0, 255); 
     doc.setLineWidth(0.5);
     doc.line(10, 23, 287, 23);
 
     doc.setFontSize(10);
-    doc.text("Division/Branch: I & M / Jamnagar", 14, 28);
-    doc.text("Sub-Div: R.A", 150, 28, { align: 'center'});
+    doc.text(`Project: ${projectName}`, 14, 28);
     doc.text(`Date: ${format(selectedDate, 'dd-MM-yyyy')}`, 280, 28, { align: 'right' });
     
-    doc.setDrawColor(0, 0, 0); // Black line
+    doc.setDrawColor(0, 0, 0); 
     doc.setLineWidth(0.2);
     doc.line(10, 31, 287, 31);
     
-    const tableColumn = ["Sl.No", "Client", "Job Description", "Location", "Manpower", "Equipment", "Remarks"];
-    const tableRows = scheduleData.items.map((item, index) => [
+    const tableColumn = ["Sr.No", "Name", "Job Type", "Job No.", "Project/Vessel's", "Location", "Reporting Time", "Client/Contact", "Vehicle", "Remarks"];
+    const tableRows = (schedule?.items || []).map((item, index) => [
         index + 1,
-        item.client,
-        item.jobDescription,
+        item.manpowerIds.join(', '), 
+        item.jobType,
+        item.jobNo,
+        item.projectVesselName,
         item.location,
-        item.manpower,
-        item.equipment,
+        item.reportingTime,
+        item.clientContact,
+        item.vehicleId,
         item.remarks
     ]);
 
@@ -55,7 +48,8 @@ export function generateSchedulePdf(projectId: string, selectedDate: Date) {
         startY: 35,
         theme: 'grid',
         headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: 'bold' },
+        styles: { fontSize: 8 },
     });
     
-    doc.save(`JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
+    doc.save(`JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -45,12 +44,15 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[50px]">Sl.No</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Job Description</TableHead>
+                            <TableHead className="w-[50px]">Sr.No</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Job Type</TableHead>
+                            <TableHead>Job No.</TableHead>
+                            <TableHead>Project/Vessel's Name</TableHead>
                             <TableHead>Location</TableHead>
-                            <TableHead>Manpower</TableHead>
-                            <TableHead>Equipment</TableHead>
+                            <TableHead>Reporting Time</TableHead>
+                            <TableHead>Client/Contact</TableHead>
+                            <TableHead>Vehicle</TableHead>
                             <TableHead>Remarks</TableHead>
                             {canEdit && <TableHead className="w-[50px]"></TableHead>}
                         </TableRow>

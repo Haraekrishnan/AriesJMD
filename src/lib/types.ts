@@ -2,6 +2,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -493,4 +494,27 @@ export type Building = {
   id: string;
   buildingNumber: string;
   rooms: Room[];
+};
+
+export type JobScheduleItem = {
+  id: string;
+  manpowerIds: string[];
+  jobType?: string;
+  jobNo?: string;
+  projectVesselName?: string;
+  location?: string;
+  reportingTime?: string; // HH:mm
+  clientContact?: string;
+  vehicleId?: string;
+  remarks?: string;
+};
+
+export type JobSchedule = {
+  id: string; // composite key: `${projectId}_${YYYY-MM-DD}`
+  projectId: string;
+  date: string; // YYYY-MM-DD
+  supervisorId: string;
+  items: JobScheduleItem[];
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
 };
