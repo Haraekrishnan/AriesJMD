@@ -2,6 +2,7 @@
 
 'use client';
 
+import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +16,8 @@ import { TransferList } from '../ui/transfer-list';
 import type { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { Search } from 'lucide-react';
 
 const leaveSchema = z.object({
   manpowerIds: z.array(z.string()).min(1, 'Please select at least one employee.'),
@@ -36,6 +39,7 @@ interface LeaveReportDialogProps {
 export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDialogProps) {
   const { manpowerProfiles, addLeaveForManpower } = useAppContext();
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const form = useForm<LeaveFormValues>({
     resolver: zodResolver(leaveSchema),
@@ -54,9 +58,20 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
     setIsOpen(open);
   };
 
-  const manpowerOptions = manpowerProfiles
-    .filter(p => p.status === 'Working')
-    .map(p => ({ value: p.id, label: `${p.name} (${p.trade})`}));
+  const manpowerOptions = useMemo(() => {
+    return manpowerProfiles
+      .filter(p => p.status === 'Working')
+      .map(p => ({ value: p.id, label: `${p.name} (${p.trade})`}));
+  }, [manpowerProfiles]);
+
+  const filteredManpowerOptions = useMemo(() => {
+    if (!searchTerm) {
+      return manpowerOptions;
+    }
+    return manpowerOptions.filter(option =>
+      option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [manpowerOptions, searchTerm]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -68,12 +83,21 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Employees</Label>
+            <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search employees..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
             <Controller
                 name="manpowerIds"
                 control={form.control}
                 render={({ field }) => (
                     <TransferList
-                        options={manpowerOptions}
+                        options={filteredManpowerOptions}
                         selected={field.value}
                         onChange={field.onChange}
                         availableTitle="Working Employees"
