@@ -32,14 +32,12 @@ export default function ManpowerPage() {
                     <p className="text-muted-foreground">Track daily manpower logs and generate reports.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {can.manage_manpower_list && (
-                        <Button asChild variant="outline">
-                            <Link href="/manpower-list">
-                                <Users className="mr-2 h-4 w-4" />
-                                Manpower List
-                            </Link>
-                        </Button>
-                    )}
+                    <Button asChild variant="outline">
+                        <Link href="/manpower-list">
+                            <Users className="mr-2 h-4 w-4" />
+                            Manpower List
+                        </Link>
+                    </Button>
                     {can.log_manpower && (
                         <>
                             <Button variant="outline" onClick={() => setIsLeaveDialogOpen(true)}>
