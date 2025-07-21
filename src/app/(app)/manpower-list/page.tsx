@@ -68,6 +68,21 @@ export default function ManpowerListPage() {
         );
     }, [manpowerProfiles]);
 
+    const upcomingLeaves = useMemo(() => {
+        if (!can.manage_manpower_list) return [];
+        const now = new Date();
+        const thirtyDaysFromNow = addDays(now, 30);
+        
+        return manpowerProfiles.flatMap(p => 
+            (p.leaveHistory || [])
+                .filter(l => {
+                    const leaveStartDate = parseISO(l.leaveStartDate);
+                    return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
+                })
+                .map(l => ({ profile: p, leave: l }))
+        );
+    }, [manpowerProfiles, can.manage_manpower_list]);
+
     const filteredProfiles = useMemo(() => {
         return manpowerProfiles.filter(profile => {
             if (searchTerm && !profile.name.toLowerCase().includes(searchTerm.toLowerCase()) && !profile.hardCopyFileNo?.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -174,6 +189,24 @@ export default function ManpowerListPage() {
             </div>
 
             <TradeSummary />
+            
+            {can.manage_manpower_list && upcomingLeaves.length > 0 && (
+                 <Card className="border-amber-500">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Plane className="text-amber-500"/>Upcoming Leave Within 30 Days</CardTitle>
+                        <CardDescription>The following employees have leaves starting soon.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 max-h-40 overflow-y-auto">
+                        {upcomingLeaves.map(({ profile, leave }) => (
+                            <div key={leave.id} className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                                <p className="text-sm">
+                                    <span className="font-semibold">{profile.name}</span> has a planned {leave.leaveType} leave starting on <span className="font-medium">{format(parseISO(leave.leaveStartDate), 'dd MMM, yyyy')}</span>.
+                                </p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
 
             {can.manage_manpower_list && leavesStartingToday.length > 0 && (
                  <Card className="border-blue-500">
