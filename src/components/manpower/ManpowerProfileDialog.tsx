@@ -79,17 +79,9 @@ const profileSchema = z.object({
     message: 'Please specify the trade',
     path: ['otherTrade'],
 }).refine(data => {
-    if (data.status === 'On Leave') {
-        // If coming from a terminal status, new leave details are required.
-        const wasTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.leaveHistory?.at(-1)?.statusBeforeLeave || '');
-        if (wasTerminal) {
-            return !!data.currentLeave?.dateRange.from;
-        }
-
-        const wasOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (wasOnLeave) return true; // Already on leave, no new leave data needed
-        
-        return !!data.currentLeave?.dateRange.from;
+    if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
+        // If we are changing TO "On Leave", we need leave dates.
+        return false;
     }
     return true;
 }, {
@@ -108,7 +100,6 @@ interface ManpowerProfileDialogProps {
 
 const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
-
 
 const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {
   return (
@@ -260,18 +251,20 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     const wasOnLeave = liveProfile?.status === 'On Leave';
     const isBecomingTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
     const isBecomingOnLeave = data.status === 'On Leave';
-  
+    
     // Case 1: Employee was on leave and is now being terminated/resigned.
     if (wasOnLeave && isBecomingTerminal) {
       const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
       if (activeLeaveIndex > -1) {
-        const endDate = data.terminationDate || data.resignationDate || new Date();
-        finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+        const endDate = data.terminationDate || data.resignationDate;
+        if(endDate) {
+            finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+        }
       }
     } 
-    // Case 2: Employee is being newly put on leave (from any status)
+    // Case 2: Employee is being newly put on leave
     else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
-      // Find and close any previously active leave just in case
+       // Close any previously active leave just in case
       const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
       if (activeLeaveIndex > -1) {
           finalLeaveHistory[activeLeaveIndex].leaveEndDate = data.currentLeave.dateRange.from.toISOString();
@@ -434,6 +427,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                <div><Label>Actual Rejoining Date</Label><DatePickerController name="currentLeave.rejoinedDate" control={form.control}/></div>
                                <div className="col-span-3"><Label>Remarks</Label><Textarea {...form.register('currentLeave.remarks')}/></div>
                             </div>
+                            {form.formState.errors.currentLeave?.dateRange && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.dateRange.message}</p>}
                         </div>
                     )}
                      {(liveProfile?.leaveHistory || []).length > 0 && (
