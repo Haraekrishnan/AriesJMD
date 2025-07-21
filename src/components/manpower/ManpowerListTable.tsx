@@ -2,7 +2,6 @@
 'use client';
 import { useMemo } from 'react';
 import type { ManpowerProfile } from '@/lib/types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Edit, MoreHorizontal, Trash2, Link as LinkIcon } from 'lucide-react';
@@ -113,8 +112,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     return (
         <TooltipProvider>
             <div className="space-y-2">
-                <div className="grid grid-cols-6 gap-4 px-4 py-2 font-semibold text-sm text-muted-foreground">
-                    <div className="col-span-2">Name</div>
+                <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-4 py-2 font-semibold text-sm text-muted-foreground">
+                    <div className="col-span-1">Name</div>
                     <div className="col-span-1">Trade</div>
                     <div className="col-span-1">Status</div>
                     <div className="col-span-1">Doc. Progress</div>
@@ -123,10 +122,10 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 <Accordion type="single" collapsible className="w-full space-y-2">
                     {profiles.map(profile => (
                         <AccordionItem value={profile.id} key={profile.id} className="border rounded-lg bg-card">
-                            <div className="flex items-center p-4">
+                           <div className="flex items-center p-4">
                                 <AccordionTrigger className="w-full hover:no-underline">
-                                    <div className="grid grid-cols-6 gap-4 w-full text-sm text-left items-center">
-                                        <div className="font-medium col-span-2">{profile.name}</div>
+                                    <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 w-full text-sm text-left items-center">
+                                        <div className="font-medium col-span-1">{profile.name}</div>
                                         <div className="col-span-1">{profile.trade}</div>
                                         <div className="col-span-1"><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></div>
                                         <div className="col-span-1">
@@ -139,7 +138,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                         </div>
                                     </div>
                                 </AccordionTrigger>
-                                <div className="col-span-1 flex justify-end items-center gap-2 pl-4">
+                                <div className="flex justify-end items-center gap-2 pl-4">
                                     {profile.documentFolderUrl && (
                                         <Button asChild variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                                             <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
@@ -182,7 +181,6 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                     </AlertDialog>
                                 </div>
                             </div>
-
                             <AccordionContent>
                                 <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50 border-t">
                                     <div className="space-y-4">
