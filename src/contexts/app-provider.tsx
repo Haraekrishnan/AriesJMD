@@ -414,6 +414,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user.role === 'Admin' || user.role === 'Project Coordinator') {
         return users;
     }
+     if (user.role === 'Document Controller') {
+        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+    }
 
     const subordinateIds = getSubordinateChain(user.id, users);
     return users.filter(u => u.id === user.id || subordinateIds.has(u.id));

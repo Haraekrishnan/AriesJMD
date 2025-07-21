@@ -16,7 +16,14 @@ import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDia
 export default function DashboardPage() {
   const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
 
-  const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const visibleUsers = useMemo(() => {
+    const allVisible = getVisibleUsers();
+    if (user?.role === 'Document Controller') {
+      return allVisible.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+    }
+    return allVisible;
+  }, [getVisibleUsers, user]);
+
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
 
   const visibleTasks = useMemo(() => {

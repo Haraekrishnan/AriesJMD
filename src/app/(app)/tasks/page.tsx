@@ -54,7 +54,7 @@ export default function TasksPage() {
     if (!user) return [];
 
     const mySubordinateIds = new Set(users.filter(u => u.supervisorId === user.id).map(u => u.id));
-    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator'];
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
 
     return tasks.filter(task => {
       // Don't show pending tasks on the main board
