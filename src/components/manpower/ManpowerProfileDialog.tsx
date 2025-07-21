@@ -69,6 +69,7 @@ const profileSchema = z.object({
   terminationDate: z.date().optional(),
   feedback: z.string().optional(),
   currentLeave: leaveSchema.optional(),
+  leaveHistory: z.array(z.any()).optional(), // Use `any` for display, not form validation
 }).refine(data => {
     if (data.trade === 'Others') {
         return !!data.otherTrade && data.otherTrade.length > 0;
@@ -161,14 +162,14 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, updateLeaveRecord } = useAppContext();
+  const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, updateLeaveRecord, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
   });
   
-  const { fields, append, remove } = useFieldArray({
+  const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
     control: form.control,
     name: "documents"
   });
@@ -176,50 +177,55 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const watchTrade = form.watch('trade');
   const watchStatus = form.watch('status');
 
+  const liveProfile = useMemo(() => manpowerProfiles.find(p => p.id === profile?.id), [manpowerProfiles, profile]);
+
   const parseDate = (dateString?: string) => {
     return dateString && isValid(new Date(dateString)) ? new Date(dateString) : undefined;
   };
-  
-  const allRequiredDocs = useMemo(() => {
-      const docs = [...MANDATORY_DOCS];
-      if(profile?.trade && RA_TRADES.includes(profile.trade)) {
-        docs.push('IRATA Certificate');
-      }
-      return docs;
-  }, [profile]);
-  
+    
   useEffect(() => {
     if (isOpen) {
-        if (profile) {
-            const initialDocs = allRequiredDocs.map(docName => {
-                const existingDoc = profile.documents?.find(d => d.name === docName);
-                return existingDoc || { name: docName, status: 'Pending', details: '' };
-            });
-
+        if (liveProfile) {
             form.reset({
-                ...profile,
-                dob: parseDate(profile.dob),
-                joiningDate: parseDate(profile.joiningDate),
-                workOrderExpiryDate: parseDate(profile.workOrderExpiryDate),
-                labourLicenseExpiryDate: parseDate(profile.labourLicenseExpiryDate),
-                wcPolicyExpiryDate: parseDate(profile.wcPolicyExpiryDate),
-                passIssueDate: parseDate(profile.passIssueDate),
-                medicalExpiryDate: parseDate(profile.medicalExpiryDate),
-                safetyExpiryDate: parseDate(profile.safetyExpiryDate),
-                irataValidity: parseDate(profile.irataValidity),
-                contractValidity: parseDate(profile.contractValidity),
-                resignationDate: parseDate(profile.resignationDate),
-                terminationDate: parseDate(profile.terminationDate),
-                documents: initialDocs,
-                trade: TRADES.includes(profile.trade) ? profile.trade : 'Others',
-                otherTrade: TRADES.includes(profile.trade) ? '' : profile.trade,
+                ...liveProfile,
+                dob: parseDate(liveProfile.dob),
+                joiningDate: parseDate(liveProfile.joiningDate),
+                workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
+                labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
+                wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
+                passIssueDate: parseDate(liveProfile.passIssueDate),
+                medicalExpiryDate: parseDate(liveProfile.medicalExpiryDate),
+                safetyExpiryDate: parseDate(liveProfile.safetyExpiryDate),
+                irataValidity: parseDate(liveProfile.irataValidity),
+                contractValidity: parseDate(liveProfile.contractValidity),
+                resignationDate: parseDate(liveProfile.resignationDate),
+                terminationDate: parseDate(liveProfile.terminationDate),
+                documents: liveProfile.documents || [],
+                trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
+                otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
             });
         } else {
              const defaultDocs = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
             form.reset({ documents: defaultDocs, status: 'Working', documentFolderUrl: '' });
         }
     }
-  }, [profile, isOpen, form, allRequiredDocs]);
+  }, [liveProfile, isOpen, form]);
+
+  // Handle dynamic IRATA document
+  useEffect(() => {
+    const documents = form.getValues('documents') || [];
+    const hasIrata = documents.some(doc => doc.name === 'IRATA Certificate');
+    const isRaTrade = RA_TRADES.includes(watchTrade);
+
+    if (isRaTrade && !hasIrata) {
+      appendDocument({ name: 'IRATA Certificate', status: 'Pending', details: '' });
+    } else if (!isRaTrade && hasIrata) {
+      const irataIndex = documents.findIndex(doc => doc.name === 'IRATA Certificate');
+      if (irataIndex > -1) {
+        removeDocument(irataIndex);
+      }
+    }
+  }, [watchTrade, form, appendDocument, removeDocument]);
   
   const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
@@ -348,7 +354,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <h3 className="text-lg font-semibold border-b pb-2">Document Status</h3>
                         <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
                         <Separator />
-                         {fields.map((field, index) => (
+                         {documentFields.map((field, index) => (
                           <div key={field.id}>
                             <Label>{field.name}</Label>
                             <div className="flex gap-2">
@@ -398,14 +404,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             </div>
                         </div>
                     )}
-                     {(profile?.leaveHistory || []).length > 0 && (
+                     {(liveProfile?.leaveHistory || []).length > 0 && (
                         <div className="space-y-4 md:col-span-3">
                             <Separator />
                             <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
                             <Table>
                                 <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                                 <TableBody>
-                                    {profile?.leaveHistory?.map(leave => (
+                                    {liveProfile?.leaveHistory?.map(leave => (
                                         <TableRow key={leave.id}>
                                             <TableCell>{leave.leaveType}</TableCell>
                                             <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
