@@ -279,7 +279,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                         <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
                         <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
-                        <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
                         <div>
                             <Label>Trade</Label>
                             <Controller control={form.control} name="trade" render={({field}) => (
@@ -339,6 +338,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold border-b pb-2">Document Status</h3>
+                        <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
+                        <Separator />
                          {fields.map((field, index) => (
                           <div key={field.id}>
                             <Label>{field.name}</Label>
