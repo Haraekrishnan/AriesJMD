@@ -89,6 +89,7 @@ interface ManpowerProfileDialogProps {
 }
 
 const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
+const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
 
 
 const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {
@@ -252,11 +253,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
     
     const cleanDataForFirebase = (obj: any) => {
+      if (!obj) return null;
       const newObj: any = {};
       for (const key in obj) {
         if (obj[key] instanceof Date) {
           newObj[key] = obj[key].toISOString();
-        } else if(obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+        } else if(obj[key] !== undefined) { // Allow empty strings and null
           newObj[key] = obj[key];
         }
       }
