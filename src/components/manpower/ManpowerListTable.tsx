@@ -25,7 +25,7 @@ interface ManpowerListTableProps {
 
 const statusVariant: { [key in ManpowerProfile['status']]: "secondary" | "destructive" | "default" | "outline" | "success" | "warning" } = {
     'Working': 'success',
-    'On Leave': 'default',
+    'On Leave': 'secondary',
     'Resigned': 'destructive',
     'Terminated': 'destructive',
     'Left the Project': 'warning',
