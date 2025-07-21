@@ -13,7 +13,7 @@ import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
 import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { CalendarIcon, Trash2 } from 'lucide-react';
+import { CalendarIcon, Trash2, Edit } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
@@ -23,6 +23,7 @@ import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const documentSchema = z.object({
   name: z.string(),
@@ -160,7 +161,7 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, addManpowerProfile, updateManpowerProfile } = useAppContext();
+  const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, updateLeaveRecord } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
@@ -267,6 +268,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     setIsOpen(false);
   };
   
+  const handleDeleteLeave = (leaveId: string) => {
+    if (profile) {
+        deleteLeaveRecord(profile.id, leaveId);
+        toast({ variant: 'destructive', title: 'Leave Record Deleted' });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl">
@@ -395,7 +403,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             <Separator />
                             <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
                             <Table>
-                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                                 <TableBody>
                                     {profile?.leaveHistory?.map(leave => (
                                         <TableRow key={leave.id}>
@@ -403,6 +411,26 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                             <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                             <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                             <TableCell>{leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                            {user?.role === 'Admin' && (
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Leave Record?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This will permanently delete this leave entry. This cannot be undone.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteLeave(leave.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
+                                            )}
                                         </TableRow>
                                     ))}
                                 </TableBody>
