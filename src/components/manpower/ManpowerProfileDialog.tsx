@@ -78,6 +78,15 @@ const profileSchema = z.object({
 }, {
     message: 'Please specify the trade',
     path: ['otherTrade'],
+}).refine(data => {
+    if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
+        const profileIsAlreadyOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+        return profileIsAlreadyOnLeave;
+    }
+    return true;
+}, {
+    message: 'Leave dates are required when status is On Leave.',
+    path: ['currentLeave.dateRange'],
 });
 
 
@@ -163,14 +172,14 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, updateLeaveRecord, manpowerProfiles } = useAppContext();
+  const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
   });
   
-  const { fields: documentFields, append: appendDocument, remove: removeDocument, replace: replaceDocuments } = useFieldArray({
+  const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
     control: form.control,
     name: "documents"
   });
@@ -238,24 +247,21 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   
   const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
-
     let finalLeaveHistory = liveProfile?.leaveHistory || [];
-
-    const wasOnLeave = liveProfile?.status === 'On Leave';
-    const isNowTerminated = data.status === 'Terminated' || data.status === 'Resigned' || data.status === 'Left the Project';
-    const isNowOnLeave = data.status === 'On Leave';
     
-    // Case 1: Was on leave, now being terminated/resigned.
-    if (wasOnLeave && isNowTerminated) {
+    const wasOnLeave = liveProfile?.status === 'On Leave';
+    const isTerminatedOrResigned = data.status === 'Terminated' || data.status === 'Resigned' || data.status === 'Left the Project';
+
+    // Case 1: Employee was on leave and is now being terminated or resigned.
+    if (wasOnLeave && isTerminatedOrResigned) {
         const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
         if (activeLeaveIndex > -1) {
             const endDate = data.terminationDate || data.resignationDate || new Date();
             finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
         }
-    }
-
-    // Case 2: Is now being put on leave.
-    if (isNowOnLeave && data.currentLeave?.dateRange.from) {
+    } 
+    // Case 2: Employee is being put on leave
+    else if (data.status === 'On Leave' && data.currentLeave?.dateRange.from) {
         const activeLeave = finalLeaveHistory.find(l => !l.rejoinedDate && !l.leaveEndDate);
         if (!activeLeave) { // Only add if no active leave exists
             const leaveRecord: LeaveRecord = {
@@ -269,7 +275,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             finalLeaveHistory.push(leaveRecord);
         }
     }
-    
+
     const dataToSubmit = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
     delete (dataToSubmit as any).otherTrade;
     delete (dataToSubmit as any).currentLeave;
@@ -390,7 +396,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         ))}
                     </div>
 
-                    {(watchStatus === 'Resigned' || watchStatus === 'Terminated') && (
+                    {(watchStatus === 'Resigned' || watchStatus === 'Terminated' || watchStatus === 'Left the Project') && (
                         <div className="space-y-4 md:col-span-2 lg:col-span-3">
                            <Separator />
                            <h3 className="text-lg font-semibold border-b pb-2">{watchStatus} Details</h3>
