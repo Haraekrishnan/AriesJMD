@@ -79,14 +79,10 @@ const profileSchema = z.object({
     message: 'Please specify the trade',
     path: ['otherTrade'],
 }).refine(data => {
-    // This validation applies when status is being set to 'On Leave' from another status.
-    // It checks if the `currentLeave` form data is filled out.
-    // It should NOT apply when changing status *from* 'On Leave' to something else.
     if (data.status === 'On Leave') {
-        const profileIsAlreadyOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (profileIsAlreadyOnLeave) return true; // Already on leave, no new leave data needed
+        const wasOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+        if (wasOnLeave) return true; // Already on leave, no new leave data needed
         
-        // If not already on leave, new leave data must be provided
         return !!data.currentLeave?.dateRange.from;
     }
     return true;
@@ -243,7 +239,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
     if (isRaTrade && !hasIrata) {
       appendDocument({ name: 'IRATA Certificate', status: 'Pending', details: '' });
-    } else if (!isRaTrade && hasIrata) {
+    } else if (!isRaT_ra_de && hasIrata) {
       const irataIndex = documents.findIndex(doc => doc.name === 'IRATA Certificate');
       if (irataIndex > -1) {
         removeDocument(irataIndex);
@@ -253,21 +249,21 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   
  const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
-    let finalLeaveHistory = liveProfile?.leaveHistory || [];
+    let finalLeaveHistory = liveProfile?.leaveHistory ? [...liveProfile.leaveHistory] : [];
 
     const wasOnLeave = liveProfile?.status === 'On Leave';
-    const isNowTerminatedOrResigned = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
+    const isBecomingTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
     const isBecomingOnLeave = data.status === 'On Leave';
 
     // Case 1: Employee was on leave and is now being terminated/resigned.
-    if (wasOnLeave && isNowTerminatedOrResigned) {
+    if (wasOnLeave && isBecomingTerminal) {
         const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
         if (activeLeaveIndex > -1) {
             const endDate = data.terminationDate || data.resignationDate || new Date();
             finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
         }
     } 
-    // Case 2: Employee is being newly put on leave
+    // Case 2: Employee is being newly put on leave (from any non-leave status)
     else if (!wasOnLeave && isBecomingOnLeave && data.currentLeave?.dateRange.from) {
         const leaveRecord: LeaveRecord = {
             id: `leave-${Date.now()}`,
