@@ -5,7 +5,7 @@ import type { ManpowerProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Edit, MoreHorizontal, Trash2, Link as LinkIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
 import { MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -13,6 +13,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import Link from 'next/link';
 
 interface ManpowerListTableProps {
     profiles: ManpowerProfile[];
@@ -99,6 +100,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                         <TableHead>Trade</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Documentation Status</TableHead>
+                        <TableHead>Documents</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -120,6 +122,17 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                         {getProgressTooltip(profile)}
                                     </TooltipContent>
                                 </Tooltip>
+                            </TableCell>
+                            <TableCell>
+                                {profile.documentFolderUrl ? (
+                                    <Button asChild variant="ghost" size="icon">
+                                        <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
+                                            <LinkIcon className="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">N/A</span>
+                                )}
                             </TableCell>
                             <TableCell className="text-right">
                                 <AlertDialog>
