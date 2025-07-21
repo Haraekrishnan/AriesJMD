@@ -47,7 +47,7 @@ const profileSchema = z.object({
   documentFolderUrl: z.string().url().optional().or(z.literal('')),
   trade: z.string(),
   otherTrade: z.string().optional(),
-  status: z.enum(['Working', 'On Leave', 'Resigned', 'Terminated']),
+  status: z.enum(['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project']),
   mobileNumber: z.string().optional(),
   gender: z.enum(['Male', 'Female', 'Other']).optional(),
   dob: z.date().optional(),
@@ -89,7 +89,7 @@ interface ManpowerProfileDialogProps {
 }
 
 const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
-const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated'];
+const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 
 
 const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {

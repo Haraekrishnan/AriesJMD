@@ -5,6 +5,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -193,7 +194,7 @@ export type ManpowerProfile = {
   id: string;
   name: string;
   trade: Trade;
-  status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated';
+  status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated' | 'Left the Project';
   photo?: string;
   
   // Personal Details

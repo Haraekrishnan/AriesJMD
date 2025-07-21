@@ -28,6 +28,7 @@ const statusVariant: { [key in ManpowerProfile['status']]: "secondary" | "destru
     'On Leave': 'default',
     'Resigned': 'destructive',
     'Terminated': 'destructive',
+    'Left the Project': 'destructive',
 }
 
 const DetailItem = ({ label, value }: { label: string, value?: string | number | null }) => {

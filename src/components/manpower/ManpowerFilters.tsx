@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -21,7 +22,7 @@ interface ManpowerFiltersProps {
   onApplyFilters: (filters: ManpowerFilterValues) => void;
 }
 
-const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated'];
+const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 
 export default function ManpowerFilters({ onApplyFilters }: ManpowerFiltersProps) {
     const { projects } = useAppContext();
