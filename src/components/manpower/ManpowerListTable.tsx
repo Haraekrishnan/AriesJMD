@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { format, isValid, parseISO } from 'date-fns';
+import React from 'react';
 
 interface ManpowerListTableProps {
     profiles: ManpowerProfile[];
@@ -126,8 +127,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                     </TableHeader>
                     <TableBody>
                         {profiles.map(profile => (
-                            <AccordionItem value={profile.id} key={profile.id} asChild>
-                                <>
+                            <React.Fragment key={profile.id}>
+                                <AccordionItem value={profile.id} asChild>
                                     <TableRow>
                                         <TableCell>
                                             <AccordionTrigger className="p-0 hover:no-underline [&>svg]:ml-2">
@@ -197,46 +198,46 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             </AlertDialog>
                                         </TableCell>
                                     </TableRow>
-                                    <AccordionContent asChild>
-                                        <tr className="bg-muted/50 hover:bg-muted/50">
-                                            <td colSpan={7}>
-                                                <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                    <div className="space-y-4">
-                                                        <h4 className="font-semibold text-sm">Personal & Work Details</h4>
-                                                        <DetailItem label="Hard Copy File No." value={profile.hardCopyFileNo} />
-                                                        <DetailItem label="Mobile" value={profile.mobileNumber} />
-                                                        <DetailItem label="Gender" value={profile.gender} />
-                                                        <DetailItem label="Date of Birth" value={formatDate(profile.dob)} />
-                                                        <DetailItem label="Aadhar No." value={profile.aadharNumber} />
-                                                        <DetailItem label="UAN No." value={profile.uanNumber} />
-                                                    </div>
-                                                     <div className="space-y-4">
-                                                        <h4 className="font-semibold text-sm">Contract & Policy Details</h4>
-                                                        <DetailItem label="Work Order No." value={profile.workOrderNumber} />
-                                                        <DetailItem label="Labour License No." value={profile.labourLicenseNo} />
-                                                        <DetailItem label="EIC" value={profile.eic} />
-                                                        <DetailItem label="EP No." value={profile.epNumber} />
-                                                        <DetailItem label="Joining Date" value={formatDate(profile.joiningDate)} />
-                                                        <DetailItem label="Work Order Expiry" value={formatDate(profile.workOrderExpiryDate)} />
-                                                        <DetailItem label="Labour License Expiry" value={formatDate(profile.labourLicenseExpiryDate)} />
-                                                        <DetailItem label="WC Policy No." value={profile.wcPolicyNumber} />
-                                                        <DetailItem label="WC Policy Expiry" value={formatDate(profile.wcPolicyExpiryDate)} />
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        <h4 className="font-semibold text-sm">Document Status</h4>
-                                                        {(profile.documents || []).map(doc => (
-                                                            <div key={doc.name} className="flex justify-between items-center text-sm">
-                                                                <span>{doc.name}</span>
-                                                                <Badge variant={doc.status === 'Collected' || doc.status === 'Received' ? 'success' : 'secondary'}>{doc.status}</Badge>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                </AccordionItem>
+                                <TableRow>
+                                    <TableCell colSpan={7} className="p-0">
+                                        <AccordionContent>
+                                            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50">
+                                                <div className="space-y-4">
+                                                    <h4 className="font-semibold text-sm">Personal & Work Details</h4>
+                                                    <DetailItem label="Hard Copy File No." value={profile.hardCopyFileNo} />
+                                                    <DetailItem label="Mobile" value={profile.mobileNumber} />
+                                                    <DetailItem label="Gender" value={profile.gender} />
+                                                    <DetailItem label="Date of Birth" value={formatDate(profile.dob)} />
+                                                    <DetailItem label="Aadhar No." value={profile.aadharNumber} />
+                                                    <DetailItem label="UAN No." value={profile.uanNumber} />
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    </AccordionContent>
-                                </>
-                            </AccordionItem>
+                                                    <div className="space-y-4">
+                                                    <h4 className="font-semibold text-sm">Contract & Policy Details</h4>
+                                                    <DetailItem label="Work Order No." value={profile.workOrderNumber} />
+                                                    <DetailItem label="Labour License No." value={profile.labourLicenseNo} />
+                                                    <DetailItem label="EIC" value={profile.eic} />
+                                                    <DetailItem label="EP No." value={profile.epNumber} />
+                                                    <DetailItem label="Joining Date" value={formatDate(profile.joiningDate)} />
+                                                    <DetailItem label="Work Order Expiry" value={formatDate(profile.workOrderExpiryDate)} />
+                                                    <DetailItem label="Labour License Expiry" value={formatDate(profile.labourLicenseExpiryDate)} />
+                                                    <DetailItem label="WC Policy No." value={profile.wcPolicyNumber} />
+                                                    <DetailItem label="WC Policy Expiry" value={formatDate(profile.wcPolicyExpiryDate)} />
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <h4 className="font-semibold text-sm">Document Status</h4>
+                                                    {(profile.documents || []).map(doc => (
+                                                        <div key={doc.name} className="flex justify-between items-center text-sm">
+                                                            <span>{doc.name}</span>
+                                                            <Badge variant={doc.status === 'Collected' || doc.status === 'Received' ? 'success' : 'secondary'}>{doc.status}</Badge>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </AccordionContent>
+                                    </TableCell>
+                                </TableRow>
+                            </React.Fragment>
                         ))}
                     </TableBody>
                 </Table>
