@@ -112,33 +112,42 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
 
     return (
         <TooltipProvider>
-            <Accordion type="single" collapsible className="w-full space-y-2">
-                {profiles.map(profile => (
-                    <AccordionItem value={profile.id} key={profile.id} className="border rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                           <div className="grid grid-cols-6 gap-4 w-full text-sm text-left">
-                                <div className="font-medium col-span-2">{profile.name}</div>
-                                <div className="col-span-1">{profile.trade}</div>
-                                <div className="col-span-1"><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></div>
-                                <div className="col-span-1">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Progress value={getDocumentProgress(profile)} className="w-full" />
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs">{getProgressTooltip(profile)}</TooltipContent>
-                                    </Tooltip>
-                                </div>
-                                <div className="col-span-1 flex justify-end items-center gap-2">
-                                     {profile.documentFolderUrl ? (
+            <div className="space-y-2">
+                <div className="grid grid-cols-6 gap-4 px-4 py-2 font-semibold text-sm text-muted-foreground">
+                    <div className="col-span-2">Name</div>
+                    <div className="col-span-1">Trade</div>
+                    <div className="col-span-1">Status</div>
+                    <div className="col-span-1">Doc. Progress</div>
+                    <div className="col-span-1 text-right">Actions</div>
+                </div>
+                <Accordion type="single" collapsible className="w-full space-y-2">
+                    {profiles.map(profile => (
+                        <AccordionItem value={profile.id} key={profile.id} className="border rounded-lg bg-card">
+                            <div className="flex items-center p-4">
+                                <AccordionTrigger className="w-full hover:no-underline">
+                                    <div className="grid grid-cols-6 gap-4 w-full text-sm text-left items-center">
+                                        <div className="font-medium col-span-2">{profile.name}</div>
+                                        <div className="col-span-1">{profile.trade}</div>
+                                        <div className="col-span-1"><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></div>
+                                        <div className="col-span-1">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Progress value={getDocumentProgress(profile)} className="w-full" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs">{getProgressTooltip(profile)}</TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <div className="col-span-1 flex justify-end items-center gap-2 pl-4">
+                                    {profile.documentFolderUrl && (
                                         <Button asChild variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                                             <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
                                                 <LinkIcon className="h-4 w-4" />
                                             </Link>
                                         </Button>
-                                    ) : (
-                                        <span className="text-xs text-muted-foreground">N/A</span>
                                     )}
-                                     <AlertDialog onOpenChange={(open) => open && event?.stopPropagation()}>
+                                    <AlertDialog onOpenChange={(open) => open && event?.stopPropagation()}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
@@ -172,45 +181,46 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 </div>
-                           </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50 border-t">
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-sm">Personal & Work Details</h4>
-                                    <DetailItem label="Hard Copy File No." value={profile.hardCopyFileNo} />
-                                    <DetailItem label="Mobile" value={profile.mobileNumber} />
-                                    <DetailItem label="Gender" value={profile.gender} />
-                                    <DetailItem label="Date of Birth" value={formatDate(profile.dob)} />
-                                    <DetailItem label="Aadhar No." value={profile.aadharNumber} />
-                                    <DetailItem label="UAN No." value={profile.uanNumber} />
-                                </div>
-                                    <div className="space-y-4">
-                                    <h4 className="font-semibold text-sm">Contract & Policy Details</h4>
-                                    <DetailItem label="Work Order No." value={profile.workOrderNumber} />
-                                    <DetailItem label="Labour License No." value={profile.labourLicenseNo} />
-                                    <DetailItem label="EIC" value={profile.eic} />
-                                    <DetailItem label="EP No." value={profile.epNumber} />
-                                    <DetailItem label="Joining Date" value={formatDate(profile.joiningDate)} />
-                                    <DetailItem label="Work Order Expiry" value={formatDate(profile.workOrderExpiryDate)} />
-                                    <DetailItem label="Labour License Expiry" value={formatDate(profile.labourLicenseExpiryDate)} />
-                                    <DetailItem label="WC Policy No." value={profile.wcPolicyNumber} />
-                                    <DetailItem label="WC Policy Expiry" value={formatDate(profile.wcPolicyExpiryDate)} />
-                                </div>
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-sm">Document Status</h4>
-                                    {(profile.documents || []).map(doc => (
-                                        <div key={doc.name} className="flex justify-between items-center text-sm">
-                                            <span>{doc.name}</span>
-                                            <Badge variant={doc.status === 'Collected' || doc.status === 'Received' ? 'success' : 'secondary'}>{doc.status}</Badge>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                ))}
-            </Accordion>
+
+                            <AccordionContent>
+                                <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50 border-t">
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-sm">Personal & Work Details</h4>
+                                        <DetailItem label="Hard Copy File No." value={profile.hardCopyFileNo} />
+                                        <DetailItem label="Mobile" value={profile.mobileNumber} />
+                                        <DetailItem label="Gender" value={profile.gender} />
+                                        <DetailItem label="Date of Birth" value={formatDate(profile.dob)} />
+                                        <DetailItem label="Aadhar No." value={profile.aadharNumber} />
+                                        <DetailItem label="UAN No." value={profile.uanNumber} />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-sm">Contract & Policy Details</h4>
+                                        <DetailItem label="Work Order No." value={profile.workOrderNumber} />
+                                        <DetailItem label="Labour License No." value={profile.labourLicenseNo} />
+                                        <DetailItem label="EIC" value={profile.eic} />
+                                        <DetailItem label="EP No." value={profile.epNumber} />
+                                        <DetailItem label="Joining Date" value={formatDate(profile.joiningDate)} />
+                                        <DetailItem label="Work Order Expiry" value={formatDate(profile.workOrderExpiryDate)} />
+                                        <DetailItem label="Labour License Expiry" value={formatDate(profile.labourLicenseExpiryDate)} />
+                                        <DetailItem label="WC Policy No." value={profile.wcPolicyNumber} />
+                                        <DetailItem label="WC Policy Expiry" value={formatDate(profile.wcPolicyExpiryDate)} />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-sm">Document Status</h4>
+                                        {(profile.documents || []).map(doc => (
+                                            <div key={doc.name} className="flex justify-between items-center text-sm">
+                                                <span>{doc.name}</span>
+                                                <Badge variant={doc.status === 'Collected' || doc.status === 'Received' ? 'success' : 'secondary'}>{doc.status}</Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            </div>
         </TooltipProvider>
     );
 }
