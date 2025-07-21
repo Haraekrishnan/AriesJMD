@@ -23,9 +23,9 @@ interface ManpowerListTableProps {
     onEdit: (profile: ManpowerProfile) => void;
 }
 
-const statusVariant: { [key in ManpowerProfile['status']]: "secondary" | "destructive" | "default" | "outline" | "success" | "warning" } = {
+const statusVariant: { [key in ManpowerProfile['status']]: "yellow" | "destructive" | "default" | "outline" | "success" | "warning" } = {
     'Working': 'success',
-    'On Leave': 'secondary',
+    'On Leave': 'yellow',
     'Resigned': 'destructive',
     'Terminated': 'destructive',
     'Left the Project': 'warning',
