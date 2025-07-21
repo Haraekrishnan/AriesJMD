@@ -47,11 +47,10 @@ const formatDate = (dateString?: string) => {
 };
 
 export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTableProps) {
-    const { user, deleteManpowerProfile } = useAppContext();
+    const { user, can, deleteManpowerProfile } = useAppContext();
     const { toast } = useToast();
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-    const isAdmin = user?.role === 'Admin';
-
+    
     const toggleRow = (id: string) => {
         const newExpandedRows = new Set(expandedRows);
         if (newExpandedRows.has(id)) {
@@ -132,7 +131,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                         <TableHead>Status</TableHead>
                         <TableHead>Doc. Progress</TableHead>
                         <TableHead>Doc. Link</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        {can.manage_manpower_list && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -171,45 +170,47 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             </Tooltip>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                         <AlertDialog>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => onEdit(profile)}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                                    </DropdownMenuItem>
-                                                    {isAdmin && (
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete the profile for {profile.name}.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(profile)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
+                                    {can.manage_manpower_list && (
+                                        <TableCell className="text-right">
+                                            <AlertDialog>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => onEdit(profile)}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                                        </DropdownMenuItem>
+                                                        {user?.role === 'Admin' && (
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                </DropdownMenuItem>
+                                                            </AlertDialogTrigger>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete the profile for {profile.name}.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDelete(profile)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                                 {isExpanded && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="p-0">
+                                        <TableCell colSpan={can.manage_manpower_list ? 7 : 6} className="p-0">
                                             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50">
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Personal & Work Details</h4>

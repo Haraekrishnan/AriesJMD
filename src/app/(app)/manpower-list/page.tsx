@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -20,7 +21,7 @@ import ImportManpowerDialog from '@/components/manpower/ImportManpowerDialog';
 
 
 export default function ManpowerListPage() {
-    const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave } = useAppContext();
+    const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave, can } = useAppContext();
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -33,15 +34,9 @@ export default function ManpowerListPage() {
         projectId: 'all',
         expiryDateRange: undefined,
     });
-
-    const canManage = useMemo(() => {
-        if (!user) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('manage_manpower_list');
-    }, [user, roles]);
     
     const expiringProfiles = useMemo(() => {
-        if (!canManage) return [];
+        if (!can.manage_manpower_list) return [];
         const thirtyDaysFromNow = addDays(new Date(), 30);
         
         return manpowerProfiles.map(p => {
@@ -53,8 +48,8 @@ export default function ManpowerListPage() {
             };
     
             checkDate(p.passIssueDate, 'Pass');
-            checkDate(p.woValidity, 'WO');
-            checkDate(p.wcPolicyValidity, 'WC Policy');
+            checkDate(p.workOrderExpiryDate, 'WO');
+            checkDate(p.wcPolicyExpiryDate, 'WC Policy');
             checkDate(p.labourContractValidity, 'Labour Contract');
             checkDate(p.medicalExpiryDate, 'Medical');
             checkDate(p.safetyExpiryDate, 'Safety');
@@ -63,7 +58,7 @@ export default function ManpowerListPage() {
             
             return { profile: p, expiringDocs };
         }).filter(item => item.expiringDocs.length > 0);
-    }, [manpowerProfiles, canManage]);
+    }, [manpowerProfiles, can.manage_manpower_list]);
     
     const leavesStartingToday = useMemo(() => {
         return manpowerProfiles.flatMap(p => 
@@ -83,7 +78,7 @@ export default function ManpowerListPage() {
             if (status !== 'all' && profile.status !== status) return false;
             if (trade !== 'all' && profile.trade !== trade) return false;
 
-            if(projectId !== 'all' && profile.eicName !== projectId) return false;
+            if(projectId !== 'all' && profile.eic !== projectId) return false;
 
             if (returnDateRange?.from) {
                 const returnDate = profile.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate;
@@ -98,7 +93,7 @@ export default function ManpowerListPage() {
             
             if (expiryDateRange?.from) {
                 const datesToCheck = [
-                    profile.passIssueDate, profile.woValidity, profile.wcPolicyValidity, 
+                    profile.passIssueDate, profile.workOrderExpiryDate, profile.wcPolicyExpiryDate, 
                     profile.labourContractValidity, profile.medicalExpiryDate, 
                     profile.safetyExpiryDate, profile.irataValidity, profile.contractValidity
                 ];
@@ -155,20 +150,6 @@ export default function ManpowerListPage() {
         XLSX.writeFile(workbook, 'Manpower_Leave_Report.xlsx');
     };
 
-    if (!canManage) {
-        return (
-            <Card className="w-full max-w-md mx-auto mt-20">
-                <CardHeader className="text-center items-center">
-                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
-                        <AlertTriangle className="h-10 w-10 text-destructive" />
-                    </div>
-                    <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to manage the manpower list.</CardDescription>
-                </CardHeader>
-            </Card>
-        );
-    }
-
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -178,19 +159,23 @@ export default function ManpowerListPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <ManpowerReportDownloads profiles={filteredProfiles} />
-                     <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
-                     <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
-                     <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
-                    <Button onClick={handleAdd}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Manpower
-                    </Button>
+                    {can.manage_manpower_list && (
+                        <>
+                         <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
+                         <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
+                         <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
+                         <Button onClick={handleAdd}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Manpower
+                        </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
             <TradeSummary />
 
-            {leavesStartingToday.length > 0 && (
+            {can.manage_manpower_list && leavesStartingToday.length > 0 && (
                  <Card className="border-blue-500">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Plane className="text-blue-500"/>Leave Starting Soon</CardTitle>
@@ -224,7 +209,7 @@ export default function ManpowerListPage() {
                 </Card>
             )}
 
-            {expiringProfiles.length > 0 && (
+            {can.manage_manpower_list && expiringProfiles.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Documents</CardTitle>
@@ -274,20 +259,24 @@ export default function ManpowerListPage() {
                     <ManpowerListTable profiles={filteredProfiles} onEdit={handleEdit} />
                 </CardContent>
             </Card>
-
-            <ManpowerProfileDialog
-                isOpen={isProfileDialogOpen}
-                setIsOpen={handleCloseDialog}
-                profile={selectedProfile}
-            />
-            <LeaveReportDialog 
-                isOpen={isLeaveDialogOpen} 
-                setIsOpen={setIsLeaveDialogOpen}
-            />
-            <ImportManpowerDialog
-                isOpen={isImportDialogOpen}
-                setIsOpen={setIsImportDialogOpen}
-            />
+            
+            {can.manage_manpower_list && (
+                <>
+                    <ManpowerProfileDialog
+                        isOpen={isProfileDialogOpen}
+                        setIsOpen={handleCloseDialog}
+                        profile={selectedProfile}
+                    />
+                    <LeaveReportDialog 
+                        isOpen={isLeaveDialogOpen} 
+                        setIsOpen={setIsLeaveDialogOpen}
+                    />
+                    <ImportManpowerDialog
+                        isOpen={isImportDialogOpen}
+                        setIsOpen={setIsImportDialogOpen}
+                    />
+                </>
+            )}
         </div>
     );
 }
