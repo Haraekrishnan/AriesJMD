@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -42,6 +43,7 @@ const leaveSchema = z.object({
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   hardCopyFileNo: z.string().optional(),
+  documentFolderUrl: z.string().url().optional().or(z.literal('')),
   trade: z.string(),
   otherTrade: z.string().optional(),
   status: z.enum(['Working', 'On Leave', 'Resigned', 'Terminated']),
@@ -213,7 +215,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             });
         } else {
              const defaultDocs = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
-            form.reset({ documents: defaultDocs, status: 'Working' });
+            form.reset({ documents: defaultDocs, status: 'Working', documentFolderUrl: '' });
         }
     }
   }, [profile, isOpen, form, allRequiredDocs]);
@@ -277,6 +279,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                         <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
                         <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
+                        <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
                         <div>
                             <Label>Trade</Label>
                             <Controller control={form.control} name="trade" render={({field}) => (
@@ -396,7 +399,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                     {profile?.leaveHistory?.map(leave => (
                                         <TableRow key={leave.id}>
                                             <TableCell>{leave.leaveType}</TableCell>
-                                            <TableCell>{format(new Date(leave.leaveStartDate), 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                             <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                             <TableCell>{leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                         </TableRow>
