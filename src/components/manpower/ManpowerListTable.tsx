@@ -23,12 +23,12 @@ interface ManpowerListTableProps {
     onEdit: (profile: ManpowerProfile) => void;
 }
 
-const statusVariant: { [key in ManpowerProfile['status']]: "secondary" | "destructive" | "default" | "outline" } = {
-    'Working': 'secondary',
+const statusVariant: { [key in ManpowerProfile['status']]: "secondary" | "destructive" | "default" | "outline" | "success" | "warning" } = {
+    'Working': 'success',
     'On Leave': 'default',
     'Resigned': 'destructive',
     'Terminated': 'destructive',
-    'Left the Project': 'destructive',
+    'Left the Project': 'warning',
 }
 
 const DetailItem = ({ label, value }: { label: string, value?: string | number | null }) => {
