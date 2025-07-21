@@ -80,6 +80,12 @@ const profileSchema = z.object({
     path: ['otherTrade'],
 }).refine(data => {
     if (data.status === 'On Leave') {
+        // If coming from a terminal status, new leave details are required.
+        const wasTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.leaveHistory?.at(-1)?.statusBeforeLeave || '');
+        if (wasTerminal) {
+            return !!data.currentLeave?.dateRange.from;
+        }
+
         const wasOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
         if (wasOnLeave) return true; // Already on leave, no new leave data needed
         
@@ -239,7 +245,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
     if (isRaTrade && !hasIrata) {
       appendDocument({ name: 'IRATA Certificate', status: 'Pending', details: '' });
-    } else if (!isRaT_ra_de && hasIrata) {
+    } else if (!isRaTrade && hasIrata) {
       const irataIndex = documents.findIndex(doc => doc.name === 'IRATA Certificate');
       if (irataIndex > -1) {
         removeDocument(irataIndex);
@@ -247,39 +253,45 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   }, [watchTrade, form, appendDocument, removeDocument]);
   
- const onSubmit = (data: ProfileFormValues) => {
+  const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
     let finalLeaveHistory = liveProfile?.leaveHistory ? [...liveProfile.leaveHistory] : [];
-
+  
     const wasOnLeave = liveProfile?.status === 'On Leave';
     const isBecomingTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
     const isBecomingOnLeave = data.status === 'On Leave';
-
+  
     // Case 1: Employee was on leave and is now being terminated/resigned.
     if (wasOnLeave && isBecomingTerminal) {
-        const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (activeLeaveIndex > -1) {
-            const endDate = data.terminationDate || data.resignationDate || new Date();
-            finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
-        }
+      const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
+      if (activeLeaveIndex > -1) {
+        const endDate = data.terminationDate || data.resignationDate || new Date();
+        finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+      }
     } 
-    // Case 2: Employee is being newly put on leave (from any non-leave status)
-    else if (!wasOnLeave && isBecomingOnLeave && data.currentLeave?.dateRange.from) {
-        const leaveRecord: LeaveRecord = {
-            id: `leave-${Date.now()}`,
-            leaveType: data.currentLeave.leaveType,
-            leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
-            plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
-            rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
-            remarks: data.currentLeave.remarks,
-        };
-        finalLeaveHistory.push(leaveRecord);
+    // Case 2: Employee is being newly put on leave (from any status)
+    else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
+      // Find and close any previously active leave just in case
+      const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
+      if (activeLeaveIndex > -1) {
+          finalLeaveHistory[activeLeaveIndex].leaveEndDate = data.currentLeave.dateRange.from.toISOString();
+      }
+      
+      const leaveRecord: LeaveRecord = {
+          id: `leave-${Date.now()}`,
+          leaveType: data.currentLeave.leaveType,
+          leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
+          plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
+          rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
+          remarks: data.currentLeave.remarks,
+      };
+      finalLeaveHistory.push(leaveRecord);
     }
-
+  
     const dataToSubmit = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
     delete (dataToSubmit as any).otherTrade;
     delete (dataToSubmit as any).currentLeave;
-
+  
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
       toast({ title: 'Profile Updated' });
