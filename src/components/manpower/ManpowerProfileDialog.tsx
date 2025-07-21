@@ -78,15 +78,6 @@ const profileSchema = z.object({
 }, {
     message: 'Please specify the trade',
     path: ['otherTrade'],
-}).refine(data => {
-    // This validation only applies if you are *setting* the status to "On Leave"
-    if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Leave period is required when status is 'On Leave'",
-    path: ['currentLeave.dateRange'],
 });
 
 
@@ -264,7 +255,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
     
     // Handle changing status *from* "On Leave" to something else
-    if (liveProfile?.status === 'On Leave' && data.status !== 'On Leave') {
+    if (liveProfile?.status === 'On Leave' && (data.status === 'Terminated' || data.status === 'Resigned' || data.status === 'Left the Project')) {
         const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
         if (activeLeaveIndex > -1) {
             const terminationDate = data.terminationDate || data.resignationDate || new Date();
@@ -272,22 +263,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         }
     }
 
-    const cleanDataForFirebase = (obj: any) => {
-      if (!obj) return null;
-      const newObj: any = {};
-      for (const key in obj) {
-        if (obj[key] instanceof Date) {
-          newObj[key] = obj[key].toISOString();
-        } else if(obj[key] !== undefined) { 
-          newObj[key] = obj[key];
-        }
-      }
-      return newObj;
-    };
-    
-    const dataToSubmit = cleanDataForFirebase({...data, trade: finalTrade, leaveHistory: finalLeaveHistory });
-    delete dataToSubmit.otherTrade;
-    delete dataToSubmit.currentLeave;
+    const dataToSubmit = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
+    delete (dataToSubmit as any).otherTrade;
+    delete (dataToSubmit as any).currentLeave;
 
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
