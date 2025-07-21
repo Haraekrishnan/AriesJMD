@@ -88,7 +88,6 @@ interface ManpowerProfileDialogProps {
   profile: ManpowerProfile | null;
 }
 
-const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
 const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 
 
@@ -184,42 +183,41 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   };
     
   useEffect(() => {
-    if (isOpen) {
-        let initialDocs: ManpowerDocument[] = [];
+    if (isOpen && profile) {
+        const liveProfile = manpowerProfiles.find(p => p.id === profile.id);
+        if (!liveProfile) return;
+
         const baseDocs = MANDATORY_DOCS;
+        const profileDocsMap = new Map((liveProfile.documents || []).map(doc => [doc.name, doc]));
+        let initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
+            profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
+        );
         
-        if (liveProfile) {
-            const profileDocsMap = new Map((liveProfile.documents || []).map(doc => [doc.name, doc]));
-            initialDocs = baseDocs.map(docName => 
-                profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
-            );
-            
-            // Add any non-standard docs that might exist on the profile (like IRATA)
-            (liveProfile.documents || []).forEach(doc => {
-                if (!initialDocs.some(d => d.name === doc.name)) {
-                    initialDocs.push(doc);
-                }
-            });
-            
-            form.reset({
-                ...liveProfile,
-                dob: parseDate(liveProfile.dob),
-                joiningDate: parseDate(liveProfile.joiningDate),
-                workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
-                labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
-                wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
-                resignationDate: parseDate(liveProfile.resignationDate),
-                terminationDate: parseDate(liveProfile.terminationDate),
-                documents: initialDocs,
-                trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
-                otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
-            });
-        } else {
-            initialDocs = baseDocs.map(name => ({ name, status: 'Pending', details: '' }));
-            form.reset({ documents: initialDocs, status: 'Working', documentFolderUrl: '' });
-        }
+        // Add any non-standard docs that might exist on the profile (like IRATA)
+        (liveProfile.documents || []).forEach(doc => {
+            if (!initialDocs.some(d => d.name === doc.name)) {
+                initialDocs.push(doc);
+            }
+        });
+        
+        form.reset({
+            ...liveProfile,
+            dob: parseDate(liveProfile.dob),
+            joiningDate: parseDate(liveProfile.joiningDate),
+            workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
+            labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
+            wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
+            resignationDate: parseDate(liveProfile.resignationDate),
+            terminationDate: parseDate(liveProfile.terminationDate),
+            documents: initialDocs,
+            trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
+            otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
+        });
+    } else if (isOpen && !profile) {
+        let initialDocs: ManpowerDocument[] = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
+        form.reset({ documents: initialDocs, status: 'Working', documentFolderUrl: '' });
     }
-  }, [liveProfile, isOpen, form]);
+}, [profile, isOpen, form, manpowerProfiles]);
 
   useEffect(() => {
     const documents = form.getValues('documents') || [];
