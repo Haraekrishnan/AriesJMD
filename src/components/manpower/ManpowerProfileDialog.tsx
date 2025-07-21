@@ -169,7 +169,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     resolver: zodResolver(profileSchema),
   });
   
-  const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
+  const { fields: documentFields, append: appendDocument, remove: removeDocument, replace: replaceDocuments } = useFieldArray({
     control: form.control,
     name: "documents"
   });
@@ -185,7 +185,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     
   useEffect(() => {
     if (isOpen) {
+        let initialDocs: ManpowerDocument[] = [];
+        const baseDocs = MANDATORY_DOCS;
+        
         if (liveProfile) {
+            const profileDocsMap = new Map((liveProfile.documents || []).map(doc => [doc.name, doc]));
+            initialDocs = baseDocs.map(docName => 
+                profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
+            );
+            
+            // Add any non-standard docs that might exist on the profile (like IRATA)
+            (liveProfile.documents || []).forEach(doc => {
+                if (!initialDocs.some(d => d.name === doc.name)) {
+                    initialDocs.push(doc);
+                }
+            });
+            
             form.reset({
                 ...liveProfile,
                 dob: parseDate(liveProfile.dob),
@@ -193,25 +208,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
                 labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
                 wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
-                passIssueDate: parseDate(liveProfile.passIssueDate),
-                medicalExpiryDate: parseDate(liveProfile.medicalExpiryDate),
-                safetyExpiryDate: parseDate(liveProfile.safetyExpiryDate),
-                irataValidity: parseDate(liveProfile.irataValidity),
-                contractValidity: parseDate(liveProfile.contractValidity),
                 resignationDate: parseDate(liveProfile.resignationDate),
                 terminationDate: parseDate(liveProfile.terminationDate),
-                documents: liveProfile.documents || [],
+                documents: initialDocs,
                 trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
                 otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
             });
         } else {
-             const defaultDocs = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
-            form.reset({ documents: defaultDocs, status: 'Working', documentFolderUrl: '' });
+            initialDocs = baseDocs.map(name => ({ name, status: 'Pending', details: '' }));
+            form.reset({ documents: initialDocs, status: 'Working', documentFolderUrl: '' });
         }
     }
   }, [liveProfile, isOpen, form]);
 
-  // Handle dynamic IRATA document
   useEffect(() => {
     const documents = form.getValues('documents') || [];
     const hasIrata = documents.some(doc => doc.name === 'IRATA Certificate');
