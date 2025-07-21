@@ -112,93 +112,93 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
 
     return (
         <TooltipProvider>
-            <Accordion type="single" collapsible className="w-full">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-12"></TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Trade</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Documentation Status</TableHead>
-                            <TableHead>Documents</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {profiles.map(profile => (
-                            <React.Fragment key={profile.id}>
-                                <AccordionItem value={profile.id} asChild>
-                                    <TableRow>
-                                        <TableCell>
-                                            <AccordionTrigger className="p-0 hover:no-underline [&>svg]:ml-2">
-                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                            </AccordionTrigger>
-                                        </TableCell>
-                                        <TableCell className="font-medium">{profile.name}</TableCell>
-                                        <TableCell>{profile.trade}</TableCell>
-                                        <TableCell><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></TableCell>
-                                        <TableCell>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div className="flex items-center gap-2">
-                                                        <Progress value={getDocumentProgress(profile)} className="w-48" />
-                                                        <span className="text-xs text-muted-foreground">{getDocumentProgress(profile).toFixed(0)}%</span>
-                                                    </div>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    {getProgressTooltip(profile)}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TableCell>
-                                        <TableCell>
-                                            {profile.documentFolderUrl ? (
-                                                <Button asChild variant="ghost" size="icon">
-                                                    <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
-                                                        <LinkIcon className="h-4 w-4" />
-                                                    </Link>
-                                                </Button>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">N/A</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <AlertDialog>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => onEdit(profile)}>
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit
-                                                        </DropdownMenuItem>
-                                                        {isAdmin && (
-                                                            <AlertDialogTrigger asChild>
-                                                                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                </DropdownMenuItem>
-                                                            </AlertDialogTrigger>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. This will permanently delete the profile for {profile.name}.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDelete(profile)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </TableCell>
-                                    </TableRow>
-                                </AccordionItem>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-12"></TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Trade</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Documentation Status</TableHead>
+                        <TableHead>Documents</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                   <Accordion type="single" collapsible className="w-full" asChild>
+                    <>
+                    {profiles.map(profile => (
+                        <AccordionItem value={profile.id} key={profile.id} asChild>
+                            <>
+                                <TableRow>
+                                    <TableCell>
+                                        <AccordionTrigger className="p-0 hover:no-underline [&>svg]:ml-2">
+                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                        </AccordionTrigger>
+                                    </TableCell>
+                                    <TableCell className="font-medium">{profile.name}</TableCell>
+                                    <TableCell>{profile.trade}</TableCell>
+                                    <TableCell><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></TableCell>
+                                    <TableCell>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="flex items-center gap-2">
+                                                    <Progress value={getDocumentProgress(profile)} className="w-48" />
+                                                    <span className="text-xs text-muted-foreground">{getDocumentProgress(profile).toFixed(0)}%</span>
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs">
+                                                {getProgressTooltip(profile)}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TableCell>
+                                    <TableCell>
+                                        {profile.documentFolderUrl ? (
+                                            <Button asChild variant="ghost" size="icon">
+                                                <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
+                                                    <LinkIcon className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">N/A</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <AlertDialog>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onSelect={() => onEdit(profile)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    </DropdownMenuItem>
+                                                    {isAdmin && (
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete the profile for {profile.name}.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDelete(profile)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
                                 <TableRow>
                                     <TableCell colSpan={7} className="p-0">
                                         <AccordionContent>
@@ -237,11 +237,13 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                         </AccordionContent>
                                     </TableCell>
                                 </TableRow>
-                            </React.Fragment>
-                        ))}
-                    </TableBody>
-                </Table>
-            </Accordion>
+                            </>
+                        </AccordionItem>
+                    ))}
+                    </>
+                   </Accordion>
+                </TableBody>
+            </Table>
         </TooltipProvider>
     );
 }
