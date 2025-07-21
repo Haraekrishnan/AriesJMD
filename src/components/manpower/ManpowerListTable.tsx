@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { ManpowerProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Edit, MoreHorizontal, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
 import { MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -109,26 +109,28 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
         return <p className="text-muted-foreground text-center py-8">No manpower profiles found.</p>;
     }
 
+    const gridTemplate = "grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-4 items-center";
+
     return (
         <TooltipProvider>
             <div className="space-y-2">
-                <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-4 py-2 font-semibold text-sm text-muted-foreground">
-                    <div className="col-span-1">Name</div>
-                    <div className="col-span-1">Trade</div>
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-1">Doc. Progress</div>
-                    <div className="col-span-1 text-right">Actions</div>
+                <div className={`${gridTemplate} px-4 py-2 font-semibold text-sm text-muted-foreground`}>
+                    <div>Name</div>
+                    <div>Trade</div>
+                    <div>Status</div>
+                    <div>Doc. Progress</div>
+                    <div className="text-right">Actions</div>
                 </div>
                 <Accordion type="single" collapsible className="w-full space-y-2">
                     {profiles.map(profile => (
                         <AccordionItem value={profile.id} key={profile.id} className="border rounded-lg bg-card">
-                           <div className="flex items-center p-4">
-                                <AccordionTrigger className="w-full hover:no-underline">
-                                    <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 w-full text-sm text-left items-center">
-                                        <div className="font-medium col-span-1">{profile.name}</div>
-                                        <div className="col-span-1">{profile.trade}</div>
-                                        <div className="col-span-1"><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></div>
-                                        <div className="col-span-1">
+                           <div className="flex items-center">
+                               <AccordionTrigger className="flex-1 p-4 hover:no-underline">
+                                    <div className={`${gridTemplate} w-full text-sm text-left`}>
+                                        <div className="font-medium">{profile.name}</div>
+                                        <div>{profile.trade}</div>
+                                        <div><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></div>
+                                        <div>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Progress value={getDocumentProgress(profile)} className="w-full" />
@@ -138,13 +140,18 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                         </div>
                                     </div>
                                 </AccordionTrigger>
-                                <div className="flex justify-end items-center gap-2 pl-4">
+                                <div className="flex justify-end items-center gap-2 px-4 text-right">
                                     {profile.documentFolderUrl && (
-                                        <Button asChild variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                            <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
-                                                <LinkIcon className="h-4 w-4" />
-                                            </Link>
-                                        </Button>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button asChild variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                                    <Link href={profile.documentFolderUrl} target="_blank" rel="noopener noreferrer">
+                                                        <LinkIcon className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Open Document Folder</p></TooltipContent>
+                                        </Tooltip>
                                     )}
                                     <AlertDialog onOpenChange={(open) => open && event?.stopPropagation()}>
                                         <DropdownMenu>
@@ -179,7 +186,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
-                                </div>
+                               </div>
                             </div>
                             <AccordionContent>
                                 <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50 border-t">
