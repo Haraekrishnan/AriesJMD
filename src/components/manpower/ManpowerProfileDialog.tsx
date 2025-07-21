@@ -241,28 +241,35 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
     let finalLeaveHistory = liveProfile?.leaveHistory || [];
 
-    // Handle new leave record
-    if (data.status === 'On Leave' && data.currentLeave?.dateRange.from) {
-        const leaveRecord: LeaveRecord = {
-            id: `leave-${Date.now()}`,
-            leaveType: data.currentLeave.leaveType,
-            leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
-            plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
-            rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
-            remarks: data.currentLeave.remarks,
-        };
-        finalLeaveHistory.push(leaveRecord);
-    }
+    const wasOnLeave = liveProfile?.status === 'On Leave';
+    const isNowTerminated = data.status === 'Terminated' || data.status === 'Resigned' || data.status === 'Left the Project';
+    const isNowOnLeave = data.status === 'On Leave';
     
-    // Handle changing status *from* "On Leave" to something else
-    if (liveProfile?.status === 'On Leave' && (data.status === 'Terminated' || data.status === 'Resigned' || data.status === 'Left the Project')) {
+    // Case 1: Was on leave, now being terminated/resigned.
+    if (wasOnLeave && isNowTerminated) {
         const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
         if (activeLeaveIndex > -1) {
-            const terminationDate = data.terminationDate || data.resignationDate || new Date();
-            finalLeaveHistory[activeLeaveIndex].leaveEndDate = terminationDate.toISOString();
+            const endDate = data.terminationDate || data.resignationDate || new Date();
+            finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
         }
     }
 
+    // Case 2: Is now being put on leave.
+    if (isNowOnLeave && data.currentLeave?.dateRange.from) {
+        const activeLeave = finalLeaveHistory.find(l => !l.rejoinedDate && !l.leaveEndDate);
+        if (!activeLeave) { // Only add if no active leave exists
+            const leaveRecord: LeaveRecord = {
+                id: `leave-${Date.now()}`,
+                leaveType: data.currentLeave.leaveType,
+                leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
+                plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
+                rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
+                remarks: data.currentLeave.remarks,
+            };
+            finalLeaveHistory.push(leaveRecord);
+        }
+    }
+    
     const dataToSubmit = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
     delete (dataToSubmit as any).otherTrade;
     delete (dataToSubmit as any).currentLeave;
