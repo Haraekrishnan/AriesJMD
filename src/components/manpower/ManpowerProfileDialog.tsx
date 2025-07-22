@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
-import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus } from '@/lib/types';
+import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { CalendarIcon, Trash2, Edit } from 'lucide-react';
+import { CalendarIcon, Trash2, Edit, PlusCircle } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
@@ -29,6 +29,12 @@ const documentSchema = z.object({
   name: z.string(),
   details: z.string().optional(),
   status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']),
+});
+
+const skillSchema = z.object({
+    name: z.string().min(1, "Skill name is required"),
+    details: z.string().optional(),
+    link: z.string().url().optional().or(z.literal('')),
 });
 
 const leaveSchema = z.object({
@@ -65,6 +71,7 @@ const profileSchema = z.object({
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
   documents: z.array(documentSchema).optional(),
+  skills: z.array(skillSchema).optional(),
   resignationDate: z.date().optional(),
   terminationDate: z.date().optional(),
   feedback: z.string().optional(),
@@ -79,8 +86,11 @@ const profileSchema = z.object({
     message: 'Please specify the trade',
     path: ['otherTrade'],
 }).refine(data => {
+    const wasOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+    if ((wasOnLeave || data.status === 'On Leave') && (data.status === 'Terminated' || data.status === 'Resigned')) {
+        return true; 
+    }
     if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
-        // If we are changing TO "On Leave", we need leave dates.
         return false;
     }
     return true;
@@ -182,6 +192,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     control: form.control,
     name: "documents"
   });
+
+  const { fields: skillFields, append: appendSkill, remove: removeSkill } = useFieldArray({
+    control: form.control,
+    name: "skills"
+  });
   
   const watchTrade = form.watch('trade');
   const watchStatus = form.watch('status');
@@ -197,7 +212,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         const liveProfile = manpowerProfiles.find(p => p.id === profile.id);
         if (!liveProfile) return;
 
-        const baseDocs = MANDATORY_DOCS;
+        const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate'];
         const profileDocsMap = new Map((liveProfile.documents || []).map(doc => [doc.name, doc]));
         let initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
             profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
@@ -220,12 +235,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             resignationDate: parseDate(liveProfile.resignationDate),
             terminationDate: parseDate(liveProfile.terminationDate),
             documents: initialDocs,
+            skills: liveProfile.skills || [],
             trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
             otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
         });
     } else if (isOpen && !profile) {
-        let initialDocs: ManpowerDocument[] = MANDATORY_DOCS.map(name => ({ name, status: 'Pending', details: '' }));
-        form.reset({ documents: initialDocs, status: 'Working', documentFolderUrl: '' });
+        let initialDocs: ManpowerDocument[] = [...MANDATORY_DOCS, 'Skill Certificate'].map(name => ({ name, status: 'Pending', details: '' }));
+        form.reset({ documents: initialDocs, skills: [], status: 'Working', documentFolderUrl: '' });
     }
 }, [profile, isOpen, form, manpowerProfiles]);
 
@@ -251,23 +267,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     const wasOnLeave = liveProfile?.status === 'On Leave';
     const isBecomingTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
     const isBecomingOnLeave = data.status === 'On Leave';
-    
-    // Case 1: Employee was on leave and is now being terminated/resigned.
+  
     if (wasOnLeave && isBecomingTerminal) {
       const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
       if (activeLeaveIndex > -1) {
         const endDate = data.terminationDate || data.resignationDate;
-        if(endDate) {
-            finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+        if (endDate) {
+          finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
         }
       }
-    } 
-    // Case 2: Employee is being newly put on leave
-    else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
-       // Close any previously active leave just in case
+    } else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
       const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
       if (activeLeaveIndex > -1) {
-          finalLeaveHistory[activeLeaveIndex].leaveEndDate = data.currentLeave.dateRange.from.toISOString();
+        finalLeaveHistory[activeLeaveIndex].leaveEndDate = data.currentLeave.dateRange.from.toISOString();
       }
       
       const leaveRecord: LeaveRecord = {
@@ -289,11 +301,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
       toast({ title: 'Profile Updated' });
     } else {
-      const newProfileData = {
-        skills: [],
-        ...dataToSubmit
-      } as Omit<ManpowerProfile, 'id'>
-      addManpowerProfile(newProfileData);
+      addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
       toast({ title: 'Profile Added' });
     }
     setIsOpen(false);
@@ -399,6 +407,20 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             </div>
                           </div>
                         ))}
+                    </div>
+
+                    <div className="space-y-4 md:col-span-3">
+                       <Separator />
+                       <h3 className="text-lg font-semibold border-b pb-2">Skills</h3>
+                       {skillFields.map((field, index) => (
+                           <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 p-2 border rounded-md">
+                               <div className="md:col-span-4"><Label>Skill Name</Label><Input {...form.register(`skills.${index}.name`)} /></div>
+                               <div className="md:col-span-4"><Label>Details (Cert No.)</Label><Input {...form.register(`skills.${index}.details`)} /></div>
+                               <div className="md:col-span-3"><Label>Link (Optional)</Label><Input {...form.register(`skills.${index}.link`)} /></div>
+                               <div className="md:col-span-1 flex items-end"><Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+                           </div>
+                       ))}
+                       <Button type="button" variant="outline" size="sm" onClick={() => appendSkill({ name: '', details: '', link: ''})}><PlusCircle className="mr-2 h-4 w-4"/>Add Skill</Button>
                     </div>
 
                     {(watchStatus === 'Resigned' || watchStatus === 'Terminated' || watchStatus === 'Left the Project') && (
