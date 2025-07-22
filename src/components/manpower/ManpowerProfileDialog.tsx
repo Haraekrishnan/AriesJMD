@@ -87,7 +87,11 @@ const profileSchema = z.object({
     message: 'Please specify the trade',
     path: ['otherTrade'],
 }).refine(data => {
+    // This validation should only trigger if you are setting the status TO "On Leave"
+    // and not if it was already "On Leave" and you're changing it to something else.
     if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
+        // Check if there's already an active leave in the history.
+        // If there is, we don't need new leave dates.
         const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
         if(!hasActiveLeave) {
             return false;
@@ -107,6 +111,8 @@ interface ManpowerProfileDialogProps {
   setIsOpen: (open: boolean) => void;
   profile: ManpowerProfile | null;
 }
+
+const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 
 const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
 
@@ -276,9 +282,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
           finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
         }
       }
-    }
-  
-    if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
+    } else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
       const activeLeave = finalLeaveHistory.find(l => !l.rejoinedDate && !l.leaveEndDate);
       if (!activeLeave) { // Only add new leave if there isn't one already active
         const leaveRecord: LeaveRecord = {
