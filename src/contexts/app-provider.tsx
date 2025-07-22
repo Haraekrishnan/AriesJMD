@@ -1003,7 +1003,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     return isValid(date) ? date.toISOString() : undefined;
                 }
                 if (typeof dateInput === 'string') {
-                    const parsedDate = parse(dateInput, 'dd-MM-yyyy', new Date());
+                    // Try parsing DD/MM/YYYY first, then DD-MM-YYYY
+                    let parsedDate = parse(dateInput, 'dd/MM/yyyy', new Date());
+                    if (!isValid(parsedDate)) {
+                        parsedDate = parse(dateInput, 'dd-MM-yyyy', new Date());
+                    }
                     return isValid(parsedDate) ? parsedDate.toISOString() : undefined;
                 }
                 if (dateInput instanceof Date && isValid(dateInput)) {
@@ -1053,14 +1057,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
     if(!user) return;
     
-    // Helper function to clean undefined values recursively
+    // Helper function to clean undefined values recursively, converting them to null
     const cleanData = (obj: any): any => {
       if (Array.isArray(obj)) {
-        return obj.map(item => cleanData(item)).filter(item => item !== null);
+        return obj.map(item => cleanData(item));
       } else if (obj !== null && typeof obj === 'object') {
         const newObj: { [key: string]: any } = {};
         for (const key in obj) {
-          if (obj[key] !== undefined) {
+          if (obj[key] === undefined) {
+             newObj[key] = null;
+          } else {
             newObj[key] = cleanData(obj[key]);
           }
         }
@@ -1968,3 +1974,6 @@ export const useAppContext = (): AppContextType => {
 
     
 
+
+
+    
