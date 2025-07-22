@@ -67,6 +67,7 @@ const profileSchema = z.object({
   labourLicenseExpiryDate: z.date().optional(),
   wcPolicyNumber: z.string().optional(),
   wcPolicyExpiryDate: z.date().optional(),
+  irataValidity: z.date().optional(),
   cardCategory: z.string().optional(),
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
@@ -86,12 +87,11 @@ const profileSchema = z.object({
     message: 'Please specify the trade',
     path: ['otherTrade'],
 }).refine(data => {
-    const wasOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
-    if ((wasOnLeave || data.status === 'On Leave') && (data.status === 'Terminated' || data.status === 'Resigned')) {
-        return true; 
-    }
     if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
-        return false;
+        const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+        if(!hasActiveLeave) {
+            return false;
+        }
     }
     return true;
 }, {
@@ -108,7 +108,6 @@ interface ManpowerProfileDialogProps {
   profile: ManpowerProfile | null;
 }
 
-const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
 
 const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {
@@ -232,6 +231,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
             labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
             wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
+            irataValidity: parseDate(liveProfile.irataValidity),
             resignationDate: parseDate(liveProfile.resignationDate),
             terminationDate: parseDate(liveProfile.terminationDate),
             documents: initialDocs,
@@ -276,21 +276,21 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
           finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
         }
       }
-    } else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
-      const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
-      if (activeLeaveIndex > -1) {
-        finalLeaveHistory[activeLeaveIndex].leaveEndDate = data.currentLeave.dateRange.from.toISOString();
-      }
-      
-      const leaveRecord: LeaveRecord = {
+    }
+  
+    if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
+      const activeLeave = finalLeaveHistory.find(l => !l.rejoinedDate && !l.leaveEndDate);
+      if (!activeLeave) { // Only add new leave if there isn't one already active
+        const leaveRecord: LeaveRecord = {
           id: `leave-${Date.now()}`,
           leaveType: data.currentLeave.leaveType,
           leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
           plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
           rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
           remarks: data.currentLeave.remarks,
-      };
-      finalLeaveHistory.push(leaveRecord);
+        };
+        finalLeaveHistory.push(leaveRecord);
+      }
     }
   
     const dataToSubmit = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
@@ -379,6 +379,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <Separator className="my-4" />
                         <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
                         <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
+                        {RA_TRADES.includes(watchTrade) && (
+                            <div><Label>IRATA Expiry Date</Label><DatePickerController name="irataValidity" control={form.control} /></div>
+                        )}
                         <div><Label>Card Category</Label><Input {...form.register('cardCategory')} /></div>
                         <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
                     </div>

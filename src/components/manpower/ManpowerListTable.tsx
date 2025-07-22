@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import type { ManpowerProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown, ChevronRight } from 'lucide-react';
+import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
 import { MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -14,9 +14,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { format, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO, differenceInDays } from 'date-fns';
 import React from 'react';
-import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
+
 
 interface ManpowerListTableProps {
     profiles: ManpowerProfile[];
@@ -45,6 +46,35 @@ const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     const date = parseISO(dateString);
     return isValid(date) ? format(date, 'dd MMM, yyyy') : 'N/A';
+};
+
+const getNextExpiry = (profile: ManpowerProfile) => {
+    const dates: { name: string; date: Date }[] = [];
+    const checkDate = (dateStr: string | undefined, name: string) => {
+        if (dateStr) {
+            const date = parseISO(dateStr);
+            if (isValid(date)) {
+                dates.push({ name, date });
+            }
+        }
+    };
+    checkDate(profile.workOrderExpiryDate, 'WO Expiry');
+    checkDate(profile.wcPolicyExpiryDate, 'WC Policy');
+    checkDate(profile.labourLicenseExpiryDate, 'Labour License');
+    checkDate(profile.medicalExpiryDate, 'Medical');
+    checkDate(profile.safetyExpiryDate, 'Safety');
+    checkDate(profile.irataValidity, 'IRATA');
+    checkDate(profile.contractValidity, 'Contract');
+
+    if (dates.length === 0) return null;
+    
+    const now = new Date();
+    const futureDates = dates.filter(d => d.date >= now);
+    
+    if (futureDates.length === 0) return null;
+    
+    futureDates.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return futureDates[0];
 };
 
 export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTableProps) {
@@ -131,6 +161,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                         <TableHead>Trade</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Doc. Progress</TableHead>
+                        <TableHead>Next Expiry</TableHead>
                         <TableHead>Doc. Link</TableHead>
                         {can.manage_manpower_list && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
@@ -138,6 +169,10 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 <TableBody>
                     {profiles.map(profile => {
                         const isExpanded = expandedRows.has(profile.id);
+                        const nextExpiry = getNextExpiry(profile);
+                        const daysToExpiry = nextExpiry ? differenceInDays(nextExpiry.date, new Date()) : null;
+                        const isExpiringSoon = daysToExpiry !== null && daysToExpiry <= 30;
+
                         return (
                             <React.Fragment key={profile.id}>
                                 <TableRow>
@@ -156,6 +191,14 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             </TooltipTrigger>
                                             <TooltipContent className="max-w-xs">{getProgressTooltip(profile)}</TooltipContent>
                                         </Tooltip>
+                                    </TableCell>
+                                    <TableCell className={cn('text-sm', isExpiringSoon && 'text-destructive font-semibold')}>
+                                        {nextExpiry ? (
+                                            <div className="flex items-center gap-1">
+                                                {isExpiringSoon && <AlertCircle className="h-4 w-4" />}
+                                                <span>{nextExpiry.name}: {format(nextExpiry.date, 'dd-MM-yy')}</span>
+                                            </div>
+                                        ) : 'N/A'}
                                     </TableCell>
                                     <TableCell>
                                         {profile.documentFolderUrl && (
@@ -211,7 +254,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                 </TableRow>
                                 {isExpanded && (
                                     <TableRow>
-                                        <TableCell colSpan={can.manage_manpower_list ? 7 : 6} className="p-0">
+                                        <TableCell colSpan={can.manage_manpower_list ? 8 : 7} className="p-0">
                                             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50">
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Personal & Work Details</h4>
@@ -233,6 +276,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                                     <DetailItem label="Labour License Expiry" value={formatDate(profile.labourLicenseExpiryDate)} />
                                                     <DetailItem label="WC Policy No." value={profile.wcPolicyNumber} />
                                                     <DetailItem label="WC Policy Expiry" value={formatDate(profile.wcPolicyExpiryDate)} />
+                                                    <DetailItem label="IRATA Expiry" value={formatDate(profile.irataValidity)} />
                                                 </div>
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Document Status</h4>

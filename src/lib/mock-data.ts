@@ -1,6 +1,7 @@
 
 
 
+
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
@@ -338,8 +339,8 @@ export const VEHICLES: Vehicle[] = [
     { id: 'vh-2', vehicleNumber: 'SHJ 54321', driverId: 'd-2', seatingCapacity: 7, vapValidity: add(new Date(), { days: 25 }).toISOString(), insuranceValidity: add(new Date(), { months: 8 }).toISOString(), fitnessValidity: add(new Date(), { years: 1 }).toISOString(), taxValidity: add(new Date(), { months: 2 }).toISOString(), puccValidity: add(new Date(), { months: 4 }).toISOString() },
 ];
 
-export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'HSE', 'Supervisor', 'Document Controller', 'Cook', 'Others'];
-export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3'];
+export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor', 'HSE', 'Supervisor', 'Document Controller', 'Cook', 'Others'];
+export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
 export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
 
 export const MANPOWER_PROFILES: ManpowerProfile[] = [
