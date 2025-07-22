@@ -87,15 +87,11 @@ const profileSchema = z.object({
     message: 'Please specify the trade',
     path: ['otherTrade'],
 }).refine(data => {
-    // This validation should only trigger if you are setting the status TO "On Leave"
-    // and not if it was already "On Leave" and you're changing it to something else.
-    if (data.status === 'On Leave' && !data.currentLeave?.dateRange.from) {
-        // Check if there's already an active leave in the history.
-        // If there is, we don't need new leave dates.
-        const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
-        if(!hasActiveLeave) {
-            return false;
-        }
+    const isBecomingOnLeave = data.status === 'On Leave';
+    const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+
+    if (isBecomingOnLeave && !hasActiveLeave && !data.currentLeave?.dateRange.from) {
+        return false;
     }
     return true;
 }, {
@@ -113,75 +109,29 @@ interface ManpowerProfileDialogProps {
 }
 
 const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
-
 const documentStatusOptions: DocumentStatus[] = ['Pending', 'Collected', 'Submitted', 'Received'];
 
 const DatePickerController = ({ name, control, disabled = false }: { name: any, control: any, disabled?: boolean }) => {
-  return (
-    <Controller
-      name={name}
-      control={control}
-      render={({ field }) => {
-        const [inputValue, setInputValue] = useState(field.value ? format(new Date(field.value), 'dd-MM-yyyy') : '');
-
-        useEffect(() => {
-          if (field.value && isValid(new Date(field.value))) {
-            setInputValue(format(new Date(field.value), 'dd-MM-yyyy'));
-          } else if (!field.value) {
-            setInputValue('');
-          }
-        }, [field.value]);
-
-        const handleDateChange = (dateStr: string) => {
-          setInputValue(dateStr);
-          if (dateStr.length === 10) {
-            const parsedDate = parse(dateStr, 'dd-MM-yyyy', new Date());
-            if (isValid(parsedDate)) {
-              field.onChange(parsedDate);
-            } else {
-              field.onChange(undefined);
-            }
-          } else if(dateStr === '') {
-            field.onChange(undefined);
-          }
-        };
-
-        const handleCalendarSelect = (date: Date | undefined) => {
-            field.onChange(date);
-            if(date) {
-                setInputValue(format(date, 'dd-MM-yyyy'));
-            }
-        };
-
-        return (
-          <div className="relative">
-            <Input
-              type="text"
-              value={inputValue}
-              onChange={(e) => handleDateChange(e.target.value)}
-              placeholder="DD-MM-YYYY"
-              disabled={disabled}
-            />
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" disabled={disabled}>
-                  <CalendarIcon className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={field.value ? new Date(field.value) : undefined}
-                  onSelect={handleCalendarSelect}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        );
-      }}
-    />
-  );
+    return (
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => {
+            const fieldValue = field.value ? (typeof field.value === 'string' ? parseISO(field.value) : field.value) : undefined;
+            return (
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !fieldValue && 'text-muted-foreground')} disabled={disabled}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {fieldValue ? format(fieldValue, 'dd-MM-yyyy') : <span>Pick a date</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fieldValue} onSelect={field.onChange} initialFocus /></PopoverContent>
+                </Popover>
+            );
+        }}
+      />
+    );
 };
 
 
@@ -189,8 +139,52 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
 
+  const parseDate = (dateString?: string): Date | undefined => {
+    if (!dateString) return undefined;
+    const date = new Date(dateString);
+    return isValid(date) ? date : undefined;
+  };
+  
+  const getInitialDocs = (profileData?: ManpowerProfile) => {
+    const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate'];
+    if (!profileData) {
+      return baseDocs.map(name => ({ name, status: 'Pending' as DocumentStatus, details: '' }));
+    }
+    const profileDocsMap = new Map((profileData.documents || []).map(doc => [doc.name, doc]));
+    const initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
+      profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
+    );
+    (profileData.documents || []).forEach(doc => {
+      if (!initialDocs.some(d => d.name === doc.name)) {
+        initialDocs.push(doc);
+      }
+    });
+    return initialDocs;
+  };
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
+    defaultValues: useMemo(() => {
+        const liveProfile = profile ? manpowerProfiles.find(p => p.id === profile.id) : null;
+        if (liveProfile) {
+            return {
+                ...liveProfile,
+                dob: parseDate(liveProfile.dob),
+                joiningDate: parseDate(liveProfile.joiningDate),
+                workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
+                labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
+                wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
+                irataValidity: parseDate(liveProfile.irataValidity),
+                resignationDate: parseDate(liveProfile.resignationDate),
+                terminationDate: parseDate(liveProfile.terminationDate),
+                documents: getInitialDocs(liveProfile),
+                skills: liveProfile.skills || [],
+                trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
+                otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
+            };
+        }
+        return { documents: getInitialDocs(), skills: [], status: 'Working', documentFolderUrl: '' };
+    }, [profile, manpowerProfiles]),
   });
   
   const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
@@ -207,30 +201,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const watchStatus = form.watch('status');
 
   const liveProfile = useMemo(() => manpowerProfiles.find(p => p.id === profile?.id), [manpowerProfiles, profile]);
-
-  const parseDate = (dateString?: string) => {
-    return dateString && isValid(new Date(dateString)) ? new Date(dateString) : undefined;
-  };
     
   useEffect(() => {
-    if (isOpen && profile) {
-        const liveProfile = manpowerProfiles.find(p => p.id === profile.id);
-        if (!liveProfile) return;
-
-        const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate'];
-        const profileDocsMap = new Map((liveProfile.documents || []).map(doc => [doc.name, doc]));
-        let initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
-            profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
-        );
-        
-        // Add any non-standard docs that might exist on the profile (like IRATA)
-        (liveProfile.documents || []).forEach(doc => {
-            if (!initialDocs.some(d => d.name === doc.name)) {
-                initialDocs.push(doc);
-            }
-        });
-        
-        form.reset({
+    const liveProfile = profile ? manpowerProfiles.find(p => p.id === profile.id) : null;
+    form.reset(
+        liveProfile ? {
             ...liveProfile,
             dob: parseDate(liveProfile.dob),
             joiningDate: parseDate(liveProfile.joiningDate),
@@ -240,16 +215,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             irataValidity: parseDate(liveProfile.irataValidity),
             resignationDate: parseDate(liveProfile.resignationDate),
             terminationDate: parseDate(liveProfile.terminationDate),
-            documents: initialDocs,
+            documents: getInitialDocs(liveProfile),
             skills: liveProfile.skills || [],
             trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
             otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
-        });
-    } else if (isOpen && !profile) {
-        let initialDocs: ManpowerDocument[] = [...MANDATORY_DOCS, 'Skill Certificate'].map(name => ({ name, status: 'Pending', details: '' }));
-        form.reset({ documents: initialDocs, skills: [], status: 'Working', documentFolderUrl: '' });
-    }
-}, [profile, isOpen, form, manpowerProfiles]);
+        } : { documents: getInitialDocs(), skills: [], status: 'Working', documentFolderUrl: '' }
+    );
+  }, [profile, isOpen, form, manpowerProfiles]);
 
   useEffect(() => {
     const documents = form.getValues('documents') || [];
@@ -269,22 +241,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
     let finalLeaveHistory = liveProfile?.leaveHistory ? [...liveProfile.leaveHistory] : [];
+    
+    const originalStatus = liveProfile?.status;
+    const newStatus = data.status;
   
-    const wasOnLeave = liveProfile?.status === 'On Leave';
-    const isBecomingTerminal = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
-    const isBecomingOnLeave = data.status === 'On Leave';
-  
-    if (wasOnLeave && isBecomingTerminal) {
-      const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
-      if (activeLeaveIndex > -1) {
-        const endDate = data.terminationDate || data.resignationDate;
-        if (endDate) {
-          finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+    // From On Leave to Terminated/Resigned
+    if (originalStatus === 'On Leave' && ['Terminated', 'Resigned', 'Left the Project'].includes(newStatus)) {
+        const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
+        if (activeLeaveIndex > -1) {
+            const endDate = data.terminationDate || data.resignationDate;
+            if (endDate) {
+              finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+            }
         }
-      }
-    } else if (isBecomingOnLeave && data.currentLeave?.dateRange.from) {
-      const activeLeave = finalLeaveHistory.find(l => !l.rejoinedDate && !l.leaveEndDate);
-      if (!activeLeave) { // Only add new leave if there isn't one already active
+    } 
+    // From any other status to On Leave
+    else if (originalStatus !== 'On Leave' && newStatus === 'On Leave' && data.currentLeave?.dateRange.from) {
         const leaveRecord: LeaveRecord = {
           id: `leave-${Date.now()}`,
           leaveType: data.currentLeave.leaveType,
@@ -294,12 +266,18 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
           remarks: data.currentLeave.remarks,
         };
         finalLeaveHistory.push(leaveRecord);
-      }
     }
   
-    const dataToSubmit = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
-    delete (dataToSubmit as any).otherTrade;
-    delete (dataToSubmit as any).currentLeave;
+    const dataToSubmit: any = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
+    delete dataToSubmit.otherTrade;
+    delete dataToSubmit.currentLeave;
+
+    // Convert all dates back to ISO strings
+    Object.keys(dataToSubmit).forEach(key => {
+        if (dataToSubmit[key] instanceof Date) {
+            dataToSubmit[key] = dataToSubmit[key].toISOString();
+        }
+    });
   
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
