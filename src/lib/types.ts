@@ -6,6 +6,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -187,7 +188,7 @@ export type ManpowerTrade = {
 };
 
 export type Trade = string;
-export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3'];
+export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
 export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
 
 export type ManpowerProfile = {
@@ -233,6 +234,7 @@ export type ManpowerProfile = {
   medicalExpiryDate?: string; // ISO
   safetyExpiryDate?: string; // ISO
   irataValidity?: string; // ISO
+  firstAidExpiryDate?: string; // ISO
   contractValidity?: string; // ISO
   
   // Leave and Termination

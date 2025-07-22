@@ -67,6 +67,7 @@ const profileSchema = z.object({
   wcPolicyNumber: z.string().optional(),
   wcPolicyExpiryDate: z.date().optional(),
   irataValidity: z.date().optional(),
+  firstAidExpiryDate: z.date().optional(),
   cardCategory: z.string().optional(),
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
@@ -77,25 +78,31 @@ const profileSchema = z.object({
   feedback: z.string().optional(),
   currentLeave: leaveSchema.optional(),
   leaveHistory: z.array(z.any()).optional(), // Use `any` for display, not form validation
-}).refine(data => {
-    if (data.trade === 'Others') {
-        return !!data.otherTrade && data.otherTrade.length > 0;
+}).superRefine((data, ctx) => {
+    if (data.trade === 'Others' && !data.otherTrade) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please specify the trade',
+            path: ['otherTrade'],
+        });
     }
-    return true;
-}, {
-    message: 'Please specify the trade',
-    path: ['otherTrade'],
-}).refine(data => {
-    const isBecomingOnLeave = data.status === 'On Leave';
-    const wasPreviouslyOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
-
-    if (isBecomingOnLeave && !wasPreviouslyOnLeave && !data.currentLeave?.dateRange.from) {
-        return false;
+    if (data.status === 'On Leave') {
+        const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+        if (!hasActiveLeave && !data.currentLeave?.dateRange.from) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Leave dates are required when setting status to On Leave.',
+                path: ['currentLeave.dateRange'],
+            });
+        }
     }
-    return true;
-}, {
-    message: 'Leave dates are required when setting status to On Leave.',
-    path: ['currentLeave.dateRange'],
+    if (data.trade === 'RA Level 3' && !data.firstAidExpiryDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'First Aid Expiry Date is mandatory for RA Level 3.',
+            path: ['firstAidExpiryDate'],
+        });
+    }
 });
 
 
@@ -156,6 +163,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
+    defaultValues: {
+        documents: getInitialDocs(), 
+        skills: [], 
+        status: 'Working', 
+        documentFolderUrl: '',
+        leaveHistory: [],
+    }
   });
   
   const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
@@ -172,7 +186,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const watchStatus = form.watch('status');
 
   useEffect(() => {
-    const liveProfile = profile ? manpowerProfiles.find(p => p.id === profile.id) : null;
+    const liveProfile = profile ? manpowerProfiles.find(p => p.id === profile.id) || profile : null;
     const initialValues = liveProfile ? {
         ...liveProfile,
         dob: parseDate(liveProfile.dob),
@@ -181,16 +195,26 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
         wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
         irataValidity: parseDate(liveProfile.irataValidity),
+        firstAidExpiryDate: parseDate(liveProfile.firstAidExpiryDate),
         resignationDate: parseDate(liveProfile.resignationDate),
         terminationDate: parseDate(liveProfile.terminationDate),
         documents: getInitialDocs(liveProfile),
         skills: liveProfile.skills || [],
         trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
         otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
-    } : { documents: getInitialDocs(), skills: [], status: 'Working', documentFolderUrl: '' };
+        leaveHistory: liveProfile.leaveHistory || [],
+    } : undefined;
     
-    if (isOpen) {
+    if (isOpen && initialValues) {
         form.reset(initialValues as any);
+    } else if (isOpen) {
+        form.reset({
+            documents: getInitialDocs(), 
+            skills: [], 
+            status: 'Working', 
+            documentFolderUrl: '',
+            leaveHistory: [],
+        });
     }
   }, [profile, isOpen, form, manpowerProfiles]);
 
@@ -225,26 +249,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
             }
         }
-    } else if (originalStatus !== 'On Leave' && newStatus === 'On Leave' && data.currentLeave?.dateRange.from) {
-        const leaveRecord: LeaveRecord = {
-          id: `leave-${Date.now()}`,
-          leaveType: data.currentLeave.leaveType,
-          leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
-          plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
-          rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
-          remarks: data.currentLeave.remarks,
-        };
-        finalLeaveHistory.push(leaveRecord);
-    } else if (['Terminated', 'Resigned', 'Left the Project'].includes(originalStatus || '') && newStatus === 'On Leave' && data.currentLeave?.dateRange.from) {
-        const leaveRecord: LeaveRecord = {
-          id: `leave-${Date.now()}`,
-          leaveType: data.currentLeave.leaveType,
-          leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
-          plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
-          rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
-          remarks: data.currentLeave.remarks,
-        };
-        finalLeaveHistory.push(leaveRecord);
+    } else if (newStatus === 'On Leave') {
+        const hasActiveLeave = finalLeaveHistory.some(l => !l.rejoinedDate && !l.leaveEndDate);
+        if (!hasActiveLeave && data.currentLeave?.dateRange.from) {
+             const leaveRecord: LeaveRecord = {
+                id: `leave-${Date.now()}`,
+                leaveType: data.currentLeave.leaveType,
+                leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
+                plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
+                rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
+                remarks: data.currentLeave.remarks,
+            };
+            finalLeaveHistory.push(leaveRecord);
+        }
     }
   
     const dataToSubmit: any = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
@@ -340,7 +357,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
                         <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
                         {RA_TRADES.includes(watchTrade) && (
-                            <div><Label>IRATA Expiry Date</Label><DatePickerController name="irataValidity" control={form.control} /></div>
+                            <>
+                                <div><Label>IRATA Expiry Date</Label><DatePickerController name="irataValidity" control={form.control} /></div>
+                                <div><Label>First Aid Certificate Expiry Date</Label><DatePickerController name="firstAidExpiryDate" control={form.control} />{form.formState.errors.firstAidExpiryDate && <p className="text-xs text-destructive">{form.formState.errors.firstAidExpiryDate.message}</p>}</div>
+                            </>
                         )}
                         <div><Label>Card Category</Label><Input {...form.register('cardCategory')} /></div>
                         <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
