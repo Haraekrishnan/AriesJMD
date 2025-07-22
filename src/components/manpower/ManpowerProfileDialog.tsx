@@ -13,17 +13,16 @@ import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
 import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { CalendarIcon, Trash2, Edit, PlusCircle } from 'lucide-react';
+import { Trash2, Edit, PlusCircle } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { cn } from '@/lib/utils';
-import { format, parse, isValid, startOfDay } from 'date-fns';
+import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DatePickerInput } from '../ui/date-picker-input';
+
 
 const documentSchema = z.object({
   name: z.string(),
@@ -88,9 +87,9 @@ const profileSchema = z.object({
     path: ['otherTrade'],
 }).refine(data => {
     const isBecomingOnLeave = data.status === 'On Leave';
-    const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+    const wasPreviouslyOnLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
 
-    if (isBecomingOnLeave && !hasActiveLeave && !data.currentLeave?.dateRange.from) {
+    if (isBecomingOnLeave && !wasPreviouslyOnLeave && !data.currentLeave?.dateRange.from) {
         return false;
     }
     return true;
@@ -116,20 +115,13 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
       <Controller
         name={name}
         control={control}
-        render={({ field }) => {
-            const fieldValue = field.value ? (typeof field.value === 'string' ? parseISO(field.value) : field.value) : undefined;
-            return (
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !fieldValue && 'text-muted-foreground')} disabled={disabled}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {fieldValue ? format(fieldValue, 'dd-MM-yyyy') : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fieldValue} onSelect={field.onChange} initialFocus /></PopoverContent>
-                </Popover>
-            );
-        }}
+        render={({ field }) => (
+            <DatePickerInput
+                value={field.value ? new Date(field.value) : undefined}
+                onChange={field.onChange}
+                disabled={disabled}
+            />
+        )}
       />
     );
 };
@@ -164,27 +156,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: useMemo(() => {
-        const liveProfile = profile ? manpowerProfiles.find(p => p.id === profile.id) : null;
-        if (liveProfile) {
-            return {
-                ...liveProfile,
-                dob: parseDate(liveProfile.dob),
-                joiningDate: parseDate(liveProfile.joiningDate),
-                workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
-                labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
-                wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
-                irataValidity: parseDate(liveProfile.irataValidity),
-                resignationDate: parseDate(liveProfile.resignationDate),
-                terminationDate: parseDate(liveProfile.terminationDate),
-                documents: getInitialDocs(liveProfile),
-                skills: liveProfile.skills || [],
-                trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
-                otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
-            };
-        }
-        return { documents: getInitialDocs(), skills: [], status: 'Working', documentFolderUrl: '' };
-    }, [profile, manpowerProfiles]),
   });
   
   const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
@@ -200,27 +171,27 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const watchTrade = form.watch('trade');
   const watchStatus = form.watch('status');
 
-  const liveProfile = useMemo(() => manpowerProfiles.find(p => p.id === profile?.id), [manpowerProfiles, profile]);
-    
   useEffect(() => {
     const liveProfile = profile ? manpowerProfiles.find(p => p.id === profile.id) : null;
-    form.reset(
-        liveProfile ? {
-            ...liveProfile,
-            dob: parseDate(liveProfile.dob),
-            joiningDate: parseDate(liveProfile.joiningDate),
-            workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
-            labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
-            wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
-            irataValidity: parseDate(liveProfile.irataValidity),
-            resignationDate: parseDate(liveProfile.resignationDate),
-            terminationDate: parseDate(liveProfile.terminationDate),
-            documents: getInitialDocs(liveProfile),
-            skills: liveProfile.skills || [],
-            trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
-            otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
-        } : { documents: getInitialDocs(), skills: [], status: 'Working', documentFolderUrl: '' }
-    );
+    const initialValues = liveProfile ? {
+        ...liveProfile,
+        dob: parseDate(liveProfile.dob),
+        joiningDate: parseDate(liveProfile.joiningDate),
+        workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
+        labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
+        wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
+        irataValidity: parseDate(liveProfile.irataValidity),
+        resignationDate: parseDate(liveProfile.resignationDate),
+        terminationDate: parseDate(liveProfile.terminationDate),
+        documents: getInitialDocs(liveProfile),
+        skills: liveProfile.skills || [],
+        trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
+        otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
+    } : { documents: getInitialDocs(), skills: [], status: 'Working', documentFolderUrl: '' };
+    
+    if (isOpen) {
+        form.reset(initialValues as any);
+    }
   }, [profile, isOpen, form, manpowerProfiles]);
 
   useEffect(() => {
@@ -240,23 +211,31 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   
   const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
+    const liveProfile = manpowerProfiles.find(p => p.id === profile?.id);
     let finalLeaveHistory = liveProfile?.leaveHistory ? [...liveProfile.leaveHistory] : [];
     
     const originalStatus = liveProfile?.status;
     const newStatus = data.status;
-  
-    // From On Leave to Terminated/Resigned
+
     if (originalStatus === 'On Leave' && ['Terminated', 'Resigned', 'Left the Project'].includes(newStatus)) {
         const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
         if (activeLeaveIndex > -1) {
             const endDate = data.terminationDate || data.resignationDate;
             if (endDate) {
-              finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
+                finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
             }
         }
-    } 
-    // From any other status to On Leave
-    else if (originalStatus !== 'On Leave' && newStatus === 'On Leave' && data.currentLeave?.dateRange.from) {
+    } else if (originalStatus !== 'On Leave' && newStatus === 'On Leave' && data.currentLeave?.dateRange.from) {
+        const leaveRecord: LeaveRecord = {
+          id: `leave-${Date.now()}`,
+          leaveType: data.currentLeave.leaveType,
+          leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
+          plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
+          rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
+          remarks: data.currentLeave.remarks,
+        };
+        finalLeaveHistory.push(leaveRecord);
+    } else if (['Terminated', 'Resigned', 'Left the Project'].includes(originalStatus || '') && newStatus === 'On Leave' && data.currentLeave?.dateRange.from) {
         const leaveRecord: LeaveRecord = {
           id: `leave-${Date.now()}`,
           leaveType: data.currentLeave.leaveType,
@@ -272,7 +251,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     delete dataToSubmit.otherTrade;
     delete dataToSubmit.currentLeave;
 
-    // Convert all dates back to ISO strings
     Object.keys(dataToSubmit).forEach(key => {
         if (dataToSubmit[key] instanceof Date) {
             dataToSubmit[key] = dataToSubmit[key].toISOString();
@@ -437,14 +415,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             {form.formState.errors.currentLeave?.dateRange && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.dateRange.message}</p>}
                         </div>
                     )}
-                     {(liveProfile?.leaveHistory || []).length > 0 && (
+                     {(profile?.leaveHistory || []).length > 0 && (
                         <div className="space-y-4 md:col-span-3">
                             <Separator />
                             <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
                             <Table>
                                 <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                                 <TableBody>
-                                    {liveProfile?.leaveHistory?.map(leave => (
+                                    {profile?.leaveHistory?.map(leave => (
                                         <TableRow key={leave.id}>
                                             <TableCell>{leave.leaveType}</TableCell>
                                             <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
