@@ -20,7 +20,7 @@ import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 
 export default function TasksPage() {
-  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, can } = useAppContext();
+  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can } = useAppContext();
   
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
@@ -45,7 +45,7 @@ export default function TasksPage() {
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        return task.status === 'Pending Approval' && task.assigneeId === user.id;
+        return task.assigneeId === user.id && task.status === 'Pending Approval';
     });
   }, [tasks, user]);
 
@@ -123,16 +123,16 @@ export default function TasksPage() {
           </div>
           <div className="flex items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
-              {mySubmittedTasks.length > 0 && (
+              {myPendingTaskRequestCount > 0 && (
                 <Button variant="outline" onClick={() => setIsMyRequestsDialogOpen(true)}>
                     <History className="mr-2 h-4 w-4" />
                     My Requests
                     <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
-                        {mySubmittedTasks.length}
+                        {myPendingTaskRequestCount}
                     </span>
                 </Button>
               )}
-              {tasksAwaitingMyApproval.length > 0 && (
+              {pendingTaskApprovalCount > 0 && (
                 <Button variant="outline" onClick={() => setIsPendingApprovalDialogOpen(true)}>
                     <Bell className="mr-2 h-4 w-4" />
                     Pending Approvals
@@ -162,7 +162,7 @@ export default function TasksPage() {
                 <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => (
                         <div key={task.id} className="border p-4 rounded-lg">
-                           <EditTaskDialog isOpen={true} setIsOpen={() => setIsPendingApprovalDialogOpen(false)} task={task} />
+                           <EditTaskDialog isOpen={true} setIsOpen={() => {}} task={task} />
                         </div>
                     )) : <p className="text-muted-foreground text-center">No tasks are awaiting your approval.</p>}
                 </div>
@@ -175,14 +175,14 @@ export default function TasksPage() {
             <DialogHeader>
                 <DialogTitle>My Pending Requests</DialogTitle>
                 <DialogDescription>
-                    These tasks are awaiting approval. You can view comments from the approver here.
+                    These are tasks you've submitted that are awaiting approval or have been returned for modification.
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] p-1">
                 <div className="p-4 space-y-4">
                     {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => (
                         <div key={task.id} className="border p-4 rounded-lg">
-                           <EditTaskDialog isOpen={true} setIsOpen={() => setIsMyRequestsDialogOpen(false)} task={task} />
+                           <EditTaskDialog isOpen={true} setIsOpen={() => {}} task={task} />
                         </div>
                     )) : <p className="text-muted-foreground text-center">You have no tasks awaiting approval.</p>}
                 </div>
