@@ -65,6 +65,12 @@ const getNextExpiry = (profile: ManpowerProfile) => {
     checkDate(profile.safetyExpiryDate, 'Safety');
     checkDate(profile.irataValidity, 'IRATA');
     checkDate(profile.contractValidity, 'Contract');
+    
+    (profile.skills || []).forEach(skill => {
+        if(skill.validity) {
+            checkDate(skill.validity, `${skill.name} Validity`);
+        }
+    });
 
     if (dates.length === 0) return null;
     

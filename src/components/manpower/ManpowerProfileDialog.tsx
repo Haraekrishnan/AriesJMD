@@ -34,6 +34,7 @@ const skillSchema = z.object({
     name: z.string().min(1, "Skill name is required"),
     details: z.string().optional(),
     link: z.string().url().optional().or(z.literal('')),
+    validity: z.date().optional(),
 });
 
 const leaveSchema = z.object({
@@ -86,7 +87,8 @@ const profileSchema = z.object({
             path: ['otherTrade'],
         });
     }
-    if (data.status === 'On Leave') {
+    const isTerminalStatus = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
+    if (data.status === 'On Leave' && !isTerminalStatus) {
         const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
         if (!hasActiveLeave && !data.currentLeave?.dateRange.from) {
              ctx.addIssue({
@@ -199,7 +201,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         resignationDate: parseDate(liveProfile.resignationDate),
         terminationDate: parseDate(liveProfile.terminationDate),
         documents: getInitialDocs(liveProfile),
-        skills: liveProfile.skills || [],
+        skills: (liveProfile.skills || []).map(skill => ({...skill, validity: parseDate(skill.validity)})),
         trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
         otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
         leaveHistory: liveProfile.leaveHistory || [],
@@ -273,6 +275,15 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             dataToSubmit[key] = dataToSubmit[key].toISOString();
         }
     });
+
+    if (dataToSubmit.skills) {
+        dataToSubmit.skills = dataToSubmit.skills.map((skill: any) => {
+            if (skill.validity) {
+                return {...skill, validity: skill.validity instanceof Date ? skill.validity.toISOString() : skill.validity};
+            }
+            return skill;
+        });
+    }
   
     if (profile) {
       updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
@@ -397,9 +408,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                        <h3 className="text-lg font-semibold border-b pb-2">Skills</h3>
                        {skillFields.map((field, index) => (
                            <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 p-2 border rounded-md">
-                               <div className="md:col-span-4"><Label>Skill Name</Label><Input {...form.register(`skills.${index}.name`)} /></div>
-                               <div className="md:col-span-4"><Label>Details (Cert No.)</Label><Input {...form.register(`skills.${index}.details`)} /></div>
+                               <div className="md:col-span-3"><Label>Skill Name</Label><Input {...form.register(`skills.${index}.name`)} /></div>
+                               <div className="md:col-span-3"><Label>Details (Cert No.)</Label><Input {...form.register(`skills.${index}.details`)} /></div>
                                <div className="md:col-span-3"><Label>Link (Optional)</Label><Input {...form.register(`skills.${index}.link`)} /></div>
+                               <div className="md:col-span-2"><Label>Validity</Label><DatePickerController name={`skills.${index}.validity`} control={form.control} /></div>
                                <div className="md:col-span-1 flex items-end"><Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
                            </div>
                        ))}
