@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, UserClock } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile } from '@/lib/types';
@@ -210,7 +210,7 @@ export default function ManpowerListPage() {
             {can.manage_manpower_list && overdueLeaves.length > 0 && (
                 <Card className="border-orange-500">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><UserClock className="text-orange-500"/>Leave Period Ended</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Clock className="text-orange-500"/>Leave Period Ended</CardTitle>
                         <CardDescription>The following employees' leave periods have ended. Please update their status.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-40 overflow-y-auto">
