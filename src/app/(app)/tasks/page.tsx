@@ -185,6 +185,7 @@ export default function TasksPage() {
                 <div className="p-4 space-y-4">
                     {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => {
                         const approver = users.find(u => u.id === task.approverId);
+                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                         return (
                           <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
                             <div>
@@ -192,7 +193,9 @@ export default function TasksPage() {
                                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                                 {task.approvalState === 'returned' ? <Badge variant="destructive">Returned</Badge> : <Badge>Pending</Badge>}
                                 <span>with {approver?.name || 'approver'}</span>
-                                <span className='text-xs'>- {formatDistanceToNow(new Date(task.comments[task.comments.length-1]?.date), { addSuffix: true })}</span>
+                                {lastComment && (
+                                    <span className='text-xs'>- {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
+                                )}
                                 </div>
                             </div>
                             <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>
