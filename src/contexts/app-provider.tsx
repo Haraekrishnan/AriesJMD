@@ -479,15 +479,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addComment = useCallback((taskId: string, commentText: string) => {
     if (!user) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     set(newCommentRef, newComment);
     
-    const task = tasks.find(t => t.id === taskId);
-    if(task && task.assigneeId !== user.id) {
-        update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'returned', viewedByRequester: false });
-    } else if (task && task.approverId !== user.id) {
-        update(ref(rtdb, `tasks/${taskId}`), { viewedByApprover: false });
+    const notificationUpdates: Partial<Task> = {};
+    
+    // Notify assignee if commenter is not the assignee
+    if (task.assigneeId !== user.id) {
+        notificationUpdates.isViewedByAssignee = false;
+    }
+    
+    // Notify creator/approver if commenter is not the approver
+    if (task.approverId !== user.id) {
+        notificationUpdates.viewedByApprover = false;
+    }
+
+    if (Object.keys(notificationUpdates).length > 0) {
+        update(ref(rtdb, `tasks/${taskId}`), notificationUpdates);
     }
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, tasks, addActivityLog]);
@@ -589,15 +601,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const markTaskAsViewed = useCallback((taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task || !user) return;
     
     const updates: Partial<Task> = {};
-    if (user?.id === task.assigneeId) {
+    if (user.id === task.assigneeId && !task.isViewedByAssignee) {
         updates.isViewedByAssignee = true;
-        if(task.approvalState === 'returned') updates.viewedByRequester = true;
     }
-    if (user?.id === task.approverId && task.status === 'Pending Approval') {
+    if (user.id === task.approverId && !task.viewedByApprover) {
         updates.viewedByApprover = true;
+    }
+    if (user.id === task.assigneeId && task.approvalState === 'returned' && !task.viewedByRequester) {
+        updates.viewedByRequester = true;
     }
     
     if (Object.keys(updates).length > 0) {
@@ -2033,3 +2047,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
