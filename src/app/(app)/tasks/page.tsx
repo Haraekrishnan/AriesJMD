@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -6,7 +7,7 @@ import { KanbanBoard } from '@/components/tasks/kanban-board';
 import CreateTaskDialog from '@/components/tasks/create-task-dialog';
 import TaskFilters, { type TaskFilters as FiltersType } from '@/components/tasks/task-filters';
 import { Button } from '@/components/ui/button';
-import { Bell, History } from 'lucide-react';
+import { Bell, History, Edit } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
+import { Badge } from '../ui/badge';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function TasksPage() {
   const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can } = useAppContext();
@@ -45,7 +48,7 @@ export default function TasksPage() {
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        return task.assigneeId === user.id && task.status === 'Pending Approval';
+        return task.assigneeId === user.id && (task.status === 'Pending Approval' || task.approvalState === 'returned');
     });
   }, [tasks, user]);
 
@@ -171,7 +174,7 @@ export default function TasksPage() {
       </Dialog>
       
       <Dialog open={isMyRequestsDialogOpen} onOpenChange={setIsMyRequestsDialogOpen}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-xl">
             <DialogHeader>
                 <DialogTitle>My Pending Requests</DialogTitle>
                 <DialogDescription>
@@ -180,11 +183,22 @@ export default function TasksPage() {
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] p-1">
                 <div className="p-4 space-y-4">
-                    {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => (
-                        <div key={task.id} className="border p-4 rounded-lg">
-                           <EditTaskDialog isOpen={true} setIsOpen={() => {}} task={task} />
-                        </div>
-                    )) : <p className="text-muted-foreground text-center">You have no tasks awaiting approval.</p>}
+                    {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => {
+                        const approver = users.find(u => u.id === task.approverId);
+                        return (
+                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold">{task.title}</p>
+                                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                {task.approvalState === 'returned' ? <Badge variant="destructive">Returned</Badge> : <Badge>Pending</Badge>}
+                                <span>with {approver?.name || 'approver'}</span>
+                                <span className='text-xs'>- {formatDistanceToNow(new Date(task.comments[task.comments.length-1]?.date), { addSuffix: true })}</span>
+                                </div>
+                            </div>
+                            <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>
+                          </div>
+                        )
+                    }) : <p className="text-muted-foreground text-center py-8">You have no tasks awaiting approval.</p>}
                 </div>
             </ScrollArea>
         </DialogContent>
