@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, UserClock } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile } from '@/lib/types';
@@ -80,6 +80,20 @@ export default function ManpowerListPage() {
                 .filter(l => {
                     const leaveStartDate = parseISO(l.leaveStartDate);
                     return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
+                })
+                .map(l => ({ profile: p, leave: l }))
+        );
+    }, [manpowerProfiles, can.manage_manpower_list]);
+
+    const overdueLeaves = useMemo(() => {
+        if (!can.manage_manpower_list) return [];
+        return manpowerProfiles.flatMap(p =>
+            (p.leaveHistory || [])
+                .filter(l => {
+                    if (p.status !== 'On Leave' || l.rejoinedDate || !l.plannedEndDate) {
+                        return false;
+                    }
+                    return isPast(parseISO(l.plannedEndDate));
                 })
                 .map(l => ({ profile: p, leave: l }))
         );
@@ -193,6 +207,25 @@ export default function ManpowerListPage() {
 
             <TradeSummary />
             
+            {can.manage_manpower_list && overdueLeaves.length > 0 && (
+                <Card className="border-orange-500">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><UserClock className="text-orange-500"/>Leave Period Ended</CardTitle>
+                        <CardDescription>The following employees' leave periods have ended. Please update their status.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 max-h-40 overflow-y-auto">
+                        {overdueLeaves.map(({ profile, leave }) => (
+                            <div key={leave.id} className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                <p className="text-sm">
+                                    <span className="font-semibold">{profile.name}'s</span> leave was planned to end on <span className="font-medium">{format(parseISO(leave.plannedEndDate!), 'dd MMM, yyyy')}</span>.
+                                </p>
+                                <Button size="sm" variant="outline" onClick={() => handleEdit(profile)}>Update Status</Button>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
             {can.manage_manpower_list && upcomingLeaves.length > 0 && (
                  <Card className="border-amber-500">
                     <CardHeader>

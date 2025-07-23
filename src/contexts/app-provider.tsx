@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1971,9 +1970,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
-
-
-
-    
