@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
-import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill } from '@/lib/types';
+import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, PlusCircle } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, FileWarning } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -153,7 +153,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
 
   const parseDate = (dateString?: string): Date | undefined => {
@@ -208,6 +208,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             status: 'Working' as const, 
             documentFolderUrl: '',
             leaveHistory: [],
+            memoHistory: [],
         };
         form.reset(defaultValues as any);
     }
@@ -479,7 +480,25 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             </Table>
                         </div>
                      )}
-
+                    {(liveProfile?.memoHistory || []).length > 0 && (
+                        <div className="space-y-4 md:col-span-3">
+                            <Separator />
+                            <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
+                             <Table>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {liveProfile?.memoHistory?.map(memo => (
+                                        <TableRow key={memo.id}>
+                                            <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
+                                            <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
+                                            <TableCell>{users.find(u => u.id === memo.issuedById)?.name || 'N/A'}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
                 </div>
             </ScrollArea>
             <DialogFooter className="mt-4 pt-4 border-t">

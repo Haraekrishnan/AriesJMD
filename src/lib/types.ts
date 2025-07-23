@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -183,6 +184,14 @@ export type Trade = string;
 export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
 export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
 
+export type MemoRecord = {
+    id: string;
+    type: 'Memo' | 'Warning Letter';
+    date: string; // ISO String
+    reason: string;
+    issuedById: string;
+};
+
 export type ManpowerProfile = {
   id: string;
   name: string;
@@ -231,6 +240,7 @@ export type ManpowerProfile = {
   
   // Leave and Termination
   leaveHistory?: LeaveRecord[];
+  memoHistory?: MemoRecord[];
   terminationDate?: string; // ISO
   resignationDate?: string; // ISO
   feedback?: string;

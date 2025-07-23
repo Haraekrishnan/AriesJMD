@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock, FileWarning } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -20,6 +20,7 @@ import TradeSummary from '@/components/manpower/TradeSummary';
 import ImportManpowerDialog from '@/components/manpower/ImportManpowerDialog';
 import RejoinDialog from '@/components/manpower/RejoinDialog';
 import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
+import IssueMemoDialog from '@/components/manpower/IssueMemoDialog';
 
 
 export default function ManpowerListPage() {
@@ -29,6 +30,7 @@ export default function ManpowerListPage() {
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [isRejoinDialogOpen, setIsRejoinDialogOpen] = useState(false);
     const [isExtendLeaveOpen, setIsExtendLeaveOpen] = useState(false);
+    const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -208,13 +210,14 @@ export default function ManpowerListPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Manpower List</h1>
                     <p className="text-muted-foreground">Manage manpower profiles and documentation.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
                          <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
                          <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Update Rejoin</Button>
+                         <Button onClick={() => setIsMemoDialogOpen(true)}><FileWarning className="mr-2 h-4 w-4" /> Issue Memo</Button>
                          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
                          <Button onClick={handleAdd}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -376,6 +379,10 @@ export default function ManpowerListPage() {
                      <RejoinDialog 
                         isOpen={isRejoinDialogOpen} 
                         setIsOpen={setIsRejoinDialogOpen}
+                    />
+                     <IssueMemoDialog
+                        isOpen={isMemoDialogOpen}
+                        setIsOpen={setIsMemoDialogOpen}
                     />
                     <ImportManpowerDialog
                         isOpen={isImportDialogOpen}
