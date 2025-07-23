@@ -1,5 +1,6 @@
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -27,7 +28,9 @@ export type Task = {
   dueDate: string; // ISO String
   priority: Priority;
   comments: Comment[];
-  isViewedByAssignee?: boolean;
+  participants: string[]; // Creator, assignee, and all commenters
+  lastUpdated: string; // ISO String of last comment or status change
+  viewedBy: string[]; // Array of user IDs who have seen the latest update
   requiresAttachmentForCompletion?: boolean;
   attachment?: {
     name: string;
@@ -39,8 +42,9 @@ export type Task = {
   previousStatus?: TaskStatus | null;
   completionDate?: string; // ISO String
   pendingAssigneeId?: string | null;
-  viewedByApprover?: boolean;
-  viewedByRequester?: boolean;
+  viewedByApprover?: boolean; // DEPRECATED, use viewedBy
+  isViewedByAssignee?: boolean; // DEPRECATED, use viewedBy
+  viewedByRequester?: boolean; // DEPRECATED, use viewedBy
 };
 
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';

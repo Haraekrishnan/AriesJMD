@@ -10,6 +10,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Textarea } from '../ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Edit } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
   task: Task;
@@ -17,7 +18,7 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
-  const { user, users, approveTask, returnTask } = useAppContext();
+  const { user, users } = useAppContext();
   
   const assignee = users.find(u => u.id === task.assigneeId);
   const creator = users.find(u => u.id === task.creatorId);
@@ -31,10 +32,15 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
     }
   };
 
+  const hasUnreadUpdate = user && task.participants?.includes(user.id) && !task.viewedBy?.includes(user.id);
+
   const cardContent = (
      <div className="space-y-4">
         <div className="flex justify-between items-start">
-            <CardTitle className="text-lg">{task.title}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{task.title}</CardTitle>
+              {hasUnreadUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
+            </div>
             <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
         </div>
         <p className="text-sm text-muted-foreground">{task.description}</p>
