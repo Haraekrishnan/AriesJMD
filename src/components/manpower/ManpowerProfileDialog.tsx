@@ -22,6 +22,7 @@ import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { Badge } from '../ui/badge';
 
 
 const documentSchema = z.object({
@@ -136,7 +137,7 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate'];
+    const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate', 'First Aid Certificate'];
     if (!profileData) {
       return baseDocs.map(name => ({ name, status: 'Pending' as DocumentStatus, details: '' }));
     }
@@ -510,3 +511,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </Dialog>
   );
 }
+
