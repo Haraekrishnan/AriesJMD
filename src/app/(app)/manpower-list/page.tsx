@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
-import type { ManpowerProfile } from '@/lib/types';
+import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
 import ManpowerFilters, { type ManpowerFilterValues } from '@/components/manpower/ManpowerFilters';
 import { isWithinInterval, addDays, isBefore, format, parseISO, isToday, isPast } from 'date-fns';
 import ManpowerReportDownloads from '@/components/manpower/ManpowerReportDownloads';
@@ -19,15 +19,18 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import TradeSummary from '@/components/manpower/TradeSummary';
 import ImportManpowerDialog from '@/components/manpower/ImportManpowerDialog';
 import RejoinDialog from '@/components/manpower/RejoinDialog';
+import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
 
 
 export default function ManpowerListPage() {
-    const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave, can } = useAppContext();
+    const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave, can, updateManpowerProfile } = useAppContext();
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [isRejoinDialogOpen, setIsRejoinDialogOpen] = useState(false);
+    const [isExtendLeaveOpen, setIsExtendLeaveOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
+    const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState<ManpowerFilterValues>({
         status: 'all',
@@ -181,6 +184,23 @@ export default function ManpowerListPage() {
         XLSX.writeFile(workbook, 'Manpower_Leave_Report.xlsx');
     };
 
+    const handleMarkAsLeft = (profile: ManpowerProfile, leave: LeaveRecord) => {
+        const updatedProfile = { 
+            ...profile, 
+            status: 'Left the Project' as const,
+            leaveHistory: (profile.leaveHistory || []).map(l => 
+                l.id === leave.id ? { ...l, leaveEndDate: new Date().toISOString() } : l
+            )
+        };
+        updateManpowerProfile(updatedProfile);
+    };
+
+    const handleExtendLeave = (profile: ManpowerProfile, leave: LeaveRecord) => {
+        setSelectedProfile(profile);
+        setSelectedLeave(leave);
+        setIsExtendLeaveOpen(true);
+    };
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -213,13 +233,26 @@ export default function ManpowerListPage() {
                         <CardTitle className="flex items-center gap-2"><Clock className="text-orange-500"/>Leave Period Ended</CardTitle>
                         <CardDescription>The following employees' leave periods have ended. Please update their status.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2 max-h-40 overflow-y-auto">
+                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">
                         {overdueLeaves.map(({ profile, leave }) => (
                             <div key={leave.id} className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                 <p className="text-sm">
                                     <span className="font-semibold">{profile.name}'s</span> leave was planned to end on <span className="font-medium">{format(parseISO(leave.plannedEndDate!), 'dd MMM, yyyy')}</span>.
                                 </p>
-                                <Button size="sm" variant="outline" onClick={() => handleEdit(profile)}>Update Status</Button>
+                                <div className="flex gap-2 flex-shrink-0">
+                                    <Button size="sm" variant="outline" onClick={() => handleExtendLeave(profile, leave)}>Extend Leave</Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild><Button size="sm" variant="destructive">Left Project</Button></AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Confirm Action</AlertDialogTitle><AlertDialogDescription>This will change {profile.name}'s status to "Left the Project" and close their leave record. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleMarkAsLeft(profile, leave)}>Confirm</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                    <Button size="sm" onClick={() => setIsRejoinDialogOpen(true)}>Update Rejoin</Button>
+                                </div>
                             </div>
                         ))}
                     </CardContent>
@@ -348,6 +381,14 @@ export default function ManpowerListPage() {
                         isOpen={isImportDialogOpen}
                         setIsOpen={setIsImportDialogOpen}
                     />
+                     {selectedProfile && selectedLeave && (
+                        <ExtendLeaveDialog
+                            isOpen={isExtendLeaveOpen}
+                            setIsOpen={setIsExtendLeaveOpen}
+                            profile={selectedProfile}
+                            leave={selectedLeave}
+                        />
+                    )}
                 </>
             )}
         </div>
