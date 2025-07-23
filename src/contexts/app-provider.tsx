@@ -493,8 +493,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         notificationUpdates.isViewedByAssignee = false;
     }
     
-    // Notify creator/approver if commenter is not the approver
-    if (task.approverId !== user.id) {
+    // Notify creator/approver if commenter is not the creator
+    if (task.creatorId !== user.id) {
         notificationUpdates.viewedByApprover = false;
     }
 
@@ -1906,7 +1906,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myNewTaskCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => task.assigneeIds?.includes(user.id) && task.status === 'To Do' && !task.isViewedByAssignee).length;
+    return tasks.filter(task => task.assigneeIds?.includes(user.id) && !task.isViewedByAssignee).length;
   }, [tasks, user]);
 
   const myPendingTaskRequestCount = useMemo(() => {
