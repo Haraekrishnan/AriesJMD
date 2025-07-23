@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -438,7 +439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
   }, [user, users, getSubordinateChain]);
 
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee'> & { assigneeId: string }) => {
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeId: string }) => {
     if(!user) return;
     const { assigneeId, ...rest } = taskData;
     const tasksRef = ref(rtdb, 'tasks');
@@ -451,7 +452,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         assigneeIds: [assigneeId],
         comments: [],
         isViewedByAssignee: false,
-        approvalState: 'none'
+        approvalState: 'none',
+        viewedByApprover: false,
+        viewedByRequester: true,
     };
     set(newTaskRef, newTask);
     const assignee = users.find(u => u.id === newTask.assigneeId);
@@ -482,7 +485,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const task = tasks.find(t => t.id === taskId);
     if(task && task.assigneeId !== user.id) {
-        update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'returned' });
+        update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'returned', viewedByRequester: false });
+    } else if (task && task.approverId !== user.id) {
+        update(ref(rtdb, `tasks/${taskId}`), { viewedByApprover: false });
     }
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, tasks, addActivityLog]);
@@ -501,7 +506,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         approvalState: 'pending', 
         previousStatus: task.status, 
         pendingStatus: newStatus,
-        approverId: approverId
+        approverId: approverId,
+        viewedByApprover: false,
     };
 
     if (attachment) {
@@ -522,6 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         approvalState: 'approved',
         pendingStatus: null,
         previousStatus: null,
+        viewedByRequester: false,
     };
 
     if (task.pendingAssigneeId) { // Reassignment
@@ -554,7 +561,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingStatus: null, 
       previousStatus: null, 
       pendingAssigneeId: null, 
-      approvalState: 'returned' 
+      approvalState: 'returned',
+      viewedByRequester: false,
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Request Returned', `Task: "${task.title}"`);
@@ -572,18 +580,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       approvalState: 'pending',
       previousStatus: task.status,
       pendingAssigneeId: newAssigneeId,
-      approverId: task.creatorId
+      approverId: task.creatorId,
+      viewedByApprover: false,
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Task Reassignment Requested', `Task "${task.title}" to ${users.find(u => u.id === newAssigneeId)?.name}`);
   }, [user, tasks, users, addActivityLog, addComment]);
 
   const markTaskAsViewed = useCallback((taskId: string) => {
-    update(ref(rtdb, `tasks/${taskId}`), { isViewedByAssignee: true });
-  }, []);
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const updates: Partial<Task> = {};
+    if (user?.id === task.assigneeId) {
+        updates.isViewedByAssignee = true;
+        if(task.approvalState === 'returned') updates.viewedByRequester = true;
+    }
+    if (user?.id === task.approverId && task.status === 'Pending Approval') {
+        updates.viewedByApprover = true;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb, `tasks/${taskId}`), updates);
+    }
+  }, [user, tasks]);
   
   const acknowledgeReturnedTask = useCallback((taskId: string) => {
-    update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none' });
+    update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none', viewedByRequester: true });
   }, []);
 
   const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
@@ -1864,7 +1887,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Computed Values for Notifications
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id).length;
+    return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id && !task.viewedByApprover).length;
   }, [tasks, user]);
 
   const myNewTaskCount = useMemo(() => {
@@ -1874,7 +1897,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => task.assigneeId === user.id && (task.status === 'Pending Approval' || task.approvalState === 'returned')).length;
+    return tasks.filter(task => task.assigneeId === user.id && (task.approvalState === 'returned' && !task.viewedByRequester)).length;
   }, [tasks, user]);
   
   const myFulfilledEquipmentCertRequests = useMemo(() => {

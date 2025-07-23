@@ -43,7 +43,7 @@ interface EditTaskDialogProps {
 }
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
-  const { user, users, tasks, updateTask, deleteTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment, acknowledgeReturnedTask } = useAppContext();
+  const { user, users, tasks, updateTask, deleteTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment } = useAppContext();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -82,16 +82,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       });
       setNewComment('');
       setAttachment(null);
-      if (user?.id === taskToDisplay.assigneeId) {
-        if (!taskToDisplay.isViewedByAssignee) {
-          markTaskAsViewed(taskToDisplay.id);
-        }
-        if (taskToDisplay.approvalState === 'returned') {
-          acknowledgeReturnedTask(taskToDisplay.id);
-        }
-      }
+      markTaskAsViewed(taskToDisplay.id);
     }
-  }, [taskToDisplay, form, isOpen, user, markTaskAsViewed, acknowledgeReturnedTask]);
+  }, [taskToDisplay, form, isOpen, markTaskAsViewed]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

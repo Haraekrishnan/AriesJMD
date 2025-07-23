@@ -154,7 +154,7 @@ export default function TasksPage() {
       </div>
       
       <Dialog open={isPendingApprovalDialogOpen} onOpenChange={setIsPendingApprovalDialogOpen}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-xl">
             <DialogHeader>
                 <DialogTitle>Tasks Awaiting Your Approval</DialogTitle>
                 <DialogDescription>
@@ -163,11 +163,24 @@ export default function TasksPage() {
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] p-1">
                 <div className="p-4 space-y-4">
-                    {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => (
-                        <div key={task.id} className="border p-4 rounded-lg">
-                           <EditTaskDialog isOpen={true} setIsOpen={() => {}} task={task} />
-                        </div>
-                    )) : <p className="text-muted-foreground text-center">No tasks are awaiting your approval.</p>}
+                    {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
+                       const assignee = users.find(u => u.id === task.assigneeId);
+                       const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
+                       return (
+                         <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
+                           <div>
+                               <p className="font-semibold">{task.title}</p>
+                               <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Badge>From: {assignee?.name}</Badge>
+                                {lastComment && (
+                                   <span className='text-xs'>- {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
+                                )}
+                               </div>
+                           </div>
+                           <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>
+                         </div>
+                       )
+                    }) : <p className="text-muted-foreground text-center py-8">No tasks are awaiting your approval.</p>}
                 </div>
             </ScrollArea>
         </DialogContent>

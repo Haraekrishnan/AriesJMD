@@ -39,6 +39,8 @@ export type Task = {
   previousStatus?: TaskStatus | null;
   completionDate?: string; // ISO String
   pendingAssigneeId?: string | null;
+  viewedByApprover?: boolean;
+  viewedByRequester?: boolean;
 };
 
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
