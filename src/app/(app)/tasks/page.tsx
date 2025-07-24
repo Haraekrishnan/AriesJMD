@@ -53,13 +53,13 @@ export default function TasksPage() {
     });
   }, [tasks, user]);
 
+  const visibleUsersForFiltering = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
   const filteredTasks = useMemo(() => {
     if (!user) return [];
 
     let visibleTasks = tasks;
-    const visibleUsers = getVisibleUsers();
-    const visibleUserIds = new Set(visibleUsers.map(u => u.id));
+    const visibleUserIds = new Set(visibleUsersForFiltering.map(u => u.id));
     
     if (user.role === 'Store in Charge') {
       const excludedRoles = ['Admin', 'Project Coordinator'];
@@ -104,7 +104,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch;
     });
-  }, [tasks, filters, user, users, getVisibleUsers]);
+  }, [tasks, filters, user, users, visibleUsersForFiltering]);
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
@@ -149,7 +149,7 @@ export default function TasksPage() {
           </div>
         </div>
         <div className='mb-4'>
-          <TaskFilters onApplyFilters={setFilters} initialFilters={filters}/>
+          <TaskFilters onApplyFilters={setFilters} initialFilters={filters} users={visibleUsersForFiltering} />
         </div>
         <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
       </div>

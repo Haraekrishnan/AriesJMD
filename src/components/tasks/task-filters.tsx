@@ -6,7 +6,7 @@ import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
-import { TaskStatus } from '@/lib/types';
+import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -23,15 +23,12 @@ export interface TaskFilters {
 interface TaskFiltersProps {
   onApplyFilters: (filters: TaskFilters) => void;
   initialFilters: TaskFilters;
+  users: User[];
 }
 
-export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
-  const { user, getVisibleUsers } = useAppContext();
+export default function TaskFilters({ onApplyFilters, initialFilters, users }: TaskFiltersProps) {
+  const { user } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
-  
-  const visibleUsers = useMemo(() => {
-    return getVisibleUsers();
-  }, [getVisibleUsers]);
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -60,7 +57,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
                 <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All Users" /></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Users</SelectItem>
-                    {visibleUsers.map(user => (
+                    {users.map(user => (
                     <SelectItem key={user.id} value={user.id}>
                         {user.name}
                     </SelectItem>
