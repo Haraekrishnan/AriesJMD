@@ -140,7 +140,7 @@ type AppContextType = {
   updateLeaveRecord: (manpowerId: string, leaveRecord: LeaveRecord) => void;
   deleteLeaveRecord: (manpowerId: string, leaveId: string) => void;
   addMemoOrWarning: (manpowerId: string, memo: Omit<MemoRecord, 'id' | 'issuedById'>) => void;
-  addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
+  addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
   deleteInternalRequest: (requestId: string) => void;
@@ -415,12 +415,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    const privilegedRoles = ['Admin', 'Project Coordinator'];
+    if (user.role === 'Admin') {
+      return users;
+    }
+    const privilegedRoles = ['Project Coordinator'];
     if (privilegedRoles.includes(user.role)) {
       return users;
     }
     if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
-      return users.filter(u => !privilegedRoles.includes(u.role));
+      return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
     }
   
     const subordinateIds = getSubordinateChain(user.id, users);
@@ -429,8 +432,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
+    if (user.role === 'Admin') {
         return users.filter(u => u.role !== 'Admin');
+    }
+    if (user.role === 'Project Coordinator') {
+        return users;
     }
     if (user.role === 'Document Controller' || user.role === 'Store in Charge') {
       return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
