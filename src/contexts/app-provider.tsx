@@ -431,7 +431,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user.role === 'Admin' || user.role === 'Project Coordinator') {
         return users.filter(u => u.role !== 'Admin');
     }
-    if (user.role === 'Document Controller') {
+    if (user.role === 'Document Controller' || user.role === 'Store in Charge') {
       return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
     }
 
@@ -1921,9 +1921,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const myNewTaskCount = useMemo(() => {
     if (!user) return 0;
     return tasks.filter(task => {
-        if (user.id === task.creatorId) return !task.viewedByApprover;
-        if (user.id === task.assigneeId) return !task.isViewedByAssignee;
-        return false;
+        const isParticipant = task.participants?.includes(user.id);
+        const hasUnreadUpdate = !task.viewedBy?.includes(user.id);
+        return isParticipant && hasUnreadUpdate;
     }).length;
   }, [tasks, user]);
 
