@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function TasksPage() {
-  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can } = useAppContext();
+  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can, getVisibleUsers } = useAppContext();
   
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
@@ -57,18 +57,18 @@ export default function TasksPage() {
   const filteredTasks = useMemo(() => {
     if (!user) return [];
 
-    const mySubordinateIds = new Set(users.filter(u => u.supervisorId === user.id).map(u => u.id));
-    
     let visibleTasks = tasks;
+    const visibleUsers = getVisibleUsers();
+    const visibleUserIds = new Set(visibleUsers.map(u => u.id));
     
-    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge'];
-    const isPrivilegedRole = privilegedRoles.includes(user.role);
-
     if (user.role === 'Store in Charge') {
-        const excludedRoles = ['Admin', 'Project Coordinator'];
-        const userIdsToExclude = new Set(users.filter(u => excludedRoles.includes(u.role)).map(u => u.id));
-        visibleTasks = tasks.filter(task => task.assigneeIds && !task.assigneeIds.some(id => userIdsToExclude.has(id)));
+      const excludedRoles = ['Admin', 'Project Coordinator'];
+      const userIdsToExclude = new Set(users.filter(u => excludedRoles.includes(u.role)).map(u => u.id));
+      visibleTasks = tasks.filter(task => task.assigneeIds && !task.assigneeIds.some(id => userIdsToExclude.has(id)));
+    } else if (user.role !== 'Admin' && user.role !== 'Project Coordinator') {
+        visibleTasks = tasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
     }
+
 
     return visibleTasks.filter(task => {
       if (task.status === 'Pending Approval') {
@@ -83,15 +83,6 @@ export default function TasksPage() {
 
       if (showMyTasksOnly) {
           if (!task.assigneeIds?.includes(user.id)) return false;
-      } else {
-        if (assigneeId === 'all' && !isPrivilegedRole) {
-          const isMyTask = task.assigneeIds?.includes(user.id);
-          const isMySubordinatesTask = task.assigneeIds?.some(id => mySubordinateIds.has(id));
-          
-          if (!isMyTask && !isMySubordinatesTask) {
-              return false;
-          }
-        }
       }
       
       let statusMatch = status === 'all' || task.status === status;
@@ -113,7 +104,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch;
     });
-  }, [tasks, filters, user, users]);
+  }, [tasks, filters, user, users, getVisibleUsers]);
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');

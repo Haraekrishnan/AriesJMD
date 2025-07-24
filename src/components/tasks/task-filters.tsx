@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -29,12 +30,8 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
   
   const visibleUsers = useMemo(() => {
-    const allVisible = getVisibleUsers();
-    if(user?.role === 'Document Controller' || user?.role === 'Store in Charge') {
-      return allVisible.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
-    }
-    return allVisible;
-  }, [getVisibleUsers, user]);
+    return getVisibleUsers();
+  }, [getVisibleUsers]);
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
