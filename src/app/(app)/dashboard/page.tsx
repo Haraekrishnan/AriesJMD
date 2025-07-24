@@ -14,29 +14,32 @@ import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount, users } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
 
-  const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
-  const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
+  const visibleUserIds = useMemo(() => {
+    const visibleUsers = getVisibleUsers();
+    return new Set(visibleUsers.map(u => u.id));
+  }, [getVisibleUsers]);
 
   const visibleTasks = useMemo(() => {
-    if (user?.role === 'Store in Charge') {
-      const excludedRoles = ['Admin', 'Project Coordinator'];
-      const userIdsToExclude = new Set(users.filter(u => excludedRoles.includes(u.role)).map(u => u.id));
-      return allTasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => !userIdsToExclude.has(id)));
-    }
-    return allTasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
-  }, [allTasks, visibleUserIds, user?.role, users]);
+    return allTasks.filter(task => {
+        if (!task.assigneeIds) return false;
+        // The filtering logic for the Store in Charge is now implicitly handled by getVisibleUsers,
+        // so we just need to check if any assignee is in the visible list.
+        return task.assigneeIds.some(id => visibleUserIds.has(id));
+    });
+  }, [allTasks, visibleUserIds]);
 
 
   const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done').length, [visibleTasks]);
   const openTasks = useMemo(() => visibleTasks.length - completedTasks, [visibleTasks, completedTasks]);
   
   const avgTasksPerPerson = useMemo(() => {
+      const visibleUsers = getVisibleUsers();
       const employees = visibleUsers.filter(u => u.role === 'Team Member' || u.role.includes('Junior'));
       if (employees.length === 0) return '0';
       return (visibleTasks.length / employees.length).toFixed(1);
-  }, [visibleTasks, visibleUsers]);
+  }, [visibleTasks, getVisibleUsers]);
   
   const activeManpowerToday = workingManpowerCount - onLeaveManpowerCount;
 
@@ -89,7 +92,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <TasksCompletedChart tasks={visibleTasks} />
-        <TeamTaskDistributionChart tasks={visibleTasks} users={visibleUsers} />
+        <TeamTaskDistributionChart tasks={visibleTasks} />
       </div>
     </div>
   );

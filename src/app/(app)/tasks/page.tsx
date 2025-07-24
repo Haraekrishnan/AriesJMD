@@ -53,21 +53,12 @@ export default function TasksPage() {
     });
   }, [tasks, user]);
 
-  const visibleUsersForFiltering = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
-
   const filteredTasks = useMemo(() => {
     if (!user) return [];
 
-    let visibleTasks = tasks;
-    const visibleUserIds = new Set(visibleUsersForFiltering.map(u => u.id));
-    
-    if (user.role === 'Store in Charge') {
-      const excludedRoles = ['Admin', 'Project Coordinator'];
-      const userIdsToExclude = new Set(users.filter(u => excludedRoles.includes(u.role)).map(u => u.id));
-      visibleTasks = tasks.filter(task => task.assigneeIds && !task.assigneeIds.some(id => userIdsToExclude.has(id)));
-    } else if (user.role !== 'Admin' && user.role !== 'Project Coordinator') {
-        visibleTasks = tasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
-    }
+    const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
+
+    let visibleTasks = tasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
 
 
     return visibleTasks.filter(task => {
@@ -104,7 +95,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch;
     });
-  }, [tasks, filters, user, users, visibleUsersForFiltering]);
+  }, [tasks, filters, user, getVisibleUsers]);
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
@@ -149,7 +140,7 @@ export default function TasksPage() {
           </div>
         </div>
         <div className='mb-4'>
-          <TaskFilters onApplyFilters={setFilters} initialFilters={filters} users={visibleUsersForFiltering} />
+          <TaskFilters onApplyFilters={setFilters} initialFilters={filters} />
         </div>
         <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
       </div>

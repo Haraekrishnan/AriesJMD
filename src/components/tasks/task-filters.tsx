@@ -23,12 +23,13 @@ export interface TaskFilters {
 interface TaskFiltersProps {
   onApplyFilters: (filters: TaskFilters) => void;
   initialFilters: TaskFilters;
-  users: User[];
 }
 
-export default function TaskFilters({ onApplyFilters, initialFilters, users }: TaskFiltersProps) {
-  const { user } = useAppContext();
+export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
+  const { user, getVisibleUsers } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
+
+  const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));

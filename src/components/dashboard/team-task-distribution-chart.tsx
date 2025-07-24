@@ -19,12 +19,13 @@ const COLORS: Record<string, string> = {
 
 interface TeamTaskDistributionChartProps {
     tasks: Task[];
-    users: User[];
 }
 
-export default function TeamTaskDistributionChart({ tasks, users: visibleUsers }: TeamTaskDistributionChartProps) {
-  const { user } = useAppContext();
+export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributionChartProps) {
+  const { user, getVisibleUsers } = useAppContext();
   const [selectedUserId, setSelectedUserId] = useState('all');
+
+  const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
   const selectedUserName = useMemo(() => {
     if (selectedUserId === 'all') return 'All Visible Members';
