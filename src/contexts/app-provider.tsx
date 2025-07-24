@@ -415,13 +415,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
-        return users;
+    const privilegedRoles = ['Admin', 'Project Coordinator'];
+    if (privilegedRoles.includes(user.role)) {
+      return users;
     }
-     if (user.role === 'Document Controller') {
-        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+    if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
+      return users.filter(u => !privilegedRoles.includes(u.role));
     }
-
+  
     const subordinateIds = getSubordinateChain(user.id, users);
     return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
   }, [user, users, getSubordinateChain]);
