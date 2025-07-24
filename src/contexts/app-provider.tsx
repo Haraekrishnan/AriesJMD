@@ -77,7 +77,7 @@ type AppContextType = {
   // Functions
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
-  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy'> & { assigneeId: string }) => void;
+  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeId: string }) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
@@ -439,7 +439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
   }, [user, users, getSubordinateChain]);
 
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy'> & { assigneeId: string }) => {
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeId: string }) => {
     if(!user) return;
     const { assigneeId, ...rest } = taskData;
     const tasksRef = ref(rtdb, 'tasks');
@@ -456,6 +456,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         lastUpdated: now,
         viewedBy: [user.id],
         approvalState: 'none',
+        viewedByApprover: true,
+        viewedByRequester: false,
     };
     set(newTaskRef, newTask);
     const assignee = users.find(u => u.id === newTask.assigneeId);
@@ -487,16 +489,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     set(newCommentRef, newComment);
     
-    // Update participants list
+    // Update participants list and reset viewedBy
     const updatedParticipants = Array.from(new Set([...(task.participants || [task.creatorId, task.assigneeId]), user.id]));
-    
-    // Reset viewedBy to only the commenter, forcing others to be notified.
-    const updates = {
+    const updates: Partial<Task> = {
       participants: updatedParticipants,
       viewedBy: [user.id],
       lastUpdated: new Date().toISOString(),
     };
-    
+
+    if (user.id !== task.assigneeId) {
+        updates.isViewedByAssignee = false;
+    }
+    if (user.id !== task.creatorId) {
+        updates.viewedByApprover = false;
+    }
+
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, tasks, addActivityLog]);
@@ -517,6 +524,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pendingStatus: newStatus,
         approverId: approverId,
         viewedBy: [user.id],
+        viewedByApprover: false,
         lastUpdated: new Date().toISOString(),
     };
 
@@ -539,6 +547,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pendingStatus: null,
         previousStatus: null,
         viewedBy: [user.id],
+        isViewedByAssignee: false,
         lastUpdated: new Date().toISOString(),
     };
 
@@ -574,6 +583,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingAssigneeId: null, 
       approvalState: 'returned',
       viewedBy: [user.id],
+      isViewedByAssignee: false,
       lastUpdated: new Date().toISOString(),
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -594,6 +604,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingAssigneeId: newAssigneeId,
       approverId: task.creatorId,
       viewedBy: [user.id],
+      viewedByApprover: false,
       lastUpdated: new Date().toISOString(),
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -603,9 +614,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markTaskAsViewed = useCallback((taskId: string) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
-    if (task && !task.viewedBy?.includes(user.id)) {
-        const updatedViewedBy = [...(task.viewedBy || []), user.id];
-        update(ref(rtdb, `tasks/${taskId}`), { viewedBy: updatedViewedBy });
+    if (!task) return;
+
+    const updates: Partial<Pick<Task, 'isViewedByAssignee' | 'viewedByApprover'>> = {};
+    let needsUpdate = false;
+    
+    if (user.id === task.assigneeId && !task.isViewedByAssignee) {
+        updates.isViewedByAssignee = true;
+        needsUpdate = true;
+    }
+    if (user.id === task.creatorId && !task.viewedByApprover) {
+        updates.viewedByApprover = true;
+        needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+        update(ref(rtdb, `tasks/${taskId}`), updates);
     }
   }, [user, tasks]);
   
@@ -1891,24 +1915,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Computed Values for Notifications
   const pendingTaskApprovalCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id && !task.viewedBy?.includes(user.id)).length;
+    return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id).length;
   }, [tasks, user]);
 
   const myNewTaskCount = useMemo(() => {
     if (!user) return 0;
     return tasks.filter(task => {
-      const isParticipant = task.participants?.includes(user.id);
-      const hasUnread = !task.viewedBy?.includes(user.id);
-      return isParticipant && hasUnread;
+        if (user.id === task.creatorId) return !task.viewedByApprover;
+        if (user.id === task.assigneeId) return !task.isViewedByAssignee;
+        return false;
     }).length;
   }, [tasks, user]);
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
     return tasks.filter(task => {
-      const isMySubmittedTask = task.assigneeId === user.id && task.status === 'Pending Approval';
-      const isReturnedToMe = task.assigneeId === user.id && task.approvalState === 'returned';
-      return (isMySubmittedTask || isReturnedToMe) && !task.viewedBy?.includes(user.id);
+        const isMySubmittedTask = task.assigneeId === user.id && task.status === 'Pending Approval';
+        const isReturnedToMe = task.assigneeId === user.id && task.approvalState === 'returned';
+        return isMySubmittedTask || isReturnedToMe;
     }).length;
   }, [tasks, user]);
   
