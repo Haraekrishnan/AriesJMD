@@ -476,7 +476,7 @@ export type Announcement = {
 };
 
 export type DailyPlannerComment = {
-  id: string;
+  id: string; // composite key: `${YYYY-MM-DD}_${plannerUserId}`
   plannerUserId: string; // The user whose planner this comment belongs to
   day: string; // YYYY-MM-DD
   comments: Comment[];

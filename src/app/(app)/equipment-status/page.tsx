@@ -44,6 +44,7 @@ import AnemometerTable from '@/components/anemometer/AnemometerTable';
 import AddOtherEquipmentDialog from '@/components/other-equipment/AddOtherEquipmentDialog';
 import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEquipmentDialog';
 import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
+import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 
 
 export default function EquipmentStatusPage() {
@@ -263,6 +264,8 @@ export default function EquipmentStatusPage() {
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
             </div>
+
+            <EquipmentSummary />
 
             <Card>
                 <CardHeader>
