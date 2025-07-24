@@ -1,6 +1,5 @@
 
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1906,7 +1905,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const myPendingTaskRequestCount = useMemo(() => {
     if (!user) return 0;
-    return tasks.filter(task => task.assigneeId === user.id && (task.approvalState === 'returned' && !task.viewedBy?.includes(user.id))).length;
+    return tasks.filter(task => {
+      const isMySubmittedTask = task.assigneeId === user.id && task.status === 'Pending Approval';
+      const isReturnedToMe = task.assigneeId === user.id && task.approvalState === 'returned';
+      return (isMySubmittedTask || isReturnedToMe) && !task.viewedBy?.includes(user.id);
+    }).length;
   }, [tasks, user]);
   
   const myFulfilledEquipmentCertRequests = useMemo(() => {
