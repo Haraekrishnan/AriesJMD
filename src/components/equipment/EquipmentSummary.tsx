@@ -17,14 +17,26 @@ export default function EquipmentSummary() {
   } = useAppContext();
 
   const equipmentCounts = useMemo(() => {
+    const calculateStatus = (items: { status: string }[]) => {
+      const active = items.filter(item => item.status === 'In Service' || item.status === 'Active').length;
+      const idle = items.length - active;
+      return { active, idle };
+    };
+
+    const utStatus = calculateStatus(utMachines);
+    const dftStatus = calculateStatus(dftMachines);
+    const cameraStatus = calculateStatus(digitalCameras);
+    const anemometerStatus = calculateStatus(anemometers);
+    const mobileStatus = calculateStatus(mobileSims);
+
     return [
-      { name: 'UT Machines', count: utMachines.length, icon: Scan },
-      { name: 'DFT Machines', count: dftMachines.length, icon: Layers },
-      { name: 'Digital Cameras', count: digitalCameras.length, icon: Camera },
-      { name: 'Anemometers', count: anemometers.length, icon: Wind },
-      { name: 'Mobiles & SIMs', count: mobileSims.length, icon: Smartphone },
-      { name: 'Laptops & Desktops', count: laptopsDesktops.length, icon: Laptop },
-      { name: 'Other Equipment', count: otherEquipments.length, icon: HardHat },
+      { name: 'UT Machines', count: utMachines.length, icon: Scan, description: `${utStatus.active} active, ${utStatus.idle} idle` },
+      { name: 'DFT Machines', count: dftMachines.length, icon: Layers, description: `${dftStatus.active} active, ${dftStatus.idle} idle` },
+      { name: 'Digital Cameras', count: digitalCameras.length, icon: Camera, description: `${cameraStatus.active} active, ${cameraStatus.idle} idle` },
+      { name: 'Anemometers', count: anemometers.length, icon: Wind, description: `${anemometerStatus.active} active, ${anemometerStatus.idle} idle` },
+      { name: 'Mobiles & SIMs', count: mobileSims.length, icon: Smartphone, description: `${mobileStatus.active} active, ${mobileStatus.idle} inactive` },
+      { name: 'Laptops & Desktops', count: laptopsDesktops.length, icon: Laptop, description: `Total ${laptopsDesktops.length}` },
+      { name: 'Other Equipment', count: otherEquipments.length, icon: HardHat, description: `Total ${otherEquipments.length}` },
     ];
   }, [utMachines, dftMachines, digitalCameras, anemometers, mobileSims, laptopsDesktops, otherEquipments]);
 
@@ -36,7 +48,7 @@ export default function EquipmentSummary() {
                 title={item.name}
                 value={item.count}
                 icon={item.icon}
-                description={`Total ${item.name}`}
+                description={item.description}
             />
         ))}
     </div>
