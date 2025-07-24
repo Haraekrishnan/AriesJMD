@@ -1,8 +1,5 @@
 
 
-
-
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -131,7 +128,7 @@ export default function TasksPage() {
           </div>
           <div className="flex items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
-              <Button variant="outline" onClick={() => setIsMyRequestsDialogOpen(true)}>
+              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)}>
                   <History className="mr-2 h-4 w-4" />
                   My Requests
                   {myPendingTaskRequestCount > 0 && (
@@ -140,7 +137,7 @@ export default function TasksPage() {
                     </span>
                   )}
               </Button>
-              <Button variant="outline" onClick={() => setIsPendingApprovalDialogOpen(true)}>
+              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)}>
                   <Bell className="mr-2 h-4 w-4" />
                   Pending Approvals
                   {pendingTaskApprovalCount > 0 && (
