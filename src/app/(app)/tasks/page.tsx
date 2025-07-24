@@ -58,8 +58,10 @@ export default function TasksPage() {
 
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
 
-    let visibleTasks = tasks.filter(task => task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id)));
-
+    let visibleTasks = tasks.filter(task => {
+      // Show a task if any of its assignees are visible to the current user
+      return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
+    });
 
     return visibleTasks.filter(task => {
       if (task.status === 'Pending Approval') {
