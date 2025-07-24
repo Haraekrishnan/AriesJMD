@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -129,24 +130,24 @@ export default function TasksPage() {
           </div>
           <div className="flex items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
-              {myPendingTaskRequestCount > 0 && (
-                <Button variant="outline" onClick={() => setIsMyRequestsDialogOpen(true)}>
-                    <History className="mr-2 h-4 w-4" />
-                    My Requests
+              <Button variant="outline" onClick={() => setIsMyRequestsDialogOpen(true)}>
+                  <History className="mr-2 h-4 w-4" />
+                  My Requests
+                  {myPendingTaskRequestCount > 0 && (
                     <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
                         {myPendingTaskRequestCount}
                     </span>
-                </Button>
-              )}
-              {pendingTaskApprovalCount > 0 && (
-                <Button variant="outline" onClick={() => setIsPendingApprovalDialogOpen(true)}>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Pending Approvals
+                  )}
+              </Button>
+              <Button variant="outline" onClick={() => setIsPendingApprovalDialogOpen(true)}>
+                  <Bell className="mr-2 h-4 w-4" />
+                  Pending Approvals
+                  {pendingTaskApprovalCount > 0 && (
                     <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
                         {pendingTaskApprovalCount}
                     </span>
-                </Button>
-              )}
+                  )}
+              </Button>
               {can.manage_tasks && <CreateTaskDialog />}
           </div>
         </div>
