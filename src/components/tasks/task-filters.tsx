@@ -30,7 +30,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
   
   const visibleUsers = useMemo(() => {
     const allVisible = getVisibleUsers();
-    if(user?.role === 'Document Controller') {
+    if(user?.role === 'Document Controller' || user?.role === 'Store in Charge') {
       return allVisible.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
     }
     return allVisible;

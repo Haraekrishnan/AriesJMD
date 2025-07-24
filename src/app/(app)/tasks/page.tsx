@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -59,10 +58,19 @@ export default function TasksPage() {
     if (!user) return [];
 
     const mySubordinateIds = new Set(users.filter(u => u.supervisorId === user.id).map(u => u.id));
-    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+    
+    let visibleTasks = tasks;
+    
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge'];
+    const isPrivilegedRole = privilegedRoles.includes(user.role);
 
-    return tasks.filter(task => {
-      // Don't show pending tasks on the main board
+    if (user.role === 'Store in Charge') {
+        const excludedRoles = ['Admin', 'Project Coordinator'];
+        const userIdsToExclude = new Set(users.filter(u => excludedRoles.includes(u.role)).map(u => u.id));
+        visibleTasks = tasks.filter(task => task.assigneeIds && !task.assigneeIds.some(id => userIdsToExclude.has(id)));
+    }
+
+    return visibleTasks.filter(task => {
       if (task.status === 'Pending Approval') {
         return false;
       }
@@ -76,11 +84,11 @@ export default function TasksPage() {
       if (showMyTasksOnly) {
           if (!task.assigneeIds?.includes(user.id)) return false;
       } else {
-        if (assigneeId === 'all') { // Only apply visibility logic if not filtering by a specific assignee
+        if (assigneeId === 'all' && !isPrivilegedRole) {
           const isMyTask = task.assigneeIds?.includes(user.id);
           const isMySubordinatesTask = task.assigneeIds?.some(id => mySubordinateIds.has(id));
           
-          if (!isMyTask && !isMySubordinatesTask && !privilegedRoles.includes(user.role)) {
+          if (!isMyTask && !isMySubordinatesTask) {
               return false;
           }
         }
