@@ -14,7 +14,7 @@ import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount, users } = useAppContext();
 
   const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const visibleUserIds = useMemo(() => new Set(visibleUsers.map(u => u.id)), [visibleUsers]);
