@@ -48,7 +48,9 @@ export default function TasksPage() {
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        return task.assigneeId === user.id && (task.status === 'Pending Approval' || task.approvalState === 'returned');
+        const isMySubmittedTask = task.assigneeId === user.id && task.status === 'Pending Approval';
+        const isReturnedToMe = task.assigneeId === user.id && task.approvalState === 'returned';
+        return isMySubmittedTask || isReturnedToMe;
     });
   }, [tasks, user]);
 
@@ -162,7 +164,7 @@ export default function TasksPage() {
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] p-1">
-                <div className="p-4 space-y-4">
+                 <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
                        const assignee = users.find(u => u.id === task.assigneeId);
                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
