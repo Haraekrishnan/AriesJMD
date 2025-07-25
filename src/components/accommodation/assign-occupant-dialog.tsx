@@ -31,7 +31,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
 
   const assignedManpowerIds = useMemo(() => {
     const ids = new Set<string>();
-    buildings.forEach(b => b.rooms.forEach(r => r.beds.forEach(bed => {
+    buildings.forEach(b => (b.rooms || []).forEach(r => r.beds.forEach(bed => {
       if (bed.occupantId) ids.add(bed.occupantId);
     })));
     return ids;
