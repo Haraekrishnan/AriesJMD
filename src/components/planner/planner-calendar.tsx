@@ -131,6 +131,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                     <CardContent className="flex-1 overflow-hidden">
                         <ScrollArea className="h-full pr-4">
                             {selectedDayEvents.length > 0 && (
+                                <>
                                 <div className="space-y-2">
                                     {selectedDayEvents.map((event) => {
                                         const creator = users.find(u => u.id === event.creatorId);
@@ -161,8 +162,9 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                         );
                                     })}
                                 </div>
+                                <Separator className="my-4"/>
+                                </>
                             )}
-                            <Separator className="my-4"/>
                             <div className="space-y-3">
                                 {selectedDayComments.map((comment) => {
                                     const commentUser = users.find(u => u.id === comment.userId);
@@ -199,7 +201,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                 })}
                                 {selectedDayEvents.length === 0 && selectedDayComments.length === 0 && (
                                     <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">
-                                        <p className="text-sm text-muted-foreground">No events or notes.</p>
+                                        <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
                                     </div>
                                 )}
                             </div>
@@ -220,6 +222,3 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     );
 }
 
-
-
-    
