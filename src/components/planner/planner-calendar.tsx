@@ -95,9 +95,9 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         if (isMyOwnPlanner) return true;
         if (user.role === 'Admin' || user.role === 'Project Coordinator') return true;
 
-        if (user.role === 'Supervisor') {
-            const subordinateIds = getSubordinateChain(user.id, users);
-            return subordinateIds.has(viewingUser.id);
+        const subordinateIds = getSubordinateChain(user.id, users);
+        if (subordinateIds.has(viewingUser.id)) {
+            return true;
         }
 
         return false;
@@ -155,7 +155,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                             {dayEvents.map(event => {
                                                 const creator = users.find(u => u.id === event.creatorId);
                                                 return (
-                                                <div key={event.id} onClick={() => { setSelectedDate(day); setEditingEvent(event);}} className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent">
+                                                <div key={event.id} onClick={() => setSelectedDate(day)} className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent">
                                                     <p className="font-semibold truncate">{event.title}</p>
                                                     <p className="text-muted-foreground truncate">{creator?.name}</p>
                                                 </div>
