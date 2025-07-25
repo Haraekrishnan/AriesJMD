@@ -210,7 +210,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                 <div className="space-y-2">
                                     {selectedDayEvents.map((event) => {
                                         const creator = users.find(u => u.id === event.creatorId);
-                                        const canModifyEvent = user?.id === event.creatorId || can.manage_planner;
+                                        const canModifyEvent = user?.id === event.creatorId || user?.role === 'Admin';
                                         const isEventInPast = isPast(new Date(event.date));
                                         return (
                                             <div key={event.id} className="p-3 border rounded-md bg-muted/50">
