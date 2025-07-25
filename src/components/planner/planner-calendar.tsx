@@ -81,7 +81,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
 
     const canModifyDailyComments = useMemo(() => {
         if (!user || !viewingUser) return false;
-        return user.role === 'Admin' || user.role === 'Manager' || (user.role === 'Supervisor' && viewingUser.supervisorId === user.id) || isMyOwnPlanner;
+        return user.role === 'Admin' || user.role === 'Project Coordinator' || (user.role === 'Supervisor' && viewingUser.supervisorId === user.id) || isMyOwnPlanner;
     }, [user, viewingUser, isMyOwnPlanner]);
 
     const handleAddDailyComment = useCallback(() => {
@@ -221,4 +221,5 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
+
 
