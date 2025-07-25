@@ -77,11 +77,16 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
     }, [dailyPlannerComments, selectedDate, selectedUserId]);
     
-     const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
+    const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
         const subordinates = new Set<string>();
         const queue = [userId];
-        while(queue.length > 0) {
+        const visited = new Set<string>(); // To prevent infinite loops in case of circular supervision
+    
+        while (queue.length > 0) {
             const currentId = queue.shift()!;
+            if(visited.has(currentId)) continue;
+            visited.add(currentId);
+    
             const directReports = allUsers.filter(u => u.supervisorId === currentId);
             directReports.forEach(report => {
                 if (!subordinates.has(report.id)) {
@@ -175,7 +180,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                             {visibleEvents.map(event => {
                                                 const creator = users.find(u => u.id === event.creatorId);
                                                 return (
-                                                <div key={event.id} onClick={() => setSelectedDate(day)} className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent">
+                                                <div key={event.id} onClick={() => { setSelectedDate(day); }} className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent">
                                                     <p className="font-semibold truncate">{event.title}</p>
                                                     <p className="text-muted-foreground truncate">{creator?.name}</p>
                                                 </div>
