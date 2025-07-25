@@ -45,7 +45,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
         priority: 'all',
         assigneeId: 'all',
         dateRange: undefined,
-        showMyTasksOnly: false,
+        showMyTasksOnly: true,
     } as const;
     setFilters(clearedFilters);
     onApplyFilters(clearedFilters);

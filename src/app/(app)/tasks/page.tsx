@@ -29,7 +29,7 @@ export default function TasksPage() {
     priority: 'all',
     assigneeId: 'all',
     dateRange: undefined,
-    showMyTasksOnly: false,
+    showMyTasksOnly: true,
   });
 
   const [isPendingApprovalDialogOpen, setIsPendingApprovalDialogOpen] = useState(false);
@@ -53,16 +53,16 @@ export default function TasksPage() {
     });
   }, [tasks, user]);
 
-  const filteredTasks = useMemo(() => {
+  const visibleTasks = useMemo(() => {
     if (!user) return [];
-
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
-
-    let visibleTasks = tasks.filter(task => {
+    return tasks.filter(task => {
       // Show a task if any of its assignees are visible to the current user
       return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
     });
+  }, [tasks, user, getVisibleUsers]);
 
+  const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
       if (task.status === 'Pending Approval') {
         return false;
@@ -75,7 +75,7 @@ export default function TasksPage() {
       }
 
       if (showMyTasksOnly) {
-          if (!task.assigneeIds?.includes(user.id)) return false;
+          if (!user || !task.assigneeIds?.includes(user.id)) return false;
       }
       
       let statusMatch = status === 'all' || task.status === status;
@@ -97,7 +97,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch;
     });
-  }, [tasks, filters, user, getVisibleUsers]);
+  }, [visibleTasks, filters, user]);
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
