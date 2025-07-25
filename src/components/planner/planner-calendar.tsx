@@ -13,7 +13,7 @@ import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Edit, Trash2, Send } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import type { Comment, PlannerEvent } from '@/lib/types';
+import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import EditEventDialog from './EditEventDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -78,11 +78,35 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
     const isMyOwnPlanner = user?.id === selectedUserId;
+    
+    const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
+        const subordinates = new Set<string>();
+        const queue = [userId];
+        while(queue.length > 0) {
+            const currentId = queue.shift()!;
+            const directReports = allUsers.filter(u => u.supervisorId === currentId);
+            directReports.forEach(report => {
+                if (!subordinates.has(report.id)) {
+                    subordinates.add(report.id);
+                    queue.push(report.id);
+                }
+            });
+        }
+        return subordinates;
+    }, []);
 
     const canModifyDailyComments = useMemo(() => {
         if (!user || !viewingUser) return false;
-        return user.role === 'Admin' || user.role === 'Project Coordinator' || (user.role === 'Supervisor' && viewingUser.supervisorId === user.id) || isMyOwnPlanner;
-    }, [user, viewingUser, isMyOwnPlanner]);
+        if (isMyOwnPlanner) return true;
+        if (user.role === 'Admin' || user.role === 'Project Coordinator') return true;
+
+        if (user.role === 'Supervisor') {
+            const subordinateIds = getSubordinateChain(user.id, users);
+            if (subordinateIds.has(viewingUser.id)) return true;
+        }
+
+        return false;
+    }, [user, viewingUser, isMyOwnPlanner, users, getSubordinateChain]);
 
     const handleAddDailyComment = useCallback(() => {
         if (!dailyComment.trim() || !selectedDate) return;
@@ -221,5 +245,6 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
+
 
 
