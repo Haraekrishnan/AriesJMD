@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { Vehicle } from '@/lib/types';
+import { Badge } from '../ui/badge';
 
 interface VehicleTableProps {
   onEdit: (vehicle: Vehicle) => void;
@@ -44,7 +45,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
         <TableRow>
           <TableHead>Vehicle No.</TableHead>
           <TableHead>Driver</TableHead>
-          <TableHead>Seating</TableHead>
+          <TableHead>VAP Access</TableHead>
           <TableHead>VAP Validity</TableHead>
           <TableHead>Insurance</TableHead>
           <TableHead>Fitness</TableHead>
@@ -58,7 +59,13 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
           <TableRow key={vehicle.id}>
             <TableCell className="font-medium">{vehicle.vehicleNumber}</TableCell>
             <TableCell>{getDriverName(vehicle.driverId)}</TableCell>
-            <TableCell>{vehicle.seatingCapacity}</TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-1">
+                {(vehicle.vapAccess || []).map(access => (
+                  <Badge key={access} variant="secondary">{access}</Badge>
+                ))}
+              </div>
+            </TableCell>
             <TableCell>{formatDate(vehicle.vapValidity)}</TableCell>
             <TableCell>{formatDate(vehicle.insuranceValidity)}</TableCell>
             <TableCell>{formatDate(vehicle.fitnessValidity)}</TableCell>

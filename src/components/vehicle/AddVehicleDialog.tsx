@@ -10,11 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Badge } from '../ui/badge';
+import { Check } from 'lucide-react';
+
+const VAP_ACCESS_OPTIONS = ["DTA ISBL", "SEZ ISBL", "MTF ISBL", "OTHERS"];
 
 const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
   driverId: z.string().min(1, 'Please select a driver'),
   seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
+  vapAccess: z.array(z.string()).optional(),
   vapValidity: z.string().optional(),
   insuranceValidity: z.string().optional(),
   fitnessValidity: z.string().optional(),
@@ -38,6 +45,7 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
     defaultValues: {
       vehicleNumber: '',
       driverId: '',
+      vapAccess: [],
     },
   });
 
@@ -93,6 +101,52 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
               )}
             />
             {form.formState.errors.driverId && <p className="text-xs text-destructive">{form.formState.errors.driverId.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label>VAP Access</Label>
+            <Controller
+              control={form.control}
+              name="vapAccess"
+              render={({ field }) => (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start h-auto">
+                        <div className="flex flex-wrap gap-1">
+                          {field.value?.length > 0
+                            ? field.value.map(val => <Badge key={val} variant="secondary">{val}</Badge>)
+                            : <span className="text-muted-foreground">Select access...</span>
+                          }
+                        </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                     <Command>
+                       <CommandList>
+                         <CommandEmpty>No results found.</CommandEmpty>
+                         <CommandGroup>
+                           {VAP_ACCESS_OPTIONS.map(option => {
+                            const isSelected = field.value?.includes(option);
+                            return (
+                               <CommandItem key={option} onSelect={() => {
+                                 if (isSelected) {
+                                   field.onChange(field.value?.filter(v => v !== option));
+                                 } else {
+                                   field.onChange([...(field.value || []), option]);
+                                 }
+                               }}>
+                                 <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                 {option}
+                               </CommandItem>
+                            )
+                           })}
+                         </CommandGroup>
+                       </CommandList>
+                     </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+            />
           </div>
 
           <div className="space-y-2">
