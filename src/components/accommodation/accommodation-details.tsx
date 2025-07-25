@@ -1,6 +1,7 @@
+
 'use client'
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,12 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         toast({ title: 'Room Deleted', variant: 'destructive' });
     }
 
+    const sortedBuildings = useMemo(() => {
+        return [...buildings].sort((a, b) => 
+            a.buildingNumber.localeCompare(b.buildingNumber, undefined, { numeric: true, sensitivity: 'base' })
+        );
+    }, [buildings]);
+
     if (buildings.length === 0) {
         return (
             <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg">
@@ -52,7 +59,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
     return (
         <>
         <Accordion type="multiple" className="w-full space-y-4">
-            {buildings.map(building => (
+            {sortedBuildings.map(building => (
                 <AccordionItem key={building.id} value={building.id} className="border rounded-lg">
                     <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
                        <div className="flex items-center gap-2">
@@ -61,7 +68,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                     </AccordionTrigger>
                     <AccordionContent className="p-4 pt-0">
                         <div className="space-y-4">
-                            {(building.rooms || []).map(room => (
+                            {(building.rooms || []).sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => (
                                 <div key={room.id} className="p-4 border rounded-md bg-muted/50">
                                     <h4 className="font-semibold flex items-center justify-between">
                                         Room {room.roomNumber}
