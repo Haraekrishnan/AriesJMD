@@ -31,20 +31,20 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
 
   const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
+  useEffect(() => {
+    onApplyFilters(filters);
+  }, [filters, onApplyFilters]);
+
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const handleAssigneeChange = (assigneeId: string) => {
-    if (assigneeId !== 'all') {
-      setFilters(prev => ({ ...prev, assigneeId, showMyTasksOnly: false }));
-    } else {
-      setFilters(prev => ({ ...prev, assigneeId }));
-    }
-  };
-  
-  const handleApply = () => {
-    onApplyFilters(filters);
+    setFilters(prev => ({
+        ...prev,
+        assigneeId,
+        showMyTasksOnly: assigneeId !== 'all' ? false : prev.showMyTasksOnly,
+    }));
   };
   
   const handleReset = () => {
@@ -56,7 +56,6 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
         showMyTasksOnly: true,
     } as const;
     setFilters(clearedFilters);
-    onApplyFilters(clearedFilters);
   }
 
   return (
@@ -110,7 +109,6 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
             </div>
 
             <div className="flex gap-2 ml-auto">
-                <Button onClick={handleApply}>Apply</Button>
                 <Button variant="ghost" onClick={handleReset}>
                     <X className="mr-2 h-4 w-4" /> Clear
                 </Button>
