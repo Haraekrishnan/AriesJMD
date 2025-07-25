@@ -19,13 +19,13 @@ export default function SchedulePage() {
         <div className="space-y-8 h-full flex flex-col">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Monthly Planner</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Monthly Planning</h1>
                     <p className="text-muted-foreground">Organize your team's schedule and events.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     {canViewOthers && (
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="user-select" className="text-sm font-medium">Viewing Schedule For:</Label>
+                            <Label htmlFor="user-select" className="text-sm font-medium">View Planning of:</Label>
                             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                                 <SelectTrigger className="w-[200px]" id="user-select">
                                     <SelectValue placeholder="Select an employee" />
@@ -38,7 +38,7 @@ export default function SchedulePage() {
                             </Select>
                         </div>
                     )}
-                    {can.manage_planner && <CreateEventDialog />}
+                    <CreateEventDialog />
                 </div>
             </div>
             

@@ -25,35 +25,33 @@ const eventSchema = z.object({
     message: "Cannot create an event in the past."
   }),
   frequency: z.enum(['once', 'daily', 'weekly', 'weekends', 'monthly', 'daily-except-sundays']),
-  userId: z.string().min(1, 'Please select an employee for this event'),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
 export default function CreateEventDialog() {
-  const { user, addPlannerEvent, getVisibleUsers } = useAppContext();
+  const { user, addPlannerEvent } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-
-  const assignableUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       frequency: 'once',
-      userId: user?.id,
     },
   });
 
   const onSubmit = (data: EventFormValues) => {
+    if (!user) return;
     addPlannerEvent({
       ...data,
       date: data.date.toISOString(),
-      creatorId: user!.id,
+      creatorId: user.id,
+      userId: user.id,
     });
     toast({
-      title: 'Event Created',
-      description: `"${data.title}" has been added to the planner.`,
+      title: 'Planning Added',
+      description: `"${data.title}" has been added to your planner.`,
     });
     setIsOpen(false);
   };
@@ -64,7 +62,6 @@ export default function CreateEventDialog() {
         title: '',
         description: '',
         frequency: 'once',
-        userId: user?.id,
       });
     }
     setIsOpen(open);
@@ -75,31 +72,14 @@ export default function CreateEventDialog() {
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          New Event
+          Add Planning
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
+          <DialogTitle>Create New Planning Event</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          <div>
-            <Label>Event For</Label>
-            <Controller
-              control={form.control}
-              name="userId"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
-                  <SelectContent>
-                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
-          </div>
-
           <div>
             <Label>Title</Label>
             <Input {...form.register('title')} placeholder="Event title" />
@@ -154,7 +134,7 @@ export default function CreateEventDialog() {
           
           <DialogFooter>
              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Event</Button>
+            <Button type="submit">Add Planning</Button>
           </DialogFooter>
         </form>
       </DialogContent>
