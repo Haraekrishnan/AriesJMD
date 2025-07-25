@@ -1,7 +1,6 @@
 
-
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,13 +25,22 @@ interface TaskFiltersProps {
 }
 
 export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
-  const { user, getVisibleUsers } = useAppContext();
+  const { user } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
+  const { getVisibleUsers } = useAppContext();
 
   const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleAssigneeChange = (assigneeId: string) => {
+    if (assigneeId !== 'all') {
+      setFilters(prev => ({ ...prev, assigneeId, showMyTasksOnly: false }));
+    } else {
+      setFilters(prev => ({ ...prev, assigneeId }));
+    }
   };
   
   const handleApply = () => {
@@ -54,7 +62,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
   return (
     <div className="p-4 border rounded-lg bg-card">
         <div className="flex flex-wrap gap-4 items-center">
-            <Select value={filters.assigneeId} onValueChange={value => handleFilterChange('assigneeId', value)}>
+            <Select value={filters.assigneeId} onValueChange={handleAssigneeChange}>
                 <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All Users" /></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Users</SelectItem>
