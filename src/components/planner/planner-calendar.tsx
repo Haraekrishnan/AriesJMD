@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSunday, isSaturday, startOfWeek, endOfWeek, isSameMonth, isToday, isPast } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, startOfWeek, endOfWeek, isSameMonth, isToday, isPast } from 'date-fns';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Edit, Trash2, Send, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -21,6 +21,8 @@ interface PlannerCalendarProps {
     selectedUserId: string;
 }
 
+const MAX_EVENTS_VISIBLE = 2;
+
 export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps) {
     const {
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
@@ -34,6 +36,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
     const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null);
     const [dailyComment, setDailyComment] = useState('');
+    const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (selectedDate && user) {
@@ -127,6 +130,19 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
     };
 
+    const toggleExpandDay = (day: Date) => {
+        const dayKey = format(day, 'yyyy-MM-dd');
+        setExpandedDays(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(dayKey)) {
+                newSet.delete(dayKey);
+            } else {
+                newSet.add(dayKey);
+            }
+            return newSet;
+        });
+    };
+
     return (
         <>
             <div className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-8 flex-1">
@@ -145,14 +161,18 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                 <div key={day} className="p-2 text-center font-semibold text-sm border-b border-r text-muted-foreground">{day}</div>
                             ))}
                             {calendarGrid.map((day, index) => {
+                                const dayKey = format(day, 'yyyy-MM-dd');
                                 const dayEvents = expandedEvents.filter(event => isSameDay(event.eventDate, day));
+                                const isExpanded = expandedDays.has(dayKey);
+                                const visibleEvents = isExpanded ? dayEvents : dayEvents.slice(0, MAX_EVENTS_VISIBLE);
+
                                 return (
-                                    <div key={index} className={cn("relative min-h-[120px] p-1 border-b border-r", !isSameMonth(day, currentMonth) && "bg-muted/50 text-muted-foreground", isToday(day) && "bg-blue-50 dark:bg-blue-900/20")}>
+                                    <div key={index} className={cn("relative min-h-[120px] p-1 border-b border-r flex flex-col", !isSameMonth(day, currentMonth) && "bg-muted/50 text-muted-foreground", isToday(day) && "bg-blue-50 dark:bg-blue-900/20")}>
                                         <button onClick={() => setSelectedDate(day)} className={cn("absolute top-1 right-1 h-6 w-6 rounded-full text-xs flex items-center justify-center", isSameDay(day, selectedDate || new Date()) && "bg-primary text-primary-foreground")}>
                                             {format(day, 'd')}
                                         </button>
-                                        <div className="space-y-1 mt-8">
-                                            {dayEvents.map(event => {
+                                        <div className="space-y-1 mt-8 flex-1">
+                                            {visibleEvents.map(event => {
                                                 const creator = users.find(u => u.id === event.creatorId);
                                                 return (
                                                 <div key={event.id} onClick={() => setSelectedDate(day)} className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent">
@@ -161,6 +181,11 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                 </div>
                                             )})}
                                         </div>
+                                        {dayEvents.length > MAX_EVENTS_VISIBLE && (
+                                            <Button variant="link" size="sm" className="h-auto p-0 text-xs mt-auto self-start" onClick={() => toggleExpandDay(day)}>
+                                                {isExpanded ? "Show less" : `+${dayEvents.length - MAX_EVENTS_VISIBLE} more`}
+                                            </Button>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -211,7 +236,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                 </>
                             )}
                             <div className="space-y-3">
-                                {selectedDayComments.map((comment) => {
+                                {selectedDayComments.length > 0 ? selectedDayComments.map((comment) => {
                                     const commentUser = users.find(u => u.id === comment.userId);
                                     const canModify = user?.id === comment.userId || user?.role === 'Admin';
                                     const isEditing = editingComment?.id === comment.id;
@@ -243,11 +268,12 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                             </div>
                                         </div>
                                     );
-                                })}
-                                {selectedDayEvents.length === 0 && selectedDayComments.length === 0 && (
-                                    <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">
-                                        <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
-                                    </div>
+                                }) : (
+                                    selectedDayEvents.length === 0 && (
+                                        <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">
+                                            <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         </ScrollArea>
