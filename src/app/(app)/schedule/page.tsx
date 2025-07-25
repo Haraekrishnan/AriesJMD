@@ -19,7 +19,7 @@ export default function SchedulePage() {
         <div className="space-y-8 h-full flex flex-col">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Monthly Schedule</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Monthly Planner</h1>
                     <p className="text-muted-foreground">Organize your team's schedule and events.</p>
                 </div>
                 <div className="flex items-center gap-4">

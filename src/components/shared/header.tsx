@@ -19,7 +19,8 @@ export default function Header() {
   const pathname = usePathname();
   
   const getPageTitle = () => {
-    const name = pathname.split('/').pop()?.replace('-', ' ');
+    if (pathname.startsWith('/schedule')) return 'Planner';
+    const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     return name.charAt(0).toUpperCase() + name.slice(1);
   };
