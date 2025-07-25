@@ -44,7 +44,7 @@ export function AppSidebar() {
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount, show: true },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
-    { href: '/schedule', icon: CalendarDays, label: 'Schedule', notificationCount: plannerNotificationCount, show: true },
+    { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: plannerNotificationCount, show: true },
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
     { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount, show: true },
