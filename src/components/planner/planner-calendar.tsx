@@ -219,7 +219,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                         <p className="font-semibold">{event.title}</p>
                                                         <p className="text-xs text-muted-foreground">{event.description}</p>
                                                     </div>
-                                                    {canModifyEvent && !isEventInPast && (
+                                                    {canModifyEvent && (!isEventInPast || user?.role === 'Admin') && (
                                                         <div className="flex">
                                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingEvent(event)}><Edit className="h-4 w-4"/></Button>
                                                             <AlertDialog>
