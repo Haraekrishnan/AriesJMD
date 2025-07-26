@@ -95,7 +95,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
               mimeType: attachment.type,
             };
             
-            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxiCCmmDO4QaFXTKPVLwXcexcehcEeoy97OkB4GBwwGFxJ4p5conJF1oAsidR3lsm4bog/exec";
+            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOm6gXcBzYJnnx8AyIUorpoP4vodhSSWxn39FxkPSm6fwhuzdZHOi6fxoudZ69V_Q/exec";
         
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
