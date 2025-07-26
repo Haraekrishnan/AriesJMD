@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -181,7 +182,7 @@ type AppContextType = {
   addOtherEquipment: (equipment: Omit<OtherEquipment, 'id'>) => void;
   updateOtherEquipment: (equipment: OtherEquipment) => void;
   deleteOtherEquipment: (equipmentId: string) => void;
-  addMachineLog: (log: Omit<MachineLog, 'id'>) => void;
+  addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
   updateBranding: (name: string, logo: string | null) => void;
@@ -1654,10 +1655,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (equipment) addActivityLog(user.id, 'Other Equipment Deleted', `Deleted ${equipment.equipmentName}`);
   }, [user, addActivityLog, otherEquipments]);
 
-  const addMachineLog = useCallback((log: Omit<MachineLog, 'id'>) => {
+  const addMachineLog = useCallback((log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
     if(user) {
         const newLogRef = push(ref(rtdb, 'machineLogs'));
-        set(newLogRef, log);
+        const logData: Omit<MachineLog, 'id'> = {
+          ...log,
+          machineId: machineId,
+          loggedByUserId: user.id,
+        };
+        set(newLogRef, logData);
     }
   }, [user]);
 

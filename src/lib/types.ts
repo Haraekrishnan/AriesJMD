@@ -1,5 +1,6 @@
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -438,10 +439,6 @@ export type MachineLog = {
     jobDescription: string;
     status: 'Active' | 'Idle';
     reason?: string;
-    attachment?: {
-      name: string;
-      url: string;
-    };
 };
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';
