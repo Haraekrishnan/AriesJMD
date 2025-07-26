@@ -105,8 +105,8 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
         try {
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             });
 
             const result = await res.json();
@@ -303,5 +303,3 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
     </Dialog>
   );
 }
-
-    
