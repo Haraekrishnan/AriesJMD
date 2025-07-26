@@ -4,7 +4,7 @@
 // 4. Go to Deploy > New deployment.
 // 5. Click the gear icon, select "Web app".
 // 6. For "Execute as", select "Me".
-// 7. For "Who has access", select "Anyone". This is required.
+// 7. For "Who has access", select "Anyone". This is required for public access.
 // 8. Click "Deploy".
 // 9. IMPORTANT: Authorize the permissions when prompted.
 // 10. Copy the Web app URL provided and paste it into the placeholder in your application code.

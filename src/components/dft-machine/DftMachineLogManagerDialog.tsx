@@ -83,9 +83,9 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     if (attachment) {
       setIsUploading(true);
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = async () => {
         try {
-            const dataUrl = e.target?.result as string;
+            const dataUrl = reader.result as string;
             const base64Data = dataUrl.split(',')[1];
             
             const formData = new FormData();
@@ -93,7 +93,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
             formData.append('filename', attachment.name);
             formData.append('mimeType', attachment.type);
             
-            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
+            const WEB_APP_URL = "https://script.google.com/macros/u/4/s/AKfycby_LJVTDUZMinkY3xziDwHKO1Ky1EE0cdHuK9-GqsLR8uP2atUu4ZILLTXFYKqufLB-xg/exec";
         
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
