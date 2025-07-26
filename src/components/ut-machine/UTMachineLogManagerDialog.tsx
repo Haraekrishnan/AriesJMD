@@ -80,49 +80,39 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
 
   const onSubmit = async (data: LogFormValues) => {
     if (!user) return;
-    
-    let attachmentNote: { name: string; url: string; } | undefined = undefined;
 
     if (attachment) {
       setIsUploading(true);
       const reader = new FileReader();
       reader.readAsDataURL(attachment);
       reader.onload = async (e) => {
-        const fileData = e.target?.result;
-        if (typeof fileData !== 'string') {
-            toast({ variant: 'destructive', title: 'Error reading file' });
-            setIsUploading(false);
-            return;
+        const fileDataUri = e.target?.result as string;
+        if (!fileDataUri) {
+          toast({ variant: 'destructive', title: 'Error reading file' });
+          setIsUploading(false);
+          return;
         }
 
-        const base64Data = fileData.split(',')[1];
         const payload = {
-          contents: base64Data,
+          dataUri: fileDataUri,
           filename: attachment.name,
-          mimeType: attachment.type,
         };
 
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwPz265P-Z1gQ_0QDRBBIefV6RFPFqRj0GkSH8K-Y7A0zQpXmQ3fFpE-u6n_2qY5iW46g/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
         
         try {
-            const res = await fetch(WEB_APP_URL, {
+            await fetch(WEB_APP_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-
-            // IMPORTANT: We cannot read the response due to CORS limitations in Apps Script.
-            // We optimistically assume the upload worked.
-            toast({ title: 'File Uploaded', description: `${attachment.name} sent to Google Drive. Please check the drive to confirm.` });
-            
-            // We can't get the URL back, so we save a note instead.
-            attachmentNote = { name: `Uploaded: ${attachment.name}`, url: '#' };
-            saveLog(data, attachmentNote);
+            toast({ title: 'File Uploaded', description: 'Check Google Drive to confirm.' });
+            saveLog(data, { name: `Uploaded: ${attachment.name}`, url: '#' });
 
         } catch (error: any) {
             console.error('Upload Error:', error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not send file. The request was blocked or an error occurred.' });
-            saveLog(data); // Save the log even if upload fails
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not send file. Saving log without attachment.' });
+            saveLog(data);
         } finally {
             setIsUploading(false);
         }

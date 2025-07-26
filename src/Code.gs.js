@@ -22,15 +22,15 @@ function doOptions(e) {
 function doPost(e) {
   try {
     const postData = JSON.parse(e.postData.contents);
-    const fileData = postData.contents;
+    const fileDataUri = postData.dataUri;
     const fileName = postData.filename;
-    const mimeType = postData.mimeType;
 
-    const fileBlob = Utilities.newBlob(Utilities.base64Decode(fileData), mimeType, fileName);
-    
-    if (!fileBlob || !fileName) {
-      throw new Error("File data or filename parameter is missing.");
+    if (!fileDataUri || !fileName) {
+      throw new Error("File data URI or filename parameter is missing.");
     }
+    
+    // Create a blob directly from the data URI
+    const fileBlob = Utilities.newBlob(fileDataUri, null, fileName);
     
     const folder = DriveApp.getFolderById(FOLDER_ID);
     const newFile = folder.createFile(fileBlob);
