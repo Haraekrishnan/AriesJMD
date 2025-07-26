@@ -88,22 +88,18 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
       reader.onload = async (e) => {
         try {
             const dataUrl = e.target?.result as string;
-            const base64Data = dataUrl.split(',')[1];
-            
-            const payload = {
-                file: base64Data,
-                filename: attachment.name,
-                mimeType: attachment.type,
-            };
+            const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
 
+            const formData = new FormData();
+            formData.append('file', base64Data);
+            formData.append('filename', attachment.name);
+            formData.append('mimeType', attachment.type);
+            
             const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
         
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify(payload),
+                body: formData,
             });
 
             const result = await res.json();

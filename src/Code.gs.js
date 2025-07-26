@@ -13,15 +13,16 @@ const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Replace with your actu
 
 function doPost(e) {
   try {
-    const postData = JSON.parse(e.postData.contents);
-    const base64Data = postData.file;
-    const fileName = postData.filename;
-    const mimeType = postData.mimeType;
+    // These parameters come from the FormData object on the client
+    const base64Data = e.parameter.file;
+    const fileName = e.parameter.filename;
+    const mimeType = e.parameter.mimeType;
 
     if (!base64Data || !fileName || !mimeType) {
       throw new Error("File data, filename, or mimeType parameter is missing.");
     }
     
+    // Decode the Base64 string into a blob
     const decoded = Utilities.base64Decode(base64Data);
     const fileBlob = Utilities.newBlob(decoded, mimeType, fileName);
     
@@ -30,6 +31,7 @@ function doPost(e) {
     
     newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
+    // Create a direct view/download link
     const fileUrl = `https://drive.google.com/uc?export=view&id=${newFile.getId()}`;
     
     const response = {
