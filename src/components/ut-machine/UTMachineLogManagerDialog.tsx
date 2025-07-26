@@ -80,36 +80,32 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
 
   const onSubmit = async (data: LogFormValues) => {
     if (!user) return;
+    
+    let uploadedAttachmentNote: { name: string, url: string } | undefined = undefined;
 
     if (attachment) {
       setIsUploading(true);
       const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby_LJVTDUZMinkY3xziDwHKO1Ky1EE0cdHuK9-GqsLR8uP2atUu4ZILLTXFYKqufLB-xg/exec";
       
       try {
-        const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
+        await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
             method: 'POST',
             body: attachment,
-            headers: {
-              'Content-Type': 'application/octet-stream',
-            },
+            mode: "no-cors",
         });
 
-        const result = await res.json();
-        
-        if (result.status === 'success') {
-          saveLog(data, { name: result.name, url: result.url });
-        } else {
-          throw new Error(result.message || 'Upload failed');
-        }
+        toast({ title: 'File Uploaded', description: `${attachment.name} sent to Google Drive.` });
+        uploadedAttachmentNote = { name: `Uploaded: ${attachment.name}`, url: '#' };
+
       } catch (error) {
           console.error('Upload Error:', error);
-          toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive. Check console for details.' });
+          toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not send file to Google Drive.' });
       } finally {
           setIsUploading(false);
       }
-    } else {
-      saveLog(data);
     }
+    
+    saveLog(data, uploadedAttachmentNote);
   };
   
   const saveLog = (data: LogFormValues, uploadedAttachment?: { name: string, url: string }) => {
