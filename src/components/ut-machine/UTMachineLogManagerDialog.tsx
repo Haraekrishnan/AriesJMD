@@ -95,12 +95,12 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
               mimeType: attachment.type,
             };
             
-            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOm6gXcBzYJnnx8AyIUorpoP4vodhSSWxn39FxkPSm6fwhuzdZHOi6fxoudZ69V_Q/exec";
+            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz84ocerUtsGuBPthzuFibvXbVoQutLfcg2Ck2LQ0_WZGi_bAxqLi6q6D7dvoSCvrY5QA/exec";
         
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(payload),
             });
