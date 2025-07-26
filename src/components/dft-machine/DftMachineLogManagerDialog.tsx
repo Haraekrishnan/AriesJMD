@@ -85,27 +85,24 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
       const reader = new FileReader();
       reader.readAsDataURL(attachment);
       reader.onload = async (e) => {
-        const fileDataUri = e.target?.result as string;
-        if (!fileDataUri) {
-          toast({ variant: 'destructive', title: 'Error reading file' });
-          setIsUploading(false);
-          return;
-        }
-
-        const base64Data = fileDataUri.split(',')[1];
-        
-        const formData = new FormData();
-        formData.append('file', base64Data);
-        formData.append('filename', attachment.name);
-        formData.append('mimeType', attachment.type);
-
-
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby_LJVTDUZMinkY3xziDwHKO1Ky1EE0cdHuK9-GqsLR8uP2atUu4ZILLTXFYKqufLB-xg/exec";
-        
         try {
+            const dataUrl = e.target?.result as string;
+            const base64Data = dataUrl.split(',')[1];
+            
+            const payload = {
+                file: base64Data,
+                filename: attachment.name,
+                mimeType: attachment.type,
+            };
+            
+            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
+        
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
-                body: formData,
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload),
             });
 
             const result = await res.json();
@@ -124,6 +121,11 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
             setIsUploading(false);
         }
       };
+      reader.onerror = (error) => {
+          console.error('File reading error:', error);
+          toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
+          setIsUploading(false);
+      }
     } else {
       saveLog(data);
     }
@@ -301,4 +303,3 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     </Dialog>
   );
 }
-    
