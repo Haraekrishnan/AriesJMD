@@ -1,4 +1,3 @@
-
 // 1. Create a new script project at script.google.com
 // 2. Copy and paste this entire code into the Code.gs file.
 // 3. Replace "YOUR_GOOGLE_DRIVE_FOLDER_ID" with the actual ID of the folder you want to upload files to.

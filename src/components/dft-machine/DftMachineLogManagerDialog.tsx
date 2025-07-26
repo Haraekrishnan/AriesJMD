@@ -82,37 +82,30 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     
     if (attachment) {
       setIsUploading(true);
-      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby_LJVTDUZMinkY3xziDwHKO1Ky1EE0cdHuK9-GqsLR8uP2atUu4ZILLTXFYKqufLB-xg/exec";
       
-      const fileReader = new FileReader();
-      fileReader.onload = async (e) => {
-        const fileContents = e.target?.result as string;
-        const base64Contents = fileContents.split(',')[1];
-      
-        try {
-          const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
-              method: 'POST',
-              body: base64Contents,
-              headers: {
-                  'Content-Type': 'text/plain',
-              },
-          });
+      try {
+        const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
+            method: 'POST',
+            body: attachment,
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+        });
 
-          const result = await res.json();
-          
-          if (result.status === 'success') {
-            saveLog(data, { name: result.name, url: result.url });
-          } else {
-            throw new Error(result.message || 'Upload failed');
-          }
-        } catch (error) {
-            console.error('Upload Error:', error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
-        } finally {
-            setIsUploading(false);
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+          saveLog(data, { name: result.name, url: result.url });
+        } else {
+          throw new Error(result.message || 'Upload failed');
         }
-      };
-      fileReader.readAsDataURL(attachment);
+      } catch (error) {
+          console.error('Upload Error:', error);
+          toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
+      } finally {
+          setIsUploading(false);
+      }
     } else {
       saveLog(data);
     }
