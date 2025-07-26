@@ -13,7 +13,6 @@ const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Replace with your actu
 
 function doPost(e) {
   try {
-    // These parameters come from the FormData object on the client
     const base64Data = e.parameter.file;
     const fileName = e.parameter.filename;
     const mimeType = e.parameter.mimeType;
@@ -42,7 +41,8 @@ function doPost(e) {
     };
     
     return ContentService.createTextOutput(JSON.stringify(response))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
       
   } catch (error) {
     const errorResponse = {
@@ -52,6 +52,21 @@ function doPost(e) {
     };
     
     return ContentService.createTextOutput(JSON.stringify(errorResponse))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
   }
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput()
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("GET not supported")
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*");
 }

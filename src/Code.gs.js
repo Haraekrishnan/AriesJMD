@@ -4,7 +4,7 @@
 // 4. Go to Deploy > New deployment.
 // 5. Click the gear icon, select "Web app".
 // 6. For "Execute as", select "Me".
-// 7. For "Who has access", select "Anyone". This is required for public access.
+// 7. For "Who has access", select "Anyone". This is required.
 // 8. Click "Deploy".
 // 9. IMPORTANT: Authorize the permissions when prompted.
 // 10. Copy the Web app URL provided and paste it into the placeholder in your application code.
@@ -13,7 +13,6 @@ const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Replace with your actu
 
 function doPost(e) {
   try {
-    // These parameters come from the FormData object on the client
     const base64Data = e.parameter.file;
     const fileName = e.parameter.filename;
     const mimeType = e.parameter.mimeType;
@@ -42,7 +41,8 @@ function doPost(e) {
     };
     
     return ContentService.createTextOutput(JSON.stringify(response))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
       
   } catch (error) {
     const errorResponse = {
@@ -52,6 +52,21 @@ function doPost(e) {
     };
     
     return ContentService.createTextOutput(JSON.stringify(errorResponse))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
   }
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput()
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("GET not supported")
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*");
 }
