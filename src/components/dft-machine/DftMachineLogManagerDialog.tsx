@@ -80,11 +80,9 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
   const onSubmit = async (data: LogFormValues) => {
     if (!user) return;
     
-    let uploadedAttachment: { name: string, url: string } | undefined;
-
     if (attachment) {
       setIsUploading(true);
-      const WEB_APP_URL = "https://script.google.com/macros/u/4/s/AKfycbyWGLcHTTDlfooyNBGrGVJ1_iW-b2z_mITMYAZYpUlHv_h5b1ukOuQKuDGViH8sYF9Uug/exec"; 
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
       
       try {
         const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
@@ -98,8 +96,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
         const result = await res.json();
         
         if (result.status === 'success') {
-          uploadedAttachment = { name: result.name, url: result.url };
-          saveLog(data, uploadedAttachment);
+          saveLog(data, { name: result.name, url: result.url });
         } else {
           throw new Error(result.message || 'Upload failed');
         }
@@ -109,10 +106,9 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
       } finally {
           setIsUploading(false);
       }
-      return; 
+    } else {
+      saveLog(data);
     }
-    
-    saveLog(data, uploadedAttachment);
   };
   
   const saveLog = (data: LogFormValues, uploadedAttachment?: { name: string, url: string }) => {

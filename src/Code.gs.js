@@ -10,22 +10,20 @@
 // 8. IMPORTANT: Authorize the permissions when prompted.
 // 9. Copy the Web app URL provided and paste it into the placeholder in your application code.
 
-const FOLDER_ID = "YOUR_GOOGLE_DRIVE_FOLDER_ID"; // Replace with your folder ID
+const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Your actual folder ID
 
 function doPost(e) {
   try {
-    const fileData = e.parameter.file;
+    const fileBlob = e.postData.contents ? Utilities.newBlob(e.postData.contents) : null;
     const fileName = e.parameter.filename;
     
-    if (!fileData || !fileName) {
-      throw new Error("File or filename parameter is missing.");
+    if (!fileBlob || !fileName) {
+      throw new Error("File data or filename parameter is missing.");
     }
     
-    const decodedData = Utilities.base64Decode(fileData);
-    const blob = Utilities.newBlob(decodedData).setName(fileName);
-    
+    fileBlob.setName(fileName);
     const folder = DriveApp.getFolderById(FOLDER_ID);
-    const newFile = folder.createFile(blob);
+    const newFile = folder.createFile(fileBlob);
     
     // Set the file to be publicly accessible
     newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
