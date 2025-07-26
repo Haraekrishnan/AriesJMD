@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { UTMachine, MachineLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
-import { PlusCircle, Trash2, File, Paperclip, X } from 'lucide-react';
+import { PlusCircle, Trash2, File, Paperclip, X, Loader2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
@@ -52,6 +52,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
   const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
   const { toast } = useToast();
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const machineLogs = getMachineLogs(machine.id);
 
@@ -77,20 +78,67 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
     }
   };
 
-  const onSubmit = (data: LogFormValues) => {
+  const onSubmit = async (data: LogFormValues) => {
     if (!user) return;
-    // TODO: Implement actual file upload logic here.
-    // This is where you would get a pre-signed URL and upload the file.
+
+    let uploadedAttachment;
     if (attachment) {
-      toast({ title: 'File Upload Pending', description: `File upload logic needs to be implemented. "${attachment.name}" is not uploaded.` });
+      setIsUploading(true);
+      const WEB_APP_URL = "YOUR_WEB_APP_URL_HERE";
+      
+      if (WEB_APP_URL === "YOUR_WEB_APP_URL_HERE") {
+        toast({
+            variant: "destructive",
+            title: "Upload Skipped",
+            description: "Please replace 'YOUR_WEB_APP_URL_HERE' with your actual Google Apps Script URL.",
+        });
+        uploadedAttachment = { name: attachment.name, url: '#' }; // Placeholder
+        setIsUploading(false);
+      } else {
+        const reader = new FileReader();
+        reader.readAsDataURL(attachment);
+        reader.onload = async (e) => {
+          try {
+            const fileContent = e.target?.result?.toString().split(',')[1];
+            const formData = new FormData();
+            formData.append('file', fileContent || '');
+            formData.append('filename', attachment.name);
+            formData.append('mimetype', attachment.type);
+            
+            const res = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                body: new URLSearchParams(Object.fromEntries(formData.entries() as any)),
+            });
+
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+              uploadedAttachment = { name: result.name, url: result.url };
+              saveLog(data, uploadedAttachment);
+            } else {
+              throw new Error(result.message || 'Upload failed');
+            }
+          } catch (error) {
+              console.error('Upload Error:', error);
+              toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
+          } finally {
+              setIsUploading(false);
+          }
+        };
+        return; // The saveLog function will be called inside the onload callback
+      }
     }
     
-    // For now, we'll pass a dummy attachment object if a file is selected
+    saveLog(data, uploadedAttachment);
+  };
+  
+  const saveLog = (data: LogFormValues, uploadedAttachment?: { name: string, url: string }) => {
+    if (!user) return;
     const logData: Omit<MachineLog, 'id'> = {
       ...data,
       machineId: machine.id,
       loggedByUserId: user.id,
-      ...(attachment && { attachment: { name: attachment.name, url: '#' } })
+      ...(uploadedAttachment && { attachment: uploadedAttachment })
     };
     
     addMachineLog(logData);
@@ -100,8 +148,8 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
     });
     form.reset();
     setAttachment(null);
-  };
-  
+  }
+
   const handleDelete = (logId: string) => {
     deleteMachineLog(logId);
     toast({ title: 'Log Deleted', variant: 'destructive' });
@@ -180,7 +228,10 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                         </div>
                       )}
                     </div>
-                    <Button type="submit" className="w-full">Add Log</Button>
+                    <Button type="submit" className="w-full" disabled={isUploading}>
+                        {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isUploading ? 'Uploading...' : 'Add Log'}
+                    </Button>
                 </form>
             </div>
             <div>
