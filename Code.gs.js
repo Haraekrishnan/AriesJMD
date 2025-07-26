@@ -13,15 +13,16 @@ const FOLDER_ID = "YOUR_GOOGLE_DRIVE_FOLDER_ID";
 
 function doPost(e) {
   try {
-    const fileBlob = e.parameter.file;
+    const fileBlob = e.postData.contents ? Utilities.newBlob(e.postData.contents) : null;
     const fileName = e.parameter.filename;
     
     if (!fileBlob || !fileName) {
-      throw new Error("File or filename parameter is missing.");
+      throw new Error("File data or filename parameter is missing.");
     }
     
+    fileBlob.setName(fileName);
     const folder = DriveApp.getFolderById(FOLDER_ID);
-    const newFile = folder.createFile(fileBlob).setName(fileName);
+    const newFile = folder.createFile(fileBlob);
     
     // Set the file to be publicly accessible
     newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);

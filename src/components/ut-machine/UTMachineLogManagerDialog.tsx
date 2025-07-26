@@ -81,40 +81,35 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
   const onSubmit = async (data: LogFormValues) => {
     if (!user) return;
 
-    let uploadedAttachment;
+    let uploadedAttachment: { name: string, url: string } | undefined;
+
     if (attachment) {
       setIsUploading(true);
       const WEB_APP_URL = "https://script.google.com/macros/u/4/s/AKfycbyWGLcHTTDlfooyNBGrGVJ1_iW-b2z_mITMYAZYpUlHv_h5b1ukOuQKuDGViH8sYF9Uug/exec"; 
       
-      const reader = new FileReader();
-      reader.readAsDataURL(attachment);
-      reader.onload = async (e) => {
-        try {
-          const fileContent = e.target?.result?.toString().split(',')[1];
-          const formData = new FormData();
-          formData.append('file', fileContent || '');
-          formData.append('filename', attachment.name);
-          
-          const res = await fetch(WEB_APP_URL, {
-              method: 'POST',
-              body: new URLSearchParams(Object.fromEntries(formData.entries() as any)),
-          });
+      try {
+        const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
+            method: 'POST',
+            body: attachment,
+            headers: {
+              'Content-Type': 'application/octet-stream',
+            },
+        });
 
-          const result = await res.json();
-          
-          if (result.status === 'success') {
-            uploadedAttachment = { name: result.name, url: result.url };
-            saveLog(data, uploadedAttachment);
-          } else {
-            throw new Error(result.message || 'Upload failed');
-          }
-        } catch (error) {
-            console.error('Upload Error:', error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
-        } finally {
-            setIsUploading(false);
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+          uploadedAttachment = { name: result.name, url: result.url };
+          saveLog(data, uploadedAttachment);
+        } else {
+          throw new Error(result.message || 'Upload failed');
         }
-      };
+      } catch (error) {
+          console.error('Upload Error:', error);
+          toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
+      } finally {
+          setIsUploading(false);
+      }
       return;
     }
     
