@@ -4,7 +4,7 @@
 //    (You can get this from the folder's URL in Google Drive).
 // 4. Go to Deploy > New deployment.
 // 5. Click the gear icon, select "Web app".
-// 6. For "Who has access", select "Anyone".
+// 6. For "Who has access", select "Anyone". This is important for receiving uploads.
 // 7. Click "Deploy".
 // 8. IMPORTANT: Authorize the permissions when prompted.
 // 9. Copy the Web app URL provided and paste it into the placeholder in your application code.
