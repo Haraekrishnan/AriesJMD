@@ -101,7 +101,8 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
             });
 
             if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
+              const errorText = await res.text();
+              throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
             }
             
             const result = await res.json();
