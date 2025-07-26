@@ -83,49 +83,38 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     let uploadedAttachment;
     if (attachment) {
       setIsUploading(true);
-      const WEB_APP_URL = "YOUR_WEB_APP_URL_HERE"; 
+      const WEB_APP_URL = "https://script.google.com/macros/u/4/s/AKfycbyWGLcHTTDlfooyNBGrGVJ1_iW-b2z_mITMYAZYpUlHv_h5b1ukOuQKuDGViH8sYF9Uug/exec";
       
-      if (WEB_APP_URL === "YOUR_WEB_APP_URL_HERE") {
-        toast({
-            variant: "destructive",
-            title: "Upload Skipped",
-            description: "Please replace 'YOUR_WEB_APP_URL_HERE' with your actual Google Apps Script URL.",
-        });
-        uploadedAttachment = { name: attachment.name, url: '#' }; // Placeholder
-        setIsUploading(false);
-      } else {
-        const reader = new FileReader();
-        reader.readAsDataURL(attachment);
-        reader.onload = async (e) => {
-          try {
-            const fileContent = e.target?.result?.toString().split(',')[1];
-            const formData = new FormData();
-            formData.append('file', fileContent || '');
-            formData.append('filename', attachment.name);
-            formData.append('mimetype', attachment.type);
-            
-            const res = await fetch(WEB_APP_URL, {
-                method: 'POST',
-                body: new URLSearchParams(Object.fromEntries(formData.entries() as any)),
-            });
+      const reader = new FileReader();
+      reader.readAsDataURL(attachment);
+      reader.onload = async (e) => {
+        try {
+          const fileContent = e.target?.result?.toString().split(',')[1];
+          const formData = new FormData();
+          formData.append('file', fileContent || '');
+          formData.append('filename', attachment.name);
+          
+          const res = await fetch(WEB_APP_URL, {
+              method: 'POST',
+              body: new URLSearchParams(Object.fromEntries(formData.entries() as any)),
+          });
 
-            const result = await res.json();
-            
-            if (result.status === 'success') {
-              uploadedAttachment = { name: result.name, url: result.url };
-              saveLog(data, uploadedAttachment);
-            } else {
-              throw new Error(result.message || 'Upload failed');
-            }
-          } catch (error) {
-              console.error('Upload Error:', error);
-              toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
-          } finally {
-              setIsUploading(false);
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            uploadedAttachment = { name: result.name, url: result.url };
+            saveLog(data, uploadedAttachment);
+          } else {
+            throw new Error(result.message || 'Upload failed');
           }
-        };
-        return; // The saveLog function will be called inside the onload callback
-      }
+        } catch (error) {
+            console.error('Upload Error:', error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
+        } finally {
+            setIsUploading(false);
+        }
+      };
+      return; 
     }
     
     saveLog(data, uploadedAttachment);
