@@ -1,3 +1,4 @@
+
 // 1. Create a new script project at script.google.com
 // 2. Copy and paste this entire code into the Code.gs file.
 // 3. Replace "YOUR_GOOGLE_DRIVE_FOLDER_ID" with the actual ID of the folder you want to upload files to.
@@ -13,9 +14,10 @@ const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Replace with your actu
 
 function doPost(e) {
   try {
-    const base64Data = e.parameter.file;
-    const fileName = e.parameter.filename;
-    const mimeType = e.parameter.mimeType;
+    const data = JSON.parse(e.postData.contents);
+    const base64Data = data.file;
+    const fileName = data.filename;
+    const mimeType = data.mimeType;
 
     if (!base64Data || !fileName || !mimeType) {
       throw new Error("File data, filename, or mimeType parameter is missing.");
