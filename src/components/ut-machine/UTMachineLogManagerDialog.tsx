@@ -101,6 +101,10 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                 body: formData,
             });
 
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
             const result = await res.json();
             
             if (result.status === 'success') {
