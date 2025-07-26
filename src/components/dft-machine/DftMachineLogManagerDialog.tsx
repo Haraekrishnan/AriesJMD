@@ -83,11 +83,10 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     if (attachment) {
       setIsUploading(true);
       const reader = new FileReader();
-      reader.readAsDataURL(attachment);
       reader.onload = async (e) => {
         try {
             const dataUrl = e.target?.result as string;
-            const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
+            const base64Data = dataUrl.split(',')[1];
             
             const formData = new FormData();
             formData.append('file', base64Data);
@@ -122,6 +121,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
           toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the selected file.' });
           setIsUploading(false);
       }
+      reader.readAsDataURL(attachment);
     } else {
       saveLog(data);
     }
