@@ -12,13 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { UTMachine, MachineLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, File, Paperclip, X } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
+import Link from 'next/link';
 
 
 const logSchema = z.object({
@@ -50,6 +51,7 @@ interface UTMachineLogManagerDialogProps {
 export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }: UTMachineLogManagerDialogProps) {
   const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
   const { toast } = useToast();
+  const [attachment, setAttachment] = useState<File | null>(null);
   
   const machineLogs = getMachineLogs(machine.id);
 
@@ -69,14 +71,35 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
 
   const watchStatus = form.watch('status');
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachment(e.target.files[0]);
+    }
+  };
+
   const onSubmit = (data: LogFormValues) => {
     if (!user) return;
-    addMachineLog({ ...data, machineId: machine.id, loggedByUserId: user.id });
+    // TODO: Implement actual file upload logic here.
+    // For now, we'll just show a toast if a file is selected.
+    if (attachment) {
+      toast({ title: 'File Upload Pending', description: `File upload logic needs to be implemented. "${attachment.name}" is not uploaded.` });
+    }
+    
+    // For now, we'll pass a dummy attachment object if a file is selected
+    const logData: Omit<MachineLog, 'id'> = {
+      ...data,
+      machineId: machine.id,
+      loggedByUserId: user.id,
+      ...(attachment && { attachment: { name: attachment.name, url: '#' } })
+    };
+    
+    addMachineLog(logData);
     toast({
       title: 'Log Added',
       description: 'The usage log has been successfully recorded.',
     });
     form.reset();
+    setAttachment(null);
   };
   
   const handleDelete = (logId: string) => {
@@ -134,6 +157,29 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                             {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
                         </div>
                     )}
+                    <div className="space-y-2">
+                      <Label>Attachment (Optional)</Label>
+                      {attachment ? (
+                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                          <div className="flex items-center gap-2">
+                            <Paperclip className="h-4 w-4" />
+                            <span>{attachment.name}</span>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachment(null)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                           <Button asChild variant="outline" className="w-full">
+                              <Label htmlFor="file-upload" className="cursor-pointer flex items-center gap-2">
+                                <File className="h-4 w-4" /> Choose File
+                              </Label>
+                            </Button>
+                           <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" />
+                        </div>
+                      )}
+                    </div>
                     <Button type="submit" className="w-full">Add Log</Button>
                 </form>
             </div>
@@ -157,6 +203,12 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                                         <TableCell>
                                             <p className="font-medium">{log.jobDescription}</p>
                                             <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
+                                            {log.attachment && (
+                                              <Link href={log.attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-primary hover:underline">
+                                                <Paperclip className="h-3 w-3" />
+                                                {log.attachment.name}
+                                              </Link>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={log.status === 'Active' ? 'success' : 'secondary'}>{log.status}</Badge>
