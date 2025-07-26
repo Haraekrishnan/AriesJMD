@@ -12,9 +12,17 @@
 
 const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Your actual folder ID
 
+// This function handles CORS preflight requests
+function doOptions(e) {
+  return ContentService.createTextOutput()
+    .addHeader("Access-Control-Allow-Origin", "*")
+    .addHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .addHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 function doPost(e) {
   try {
-    const fileBlob = e.postData.contents ? Utilities.newBlob(e.postData.contents) : null;
+    const fileBlob = e.postData.contents ? Utilities.newBlob(Utilities.base64Decode(e.postData.contents)) : null;
     const fileName = e.parameter.filename;
     
     if (!fileBlob || !fileName) {
@@ -39,7 +47,8 @@ function doPost(e) {
     };
     
     return ContentService.createTextOutput(JSON.stringify(response))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .addHeader("Access-Control-Allow-Origin", "*");
       
   } catch (error) {
     const errorResponse = {
@@ -49,6 +58,7 @@ function doPost(e) {
     };
     
     return ContentService.createTextOutput(JSON.stringify(errorResponse))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .addHeader("Access-Control-Allow-Origin", "*");
   }
 }

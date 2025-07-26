@@ -84,28 +84,35 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
       setIsUploading(true);
       const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
       
-      try {
-        const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
-            method: 'POST',
-            body: attachment,
-            headers: {
-                'Content-Type': 'application/octet-stream',
-            },
-        });
+      const fileReader = new FileReader();
+      fileReader.onload = async (e) => {
+        const fileContents = e.target?.result as string;
+        const base64Contents = fileContents.split(',')[1];
+      
+        try {
+          const res = await fetch(`${WEB_APP_URL}?filename=${encodeURIComponent(attachment.name)}`, {
+              method: 'POST',
+              body: base64Contents,
+              headers: {
+                  'Content-Type': 'text/plain',
+              },
+          });
 
-        const result = await res.json();
-        
-        if (result.status === 'success') {
-          saveLog(data, { name: result.name, url: result.url });
-        } else {
-          throw new Error(result.message || 'Upload failed');
+          const result = await res.json();
+          
+          if (result.status === 'success') {
+            saveLog(data, { name: result.name, url: result.url });
+          } else {
+            throw new Error(result.message || 'Upload failed');
+          }
+        } catch (error) {
+            console.error('Upload Error:', error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
+        } finally {
+            setIsUploading(false);
         }
-      } catch (error) {
-          console.error('Upload Error:', error);
-          toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file to Google Drive.' });
-      } finally {
-          setIsUploading(false);
-      }
+      };
+      fileReader.readAsDataURL(attachment);
     } else {
       saveLog(data);
     }
