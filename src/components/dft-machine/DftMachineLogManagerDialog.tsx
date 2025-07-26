@@ -86,14 +86,14 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
       reader.onload = async () => {
         try {
             const dataUrl = reader.result as string;
-            const base64Data = dataUrl.split(',')[1];
+            const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
             
             const formData = new FormData();
             formData.append('file', base64Data);
             formData.append('filename', attachment.name);
             formData.append('mimeType', attachment.type);
             
-            const WEB_APP_URL = "https://script.google.com/macros/u/4/s/AKfycby_LJVTDUZMinkY3xziDwHKO1Ky1EE0cdHuK9-GqsLR8uP2atUu4ZILLTXFYKqufLB-xg/exec";
+            const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxiCCmmDO4QaFXTKPVLwXcexcehcEeoy97OkB4GBwwGFxJ4p5conJF1oAsidR3lsm4bog/exec";
         
             const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
