@@ -33,7 +33,7 @@ export type Task = {
   requiresAttachmentForCompletion?: boolean;
   attachment?: {
     name: string;
-    url: string; // data URI
+    url: string; 
   };
   approvalState: ApprovalState;
   approverId?: string; // New field

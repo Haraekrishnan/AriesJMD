@@ -92,26 +92,36 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
           return;
         }
 
+        const base64Data = fileDataUri.split(',')[1];
         const payload = {
-          dataUri: fileDataUri,
+          file: base64Data,
           filename: attachment.name,
+          mimeType: attachment.type,
         };
 
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyi2x471qBbhbhvbQ1E93KpOfb6NxR_XYRZ54FrG6OSeILfjhtnk2HhzZI2uf5sugcc0A/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby_LJVTDUZMinkY3xziDwHKO1Ky1EE0cdHuK9-GqsLR8uP2atUu4ZILLTXFYKqufLB-xg/exec";
         
         try {
-            await fetch(WEB_APP_URL, {
+            const res = await fetch(WEB_APP_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload),
             });
-            toast({ title: 'File Uploaded', description: 'Check Google Drive to confirm.' });
-            saveLog(data, { name: `Uploaded: ${attachment.name}`, url: '#' });
+
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                toast({ title: 'File Uploaded', description: 'Your file has been saved to Google Drive.' });
+                saveLog(data, { name: result.name, url: result.url });
+            } else {
+                throw new Error(result.message || 'Unknown error from upload script.');
+            }
 
         } catch (error: any) {
             console.error('Upload Error:', error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not send file. Saving log without attachment.' });
-            saveLog(data);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Could not send file to Google Drive.' });
+            // Optionally save log without attachment
+            // saveLog(data); 
         } finally {
             setIsUploading(false);
         }
