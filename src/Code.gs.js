@@ -21,10 +21,9 @@ function doOptions(e) {
 
 function doPost(e) {
   try {
-    const postData = JSON.parse(e.postData.contents);
-    const base64Data = postData.file;
-    const fileName = postData.filename;
-    const mimeType = postData.mimeType;
+    const base64Data = e.parameter.file;
+    const fileName = e.parameter.filename;
+    const mimeType = e.parameter.mimeType;
 
     if (!base64Data || !fileName || !mimeType) {
       throw new Error("File data, filename, or mimeType parameter is missing.");
