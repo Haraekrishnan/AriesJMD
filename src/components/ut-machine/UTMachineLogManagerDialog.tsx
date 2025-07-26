@@ -80,7 +80,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
   const onSubmit = (data: LogFormValues) => {
     if (!user) return;
     // TODO: Implement actual file upload logic here.
-    // For now, we'll just show a toast if a file is selected.
+    // This is where you would get a pre-signed URL and upload the file.
     if (attachment) {
       toast({ title: 'File Upload Pending', description: `File upload logic needs to be implemented. "${attachment.name}" is not uploaded.` });
     }
