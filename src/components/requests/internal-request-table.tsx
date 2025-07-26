@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -39,6 +40,7 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
 const requestItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  unit: z.string().optional(),
   remarks: z.string().optional(),
 });
 const editRequestSchema = z.object({
@@ -244,9 +246,10 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                     <div className="space-y-4 p-4 max-h-[60vh] overflow-y-auto">
                         {fields.map((field, index) => (
                            <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                             <div className="col-span-6 space-y-1"><Input {...form.register(`items.${index}.description`)} /></div>
+                             <div className="col-span-5 space-y-1"><Input {...form.register(`items.${index}.description`)} /></div>
                              <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
-                             <div className="col-span-3 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
+                             <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
+                             <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
                              <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                            </div>
                         ))}

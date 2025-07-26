@@ -15,8 +15,7 @@ const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Your folder ID
 
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
-    const { file: base64Data, filename: fileName, mimeType } = data;
+    const { file: base64Data, filename: fileName, mimeType } = e.parameter;
 
     if (!base64Data || !fileName || !mimeType) {
       throw new Error("Missing file data, filename, or mimeType.");
