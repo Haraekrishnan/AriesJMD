@@ -120,8 +120,6 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
         } catch (error: any) {
             console.error('Upload Error:', error);
             toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Could not send file to Google Drive.' });
-            // Optionally save log without attachment
-            // saveLog(data); 
         } finally {
             setIsUploading(false);
         }
@@ -303,3 +301,5 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     </Dialog>
   );
 }
+
+    
