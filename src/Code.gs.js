@@ -11,7 +11,7 @@
 // 9. IMPORTANT: Authorize the permissions when prompted.
 // 10. Copy the Web app URL provided and paste it into the placeholder in your application code.
 
-const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Replace with your actual folder ID
+const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Your folder ID
 
 function doPost(e) {
   try {
@@ -19,43 +19,52 @@ function doPost(e) {
     const { file: base64Data, filename: fileName, mimeType } = data;
 
     if (!base64Data || !fileName || !mimeType) {
-      throw new Error("File data, filename, or mimeType parameter is missing.");
+      throw new Error("Missing file data, filename, or mimeType.");
     }
-    
-    // Decode the Base64 string into a blob
+
+    // Decode Base64
     const decoded = Utilities.base64Decode(base64Data);
     const fileBlob = Utilities.newBlob(decoded, mimeType, fileName);
-    
+
+    // Save to Drive
     const folder = DriveApp.getFolderById(FOLDER_ID);
     const newFile = folder.createFile(fileBlob);
-    
+
+    // Make it viewable by link
     newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    // Create a direct view/download link
-    const fileUrl = `https://drive.google.com/uc?export=view&id=${newFile.getId()}`;
-    
+
     const response = {
       status: "success",
       fileId: newFile.getId(),
-      url: fileUrl,
-      name: newFile.getName()
+      url: `https://drive.google.com/uc?export=view&id=${newFile.getId()}`,
+      name: newFile.getName(),
     };
-    
+
     return ContentService.createTextOutput(JSON.stringify(response))
       .setMimeType(ContentService.MimeType.JSON)
-      .setHeader("Access-Control-Allow-Origin", "*");
-      
-  } catch (error) {
+      .setHeader("Access-Control-Allow-Origin", "*")
+      .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+      .setHeader("Access-Control-Allow-Headers", "Content-Type");
+  } catch (err) {
     const errorResponse = {
       status: "error",
-      message: error.message,
-      stack: error.stack
+      message: err.message,
     };
-    
+
     return ContentService.createTextOutput(JSON.stringify(errorResponse))
       .setMimeType(ContentService.MimeType.JSON)
-      .setHeader("Access-Control-Allow-Origin", "*");
+      .setHeader("Access-Control-Allow-Origin", "*")
+      .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+      .setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 function doGet(e) {
