@@ -10,7 +10,7 @@ import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
 import ManpowerFilters, { type ManpowerFilterValues } from '@/components/manpower/ManpowerFilters';
-import { isWithinInterval, addDays, isBefore, format, parseISO, isToday, isPast } from 'date-fns';
+import { isWithinInterval, addDays, isBefore, format, parseISO, isToday, isPast, isValid } from 'date-fns';
 import ManpowerReportDownloads from '@/components/manpower/ManpowerReportDownloads';
 import { Input } from '@/components/ui/input';
 import LeaveReportDialog from '@/components/manpower/LeaveReportDialog';
