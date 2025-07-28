@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -9,9 +8,10 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isPast, parseISO } from 'date-fns';
 import type { Vehicle } from '@/lib/types';
 import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
 
 interface VehicleTableProps {
   onEdit: (vehicle: Vehicle) => void;
@@ -36,7 +36,13 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
   
   const formatDate = (dateString?: string) => {
       if(!dateString) return 'N/A';
-      return format(new Date(dateString), 'dd-MM-yyyy');
+      const date = parseISO(dateString);
+      return format(date, 'dd-MM-yyyy');
+  }
+
+  const isDateExpired = (dateString?: string) => {
+    if (!dateString) return false;
+    return isPast(parseISO(dateString));
   }
 
   return (
@@ -66,11 +72,11 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
                 ))}
               </div>
             </TableCell>
-            <TableCell>{formatDate(vehicle.vapValidity)}</TableCell>
-            <TableCell>{formatDate(vehicle.insuranceValidity)}</TableCell>
-            <TableCell>{formatDate(vehicle.fitnessValidity)}</TableCell>
-            <TableCell>{formatDate(vehicle.taxValidity)}</TableCell>
-            <TableCell>{formatDate(vehicle.puccValidity)}</TableCell>
+            <TableCell className={cn(isDateExpired(vehicle.vapValidity) && 'text-destructive font-bold')}>{formatDate(vehicle.vapValidity)}</TableCell>
+            <TableCell className={cn(isDateExpired(vehicle.insuranceValidity) && 'text-destructive font-bold')}>{formatDate(vehicle.insuranceValidity)}</TableCell>
+            <TableCell className={cn(isDateExpired(vehicle.fitnessValidity) && 'text-destructive font-bold')}>{formatDate(vehicle.fitnessValidity)}</TableCell>
+            <TableCell className={cn(isDateExpired(vehicle.taxValidity) && 'text-destructive font-bold')}>{formatDate(vehicle.taxValidity)}</TableCell>
+            <TableCell className={cn(isDateExpired(vehicle.puccValidity) && 'text-destructive font-bold')}>{formatDate(vehicle.puccValidity)}</TableCell>
             {can.manage_vehicles && (
               <TableCell className="text-right">
                 <AlertDialog>

@@ -31,12 +31,25 @@ export default function VehicleStatusPage() {
     const expiringVehicles = useMemo(() => {
         if (!can.manage_vehicles) return [];
         return vehicles.filter(v => 
-            (v.vapValidity && isBefore(new Date(v.vapValidity), thirtyDaysFromNow)) ||
-            (v.insuranceValidity && isBefore(new Date(v.insuranceValidity), thirtyDaysFromNow)) ||
-            (v.fitnessValidity && isBefore(new Date(v.fitnessValidity), thirtyDaysFromNow)) ||
-            (v.taxValidity && isBefore(new Date(v.taxValidity), thirtyDaysFromNow)) ||
-            (v.puccValidity && isBefore(new Date(v.puccValidity), thirtyDaysFromNow))
-        );
+            (v.vapValidity && isBefore(parseISO(v.vapValidity), thirtyDaysFromNow)) ||
+            (v.insuranceValidity && isBefore(parseISO(v.insuranceValidity), thirtyDaysFromNow)) ||
+            (v.fitnessValidity && isBefore(parseISO(v.fitnessValidity), thirtyDaysFromNow)) ||
+            (v.taxValidity && isBefore(parseISO(v.taxValidity), thirtyDaysFromNow)) ||
+            (v.puccValidity && isBefore(parseISO(v.puccValidity), thirtyDaysFromNow))
+        ).map(v => {
+            const expiringDocs: string[] = [];
+            const check = (dateStr: string | undefined, name: string) => {
+                if(dateStr && isBefore(parseISO(dateStr), thirtyDaysFromNow)) {
+                    expiringDocs.push(`${name} on ${format(parseISO(dateStr), 'dd-MM-yyyy')}`);
+                }
+            };
+            check(v.vapValidity, 'VAP');
+            check(v.insuranceValidity, 'Insurance');
+            check(v.fitnessValidity, 'Fitness');
+            check(v.taxValidity, 'Tax');
+            check(v.puccValidity, 'PUCC');
+            return { vehicle: v, expiringDocs };
+        });
     }, [vehicles, thirtyDaysFromNow, can.manage_vehicles]);
     
     const expiringDrivers = useMemo(() => {
@@ -51,7 +64,7 @@ export default function VehicleStatusPage() {
             checkDate(d.epExpiry, 'EP');
             checkDate(d.medicalExpiry, 'Medical');
             checkDate(d.safetyExpiry, 'Safety');
-            // Add other driver checks if needed
+            checkDate(d.licenseExpiry, 'License');
             return { driver: d, expiringDocs };
         }).filter(item => item.expiringDocs.length > 0);
     }, [drivers, thirtyDaysFromNow, can.manage_vehicles]);
@@ -107,14 +120,9 @@ export default function VehicleStatusPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {expiringVehicles.map((v, i) => (
+                            {expiringVehicles.map((item, i) => (
                                 <div key={`v-${i}`} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                    <span className="font-semibold">Vehicle {v.vehicleNumber}</span>: 
-                                    {v.vapValidity && isBefore(new Date(v.vapValidity), thirtyDaysFromNow) && ` VAP expires ${format(new Date(v.vapValidity), 'dd-MM-yyyy')}. `}
-                                    {v.insuranceValidity && isBefore(new Date(v.insuranceValidity), thirtyDaysFromNow) && ` Insurance expires ${format(new Date(v.insuranceValidity), 'dd-MM-yyyy')}. `}
-                                    {v.fitnessValidity && isBefore(new Date(v.fitnessValidity), thirtyDaysFromNow) && ` Fitness expires ${format(new Date(v.fitnessValidity), 'dd-MM-yyyy')}. `}
-                                    {v.taxValidity && isBefore(new Date(v.taxValidity), thirtyDaysFromNow) && ` Tax expires ${format(new Date(v.taxValidity), 'dd-MM-yyyy')}. `}
-                                    {v.puccValidity && isBefore(new Date(v.puccValidity), thirtyDaysFromNow) && ` PUCC expires ${format(new Date(v.puccValidity), 'dd-MM-yyyy')}. `}
+                                    <span className="font-semibold">Vehicle {item.vehicle.vehicleNumber}</span>: {item.expiringDocs.join(', ')}
                                 </div>
                             ))}
                              {expiringDrivers.map(item => (

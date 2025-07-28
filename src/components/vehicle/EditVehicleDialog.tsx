@@ -16,6 +16,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Check } from 'lucide-react';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { parseISO } from 'date-fns';
 
 const VAP_ACCESS_OPTIONS = ["DTA ISBL", "SEZ ISBL", "MTF ISBL", "OTHERS"];
 
@@ -24,11 +26,11 @@ const vehicleSchema = z.object({
   driverId: z.string().min(1, 'Please select a driver'),
   seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
   vapAccess: z.array(z.string()).optional(),
-  vapValidity: z.string().optional(),
-  insuranceValidity: z.string().optional(),
-  fitnessValidity: z.string().optional(),
-  taxValidity: z.string().optional(),
-  puccValidity: z.string().optional(),
+  vapValidity: z.date().optional(),
+  insuranceValidity: z.date().optional(),
+  fitnessValidity: z.date().optional(),
+  taxValidity: z.date().optional(),
+  puccValidity: z.date().optional(),
 });
 
 type VehicleFormValues = z.infer<typeof vehicleSchema>;
@@ -54,17 +56,25 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
             driverId: vehicle.driverId,
             seatingCapacity: vehicle.seatingCapacity,
             vapAccess: vehicle.vapAccess || [],
-            vapValidity: vehicle.vapValidity,
-            insuranceValidity: vehicle.insuranceValidity,
-            fitnessValidity: vehicle.fitnessValidity,
-            taxValidity: vehicle.taxValidity,
-            puccValidity: vehicle.puccValidity,
+            vapValidity: vehicle.vapValidity ? parseISO(vehicle.vapValidity) : undefined,
+            insuranceValidity: vehicle.insuranceValidity ? parseISO(vehicle.insuranceValidity) : undefined,
+            fitnessValidity: vehicle.fitnessValidity ? parseISO(vehicle.fitnessValidity) : undefined,
+            taxValidity: vehicle.taxValidity ? parseISO(vehicle.taxValidity) : undefined,
+            puccValidity: vehicle.puccValidity ? parseISO(vehicle.puccValidity) : undefined,
         });
     }
   }, [vehicle, isOpen, form]);
 
   const onSubmit = (data: VehicleFormValues) => {
-    updateVehicle({ ...vehicle, ...data });
+    updateVehicle({ 
+        ...vehicle, 
+        ...data,
+        vapValidity: data.vapValidity?.toISOString(),
+        insuranceValidity: data.insuranceValidity?.toISOString(),
+        fitnessValidity: data.fitnessValidity?.toISOString(),
+        taxValidity: data.taxValidity?.toISOString(),
+        puccValidity: data.puccValidity?.toISOString(),
+    });
     toast({
       title: 'Vehicle Updated',
       description: `Vehicle ${data.vehicleNumber} has been updated.`,
@@ -162,26 +172,11 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="vapValidity">VAP Validity</Label>
-            <Input id="vapValidity" type="date" {...form.register('vapValidity')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="insuranceValidity">Insurance Validity</Label>
-            <Input id="insuranceValidity" type="date" {...form.register('insuranceValidity')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fitnessValidity">Fitness Validity</Label>
-            <Input id="fitnessValidity" type="date" {...form.register('fitnessValidity')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="taxValidity">Tax Validity</Label>
-            <Input id="taxValidity" type="date" {...form.register('taxValidity')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="puccValidity">PUCC Validity</Label>
-            <Input id="puccValidity" type="date" {...form.register('puccValidity')} />
-          </div>
+          <div className="space-y-2"><Label>VAP Validity</Label><Controller name="vapValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
+          <div className="space-y-2"><Label>Insurance Validity</Label><Controller name="insuranceValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
+          <div className="space-y-2"><Label>Fitness Validity</Label><Controller name="fitnessValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
+          <div className="space-y-2"><Label>Tax Validity</Label><Controller name="taxValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
+          <div className="space-y-2"><Label>PUCC Validity</Label><Controller name="puccValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>

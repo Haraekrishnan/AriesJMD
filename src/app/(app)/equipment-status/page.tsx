@@ -97,7 +97,7 @@ export default function EquipmentStatusPage() {
 
     const canManageStore = useMemo(() => {
         if(!user) return false;
-        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Manager'];
+        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
         return storeRoles.includes(user.role);
     }, [user]);
 
@@ -119,9 +119,14 @@ export default function EquipmentStatusPage() {
     }, [myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed]);
 
     const expiringMachines = useMemo(() => {
+        if (!can.manage_equipment_status) return [];
         const thirtyDaysFromNow = addDays(new Date(), 30);
-        return utMachines.filter(m => isBefore(new Date(m.calibrationDueDate), thirtyDaysFromNow));
-    }, [utMachines]);
+        const allRelevantMachines = [...utMachines, ...dftMachines, ...anemometers];
+        
+        return allRelevantMachines
+            .map(m => ({ machine: m, calibrationDueDate: m.calibrationDueDate ? new Date(m.calibrationDueDate) : null }))
+            .filter(item => item.calibrationDueDate && isBefore(item.calibrationDueDate, thirtyDaysFromNow));
+    }, [utMachines, dftMachines, anemometers, can.manage_equipment_status]);
 
     // UT Handlers
     const handleEditUT = (machine: UTMachine) => { setSelectedUTMachine(machine); setIsEditUTMachineOpen(true); };
@@ -266,6 +271,24 @@ export default function EquipmentStatusPage() {
             </div>
 
             <EquipmentSummary />
+            
+            {expiringMachines.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Calibrations</CardTitle>
+                        <CardDescription>The following machines have calibrations expiring within 30 days.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {expiringMachines.map((item, i) => (
+                                <div key={i} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                                    <span className="font-semibold">{item.machine.machineName || item.machine.make} (SN: {item.machine.serialNumber})</span>: Calibration expires on {format(item.calibrationDueDate!, 'dd-MM-yyyy')}.
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>
@@ -365,23 +388,6 @@ export default function EquipmentStatusPage() {
                             </Button>
                         )}
                     </div>
-                    {can.manage_equipment_status && expiringMachines.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Calibrations</CardTitle>
-                                <CardDescription>The following machines have calibrations expiring within 30 days.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2 max-h-40 overflow-y-auto">
-                                    {expiringMachines.map((m, i) => (
-                                        <div key={i} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                            <span className="font-semibold">{m.machineName} (SN: {m.serialNumber})</span>: Calibration expires on {format(new Date(m.calibrationDueDate), 'dd-MM-yyyy')}.
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
                     {canManageStore && pendingCertRequestsForMe.length > 0 && (
                         <Card>
                             <CardHeader>
