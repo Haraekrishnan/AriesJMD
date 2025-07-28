@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Badge } from '../ui/badge';
+import EditMemoDialog from './EditMemoDialog';
 
 
 const documentSchema = z.object({
@@ -154,8 +155,9 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord } = useAppContext();
   const { toast } = useToast();
+  const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
 
   const parseDate = (dateString?: string): Date | undefined => {
     if (!dateString) return undefined;
@@ -297,7 +299,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   };
 
+  const handleDeleteMemo = (memoId: string) => {
+    if (profile) {
+        deleteMemoRecord(profile.id, memoId);
+        toast({ variant: 'destructive', title: 'Record Deleted' });
+    }
+  };
+
+  const handleEditMemo = (memo: MemoRecord) => {
+      setEditingMemo(memo);
+  };
+
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl">
         <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
@@ -486,7 +500,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             <Separator />
                             <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
                              <Table>
-                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                                 <TableBody>
                                     {liveProfile?.memoHistory?.map(memo => (
                                         <TableRow key={memo.id}>
@@ -494,6 +508,26 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                             <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
                                             <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
                                             <TableCell>{memo.issuedBy || 'N/A'}</TableCell>
+                                             {user?.role === 'Admin' && (
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMemo(memo)}><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Record?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This will permanently delete this record. This cannot be undone.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteMemo(memo.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
+                                            )}
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -509,5 +543,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         </form>
       </DialogContent>
     </Dialog>
+    {editingMemo && profile && (
+        <EditMemoDialog 
+            isOpen={!!editingMemo} 
+            setIsOpen={() => setEditingMemo(null)} 
+            memo={editingMemo}
+            profile={profile}
+        />
+    )}
+    </>
   );
 }
