@@ -70,34 +70,6 @@ export default function ManpowerListPage() {
             return { profile: p, expiringDocs };
         }).filter(item => item.expiringDocs.length > 0);
     }, [manpowerProfiles, can.manage_manpower_list]);
-
-    const expiredProfiles = useMemo(() => {
-        if (!can.manage_manpower_list) return [];
-        const now = new Date();
-        
-        return manpowerProfiles.map(p => {
-            const expiredDocs: string[] = [];
-            const checkDate = (dateStr: string | undefined, name: string) => {
-                if (dateStr) {
-                    const expiryDate = parseISO(dateStr);
-                    if (isValid(expiryDate) && isPast(expiryDate)) {
-                        expiredDocs.push(`${name} on ${format(expiryDate, 'dd-MM-yyyy')}`);
-                    }
-                }
-            };
-    
-            checkDate(p.passIssueDate, 'Pass');
-            checkDate(p.workOrderExpiryDate, 'WO');
-            checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-            checkDate(p.labourLicenseExpiryDate, 'Labour License');
-            checkDate(p.medicalExpiryDate, 'Medical');
-            checkDate(p.safetyExpiryDate, 'Safety');
-            checkDate(p.irataValidity, 'IRATA');
-            checkDate(p.firstAidExpiryDate, 'First Aid');
-            
-            return { profile: p, expiredDocs };
-        }).filter(item => item.expiredDocs.length > 0);
-    }, [manpowerProfiles, can.manage_manpower_list]);
     
     const leavesStartingToday = useMemo(() => {
         return manpowerProfiles.flatMap(p => 
@@ -294,24 +266,6 @@ export default function ManpowerListPage() {
                     </CardContent>
                 </Card>
             )}
-            
-            {can.manage_manpower_list && expiredProfiles.length > 0 && (
-                <Card className="border-destructive">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expired Documents</CardTitle>
-                        <CardDescription>The following manpower have documents that have expired.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {expiredProfiles.map(item => (
-                                <div key={item.profile.id} className="text-sm p-2 bg-destructive/10 rounded-md">
-                                    <span className="font-semibold">{item.profile.name} ({item.profile.trade})</span>: {item.expiredDocs.join(', ')}
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             {can.manage_manpower_list && upcomingLeaves.length > 0 && (
                  <Card className="border-amber-500">
@@ -452,3 +406,4 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
