@@ -35,10 +35,10 @@ export default function AnnouncementFeed() {
                     <Button 
                         size="icon" 
                         variant="ghost"
-                        className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-blue-200/50 dark:hover:bg-blue-800/50"
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full text-blue-900 bg-blue-200/50 hover:bg-blue-200/80 dark:bg-blue-800/50 dark:text-blue-200 dark:hover:bg-blue-800/80"
                         onClick={() => handleHide(announcement.id)}
                     >
-                        <X className="h-4 w-4 text-blue-700 dark:text-blue-200" />
+                        <X className="h-4 w-4" />
                     </Button>
                 </Alert>
             ))}
