@@ -3,6 +3,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -509,13 +510,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lastUpdated: new Date().toISOString(),
     };
 
-    if (user.id !== task.assigneeId) {
-        updates.isViewedByAssignee = false;
-    }
-    if (user.id !== task.creatorId) {
-        updates.viewedByApprover = false;
-    }
-
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, tasks, addActivityLog]);
@@ -536,7 +530,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pendingStatus: newStatus,
         approverId: approverId,
         viewedBy: [user.id],
-        viewedByApprover: false,
         lastUpdated: new Date().toISOString(),
     };
 
@@ -559,7 +552,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pendingStatus: null,
         previousStatus: null,
         viewedBy: [user.id],
-        isViewedByAssignee: false,
         lastUpdated: new Date().toISOString(),
     };
 
@@ -595,7 +587,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingAssigneeId: null, 
       approvalState: 'returned',
       viewedBy: [user.id],
-      isViewedByAssignee: false,
       lastUpdated: new Date().toISOString(),
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -616,7 +607,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingAssigneeId: newAssigneeId,
       approverId: task.creatorId,
       viewedBy: [user.id],
-      viewedByApprover: false,
       lastUpdated: new Date().toISOString(),
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -627,21 +617,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-
-    const updates: Partial<Pick<Task, 'isViewedByAssignee' | 'viewedByApprover'>> = {};
-    let needsUpdate = false;
-    
-    if (user.id === task.assigneeId && !task.isViewedByAssignee) {
-        updates.isViewedByAssignee = true;
-        needsUpdate = true;
-    }
-    if (user.id === task.creatorId && !task.viewedByApprover) {
-        updates.viewedByApprover = true;
-        needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-        update(ref(rtdb, `tasks/${taskId}`), updates);
+  
+    const currentViewedBy = task.viewedBy || [];
+    if (!currentViewedBy.includes(user.id)) {
+      update(ref(rtdb, `tasks/${taskId}`), { viewedBy: [...currentViewedBy, user.id] });
     }
   }, [user, tasks]);
   
@@ -1965,8 +1944,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return 0;
     return tasks.filter(task => {
         const isParticipant = task.participants?.includes(user.id);
-        const hasUnreadUpdate = !task.viewedBy?.includes(user.id);
-        return isParticipant && hasUnreadUpdate;
+        const hasUnreadUpdate = !(task.viewedBy || []).includes(user.id);
+        return !!isParticipant && hasUnreadUpdate;
     }).length;
   }, [tasks, user]);
 
