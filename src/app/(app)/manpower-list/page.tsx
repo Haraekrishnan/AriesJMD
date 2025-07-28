@@ -42,35 +42,6 @@ export default function ManpowerListPage() {
         expiryDateRange: undefined,
     });
     
-    const expiringProfiles = useMemo(() => {
-        if (!can.manage_manpower_list) return [];
-        const now = new Date();
-        const thirtyDaysFromNow = addDays(now, 30);
-        
-        return manpowerProfiles.map(p => {
-            const expiringDocs: string[] = [];
-            const checkDate = (dateStr: string | undefined, name: string) => {
-                if (dateStr) {
-                    const expiryDate = parseISO(dateStr);
-                    if (isValid(expiryDate) && isWithinInterval(expiryDate, { start: now, end: thirtyDaysFromNow })) {
-                        expiringDocs.push(`${name} on ${format(expiryDate, 'dd-MM-yyyy')}`);
-                    }
-                }
-            };
-    
-            checkDate(p.passIssueDate, 'Pass');
-            checkDate(p.workOrderExpiryDate, 'WO');
-            checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-            checkDate(p.labourLicenseExpiryDate, 'Labour License');
-            checkDate(p.medicalExpiryDate, 'Medical');
-            checkDate(p.safetyExpiryDate, 'Safety');
-            checkDate(p.irataValidity, 'IRATA');
-            checkDate(p.firstAidExpiryDate, 'First Aid');
-            
-            return { profile: p, expiringDocs };
-        }).filter(item => item.expiringDocs.length > 0);
-    }, [manpowerProfiles, can.manage_manpower_list]);
-    
     const leavesStartingToday = useMemo(() => {
         return manpowerProfiles.flatMap(p => 
             (p.leaveHistory || [])
@@ -319,24 +290,6 @@ export default function ManpowerListPage() {
                 </Card>
             )}
 
-            {can.manage_manpower_list && expiringProfiles.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-orange-500"/>Expiring Documents (30 Days)</CardTitle>
-                        <CardDescription>The following manpower have documents expiring soon.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {expiringProfiles.map(item => (
-                                <div key={item.profile.id} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                    <span className="font-semibold">{item.profile.name} ({item.profile.trade})</span>: {item.expiringDocs.join(', ')}
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-            
             <Card>
                 <CardHeader>
                     <CardTitle>Filters</CardTitle>
@@ -406,4 +359,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
