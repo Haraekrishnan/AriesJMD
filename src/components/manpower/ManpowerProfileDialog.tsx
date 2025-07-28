@@ -65,10 +65,13 @@ const profileSchema = z.object({
   labourLicenseNo: z.string().optional(),
   eic: z.string().optional(),
   joiningDate: z.date().optional(),
+  passIssueDate: z.date().optional(),
   workOrderExpiryDate: z.date().optional(),
   labourLicenseExpiryDate: z.date().optional(),
   wcPolicyNumber: z.string().optional(),
   wcPolicyExpiryDate: z.date().optional(),
+  medicalExpiryDate: z.date().optional(),
+  safetyExpiryDate: z.date().optional(),
   irataValidity: z.date().optional(),
   firstAidExpiryDate: z.date().optional(),
   cardCategory: z.string().optional(),
@@ -193,9 +196,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             ...liveProfile,
             dob: parseDate(liveProfile.dob),
             joiningDate: parseDate(liveProfile.joiningDate),
+            passIssueDate: parseDate(liveProfile.passIssueDate),
             workOrderExpiryDate: parseDate(liveProfile.workOrderExpiryDate),
             labourLicenseExpiryDate: parseDate(liveProfile.labourLicenseExpiryDate),
             wcPolicyExpiryDate: parseDate(liveProfile.wcPolicyExpiryDate),
+            medicalExpiryDate: parseDate(liveProfile.medicalExpiryDate),
+            safetyExpiryDate: parseDate(liveProfile.safetyExpiryDate),
             irataValidity: parseDate(liveProfile.irataValidity),
             firstAidExpiryDate: parseDate(liveProfile.firstAidExpiryDate),
             resignationDate: parseDate(liveProfile.resignationDate),
@@ -371,11 +377,15 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <div><Label>EP Number</Label><Input {...form.register('epNumber')} /></div>
                         <Separator className="my-4" />
                         <div><Label>Joining Date</Label><DatePickerController name="joiningDate" control={form.control} /></div>
+                        <div><Label>Pass Issue Date</Label><DatePickerController name="passIssueDate" control={form.control} /></div>
                         <div><Label>Work Order Expiry Date</Label><DatePickerController name="workOrderExpiryDate" control={form.control} /></div>
                         <div><Label>Labour License Expiry Date</Label><DatePickerController name="labourLicenseExpiryDate" control={form.control} /></div>
                         <Separator className="my-4" />
                         <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
                         <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
+                        <div><Label>Medical Expiry Date</Label><DatePickerController name="medicalExpiryDate" control={form.control} /></div>
+                        <div><Label>Safety Expiry Date</Label><DatePickerController name="safetyExpiryDate" control={form.control} /></div>
+
                         {RA_TRADES.includes(watchTrade) && (
                             <>
                                 <div><Label>IRATA Expiry Date</Label><DatePickerController name="irataValidity" control={form.control} /></div>

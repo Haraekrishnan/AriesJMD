@@ -7,7 +7,6 @@ import { Progress } from '@/components/ui/progress';
 import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
-import { MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
 import { useAppContext } from '@/contexts/app-provider';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -58,13 +57,14 @@ const getNextExpiry = (profile: ManpowerProfile) => {
             }
         }
     };
-    checkDate(profile.workOrderExpiryDate, 'WO Expiry');
-    checkDate(profile.wcPolicyExpiryDate, 'WC Policy');
-    checkDate(profile.labourLicenseExpiryDate, 'Labour License');
-    checkDate(profile.medicalExpiryDate, 'Medical');
-    checkDate(profile.safetyExpiryDate, 'Safety');
-    checkDate(profile.irataValidity, 'IRATA');
-    checkDate(profile.contractValidity, 'Contract');
+    checkDate(p.passIssueDate, 'Pass');
+    checkDate(p.workOrderExpiryDate, 'WO');
+    checkDate(p.wcPolicyExpiryDate, 'WC Policy');
+    checkDate(p.labourLicenseExpiryDate, 'Labour License');
+    checkDate(p.medicalExpiryDate, 'Medical');
+    checkDate(p.safetyExpiryDate, 'Safety');
+    checkDate(p.irataValidity, 'IRATA');
+    checkDate(p.firstAidExpiryDate, 'First Aid');
     
     (profile.skills || []).forEach(skill => {
         if(skill.validity) {
@@ -103,8 +103,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     };
 
     const getDocumentProgress = (profile: ManpowerProfile) => {
-        const requiredDocs = [...MANDATORY_DOCS];
-        if (RA_TRADES.includes(profile.trade)) {
+        const requiredDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
+        if (['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'].includes(profile.trade)) {
             requiredDocs.push('IRATA Certificate');
         }
 
@@ -119,8 +119,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     };
     
      const getProgressTooltip = (profile: ManpowerProfile) => {
-        const requiredDocs = [...MANDATORY_DOCS];
-        if (RA_TRADES.includes(profile.trade)) {
+        const requiredDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
+        if (['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'].includes(profile.trade)) {
             requiredDocs.push('IRATA Certificate');
         }
 

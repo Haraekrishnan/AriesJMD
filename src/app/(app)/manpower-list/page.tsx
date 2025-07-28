@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock, FileWarning } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock, FileWarning, UserCog } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -61,11 +61,11 @@ export default function ManpowerListPage() {
             checkDate(p.passIssueDate, 'Pass');
             checkDate(p.workOrderExpiryDate, 'WO');
             checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-            checkDate(p.labourLicenseExpiryDate, 'Labour Contract');
+            checkDate(p.labourLicenseExpiryDate, 'Labour License');
             checkDate(p.medicalExpiryDate, 'Medical');
             checkDate(p.safetyExpiryDate, 'Safety');
             checkDate(p.irataValidity, 'IRATA');
-            checkDate(p.contractValidity, 'Contract');
+            checkDate(p.firstAidExpiryDate, 'First Aid');
             
             return { profile: p, expiringDocs };
         }).filter(item => item.expiringDocs.length > 0);
@@ -73,6 +73,7 @@ export default function ManpowerListPage() {
 
     const expiredProfiles = useMemo(() => {
         if (!can.manage_manpower_list) return [];
+        const now = new Date();
         
         return manpowerProfiles.map(p => {
             const expiredDocs: string[] = [];
@@ -88,11 +89,11 @@ export default function ManpowerListPage() {
             checkDate(p.passIssueDate, 'Pass');
             checkDate(p.workOrderExpiryDate, 'WO');
             checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-            checkDate(p.labourLicenseExpiryDate, 'Labour Contract');
+            checkDate(p.labourLicenseExpiryDate, 'Labour License');
             checkDate(p.medicalExpiryDate, 'Medical');
             checkDate(p.safetyExpiryDate, 'Safety');
             checkDate(p.irataValidity, 'IRATA');
-            checkDate(p.contractValidity, 'Contract');
+            checkDate(p.firstAidExpiryDate, 'First Aid');
             
             return { profile: p, expiredDocs };
         }).filter(item => item.expiredDocs.length > 0);
@@ -162,15 +163,15 @@ export default function ManpowerListPage() {
             if (expiryDateRange?.from) {
                 const datesToCheck = [
                     profile.passIssueDate, profile.workOrderExpiryDate, profile.wcPolicyExpiryDate, 
-                    profile.labourContractValidity, profile.medicalExpiryDate, 
-                    profile.safetyExpiryDate, profile.irataValidity, profile.contractValidity
+                    profile.labourLicenseExpiryDate, profile.medicalExpiryDate, 
+                    profile.safetyExpiryDate, profile.irataValidity, profile.firstAidExpiryDate
                 ];
                 const fallsInRange = datesToCheck.some(dateStr => {
                     if (!dateStr) return false;
                     const expiryDate = parseISO(dateStr);
                     const from = expiryDateRange.from!;
                     const to = expiryDateRange.to || from;
-                    return isWithinInterval(expiryDate, { start: from, end: to });
+                    return isValid(expiryDate) && isWithinInterval(expiryDate, { start: from, end: to });
                 });
                 if (!fallsInRange) return false;
             }
