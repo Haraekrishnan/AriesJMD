@@ -1,11 +1,11 @@
 
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Megaphone, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function AnnouncementFeed() {
     const { user, announcements, dismissAnnouncement } = useAppContext();
@@ -26,13 +26,15 @@ export default function AnnouncementFeed() {
     return (
         <div className="space-y-4">
             {visibleAnnouncements.map(announcement => (
-                <Alert key={announcement.id} className="relative bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800">
-                    <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <div className="pl-7">
-                        <AlertTitle className="text-blue-900 dark:text-blue-200">{announcement.title}</AlertTitle>
-                        <AlertDescription className="text-blue-800 dark:text-blue-300">
-                            {announcement.content}
-                        </AlertDescription>
+                <div key={announcement.id} className="relative w-full rounded-lg border p-4 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start space-x-4">
+                        <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
+                        <div className="flex-1">
+                            <h5 className="mb-1 font-medium leading-none tracking-tight text-blue-900 dark:text-blue-200">{announcement.title}</h5>
+                            <div className="text-sm text-blue-800 dark:text-blue-300">
+                                {announcement.content}
+                            </div>
+                        </div>
                     </div>
                     <Button 
                         size="icon" 
@@ -42,7 +44,7 @@ export default function AnnouncementFeed() {
                     >
                         <X className="h-4 w-4 text-black dark:text-white" />
                     </Button>
-                </Alert>
+                </div>
             ))}
         </div>
     );
