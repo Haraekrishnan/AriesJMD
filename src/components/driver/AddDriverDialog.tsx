@@ -85,17 +85,21 @@ export default function AddDriverDialog({ isOpen, setIsOpen, driver }: AddDriver
   }, [isOpen, driver, form]);
 
   const onSubmit = (data: DriverFormValues) => {
-    const dataToSubmit = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => 
-            value instanceof Date ? [key, value.toISOString()] : [key, value]
-        )
-    );
+    const dataToSubmit: Record<string, any> = {};
+    for (const key in data) {
+        const value = data[key as keyof typeof data];
+        if (value instanceof Date) {
+            dataToSubmit[key] = value.toISOString();
+        } else if (value !== undefined) {
+            dataToSubmit[key] = value;
+        }
+    }
 
     if (driver) {
-      updateDriver({ ...driver, ...dataToSubmit });
+      updateDriver({ ...driver, ...dataToSubmit } as Driver);
       toast({ title: 'Driver Updated' });
     } else {
-      addDriver(dataToSubmit);
+      addDriver(dataToSubmit as Omit<Driver, 'id' | 'photo'>);
       toast({ title: 'Driver Added' });
     }
     setIsOpen(false);

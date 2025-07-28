@@ -4,6 +4,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -901,7 +902,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateVehicle = useCallback((updatedVehicle: Vehicle) => {
     if(!user) return;
     const { id, ...data } = updatedVehicle;
-    update(ref(rtdb, `vehicles/${id}`), data);
+    // Clean undefined values before updating
+    const cleanData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [key, value === undefined ? null : value])
+    );
+    update(ref(rtdb, `vehicles/${id}`), cleanData);
     addActivityLog(user.id, 'Vehicle Updated', updatedVehicle.vehicleNumber);
   }, [user, addActivityLog]);
 
