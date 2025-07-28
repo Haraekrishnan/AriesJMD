@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, isPast } from 'date-fns';
+import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -24,7 +24,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
         case 'Idle': return 'warning';
         case 'Damaged': return 'destructive';
         case 'Out of Service': return 'destructive';
-        default: return 'outline';
+        default: 'outline';
     }
 }
 
@@ -39,7 +39,17 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
         }));
     }, [dftMachines, projects]);
     
-    const isDatePast = (date: string) => isPast(new Date(date));
+    const getDateStyles = (dateString?: string): string => {
+        if (!dateString) return '';
+        const date = parseISO(dateString);
+        if (isPast(date)) {
+            return 'text-destructive font-bold';
+        }
+        if (differenceInDays(date, new Date()) <= 30) {
+            return 'text-orange-500 font-semibold';
+        }
+        return '';
+    };
 
     const handleDelete = (machineId: string) => {
         deleteDftMachine(machineId);
@@ -68,7 +78,7 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
                         <TableCell className="font-medium">{machine.machineName}</TableCell>
                         <TableCell>{machine.serialNumber}</TableCell>
                         <TableCell>{machine.projectName}</TableCell>
-                        <TableCell className={cn(isDatePast(machine.calibrationDueDate) && 'text-destructive font-bold')}>
+                        <TableCell className={cn(getDateStyles(machine.calibrationDueDate))}>
                             {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
                         </TableCell>
                         <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>

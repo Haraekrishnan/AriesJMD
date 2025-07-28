@@ -12,7 +12,7 @@ import { MoreHorizontal, Edit, Trash2, ShieldQuestion } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
-import { format, isPast } from 'date-fns';
+import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import RequestCertificateDialog from './RequestCertificateDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -63,7 +63,17 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         toast({ variant: 'destructive', title: 'Item Deleted' });
     };
     
-    const isDatePast = (date: string) => isPast(new Date(date));
+    const getDateStyles = (dateString?: string): string => {
+        if (!dateString) return '';
+        const date = parseISO(dateString);
+        if (isPast(date)) {
+            return 'text-destructive font-bold';
+        }
+        if (differenceInDays(date, new Date()) <= 30) {
+            return 'text-orange-500 font-semibold';
+        }
+        return '';
+    };
 
     if (items.length === 0) {
         return (
@@ -103,8 +113,8 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                 <TableCell>{item.serialNumber}</TableCell>
                                                 <TableCell><Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
                                                 <TableCell>{getProjectName(item.projectId)}</TableCell>
-                                                <TableCell className={cn(isDatePast(item.inspectionDueDate) && 'text-destructive font-bold')}>{format(new Date(item.inspectionDueDate), 'dd-MM-yyyy')}</TableCell>
-                                                <TableCell className={cn(isDatePast(item.tpInspectionDueDate) && 'text-destructive font-bold')}>{format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy')}</TableCell>
+                                                <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{format(new Date(item.inspectionDueDate), 'dd-MM-yyyy')}</TableCell>
+                                                <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy')}</TableCell>
                                                 <TableCell className="text-right">
                                                         <AlertDialog>
                                                             <DropdownMenu>

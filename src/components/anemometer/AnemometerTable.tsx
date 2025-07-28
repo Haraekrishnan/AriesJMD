@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Anemometer } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { format, isPast } from 'date-fns';
+import { format, isPast, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface AnemometerTableProps {
@@ -23,7 +23,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
         case 'Idle': return 'warning';
         case 'Damaged': return 'destructive';
         case 'Out of Service': return 'destructive';
-        default: return 'outline';
+        default: 'outline';
     }
 }
 
@@ -44,7 +44,17 @@ export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
     return <p className="text-muted-foreground text-center py-8">No anemometers found.</p>;
   }
 
-  const isDatePast = (date: string | undefined) => date && isPast(new Date(date));
+  const getDateStyles = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    if (isPast(date)) {
+        return 'text-destructive font-bold';
+    }
+    if (differenceInDays(date, new Date()) <= 30) {
+        return 'text-orange-500 font-semibold';
+    }
+    return '';
+  };
 
   return (
     <Table>
@@ -78,7 +88,7 @@ export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
                     </TableCell>
                     <TableCell>{project?.name}</TableCell>
                     <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
-                    <TableCell className={cn(isDatePast(item.calibrationDueDate) && 'text-destructive font-bold')}>
+                    <TableCell className={cn(getDateStyles(item.calibrationDueDate))}>
                         {item.calibrationDueDate ? format(new Date(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A'}
                     </TableCell>
                     {can.manage_equipment_status && (

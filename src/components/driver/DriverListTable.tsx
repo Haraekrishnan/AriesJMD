@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, isPast, parseISO } from 'date-fns';
+import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
@@ -20,7 +21,17 @@ export default function DriverListTable({ onEdit }: DriverListTableProps) {
     const { can, drivers, deleteDriver } = useAppContext();
     const { toast } = useToast();
 
-    const isDatePast = (date: string | undefined) => date && isPast(parseISO(date));
+    const getDateStyles = (dateString?: string): string => {
+        if (!dateString) return '';
+        const date = parseISO(dateString);
+        if (isPast(date)) {
+            return 'text-destructive font-bold';
+        }
+        if (differenceInDays(date, new Date()) <= 30) {
+            return 'text-orange-500 font-semibold';
+        }
+        return '';
+    };
 
     const handleDelete = (driverId: string) => {
         deleteDriver(driverId);
@@ -30,6 +41,12 @@ export default function DriverListTable({ onEdit }: DriverListTableProps) {
     if (drivers.length === 0) {
         return <p className="text-muted-foreground text-center py-8">No drivers found.</p>;
     }
+    
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
+        const date = parseISO(dateString);
+        return format(date, 'dd-MM-yyyy');
+    };
 
     return (
         <Table>
@@ -49,17 +66,17 @@ export default function DriverListTable({ onEdit }: DriverListTableProps) {
                     <TableRow key={driver.id}>
                         <TableCell className="font-medium">{driver.name}</TableCell>
                         <TableCell>{driver.licenseNumber}</TableCell>
-                         <TableCell className={cn(isDatePast(driver.licenseExpiry) && 'text-destructive font-bold')}>
-                            {driver.licenseExpiry ? format(parseISO(driver.licenseExpiry), 'dd-MM-yyyy') : 'N/A'}
+                         <TableCell className={cn(getDateStyles(driver.licenseExpiry))}>
+                            {formatDate(driver.licenseExpiry)}
                         </TableCell>
-                        <TableCell className={cn(isDatePast(driver.epExpiry) && 'text-destructive font-bold')}>
-                            {driver.epExpiry ? format(parseISO(driver.epExpiry), 'dd-MM-yyyy') : 'N/A'}
+                        <TableCell className={cn(getDateStyles(driver.epExpiry))}>
+                            {formatDate(driver.epExpiry)}
                         </TableCell>
-                        <TableCell className={cn(isDatePast(driver.medicalExpiry) && 'text-destructive font-bold')}>
-                            {driver.medicalExpiry ? format(parseISO(driver.medicalExpiry), 'dd-MM-yyyy') : 'N/A'}
+                        <TableCell className={cn(getDateStyles(driver.medicalExpiry))}>
+                            {formatDate(driver.medicalExpiry)}
                         </TableCell>
-                        <TableCell className={cn(isDatePast(driver.safetyExpiry) && 'text-destructive font-bold')}>
-                            {driver.safetyExpiry ? format(parseISO(driver.safetyExpiry), 'dd-MM-yyyy') : 'N/A'}
+                        <TableCell className={cn(getDateStyles(driver.safetyExpiry))}>
+                            {formatDate(driver.safetyExpiry)}
                         </TableCell>
                         {can.manage_vehicles && (
                             <TableCell className="text-right">

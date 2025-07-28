@@ -9,7 +9,7 @@ import { MoreHorizontal, Edit, Trash2, FileText, BadgeHelp } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { format, isPast } from 'date-fns';
+import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { UTMachine } from '@/lib/types';
 import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
         case 'Idle': return 'warning';
         case 'Damaged': return 'destructive';
         case 'Out of Service': return 'destructive';
-        default: return 'outline';
+        default: 'outline';
     }
 }
 
@@ -43,7 +43,17 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
     }));
   }, [utMachines, projects]);
     
-  const isDatePast = (date: string) => isPast(new Date(date));
+  const getDateStyles = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    if (isPast(date)) {
+        return 'text-destructive font-bold';
+    }
+    if (differenceInDays(date, new Date()) <= 30) {
+        return 'text-orange-500 font-semibold';
+    }
+    return '';
+  };
 
   const handleDelete = (machineId: string) => {
     deleteUTMachine(machineId);
@@ -86,7 +96,7 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
             <TableCell className="font-medium">{machine.machineName}</TableCell>
             <TableCell>{machine.serialNumber}</TableCell>
             <TableCell>{machine.projectName}</TableCell>
-            <TableCell className={cn(isDatePast(machine.calibrationDueDate) && 'text-destructive font-bold')}>
+            <TableCell className={cn(getDateStyles(machine.calibrationDueDate))}>
                 {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
             </TableCell>
             <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
