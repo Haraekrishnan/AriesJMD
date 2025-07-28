@@ -77,14 +77,14 @@ const getNextExpiry = (profile: ManpowerProfile) => {
     const now = new Date();
     const futureDates = dates.filter(d => d.date >= now);
     
-    if (futureDates.length === 0) {
-        // Find the most recent past date if no future dates exist
-        const pastDates = dates.filter(d => d.date < now).sort((a,b) => b.date.getTime() - a.date.getTime());
-        return pastDates[0] || null;
+    if (futureDates.length > 0) {
+        futureDates.sort((a, b) => a.date.getTime() - b.date.getTime());
+        return futureDates[0];
     }
     
-    futureDates.sort((a, b) => a.date.getTime() - b.date.getTime());
-    return futureDates[0];
+    // If no future dates, find the most recently expired date
+    const pastDates = dates.filter(d => d.date < now).sort((a,b) => b.date.getTime() - a.date.getTime());
+    return pastDates[0] || null;
 };
 
 export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTableProps) {
