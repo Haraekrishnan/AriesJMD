@@ -26,23 +26,19 @@ export default function AnnouncementFeed() {
     return (
         <div className="space-y-4">
             {visibleAnnouncements.map(announcement => (
-                <Alert key={announcement.id} className="relative bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800">
+                <Alert key={announcement.id} className="relative bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 pr-10">
                     <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <div className="pl-7">
-                        <AlertTitle className="text-blue-900 dark:text-blue-200">{announcement.title}</AlertTitle>
-                        <AlertDescription className="text-blue-800 dark:text-blue-300">
-                            {announcement.content}
-                        </AlertDescription>
-                    </div>
+                    <AlertTitle className="text-blue-900 dark:text-blue-200">{announcement.title}</AlertTitle>
+                    <AlertDescription className="text-blue-800 dark:text-blue-300">
+                        {announcement.content}
+                    </AlertDescription>
                     <Button 
                         size="icon" 
                         variant="ghost"
-                        className="absolute top-2 right-2 h-6 w-6 rounded-full bg-blue-200/50 hover:bg-blue-200/80 dark:bg-blue-800/50 dark:hover:bg-blue-800/80"
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
                         onClick={() => handleHide(announcement.id)}
                     >
-                        <span className="text-black dark:text-white">
-                            <X className="h-4 w-4" />
-                        </span>
+                        <X className="h-4 w-4 text-black dark:text-white" />
                     </Button>
                 </Alert>
             ))}
