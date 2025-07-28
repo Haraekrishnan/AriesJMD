@@ -493,7 +493,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                             <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
                                             <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
                                             <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
-                                            <TableCell>{users.find(u => u.id === memo.issuedById)?.name || 'N/A'}</TableCell>
+                                            <TableCell>{memo.issuedBy || 'N/A'}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -511,4 +511,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </Dialog>
   );
 }
-
