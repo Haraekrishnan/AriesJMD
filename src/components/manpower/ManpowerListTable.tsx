@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { format, isValid, parseISO, differenceInDays } from 'date-fns';
+import { format, isValid, parseISO, differenceInDays, isPast as isDateInPast } from 'date-fns';
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -77,7 +77,11 @@ const getNextExpiry = (profile: ManpowerProfile) => {
     const now = new Date();
     const futureDates = dates.filter(d => d.date >= now);
     
-    if (futureDates.length === 0) return null;
+    if (futureDates.length === 0) {
+        // Find the most recent past date if no future dates exist
+        const pastDates = dates.filter(d => d.date < now).sort((a,b) => b.date.getTime() - a.date.getTime());
+        return pastDates[0] || null;
+    }
     
     futureDates.sort((a, b) => a.date.getTime() - b.date.getTime());
     return futureDates[0];
@@ -177,7 +181,9 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                         const isExpanded = expandedRows.has(profile.id);
                         const nextExpiry = getNextExpiry(profile);
                         const daysToExpiry = nextExpiry ? differenceInDays(nextExpiry.date, new Date()) : null;
-                        const isExpiringSoon = daysToExpiry !== null && daysToExpiry <= 30;
+                        
+                        const isExpired = nextExpiry ? isDateInPast(nextExpiry.date) : false;
+                        const isExpiringSoon = daysToExpiry !== null && daysToExpiry >= 0 && daysToExpiry <= 30;
 
                         return (
                             <React.Fragment key={profile.id}>
@@ -198,10 +204,10 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             <TooltipContent className="max-w-xs">{getProgressTooltip(profile)}</TooltipContent>
                                         </Tooltip>
                                     </TableCell>
-                                    <TableCell className={cn('text-sm', isExpiringSoon && 'text-destructive font-semibold')}>
+                                    <TableCell className={cn('text-sm', isExpired && 'text-destructive font-semibold', isExpiringSoon && !isExpired && 'text-orange-500 font-semibold')}>
                                         {nextExpiry ? (
                                             <div className="flex items-center gap-1">
-                                                {isExpiringSoon && <AlertCircle className="h-4 w-4" />}
+                                                {(isExpired || isExpiringSoon) && <AlertCircle className="h-4 w-4" />}
                                                 <span>{nextExpiry.name}: {format(nextExpiry.date, 'dd-MM-yy')}</span>
                                             </div>
                                         ) : 'N/A'}
