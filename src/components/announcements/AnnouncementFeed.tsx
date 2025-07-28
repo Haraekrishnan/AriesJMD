@@ -28,10 +28,12 @@ export default function AnnouncementFeed() {
             {visibleAnnouncements.map(announcement => (
                 <Alert key={announcement.id} className="relative bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800">
                     <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <AlertTitle className="text-blue-900 dark:text-blue-200">{announcement.title}</AlertTitle>
-                    <AlertDescription className="text-blue-800 dark:text-blue-300">
-                        {announcement.content}
-                    </AlertDescription>
+                    <div className="pl-7">
+                        <AlertTitle className="text-blue-900 dark:text-blue-200">{announcement.title}</AlertTitle>
+                        <AlertDescription className="text-blue-800 dark:text-blue-300">
+                            {announcement.content}
+                        </AlertDescription>
+                    </div>
                     <Button 
                         size="icon" 
                         variant="ghost"
