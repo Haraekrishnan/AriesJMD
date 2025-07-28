@@ -52,7 +52,7 @@ export default function ManpowerListPage() {
             const checkDate = (dateStr: string | undefined, name: string) => {
                 if (dateStr) {
                     const expiryDate = parseISO(dateStr);
-                    if (isWithinInterval(expiryDate, { start: now, end: thirtyDaysFromNow })) {
+                    if (isValid(expiryDate) && isWithinInterval(expiryDate, { start: now, end: thirtyDaysFromNow })) {
                         expiringDocs.push(`${name} on ${format(expiryDate, 'dd-MM-yyyy')}`);
                     }
                 }
@@ -61,7 +61,7 @@ export default function ManpowerListPage() {
             checkDate(p.passIssueDate, 'Pass');
             checkDate(p.workOrderExpiryDate, 'WO');
             checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-            checkDate(p.labourContractValidity, 'Labour Contract');
+            checkDate(p.labourLicenseExpiryDate, 'Labour Contract');
             checkDate(p.medicalExpiryDate, 'Medical');
             checkDate(p.safetyExpiryDate, 'Safety');
             checkDate(p.irataValidity, 'IRATA');
@@ -73,14 +73,13 @@ export default function ManpowerListPage() {
 
     const expiredProfiles = useMemo(() => {
         if (!can.manage_manpower_list) return [];
-        const now = new Date();
         
         return manpowerProfiles.map(p => {
             const expiredDocs: string[] = [];
             const checkDate = (dateStr: string | undefined, name: string) => {
                 if (dateStr) {
                     const expiryDate = parseISO(dateStr);
-                    if (isPast(expiryDate)) {
+                    if (isValid(expiryDate) && isPast(expiryDate)) {
                         expiredDocs.push(`${name} on ${format(expiryDate, 'dd-MM-yyyy')}`);
                     }
                 }
@@ -89,7 +88,7 @@ export default function ManpowerListPage() {
             checkDate(p.passIssueDate, 'Pass');
             checkDate(p.workOrderExpiryDate, 'WO');
             checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-            checkDate(p.labourContractValidity, 'Labour Contract');
+            checkDate(p.labourLicenseExpiryDate, 'Labour Contract');
             checkDate(p.medicalExpiryDate, 'Medical');
             checkDate(p.safetyExpiryDate, 'Safety');
             checkDate(p.irataValidity, 'IRATA');
@@ -115,6 +114,7 @@ export default function ManpowerListPage() {
         return manpowerProfiles.flatMap(p => 
             (p.leaveHistory || [])
                 .filter(l => {
+                    if(!l.leaveStartDate) return false;
                     const leaveStartDate = parseISO(l.leaveStartDate);
                     return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
                 })
@@ -451,4 +451,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
