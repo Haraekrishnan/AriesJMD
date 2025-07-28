@@ -57,14 +57,14 @@ const getNextExpiry = (profile: ManpowerProfile) => {
             }
         }
     };
-    checkDate(p.passIssueDate, 'Pass');
-    checkDate(p.workOrderExpiryDate, 'WO');
-    checkDate(p.wcPolicyExpiryDate, 'WC Policy');
-    checkDate(p.labourLicenseExpiryDate, 'Labour License');
-    checkDate(p.medicalExpiryDate, 'Medical');
-    checkDate(p.safetyExpiryDate, 'Safety');
-    checkDate(p.irataValidity, 'IRATA');
-    checkDate(p.firstAidExpiryDate, 'First Aid');
+    checkDate(profile.passIssueDate, 'Pass');
+    checkDate(profile.workOrderExpiryDate, 'WO');
+    checkDate(profile.wcPolicyExpiryDate, 'WC Policy');
+    checkDate(profile.labourLicenseExpiryDate, 'Labour License');
+    checkDate(profile.medicalExpiryDate, 'Medical');
+    checkDate(profile.safetyExpiryDate, 'Safety');
+    checkDate(profile.irataValidity, 'IRATA');
+    checkDate(profile.firstAidExpiryDate, 'First Aid');
     
     (profile.skills || []).forEach(skill => {
         if(skill.validity) {
