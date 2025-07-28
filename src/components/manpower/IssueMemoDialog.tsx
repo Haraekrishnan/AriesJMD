@@ -15,12 +15,14 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { Input } from '../ui/input';
 
 const memoSchema = z.object({
   manpowerId: z.string().min(1, 'Please select an employee.'),
   type: z.enum(['Memo', 'Warning Letter']),
   date: z.date({ required_error: 'Please select a date.' }),
   reason: z.string().min(10, 'A detailed reason is required.'),
+  issuedBy: z.string().min(1, 'Issuer name is required.'),
 });
 
 type MemoFormValues = z.infer<typeof memoSchema>;
@@ -44,6 +46,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
       type: data.type,
       date: data.date.toISOString(),
       reason: data.reason,
+      issuedBy: data.issuedBy,
     });
     const profile = manpowerProfiles.find(p => p.id === data.manpowerId);
     toast({ title: `${data.type} Issued`, description: `A ${data.type.toLowerCase()} has been issued to ${profile?.name}.` });
@@ -141,6 +144,12 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
             </div>
           </div>
           
+          <div className="space-y-2">
+            <Label htmlFor="issuedBy">Issued By</Label>
+            <Input id="issuedBy" {...form.register('issuedBy')} />
+            {form.formState.errors.issuedBy && <p className="text-xs text-destructive">{form.formState.errors.issuedBy.message}</p>}
+          </div>
+
           <div className="space-y-2">
             <Label>Reason / Details</Label>
             <Textarea {...form.register('reason')} rows={5} />

@@ -1,6 +1,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -196,7 +197,7 @@ export type MemoRecord = {
     type: 'Memo' | 'Warning Letter';
     date: string; // ISO String
     reason: string;
-    issuedById: string;
+    issuedBy: string;
 };
 
 export type ManpowerProfile = {

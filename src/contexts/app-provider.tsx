@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1278,7 +1279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile) return;
-    const newMemo: MemoRecord = { ...memo, id: `memo-${Date.now()}`, issuedById: user.id };
+    const newMemo: MemoRecord = { ...memo, id: `memo-${Date.now()}` };
     const updatedMemoHistory = [...(profile.memoHistory || []), newMemo];
     update(ref(rtdb, `manpowerProfiles/${manpowerId}`), { memoHistory: updatedMemoHistory });
     addActivityLog(user.id, `Issued ${memo.type}`, `To ${profile.name}`);
