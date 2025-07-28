@@ -155,7 +155,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
 
@@ -472,9 +472,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                             {user?.role === 'Admin' && (
                                                 <TableCell className="text-right">
                                                     <AlertDialog>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
@@ -511,9 +511,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                              {user?.role === 'Admin' && (
                                                 <TableCell className="text-right">
                                                     <AlertDialog>
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMemo(memo)}><Edit className="h-4 w-4"/></Button>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMemo(memo)}><Edit className="h-4 w-4"/></Button>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
