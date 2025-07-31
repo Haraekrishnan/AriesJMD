@@ -31,9 +31,14 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
 
   const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
+  // Sync internal state if initialFilters prop changes
   useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters]);
+
+  const handleApply = () => {
     onApplyFilters(filters);
-  }, [filters, onApplyFilters]);
+  };
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -56,6 +61,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
         showMyTasksOnly: true,
     } as const;
     setFilters(clearedFilters);
+    onApplyFilters(clearedFilters);
   }
 
   return (
@@ -109,6 +115,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
             </div>
 
             <div className="flex gap-2 ml-auto">
+                 <Button onClick={handleApply}>Apply Filters</Button>
                 <Button variant="ghost" onClick={handleReset}>
                     <X className="mr-2 h-4 w-4" /> Clear
                 </Button>

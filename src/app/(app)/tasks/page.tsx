@@ -19,7 +19,7 @@ import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 
 export default function TasksPage() {
   const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can, getVisibleUsers } = useAppContext();
@@ -28,7 +28,10 @@ export default function TasksPage() {
     status: 'all',
     priority: 'all',
     assigneeId: 'all',
-    dateRange: undefined,
+    dateRange: {
+      from: startOfMonth(new Date()),
+      to: endOfMonth(new Date()),
+    },
     showMyTasksOnly: true,
   });
 
@@ -79,25 +82,31 @@ export default function TasksPage() {
       }
       
       let statusMatch = status === 'all' || task.status === status;
-      if (status === 'Completed' && task.status !== 'Done') {
-          statusMatch = false;
-      } else if (status !== 'all' && status !== 'Completed' && task.status !== status) {
+      if (status !== 'all' && task.status !== status) {
           statusMatch = false;
       }
-
+      
       const priorityMatch = priority === 'all' || task.priority === priority;
       
       let dateMatch = true;
       if (dateRange?.from) {
-        const taskDate = new Date(task.dueDate);
-        const fromDate = dateRange.from;
-        const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
-        dateMatch = taskDate >= fromDate && taskDate <= toDate;
+        if (task.status === 'Done' && task.completionDate) {
+           const completionDate = new Date(task.completionDate);
+           const fromDate = dateRange.from;
+           const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
+           dateMatch = isWithinInterval(completionDate, { start: fromDate, end: toDate });
+        } else if (task.status !== 'Done') {
+           const taskDate = new Date(task.dueDate);
+           const fromDate = dateRange.from;
+           const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
+           dateMatch = taskDate >= fromDate && taskDate <= toDate;
+        }
       }
 
       return statusMatch && priorityMatch && dateMatch;
     });
   }, [visibleTasks, filters, user]);
+
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
