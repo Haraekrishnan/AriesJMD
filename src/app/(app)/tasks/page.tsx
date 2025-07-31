@@ -30,7 +30,7 @@ export default function TasksPage() {
     assigneeId: 'all',
     dateRange: undefined,
     month: (new Date().getMonth() + 1).toString(), // Default to current month
-    showMyTasksOnly: true,
+    showMyTasksOnly: user?.role !== 'Manager',
   });
 
   const [isPendingApprovalDialogOpen, setIsPendingApprovalDialogOpen] = useState(false);
@@ -56,6 +56,9 @@ export default function TasksPage() {
 
   const visibleTasks = useMemo(() => {
     if (!user) return [];
+    if (user.role === 'Manager' || user.role === 'Admin') {
+        return tasks;
+    }
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     return tasks.filter(task => {
       // Show a task if any of its assignees are visible to the current user
