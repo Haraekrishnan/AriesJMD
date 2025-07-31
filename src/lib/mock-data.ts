@@ -3,6 +3,7 @@
 
 
 
+
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
@@ -18,6 +19,19 @@ export const ROLES: RoleDefinition[] = [
   },
   {
     id: 'role-manager',
+    name: 'Manager',
+     permissions: [
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',
+      'manage_vehicles', 'manage_manpower', 'manage_manpower_list', 'manage_accommodation',
+      'approve_store_requests', 'manage_inventory',
+      'manage_equipment_status',
+      'manage_announcements', 'view_performance_reports', 'view_activity_logs',
+      'log_manpower', 'manage_job_schedule'
+    ],
+    isEditable: false,
+  },
+  {
+    id: 'role-project-coordinator',
     name: 'Project Coordinator',
     permissions: [
       'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',

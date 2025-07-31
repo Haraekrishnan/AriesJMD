@@ -5,6 +5,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -425,7 +426,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user.role === 'Admin') {
       return users;
     }
-    const privilegedRoles = ['Project Coordinator'];
+    const privilegedRoles = ['Project Coordinator', 'Manager'];
     if (privilegedRoles.includes(user.role)) {
       return users;
     }
@@ -439,18 +440,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin') {
-        return users.filter(u => u.role !== 'Admin');
-    }
-    if (user.role === 'Project Coordinator') {
-        return users;
-    }
-    if (user.role === 'Document Controller' || user.role === 'Store in Charge') {
-      return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
-    }
+    
+    let assignable = [];
 
-    const subordinateIds = getSubordinateChain(user.id, users);
-    return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
+    if (user.role === 'Admin') {
+        assignable = users.filter(u => u.role !== 'Admin');
+    } else if (user.role === 'Project Coordinator' || user.role === 'Manager') {
+        assignable = users;
+    } else if (user.role === 'Document Controller' || user.role === 'Store in Charge') {
+        assignable = users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator' && u.role !== 'Manager');
+    } else {
+        const subordinateIds = getSubordinateChain(user.id, users);
+        assignable = users.filter(u => u.id === user.id || subordinateIds.has(u.id));
+    }
+    
+    // Globally filter out managers from being assigned tasks
+    return assignable.filter(u => u.role !== 'Manager');
+
   }, [user, users, getSubordinateChain]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeId: string }) => {

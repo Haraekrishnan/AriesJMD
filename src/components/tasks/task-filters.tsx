@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -32,11 +33,10 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFiltersProps) {
-  const { user } = useAppContext();
+  const { user, getAssignableUsers } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
-  const { getVisibleUsers } = useAppContext();
 
-  const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const users = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
 
   // When a filter changes, call the parent component's update function
   useEffect(() => {
@@ -115,14 +115,16 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
                 onDateChange={(value: DateRange | undefined) => handleFilterChange('dateRange', value)}
             />
             
-            <div className="flex items-center space-x-2">
-                <Switch
-                  id="my-tasks-switch"
-                  checked={filters.showMyTasksOnly}
-                  onCheckedChange={(checked) => handleFilterChange('showMyTasksOnly', checked)}
-                />
-                <Label htmlFor="my-tasks-switch">My Tasks Only</Label>
-            </div>
+            {user?.role !== 'Manager' && (
+                <div className="flex items-center space-x-2">
+                    <Switch
+                    id="my-tasks-switch"
+                    checked={filters.showMyTasksOnly}
+                    onCheckedChange={(checked) => handleFilterChange('showMyTasksOnly', checked)}
+                    />
+                    <Label htmlFor="my-tasks-switch">My Tasks Only</Label>
+                </div>
+            )}
 
             <div className="flex gap-2 ml-auto">
                 <Button variant="ghost" onClick={handleReset}>
