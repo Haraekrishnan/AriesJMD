@@ -10,6 +10,7 @@ import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { useAppContext } from '@/contexts/app-provider';
+import { getMonth, format } from 'date-fns';
 
 export interface TaskFilters {
   status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';
@@ -17,12 +18,18 @@ export interface TaskFilters {
   assigneeId: string;
   dateRange?: DateRange;
   showMyTasksOnly: boolean;
+  month: string;
 }
 
 interface TaskFiltersProps {
   onApplyFilters: (filters: TaskFilters) => void;
   initialFilters: TaskFilters;
 }
+
+const months = Array.from({ length: 12 }, (_, i) => ({
+  value: (i + 1).toString(),
+  label: format(new Date(0, i), 'MMMM'),
+}));
 
 export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
   const { user } = useAppContext();
@@ -59,6 +66,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
         assigneeId: 'all',
         dateRange: undefined,
         showMyTasksOnly: true,
+        month: (new Date().getMonth() + 1).toString(),
     } as const;
     setFilters(clearedFilters);
     onApplyFilters(clearedFilters);
@@ -67,6 +75,13 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
   return (
     <div className="p-4 border rounded-lg bg-card">
         <div className="flex flex-wrap gap-4 items-center">
+            <Select value={filters.month} onValueChange={(value) => handleFilterChange('month', value)}>
+                <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="All Months" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Months</SelectItem>
+                    {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+            </Select>
             <Select value={filters.assigneeId} onValueChange={handleAssigneeChange}>
                 <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All Users" /></SelectTrigger>
                 <SelectContent>

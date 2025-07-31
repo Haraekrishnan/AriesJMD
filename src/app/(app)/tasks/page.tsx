@@ -19,7 +19,7 @@ import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO } from 'date-fns';
 
 export default function TasksPage() {
   const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can, getVisibleUsers } = useAppContext();
@@ -28,10 +28,8 @@ export default function TasksPage() {
     status: 'all',
     priority: 'all',
     assigneeId: 'all',
-    dateRange: {
-      from: startOfMonth(new Date()),
-      to: endOfMonth(new Date()),
-    },
+    dateRange: undefined,
+    month: (new Date().getMonth() + 1).toString(), // Default to current month
     showMyTasksOnly: true,
   });
 
@@ -71,7 +69,7 @@ export default function TasksPage() {
         return false;
       }
       
-      const { status, priority, dateRange, showMyTasksOnly, assigneeId } = filters;
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
 
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
         return false;
@@ -90,20 +88,45 @@ export default function TasksPage() {
       
       let dateMatch = true;
       if (dateRange?.from) {
-        if (task.status === 'Done' && task.completionDate) {
-           const completionDate = new Date(task.completionDate);
-           const fromDate = dateRange.from;
-           const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
-           dateMatch = isWithinInterval(completionDate, { start: fromDate, end: toDate });
-        } else if (task.status !== 'Done') {
-           const taskDate = new Date(task.dueDate);
-           const fromDate = dateRange.from;
-           const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
-           dateMatch = taskDate >= fromDate && taskDate <= toDate;
+        const taskDate = new Date(task.dueDate);
+        const fromDate = dateRange.from;
+        const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
+        dateMatch = taskDate >= fromDate && taskDate <= toDate;
+      }
+      
+      let monthMatch = true;
+      if(month !== 'all') {
+        const taskDate = new Date(task.dueDate);
+        const taskMonth = getMonth(taskDate) + 1;
+        const taskYear = getYear(taskDate);
+        const currentYear = getYear(new Date());
+
+        // For completed tasks, they must be in the selected month
+        if(task.status === 'Done') {
+            if(task.completionDate) {
+              const completionDate = parseISO(task.completionDate);
+              monthMatch = (getMonth(completionDate) + 1).toString() === month;
+            } else {
+               monthMatch = false;
+            }
+        }
+        // For other tasks, they are always included regardless of month, unless a date range filter is also active
+        else if (!dateRange?.from) {
+            monthMatch = true;
+        } else {
+             monthMatch = (getMonth(taskDate) + 1).toString() === month && taskYear === currentYear;
         }
       }
 
-      return statusMatch && priorityMatch && dateMatch;
+      // Final logic adjustment: if a date range is picked, it overrides the month filter for non-completed tasks
+      if (dateRange?.from && task.status !== 'Done') {
+          monthMatch = true; // Date range takes precedence
+      } else if (task.status !== 'Done') {
+          monthMatch = true; // Always show active tasks unless filtered by date range
+      }
+
+
+      return statusMatch && priorityMatch && dateMatch && monthMatch;
     });
   }, [visibleTasks, filters, user]);
 
