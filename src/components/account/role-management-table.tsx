@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { RoleDefinition as Role } from '@/lib/types';
+import { RoleDefinition } from '@/lib/types';
 import AddRoleDialog from './add-role-dialog';
 import EditRoleDialog from './edit-role-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +19,9 @@ export default function RoleManagementTable() {
     const { toast } = useToast();
     const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
     const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
-    const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+    const [selectedRole, setSelectedRole] = useState<RoleDefinition | null>(null);
 
-    const handleEditClick = (role: Role) => {
+    const handleEditClick = (role: RoleDefinition) => {
         setSelectedRole(role);
         setIsEditRoleDialogOpen(true);
     };

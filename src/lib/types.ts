@@ -1,8 +1,4 @@
 
-
-
-
-
 export type User = {
   id: string;
   name: string;
@@ -486,13 +482,6 @@ export type DailyPlannerComment = {
   comments: Comment[];
   lastUpdated: string;
   viewedBy: string[];
-};
-
-export type Role_Dep = {
-  id: string;
-  name: string;
-  permissions: readonly Permission[] | Permission[];
-  isEditable?: boolean;
 };
 
 export type Bed = {

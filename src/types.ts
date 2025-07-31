@@ -1,9 +1,4 @@
 
-
-
-
-
-
 export type User = {
   id: string;
   name: string;
@@ -407,13 +402,6 @@ export type DailyPlannerComment = {
   viewedBy: string[];
 };
 
-export type Role_Dep = {
-  id: string;
-  name: string;
-  permissions: readonly Permission[] | Permission[];
-  isEditable?: boolean;
-};
-
 export type Bed = {
   id: string;
   bedNumber: string;
@@ -432,4 +420,3 @@ export type Building = {
   buildingNumber: string;
   rooms: Room[];
 };
-
