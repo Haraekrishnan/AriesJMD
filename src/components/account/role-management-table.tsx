@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Role_Dep as Role } from '@/lib/types';
+import { RoleDefinition as Role } from '@/lib/types';
 import AddRoleDialog from './add-role-dialog';
 import EditRoleDialog from './edit-role-dialog';
 import { Badge } from '@/components/ui/badge';
