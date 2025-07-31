@@ -26,7 +26,7 @@ export default function AchievementsPage() {
       dateRange = { start: startOfYear(now), end: endOfYear(now) };
     }
     
-    const rolesToExclude = ['Project Coordinator', 'Admin'];
+    const rolesToExclude = ['Project Coordinator', 'Admin', 'Manager'];
     const rankedUsers = users.filter(u => !rolesToExclude.includes(u.role));
 
     return rankedUsers

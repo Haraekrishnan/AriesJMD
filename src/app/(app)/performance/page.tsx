@@ -23,9 +23,11 @@ export default function PerformancePage() {
     const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
     const performanceData = useMemo(() => {
-        const usersToDisplay = activeFilters.userIds.length > 0 && can.view_performance_reports
+        let usersToDisplay = activeFilters.userIds.length > 0 && can.view_performance_reports
             ? visibleUsers.filter(u => activeFilters.userIds.includes(u.id))
             : visibleUsers;
+        
+        usersToDisplay = usersToDisplay.filter(u => u.role !== 'Manager');
 
         const tasksToConsider = activeFilters.dates?.from
             ? tasks.filter(t => t.dueDate && isWithinInterval(new Date(t.dueDate), { start: activeFilters.dates!.from!, end: activeFilters.dates.to || activeFilters.dates.from! }))
