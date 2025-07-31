@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,6 +27,10 @@ export default function AddAchievementDialog() {
   const { users, awardManualAchievement } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+
+  const awardableUsers = useMemo(() => {
+    return users.filter(u => u.role !== 'Manager');
+  }, [users]);
 
   const form = useForm<AchievementFormValues>({
     resolver: zodResolver(achievementSchema),
@@ -74,7 +78,7 @@ export default function AddAchievementDialog() {
                 <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
                   <SelectContent>
-                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                    {awardableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}
