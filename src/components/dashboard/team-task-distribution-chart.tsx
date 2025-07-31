@@ -25,7 +25,9 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
   const { user, getVisibleUsers } = useAppContext();
   const [selectedUserId, setSelectedUserId] = useState('all');
 
-  const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const visibleUsers = useMemo(() => {
+    return getVisibleUsers().filter(u => u.role !== 'Manager');
+  }, [getVisibleUsers]);
 
   const selectedUserName = useMemo(() => {
     if (selectedUserId === 'all') return 'All Visible Members';

@@ -36,7 +36,9 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
   const { user, getVisibleUsers } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
 
-  const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const users = useMemo(() => {
+    return getVisibleUsers().filter(u => u.role !== 'Manager');
+  }, [getVisibleUsers]);
 
   // When a filter changes, call the parent component's update function
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
         priority: 'all',
         assigneeId: 'all',
         dateRange: undefined,
-        showMyTasksOnly: true,
+        showMyTasksOnly: user?.role !== 'Manager',
         month: (new Date().getMonth() + 1).toString(),
     } as const;
     setFilters(clearedFilters);
