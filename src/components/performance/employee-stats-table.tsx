@@ -56,15 +56,16 @@ export default function EmployeeStatsTable({ data }: EmployeeStatsTableProps) {
 
   const canScoreUser = (scoredUser: User): boolean => {
     if (!user) return false;
-    if (user.id === scoredUser.id) return false; // Cannot score self
+    if (user.id === scoredUser.id) return false;
+
+    if (['Admin', 'Manager', 'Project Coordinator'].includes(user.role)) {
+      return true;
+    }
 
     const scorerLevel = roleHierarchy[user.role];
     const scoredLevel = roleHierarchy[scoredUser.role];
-
-    if (user.role === 'Admin') return true;
-    if (user.role === 'Manager') return scoredLevel < scorerLevel;
     
-    // Supervisors and PCs can score their direct juniors
+    // Supervisors can score their direct juniors
     if (scorerLevel > scoredLevel && scoredUser.supervisorId === user.id) return true;
 
     return false;
