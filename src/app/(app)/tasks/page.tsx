@@ -174,7 +174,7 @@ export default function TasksPage() {
           </div>
         </div>
         <div className='mb-4'>
-          <TaskFilters onApplyFilters={setFilters} initialFilters={filters} />
+          <TaskFilters onFiltersChange={setFilters} initialFilters={filters} />
         </div>
         <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
       </div>

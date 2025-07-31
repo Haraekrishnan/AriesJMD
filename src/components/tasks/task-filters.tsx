@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar as CalendarIcon, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
@@ -22,7 +22,7 @@ export interface TaskFilters {
 }
 
 interface TaskFiltersProps {
-  onApplyFilters: (filters: TaskFilters) => void;
+  onFiltersChange: (filters: TaskFilters) => void;
   initialFilters: TaskFilters;
 }
 
@@ -31,26 +31,22 @@ const months = Array.from({ length: 12 }, (_, i) => ({
   label: format(new Date(0, i), 'MMMM'),
 }));
 
-export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFiltersProps) {
+export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFiltersProps) {
   const { user } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
   const { getVisibleUsers } = useAppContext();
 
   const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
-  // Sync internal state if initialFilters prop changes
+  // When a filter changes, call the parent component's update function
   useEffect(() => {
-    setFilters(initialFilters);
-  }, [initialFilters]);
-
-  const handleApply = () => {
-    onApplyFilters(filters);
-  };
+    onFiltersChange(filters);
+  }, [filters, onFiltersChange]);
 
   const handleFilterChange = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
-
+  
   const handleAssigneeChange = (assigneeId: string) => {
     setFilters(prev => ({
         ...prev,
@@ -58,7 +54,7 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
         showMyTasksOnly: assigneeId !== 'all' ? false : prev.showMyTasksOnly,
     }));
   };
-  
+
   const handleReset = () => {
     const clearedFilters = {
         status: 'all',
@@ -69,7 +65,6 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
         month: (new Date().getMonth() + 1).toString(),
     } as const;
     setFilters(clearedFilters);
-    onApplyFilters(clearedFilters);
   }
 
   return (
@@ -130,7 +125,6 @@ export default function TaskFilters({ onApplyFilters, initialFilters }: TaskFilt
             </div>
 
             <div className="flex gap-2 ml-auto">
-                 <Button onClick={handleApply}>Apply Filters</Button>
                 <Button variant="ghost" onClick={handleReset}>
                     <X className="mr-2 h-4 w-4" /> Clear
                 </Button>
