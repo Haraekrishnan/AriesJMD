@@ -30,8 +30,9 @@ const roleHierarchy: Record<Role, number> = {
   'Supervisor': 2,
   'HSE': 2,
   'Store in Charge': 2,
-  'Manager': 3,
-  'Admin': 4,
+  'Project Coordinator': 3,
+  'Manager': 4,
+  'Admin': 5,
 };
 
 export default function EmployeeStatsTable({ data }: EmployeeStatsTableProps) {
@@ -63,7 +64,7 @@ export default function EmployeeStatsTable({ data }: EmployeeStatsTableProps) {
     if (user.role === 'Admin') return true;
     if (user.role === 'Manager') return scoredLevel < scorerLevel;
     
-    // Supervisors can score their direct juniors
+    // Supervisors and PCs can score their direct juniors
     if (scorerLevel > scoredLevel && scoredUser.supervisorId === user.id) return true;
 
     return false;
