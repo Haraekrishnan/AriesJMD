@@ -419,9 +419,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user.role === 'Admin') {
       return users;
     }
-    const privilegedRoles: Role[] = ['Project Coordinator', 'Manager'];
-    if (privilegedRoles.includes(user.role)) {
-      return users;
+    if (user.role === 'Project Coordinator' || user.role === 'Manager') {
+        return users.filter(u => u.role !== 'Admin');
     }
     if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
       return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
@@ -436,17 +435,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     let assignable = [];
 
-    if (user.role === 'Admin') {
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
         assignable = users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
-    } else if (user.role === 'Project Coordinator') {
-        assignable = users.filter(u => u.role !== 'Manager');
-    } else if (user.role === 'Manager') {
-        // Managers can only assign to their direct reports, excluding other managers
-        const subordinateIds = getSubordinateChain(user.id, users);
-        assignable = users.filter(u => subordinateIds.has(u.id) && u.role !== 'Manager');
-    } else if (user.role === 'Document Controller' || user.role === 'Store in Charge') {
-        assignable = users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator' && u.role !== 'Manager');
-    } else { // Supervisor, etc.
+    } else {
         const subordinateIds = getSubordinateChain(user.id, users);
         assignable = users.filter(u => u.id === user.id || subordinateIds.has(u.id));
     }
