@@ -33,10 +33,10 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFiltersProps) {
-  const { user, getAssignableUsers } = useAppContext();
+  const { user, getVisibleUsers } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
 
-  const users = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
+  const users = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
   // When a filter changes, call the parent component's update function
   useEffect(() => {

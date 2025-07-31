@@ -416,10 +416,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin') {
+    if (user.role === 'Admin' || user.role === 'Manager') {
       return users;
     }
-    if (user.role === 'Project Coordinator' || user.role === 'Manager') {
+    if (user.role === 'Project Coordinator') {
         return users.filter(u => u.role !== 'Admin');
     }
     if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
@@ -435,14 +435,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     let assignable = [];
 
-    if (user.role === 'Admin' || user.role === 'Project Coordinator') {
-        assignable = users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
+    // Admin and Manager can assign to anyone
+    if (user.role === 'Admin' || user.role === 'Manager') {
+        assignable = users;
+    } else if (user.role === 'Project Coordinator') {
+        // PC can assign to anyone except Admin
+        assignable = users.filter(u => u.role !== 'Admin');
     } else {
+        // Others can assign to themselves or their subordinates
         const subordinateIds = getSubordinateChain(user.id, users);
         assignable = users.filter(u => u.id === user.id || subordinateIds.has(u.id));
     }
     
-    // Global filter to ensure no one can assign tasks to a Manager (except themselves if logic allows)
+    // Global filter to ensure no one can assign tasks to a Manager
     return assignable.filter(u => u.role !== 'Manager');
 
   }, [user, users, getSubordinateChain]);
