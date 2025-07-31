@@ -11,7 +11,9 @@ export default function SchedulePage() {
     const { user, getVisibleUsers, can } = useAppContext();
     const [selectedUserId, setSelectedUserId] = useState<string>(user!.id);
     
-    const visibleUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+    const visibleUsers = useMemo(() => {
+        return getVisibleUsers().filter(u => u.role !== 'Manager');
+    }, [getVisibleUsers]);
     
     const canViewOthers = can.manage_planner;
 
