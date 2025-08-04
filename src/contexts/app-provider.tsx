@@ -1815,28 +1815,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, buildings, manpowerProfiles, addActivityLog]);
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    if(!user) return;
+    if (!user) return;
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
     
-    let occupantName = '';
-    const updatedRooms = (building.rooms || []).map(r => {
-      if (r.id === roomId) {
-        return {
-          ...r,
-          beds: r.beds.map(bed => {
-            if (bed.id === bedId) {
-              const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
-              occupantName = occupant?.name || 'occupant';
-              return { ...bed, occupantId: undefined };
-            }
-            return bed;
-          })
-        };
-      }
-      return r;
-    });
-    set(ref(rtdb, `buildings/${buildingId}/rooms`), updatedRooms);
+    const buildingRef = ref(rtdb, `buildings/${buildingId}`);
+    const rooms = building.rooms || [];
+    let occupantName = 'occupant';
+
+    const roomIndex = rooms.findIndex(r => r.id === roomId);
+    if (roomIndex === -1) return;
+
+    const bedIndex = rooms[roomIndex].beds.findIndex(b => b.id === bedId);
+    if (bedIndex === -1) return;
+
+    const occupantId = rooms[roomIndex].beds[bedIndex].occupantId;
+    if (occupantId) {
+        const occupant = manpowerProfiles.find(p => p.id === occupantId);
+        occupantName = occupant?.name || 'occupant';
+    }
+
+    const updates: { [key: string]: any } = {};
+    updates[`rooms/${roomIndex}/beds/${bedIndex}/occupantId`] = null;
+
+    update(buildingRef, updates);
     addActivityLog(user.id, 'Occupant Unassigned', `${occupantName} from bed in Building ${building.buildingNumber}`);
   }, [user, buildings, manpowerProfiles, addActivityLog]);
 
