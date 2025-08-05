@@ -1030,9 +1030,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, manpowerLogs, updateSubsequentManpowerLogs]);
 
   const addManpowerProfile = useCallback((profile: Omit<ManpowerProfile, 'id'>) => {
-    if(!user) return;
+    if (!user) return;
     const newProfileRef = push(ref(rtdb, 'manpowerProfiles'));
-    set(newProfileRef, profile);
+    
+    // Helper function to clean undefined values recursively
+    const cleanData = (obj: any): any => {
+      if (Array.isArray(obj)) {
+        return obj.map(item => cleanData(item));
+      } else if (obj !== null && typeof obj === 'object') {
+        return Object.fromEntries(
+          Object.entries(obj)
+            .filter(([_, v]) => v !== undefined)
+            .map(([k, v]) => [k, cleanData(v)])
+        );
+      }
+      return obj;
+    };
+  
+    const cleanedProfile = cleanData(profile);
+    set(newProfileRef, cleanedProfile);
     addActivityLog(user.id, 'Manpower Profile Added', profile.name);
   }, [user, addActivityLog]);
   
