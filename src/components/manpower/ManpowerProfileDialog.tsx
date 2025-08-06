@@ -273,26 +273,30 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     delete dataToSubmit.otherTrade;
     delete dataToSubmit.currentLeave;
 
-    Object.keys(dataToSubmit).forEach(key => {
-        if (dataToSubmit[key] instanceof Date) {
-            dataToSubmit[key] = dataToSubmit[key].toISOString();
-        }
-    });
-
-    if (dataToSubmit.skills) {
-        dataToSubmit.skills = dataToSubmit.skills.map((skill: any) => {
-            if (skill.validity) {
-                return {...skill, validity: skill.validity instanceof Date ? skill.validity.toISOString() : skill.validity};
+    // Clean up undefined values and convert dates before submitting
+    const cleanedData = Object.fromEntries(
+        Object.entries(dataToSubmit).map(([key, value]) => {
+            if (value instanceof Date) {
+                return [key, value.toISOString()];
             }
-            return skill;
-        });
-    }
+            if (value === undefined) {
+                return [key, null]; // Convert undefined to null for Firebase
+            }
+            if (key === 'skills' && Array.isArray(value)) {
+                return [key, value.map(skill => ({
+                    ...skill,
+                    validity: skill.validity instanceof Date ? skill.validity.toISOString() : skill.validity,
+                }))];
+            }
+            return [key, value];
+        })
+    );
   
     if (profile) {
-      updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
+      updateManpowerProfile({ ...profile, ...cleanedData } as ManpowerProfile);
       toast({ title: 'Profile Updated' });
     } else {
-      addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
+      addManpowerProfile(cleanedData as Omit<ManpowerProfile, 'id'>);
       toast({ title: 'Profile Added' });
     }
     setIsOpen(false);
