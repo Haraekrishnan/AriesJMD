@@ -420,7 +420,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return users;
     }
     if (user.role === 'Project Coordinator') {
-        return users.filter(u => u.role !== 'Manager');
+        return users;
     }
     if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
         return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
@@ -433,12 +433,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
     
-    let assignable = [];
+    let assignable: User[] = [];
+    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
 
-    if (user.role === 'Admin' || user.role === 'Manager') {
+    if (user.role === 'Admin' || user.role === 'Manager' || user.role === 'Project Coordinator') {
         assignable = users;
-    } else if (user.role === 'Project Coordinator') {
-        assignable = users.filter(u => u.role !== 'Admin');
+    } else if (storeRoles.includes(user.role)) {
+        assignable = users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
     } else {
         const subordinateIds = getSubordinateChain(user.id, users);
         assignable = users.filter(u => u.id === user.id || subordinateIds.has(u.id));
