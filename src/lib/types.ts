@@ -199,6 +199,15 @@ export type MemoRecord = {
     issuedBy: string;
 };
 
+export type PpeHistoryRecord = {
+  id: string;
+  ppeType: 'Coverall' | 'Safety Shoes';
+  size: string;
+  issueDate: string; // ISO String
+  requestType: 'New' | 'Replacement';
+  remarks?: string;
+};
+
 export type ManpowerProfile = {
   id: string;
   name: string;
@@ -250,6 +259,7 @@ export type ManpowerProfile = {
   // Leave and Termination
   leaveHistory?: LeaveRecord[];
   memoHistory?: MemoRecord[];
+  ppeHistory?: PpeHistoryRecord[];
   terminationDate?: string; // ISO
   resignationDate?: string; // ISO
   feedback?: string;
@@ -340,6 +350,7 @@ export type PpeRequest = {
   requesterId: string;
   manpowerId: string;
   ppeType: 'Coverall' | 'Safety Shoes';
+  size: string;
   requestType: 'New' | 'Replacement';
   date: string; // ISO
   status: PpeRequestStatus;

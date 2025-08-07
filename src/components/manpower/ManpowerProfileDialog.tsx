@@ -86,6 +86,7 @@ const profileSchema = z.object({
   feedback: z.string().optional(),
   currentLeave: leaveSchema.optional(),
   leaveHistory: z.array(z.any()).optional(), // Use `any` for display, not form validation
+  ppeHistory: z.array(z.any()).optional(),
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
         ctx.addIssue({
@@ -220,6 +221,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             documentFolderUrl: '',
             leaveHistory: [],
             memoHistory: [],
+            ppeHistory: [],
         };
         form.reset(defaultValues as any);
     }
@@ -548,6 +550,25 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                                     </AlertDialog>
                                                 </TableCell>
                                             )}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                     {(liveProfile?.ppeHistory || []).length > 0 && (
+                        <div className="space-y-4 md:col-span-3">
+                            <Separator />
+                            <h3 className="text-lg font-semibold border-b pb-2">PPE Issue History</h3>
+                             <Table>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Issue Date</TableHead><TableHead>Request Type</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {liveProfile?.ppeHistory?.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.ppeType}</TableCell>
+                                            <TableCell>{item.size}</TableCell>
+                                            <TableCell>{format(new Date(item.issueDate), 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell>{item.requestType}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
