@@ -20,6 +20,7 @@ const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
   ppeType: z.enum(['Coverall', 'Safety Shoes']),
   size: z.string().min(1, 'Size is required'),
+  quantity: z.coerce.number().optional(),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
 });
@@ -39,6 +40,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     resolver: zodResolver(ppeRequestSchema),
     defaultValues: {
       requestType: 'New',
+      quantity: 1,
     },
   });
 
@@ -67,7 +69,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ requestType: 'New' });
+      form.reset({ requestType: 'New', quantity: 1 });
     }
     setIsOpen(open);
   };
@@ -135,6 +137,12 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
             </div>
           </div>
+          {ppeType === 'Coverall' && (
+            <div className="space-y-2">
+              <Label>Quantity</Label>
+              <Input type="number" {...form.register('quantity')} />
+            </div>
+          )}
            <div className="space-y-2">
                 <Label>Request Type</Label>
                 <Controller name="requestType" control={form.control} render={({ field }) => (

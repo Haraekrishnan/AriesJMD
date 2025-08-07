@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1436,9 +1437,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/approverId`] = user.id;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
     updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
+    
+    if (status === 'Issued') {
+        const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
+        if (manpowerProfile) {
+            const ppeHistoryItem: PpeHistoryRecord = {
+                id: `ppe-hist-${Date.now()}`,
+                ppeType: request.ppeType,
+                size: request.size,
+                issueDate: new Date().toISOString(),
+                requestType: request.requestType,
+                remarks: request.remarks,
+                quantity: request.quantity,
+            };
+            const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
+            updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
+        }
+    }
 
     update(ref(rtdb), updates);
-  }, [user, ppeRequests]);
+  }, [user, ppeRequests, manpowerProfiles]);
 
   const markPpeRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;

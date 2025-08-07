@@ -203,6 +203,7 @@ export type PpeHistoryRecord = {
   id: string;
   ppeType: 'Coverall' | 'Safety Shoes';
   size: string;
+  quantity?: number;
   issueDate: string; // ISO String
   requestType: 'New' | 'Replacement';
   remarks?: string;
@@ -351,6 +352,7 @@ export type PpeRequest = {
   manpowerId: string;
   ppeType: 'Coverall' | 'Safety Shoes';
   size: string;
+  quantity?: number;
   requestType: 'New' | 'Replacement';
   date: string; // ISO
   status: PpeRequestStatus;

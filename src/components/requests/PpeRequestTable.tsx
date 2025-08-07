@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -113,7 +114,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                 <TableCell>{manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                 <TableCell>{getRejoiningDate(manpower)}</TableCell>
                 <TableCell>
-                    <p>{req.requestType} {req.ppeType}</p>
+                    <p>{req.requestType} {req.ppeType} {req.quantity ? `(x${req.quantity})` : ''}</p>
                     <p className="text-sm text-muted-foreground">Size: {size || 'N/A'}</p>
                 </TableCell>
                 <TableCell>
