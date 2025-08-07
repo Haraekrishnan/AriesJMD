@@ -292,8 +292,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                                 </div>
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Document Status</h4>
-                                                    {(profile.documents || []).map(doc => (
-                                                        <div key={doc.name} className="flex justify-between items-center text-sm">
+                                                    {(profile.documents || []).map((doc, index) => (
+                                                        <div key={`${doc.name}-${index}`} className="flex justify-between items-center text-sm">
                                                             <span>{doc.name}</span>
                                                             <Badge variant={doc.status === 'Collected' || doc.status === 'Received' ? 'success' : 'secondary'}>{doc.status}</Badge>
                                                         </div>
