@@ -7,7 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check, Trash2, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -17,9 +17,10 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import EditPpeRequestDialog from './EditPpeRequestDialog';
 
 
 interface PpeRequestTableProps {
@@ -34,8 +35,9 @@ const statusVariant: Record<PpeRequestStatus, 'default' | 'secondary' | 'destruc
 };
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
-  const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed } = useAppContext();
+  const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment } = useAppContext();
   const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
+  const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
   const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | null>(null);
   const [comment, setComment] = useState('');
   const { toast } = useToast();
@@ -69,6 +71,20 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     toast({ title: `Request ${action}` });
     setSelectedRequest(null);
     setAction(null);
+  }
+
+  const handleEditClick = (req: PpeRequest) => {
+    setEditingRequest(req);
+  };
+
+  const handleDeleteRequest = (reqId: string) => {
+    deletePpeRequest(reqId);
+    toast({ variant: 'destructive', title: 'Request Deleted' });
+  }
+
+  const handleDeleteAttachment = (reqId: string) => {
+    deletePpeAttachment(reqId);
+    toast({ variant: 'destructive', title: 'Attachment Deleted' });
   }
   
   const getManpowerProfile = (id: string) => manpowerProfiles.find(p => p.id === id);
@@ -159,7 +175,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex gap-2 justify-end items-center">
                       {canApprove && (
                         <>
                           <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
@@ -169,6 +185,33 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                       {canMarkAsIssued && (
                         <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                       )}
+
+                       {user?.role === 'Admin' && (
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button variant="ghost" size="icon"><Settings className="h-4 w-4" /></Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent>
+                             <DropdownMenuItem onSelect={() => handleEditClick(req)} disabled={req.status !== 'Pending'}>
+                               <Edit className="mr-2 h-4 w-4" /> Edit Request
+                             </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => handleDeleteRequest(req.id)} disabled={req.status !== 'Pending'} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Request
+                             </DropdownMenuItem>
+                             {req.attachmentUrl && (
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger><Paperclip className="mr-2 h-4 w-4" />Attachment</DropdownMenuSubTrigger>
+                                  <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                      <DropdownMenuItem onSelect={() => window.open(req.attachmentUrl, '_blank')}>View Attachment</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={() => handleDeleteAttachment(req.id)} className="text-destructive focus:text-destructive">Delete Attachment</DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                             )}
+                           </DropdownMenuContent>
+                         </DropdownMenu>
+                       )}
                     </div>
                 </TableCell>
                 </TableRow>
@@ -207,7 +250,16 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             </AlertDialogContent>
         </AlertDialog>
     )}
+    
+    {editingRequest && (
+      <EditPpeRequestDialog 
+        isOpen={!!editingRequest}
+        setIsOpen={() => setEditingRequest(null)}
+        request={editingRequest}
+      />
+    )}
     </>
   );
 }
+
 

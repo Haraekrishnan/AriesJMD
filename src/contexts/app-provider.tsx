@@ -1329,6 +1329,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, addActivityLog]);
 
+  const markInternalRequestAsViewed = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = internalRequests.find(r => r.id === requestId);
+    if (request && request.requesterId === user.id && !request.viewedByRequester) {
+      update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, internalRequests]);
+
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
     if (!user) return;
     const request = internalRequests.find(r => r.id === requestId);
@@ -1361,10 +1369,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Internal Request Deleted', `Request ID: ${requestId}`);
   }, [user, addActivityLog]);
 
-  const markInternalRequestAsViewed = useCallback((requestId: string) => {
-    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
-  }, []);
-  
   const acknowledgeInternalRequest = useCallback((requestId: string) => {
     if (user) {
       update(ref(rtdb, `internalRequests/${requestId}`), { acknowledgedByRequester: true });
@@ -1410,11 +1414,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `managementRequests/${requestId}`));
     addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
   }, [user, addActivityLog]);
-
-  const markManagementRequestAsViewed = useCallback((requestId: string) => {
-    update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
-  }, []);
-
+  
   const addPpeRequest = useCallback((request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
 
@@ -1502,15 +1502,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
       addActivityLog(user.id, 'PPE Attachment Deleted', `For Request ID: ${requestId}`);
   }, [user, addActivityLog]);
-
-  const markPpeRequestAsViewed = useCallback((requestId: string) => {
-    if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if(request && !request.viewedByRequester) {
-      update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
-    }
-  }, [user, ppeRequests]);
-
+  
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if (!user) return;
     const newItemRef = push(ref(rtdb, 'inventoryItems'));
@@ -2219,6 +2211,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return ppeRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length;
   }, [ppeRequests, user]);
 
+  const markManagementRequestAsViewed = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = managementRequests.find(r => r.id === requestId);
+    if (request && request.requesterId === user.id && !request.viewedByRequester) {
+      update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, managementRequests]);
+
+  const markPpeRequestAsViewed = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (request && request.requesterId === user.id && !request.viewedByRequester) {
+      update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, ppeRequests]);
+
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, appName, appLogo,
     login, logout, updateProfile, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule,
@@ -2235,3 +2243,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
