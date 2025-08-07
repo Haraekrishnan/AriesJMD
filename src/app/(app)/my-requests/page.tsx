@@ -15,6 +15,7 @@ import ManagementRequestTable from '@/components/requests/ManagementRequestTable
 import { Badge } from '@/components/ui/badge';
 import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
 import PpeRequestTable from '@/components/requests/PpeRequestTable';
+import { Role } from '@/lib/types';
 
 export default function MyRequestsPage() {
     const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount } = useAppContext();
@@ -31,6 +32,12 @@ export default function MyRequestsPage() {
     const isManager = useMemo(() => {
         if(!user) return false;
         return user.role === 'Manager' || user.role === 'Admin';
+    }, [user]);
+
+    const canIssuePpe = useMemo(() => {
+        if (!user) return false;
+        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
+        return storeRoles.includes(user.role);
     }, [user]);
 
     const visibleInternalRequests = useMemo(() => {
@@ -52,13 +59,7 @@ export default function MyRequestsPage() {
         return ppeRequests
             .filter(req => req.requesterId === user.id || isManager || canIssuePpe)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [ppeRequests, user, isManager]);
-
-    const canIssuePpe = useMemo(() => {
-        if (!user) return false;
-        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
-        return storeRoles.includes(user.role);
-    }, [user]);
+    }, [ppeRequests, user, isManager, canIssuePpe]);
 
     const internalNotifCount = pendingInternalRequestCount + updatedInternalRequestCount;
     const mgmtNotifCount = pendingManagementRequestCount + updatedManagementRequestCount;
