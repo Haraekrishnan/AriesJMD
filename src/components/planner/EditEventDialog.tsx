@@ -1,6 +1,7 @@
 
+
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,6 +41,7 @@ interface EditEventDialogProps {
 export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventDialogProps) {
   const { updatePlannerEvent, getVisibleUsers } = useAppContext();
   const { toast } = useToast();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
   const assignableUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
 
@@ -111,14 +113,24 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
               control={form.control}
               name="date"
               render={({ field }) => (
-                <Popover>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar 
+                      mode="single" 
+                      selected={field.value} 
+                      onSelect={(date) => {
+                        field.onChange(date);
+                        setIsCalendarOpen(false);
+                      }} 
+                      initialFocus 
+                    />
+                  </PopoverContent>
                 </Popover>
               )}
             />

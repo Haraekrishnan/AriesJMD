@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,6 +39,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
 
   const form = useForm<PpeRequestFormValues>({
     resolver: zodResolver(ppeRequestSchema),
@@ -128,7 +130,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
               name="manpowerId"
               control={form.control}
               render={({ field }) => (
-                <Popover>
+                <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
                       {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
@@ -145,7 +147,10 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                             <CommandItem
                               key={mp.id}
                               value={mp.name}
-                              onSelect={() => form.setValue("manpowerId", mp.id)}
+                              onSelect={() => {
+                                form.setValue("manpowerId", mp.id);
+                                setIsManpowerPopoverOpen(false);
+                              }}
                             >
                               {mp.name}
                             </CommandItem>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,7 +54,6 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
       description: 'Your internal store request has been submitted.',
     });
     setIsOpen(false);
-    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -113,7 +113,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
             </div>
           </ScrollArea>
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Submit Request</Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,5 @@
 
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -132,9 +131,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             const isRequester = req.requesterId === user?.id;
             const hasUpdate = isRequester && !req.viewedByRequester;
             const canEditRequest = user?.role === 'Admin' || req.status === 'Pending';
-            const commentsArray = Array.isArray(req.comments) 
-              ? req.comments 
-              : Object.values(req.comments || {});
+            const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
             const needsAcknowledgement = isRequester && req.status === 'Issued' && !req.acknowledgedByRequester;
             
             return (
@@ -185,32 +182,31 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <AlertDialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent>
+                    <div className="flex items-center justify-end gap-2">
                         {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit Items</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>
-                          </>
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                              <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                              <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
+                              <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                            </>
                         )}
-                        {user?.role === 'Admin' && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                        {user?.role === 'Admin' && (
+                           <AlertDialog>
+                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                                 <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                           </AlertDialog>
+                        )}
+                    </div>
                 </TableCell>
               </TableRow>
             )
@@ -244,9 +240,16 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
                 <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
                 <form onSubmit={form.handleSubmit(onEditSubmit)}>
                     <div className="space-y-4 p-4 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-12 gap-2 items-center px-2">
+                            <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
+                            <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
+                            <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
+                            <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
+                            <div className="col-span-1"></div>
+                        </div>
                         {fields.map((field, index) => (
                            <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                             <div className="col-span-5 space-y-1"><Input {...form.register(`items.${index}.description`)} /></div>
+                             <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
                              <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
                              <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
                              <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>

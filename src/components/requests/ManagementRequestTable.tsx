@@ -136,27 +136,32 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    <AlertDialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {canEdit && <DropdownMenuItem onClick={() => setEditingRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
-                                {isRecipient && req.status === 'Pending' && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
-                                {isRecipient && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
-                                {user?.role === 'Admin' && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this management request.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center justify-end gap-2">
+                         {isRecipient && req.status === 'Pending' && (
+                            <>
+                                <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                            </>
+                         )}
+                         {canEdit && (
+                            <Button variant="ghost" size="icon" onClick={() => setEditingRequest(req)}><Edit className="h-4 w-4" /></Button>
+                         )}
+                         {user?.role === 'Admin' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                                 <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this management request.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                         )}
+                    </div>
                 </TableCell>
                 </TableRow>
               )

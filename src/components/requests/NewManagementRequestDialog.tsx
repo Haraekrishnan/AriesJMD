@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,7 +41,6 @@ export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewMan
       description: 'Your request has been sent to management.',
     });
     setIsOpen(false);
-    form.reset();
   };
 
   const handleOpenChange = (open: boolean) => {

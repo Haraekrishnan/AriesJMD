@@ -7,7 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Paperclip } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Paperclip, Edit } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -72,7 +72,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   }
   
   const getManpowerProfile = (id: string) => manpowerProfiles.find(p => p.id === id);
-  const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'N/A';
+  const getRequesterName = (id: string) => users.find(u => u.id === id)?.name || 'N/A';
   const getProjectName = (id?: string) => id ? projects.find(p => p.id === id)?.name : 'N/A';
   const getRejoiningDate = (profile?: ReturnType<typeof getManpowerProfile>) => {
       if(!profile || !profile.leaveHistory) return 'N/A';
@@ -159,14 +159,17 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            {canApprove && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
-                            {canMarkAsIssued && <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')}><Truck className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>}
-                            {isManager && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex gap-2 justify-end">
+                      {canApprove && (
+                        <>
+                          <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                        </>
+                      )}
+                      {canMarkAsIssued && (
+                        <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
+                      )}
+                    </div>
                 </TableCell>
                 </TableRow>
               )
