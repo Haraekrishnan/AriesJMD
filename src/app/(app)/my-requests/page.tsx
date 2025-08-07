@@ -17,7 +17,7 @@ import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
 import PpeRequestTable from '@/components/requests/PpeRequestTable';
 
 export default function MyRequestsPage() {
-    const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
+    const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount } = useAppContext();
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
     const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
@@ -50,9 +50,19 @@ export default function MyRequestsPage() {
     const visiblePpeRequests = useMemo(() => {
         if (!user || !ppeRequests) return [];
         return ppeRequests
-            .filter(req => req.requesterId === user.id || isManager)
+            .filter(req => req.requesterId === user.id || isManager || canIssuePpe)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [ppeRequests, user, isManager]);
+
+    const canIssuePpe = useMemo(() => {
+        if (!user) return false;
+        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
+        return storeRoles.includes(user.role);
+    }, [user]);
+
+    const internalNotifCount = pendingInternalRequestCount + updatedInternalRequestCount;
+    const mgmtNotifCount = pendingManagementRequestCount + updatedManagementRequestCount;
+    const ppeNotifCount = pendingPpeRequestCount + updatedPpeRequestCount;
 
     return (
         <div className="space-y-8">
@@ -67,15 +77,22 @@ export default function MyRequestsPage() {
             
             <Tabs defaultValue="store-requests">
                 <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="store-requests">Internal Store Requests
-                         {(pendingInternalRequestCount + updatedInternalRequestCount > 0) && (
-                            <Badge className="ml-2" variant="destructive">{pendingInternalRequestCount + updatedInternalRequestCount}</Badge>
+                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
+                        Internal Store Requests
+                         {internalNotifCount > 0 && (
+                            <Badge variant="destructive">{internalNotifCount}</Badge>
                          )}
                     </TabsTrigger>
-                    <TabsTrigger value="ppe-requests">PPE Requests</TabsTrigger>
-                    <TabsTrigger value="management-requests">Management Requests
-                         {(pendingManagementRequestCount + updatedManagementRequestCount > 0) && (
-                            <Badge className="ml-2" variant="destructive">{pendingManagementRequestCount + updatedManagementRequestCount}</Badge>
+                    <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
+                        PPE Requests
+                        {ppeNotifCount > 0 && (
+                           <Badge variant="destructive">{ppeNotifCount}</Badge>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="management-requests" className="flex items-center gap-2">
+                        Management Requests
+                         {mgmtNotifCount > 0 && (
+                            <Badge variant="destructive">{mgmtNotifCount}</Badge>
                          )}
                     </TabsTrigger>
                 </TabsList>
