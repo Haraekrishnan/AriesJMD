@@ -423,8 +423,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Manager' || user.role === 'Project Coordinator') {
+    if (user.role === 'Admin' || user.role === 'Manager') {
         return users;
+    }
+    if (user.role === 'Project Coordinator') {
+        return users.filter(u => u.role !== 'Manager');
     }
     if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
         return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
@@ -1043,7 +1046,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else if (obj !== null && typeof obj === 'object') {
         return Object.fromEntries(
           Object.entries(obj)
-            .filter(([_, v]) => v !== undefined)
+            .filter(([_, v]) => v !== undefined && v !== '')
             .map(([k, v]) => [k, cleanData(v)])
         );
       }
@@ -1416,7 +1419,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     const manager = users.find(u => u.role === 'Manager');
     const newRequestData: Omit<PpeRequest, 'id'> = {
-      ...request,
+      ...request, // This includes size, remarks, etc.
       requesterId: user.id,
       date: new Date().toISOString(),
       status: 'Pending',

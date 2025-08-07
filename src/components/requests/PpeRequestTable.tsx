@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -113,7 +114,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                    {hasUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
                 </TableCell>
                 <TableCell>
-                  <Accordion type="single" collapsible className="w-full">
+                  <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req)}>
                     <AccordionItem value={req.id} className="border-none">
                       <AccordionTrigger className="p-0 hover:no-underline font-normal text-left">{manpower?.name}</AccordionTrigger>
                       <AccordionContent className="pt-4 text-muted-foreground">
@@ -123,6 +124,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                              {manpower.ppeHistory.map(item => (
                                <li key={item.id}>
                                 {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
+                                {item.remarks && <span className="text-muted-foreground text-xs italic"> - "{item.remarks}"</span>}
                                </li>
                              ))}
                            </ul>
@@ -137,6 +139,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                 <TableCell>
                     <p>{req.requestType} {req.ppeType} {req.quantity ? `(x${req.quantity})` : ''}</p>
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
+                    {req.remarks && <p className="text-xs text-muted-foreground italic">"{req.remarks}"</p>}
                 </TableCell>
                 <TableCell>
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
