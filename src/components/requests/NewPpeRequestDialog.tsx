@@ -12,10 +12,14 @@ import { Label } from '@/components/ui/label';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ChevronsUpDown } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { useEffect } from 'react';
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
   ppeType: z.enum(['Coverall', 'Safety Shoes']),
+  size: z.string().min(1, 'Size is required'),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
 });
@@ -37,6 +41,19 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
       requestType: 'New',
     },
   });
+
+  const manpowerId = form.watch('manpowerId');
+  const ppeType = form.watch('ppeType');
+
+  useEffect(() => {
+    if (manpowerId && ppeType) {
+        const profile = manpowerProfiles.find(p => p.id === manpowerId);
+        if (profile) {
+            const size = ppeType === 'Coverall' ? profile.coverallSize : profile.shoeSize;
+            form.setValue('size', size || '');
+        }
+    }
+  }, [manpowerId, ppeType, manpowerProfiles, form]);
 
   const onSubmit = (data: PpeRequestFormValues) => {
     addPpeRequest(data);
@@ -112,7 +129,13 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 )}/>
                 {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
             </div>
-            <div className="space-y-2">
+             <div className="space-y-2">
+                <Label>Size</Label>
+                <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+                {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
+            </div>
+          </div>
+           <div className="space-y-2">
                 <Label>Request Type</Label>
                 <Controller name="requestType" control={form.control} render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
@@ -121,11 +144,10 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                     </Select>
                 )}/>
             </div>
-          </div>
           
           <div className="space-y-2">
             <Label>Remarks</Label>
-            <textarea {...form.register('remarks')} className="w-full p-2 border rounded-md" />
+            <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
           </div>
 
           <DialogFooter>
