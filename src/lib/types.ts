@@ -473,6 +473,7 @@ export type MachineLog = {
     jobDescription: string;
     status: 'Active' | 'Idle';
     reason?: string;
+    attachmentUrl?: string;
 };
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';

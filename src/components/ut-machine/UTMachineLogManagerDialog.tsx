@@ -12,13 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { UTMachine, MachineLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Paperclip, Upload, X } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
+import Link from 'next/link';
 
 const logSchema = z.object({
   date: z.string().min(1, 'Date is required'),
@@ -29,6 +30,7 @@ const logSchema = z.object({
   userName: z.string().min(1, 'User name is required'),
   status: z.enum(['Active', 'Idle'], { required_error: "Status is required." }),
   reason: z.string().optional(),
+  attachmentUrl: z.string().optional(),
 }).refine(data => {
     if (data.status === 'Idle' && !data.reason) {
         return false;
@@ -49,6 +51,7 @@ interface UTMachineLogManagerDialogProps {
 export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }: UTMachineLogManagerDialogProps) {
   const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
   
   const machineLogs = getMachineLogs(machine.id);
 
@@ -63,10 +66,43 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
       userName: '',
       status: 'Active',
       reason: '',
+      attachmentUrl: '',
     },
   });
 
   const watchStatus = form.watch('status');
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    toast({ title: 'Uploading...', description: 'Please wait while the file is uploaded.' });
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "my_unsigned_upload"); 
+
+    try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await res.json();
+        setIsUploading(false);
+
+        if (data.secure_url) {
+            form.setValue('attachmentUrl', data.secure_url);
+            toast({ title: 'Upload Successful', description: 'File has been attached.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file.' });
+        }
+    } catch (error) {
+        setIsUploading(false);
+        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
+    }
+  };
 
   const onSubmit = async (data: LogFormValues) => {
     if (!user) return;
@@ -75,14 +111,19 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
       title: 'Log Added',
       description: 'The usage log has been successfully recorded.',
     });
-    form.reset();
+    form.reset({
+      ...form.getValues(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+      jobDescription: '',
+      reason: '',
+      attachmentUrl: ''
+    });
   };
   
   const handleDelete = (logId: string) => {
     deleteMachineLog(logId);
     toast({ title: 'Log Deleted', variant: 'destructive' });
   };
-
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -133,7 +174,28 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                             {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
                         </div>
                     )}
-                    <Button type="submit" className="w-full">
+                     <div className="space-y-2">
+                      <Label>Attachment (Optional)</Label>
+                       {form.watch('attachmentUrl') ? (
+                         <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <Link href={form.watch('attachmentUrl')!} target="_blank" className="flex items-center gap-2 truncate hover:underline">
+                              <Paperclip className="h-4 w-4"/>
+                              <span className="truncate">Uploaded File</span>
+                            </Link>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', '')}>
+                              <X className="h-4 w-4"/>
+                            </Button>
+                         </div>
+                      ) : (
+                        <div className="relative">
+                          <Button asChild variant="outline" size="sm">
+                            <Label htmlFor="ut-log-file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
+                          </Button>
+                          <Input id="ut-log-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                        </div>
+                      )}
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isUploading}>
                         Add Log
                     </Button>
                 </form>
@@ -158,6 +220,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                                         <TableCell>
                                             <p className="font-medium">{log.jobDescription}</p>
                                             <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
+                                            {log.attachmentUrl && <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs"><Link href={log.attachmentUrl} target='_blank'><Paperclip className="h-3 w-3 mr-1"/>View Attachment</Link></Button>}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={log.status === 'Active' ? 'success' : 'secondary'}>{log.status}</Badge>
