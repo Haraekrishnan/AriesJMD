@@ -1419,7 +1419,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     const manager = users.find(u => u.role === 'Manager');
     const newRequestData: Omit<PpeRequest, 'id'> = {
-      ...request, // This includes size, remarks, etc.
+      ...request,
       requesterId: user.id,
       date: new Date().toISOString(),
       status: 'Pending',
@@ -1469,6 +1469,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 requestType: request.requestType,
                 remarks: request.remarks,
                 quantity: request.quantity,
+                storeComment: comment,
             };
             const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
             updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
@@ -2191,3 +2192,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    

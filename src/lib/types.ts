@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -206,6 +207,7 @@ export type PpeHistoryRecord = {
   issueDate: string; // ISO String
   requestType: 'New' | 'Replacement';
   remarks?: string;
+  storeComment?: string;
 };
 
 export type ManpowerProfile = {
@@ -353,6 +355,7 @@ export type PpeRequest = {
   size: string;
   quantity?: number;
   requestType: 'New' | 'Replacement';
+  remarks?: string;
   date: string; // ISO
   status: PpeRequestStatus;
   approverId?: string;
@@ -557,3 +560,5 @@ export type JobSchedule = {
   createdAt: string; // ISO
   updatedAt: string; // ISO
 };
+
+    
