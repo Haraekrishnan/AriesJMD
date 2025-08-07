@@ -48,7 +48,7 @@ export default function MyRequestsPage() {
     }, [managementRequests, user]);
     
     const visiblePpeRequests = useMemo(() => {
-        if (!user) return [];
+        if (!user || !ppeRequests) return [];
         return ppeRequests
             .filter(req => req.requesterId === user.id || isManager)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
