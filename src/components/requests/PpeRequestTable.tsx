@@ -181,7 +181,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                 <DialogTitle>Attachment Viewer</DialogTitle>
             </DialogHeader>
             <div className="flex items-center justify-center p-4">
-                <img src={viewingAttachmentUrl || ''} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />
+                {viewingAttachmentUrl && <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />}
             </div>
         </DialogContent>
     </Dialog>
