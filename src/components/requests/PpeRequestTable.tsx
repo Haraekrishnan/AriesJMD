@@ -68,6 +68,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   }
   
   const getManpowerProfile = (id: string) => manpowerProfiles.find(p => p.id === id);
+  const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'N/A';
   const getProjectName = (id?: string) => id ? projects.find(p => p.id === id)?.name : 'N/A';
   const getRejoiningDate = (profile?: ReturnType<typeof getManpowerProfile>) => {
       if(!profile || !profile.leaveHistory) return 'N/A';
@@ -94,8 +95,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             <TableHead></TableHead>
             <TableHead>Employee</TableHead>
             <TableHead>Project</TableHead>
-            <TableHead>Joining Date</TableHead>
-            <TableHead>Rejoining Date</TableHead>
+            <TableHead>Requester</TableHead>
             <TableHead>Request</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -118,6 +118,10 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <AccordionItem value={req.id} className="border-none">
                       <AccordionTrigger className="p-0 hover:no-underline font-normal text-left">{manpower?.name}</AccordionTrigger>
                       <AccordionContent className="pt-4 text-muted-foreground">
+                        <div className='mb-2 space-y-1 text-sm'>
+                          <p><strong>Joining Date:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</p>
+                          <p><strong>Rejoining Date:</strong> {getRejoiningDate(manpower)}</p>
+                        </div>
                         <h4 className="font-semibold text-xs mb-2">PPE Issue History</h4>
                          {manpower?.ppeHistory && manpower.ppeHistory.length > 0 ? (
                            <ul className="list-disc pl-4 text-sm space-y-1">
@@ -135,8 +139,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                   </Accordion>
                 </TableCell>
                 <TableCell>{getProjectName(manpower?.eic)}</TableCell>
-                <TableCell>{manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                <TableCell>{getRejoiningDate(manpower)}</TableCell>
+                <TableCell>{getUserName(req.requesterId)}</TableCell>
                 <TableCell>
                     <p>{req.requestType} {req.ppeType} {req.quantity ? `(x${req.quantity})` : ''}</p>
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
@@ -183,3 +186,4 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </>
   );
 }
+
