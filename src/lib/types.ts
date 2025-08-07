@@ -361,6 +361,7 @@ export type PpeRequest = {
   approverId?: string;
   comments: Comment[];
   viewedByRequester: boolean;
+  attachmentUrl?: string;
 };
 
 
@@ -560,5 +561,3 @@ export type JobSchedule = {
   createdAt: string; // ISO
   updatedAt: string; // ISO
 };
-
-    

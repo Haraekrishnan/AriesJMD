@@ -7,7 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Paperclip } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -18,6 +18,7 @@ import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import Link from 'next/link';
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -104,6 +105,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         <TableBody>
           {requests.map(req => {
               const manpower = getManpowerProfile(req.manpowerId);
+              const requester = users.find(u => u.id === req.requesterId);
               const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
               const canApprove = isManager && req.status === 'Pending';
               const canMarkAsIssued = canIssue && req.status === 'Approved';
@@ -139,11 +141,16 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                   </Accordion>
                 </TableCell>
                 <TableCell>{getProjectName(manpower?.eic)}</TableCell>
-                <TableCell>{getUserName(req.requesterId)}</TableCell>
+                <TableCell>{requester?.name || 'N/A'}</TableCell>
                 <TableCell>
                     <p>{req.requestType} {req.ppeType} {req.quantity ? `(x${req.quantity})` : ''}</p>
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
                     {req.remarks && <p className="text-xs text-muted-foreground italic">"{req.remarks}"</p>}
+                     {req.attachmentUrl && (
+                        <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                           <Link href={req.attachmentUrl} target="_blank" rel="noopener noreferrer"><Paperclip className="mr-1 h-3 w-3" />View Attachment</Link>
+                        </Button>
+                    )}
                 </TableCell>
                 <TableCell>
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
@@ -186,4 +193,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </>
   );
 }
-

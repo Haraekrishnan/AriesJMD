@@ -11,10 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ChevronsUpDown } from 'lucide-react';
+import { ChevronsUpDown, Paperclip, Upload, X } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
@@ -23,6 +23,7 @@ const ppeRequestSchema = z.object({
   quantity: z.coerce.number().optional(),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
+  attachmentUrl: z.string().optional(),
 });
 
 type PpeRequestFormValues = z.infer<typeof ppeRequestSchema>;
@@ -35,6 +36,8 @@ interface NewPpeRequestDialogProps {
 export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequestDialogProps) {
   const { addPpeRequest, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const form = useForm<PpeRequestFormValues>({
     resolver: zodResolver(ppeRequestSchema),
@@ -46,6 +49,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
   const manpowerId = form.watch('manpowerId');
   const ppeType = form.watch('ppeType');
+  const requestType = form.watch('requestType');
 
   useEffect(() => {
     if (manpowerId && ppeType) {
@@ -56,6 +60,41 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
         }
     }
   }, [manpowerId, ppeType, manpowerProfiles, form]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setAttachmentFile(file);
+    setIsUploading(true);
+    toast({ title: 'Uploading...', description: 'Please wait while the image is uploaded.' });
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "unsigned_preset"); 
+
+    try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await res.json();
+        setIsUploading(false);
+
+        if (data.secure_url) {
+            form.setValue('attachmentUrl', data.secure_url);
+            toast({ title: 'Upload Successful', description: 'Image has been attached.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image.' });
+            setAttachmentFile(null);
+        }
+    } catch (error) {
+        setIsUploading(false);
+        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
+        setAttachmentFile(null);
+    }
+  };
 
   const onSubmit = (data: PpeRequestFormValues) => {
     addPpeRequest(data);
@@ -70,6 +109,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({ requestType: 'New', quantity: 1 });
+      setAttachmentFile(null);
     }
     setIsOpen(open);
   };
@@ -152,6 +192,30 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                     </Select>
                 )}/>
             </div>
+
+          {requestType === 'Replacement' && (
+            <div className="space-y-2">
+              <Label>Attach Photo of Damaged Item</Label>
+              {attachmentFile ? (
+                 <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                    <div className="flex items-center gap-2 truncate">
+                      <Paperclip className="h-4 w-4"/>
+                      <span className="truncate">{attachmentFile.name}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
+                      <X className="h-4 w-4"/>
+                    </Button>
+                 </div>
+              ) : (
+                <div className="relative">
+                  <Button asChild variant="outline" size="sm">
+                    <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
+                  </Button>
+                  <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label>Remarks</Label>
@@ -160,7 +224,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Submit Request</Button>
+            <Button type="submit" disabled={isUploading}>Submit Request</Button>
           </DialogFooter>
         </form>
       </DialogContent>
