@@ -59,6 +59,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
         <TableRow>
           <TableHead>Vehicle No.</TableHead>
           <TableHead>Driver</TableHead>
+          <TableHead>Vendor</TableHead>
           <TableHead>VAP Access</TableHead>
           <TableHead>VAP Validity</TableHead>
           <TableHead>Insurance</TableHead>
@@ -73,6 +74,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
           <TableRow key={vehicle.id}>
             <TableCell className="font-medium">{vehicle.vehicleNumber}</TableCell>
             <TableCell>{getDriverName(vehicle.driverId)}</TableCell>
+            <TableCell>{vehicle.vendorName || 'N/A'}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">
                 {(vehicle.vapAccess || []).map(access => (

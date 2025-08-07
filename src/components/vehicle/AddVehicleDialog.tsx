@@ -21,6 +21,7 @@ const VAP_ACCESS_OPTIONS = ["DTA ISBL", "SEZ ISBL", "MTF ISBL", "OTHERS"];
 const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
   driverId: z.string().min(1, 'Please select a driver'),
+  vendorName: z.string().optional(),
   seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
   vapAccess: z.array(z.string()).optional(),
   vapValidity: z.date().optional(),
@@ -94,6 +95,10 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
               {form.formState.errors.seatingCapacity && <p className="text-xs text-destructive">{form.formState.errors.seatingCapacity.message}</p>}
             </div>
           </div>
+           <div className="space-y-2">
+              <Label htmlFor="vendorName">Vendor Name</Label>
+              <Input id="vendorName" {...form.register('vendorName')} />
+            </div>
           <div className="space-y-2">
             <Label>Driver</Label>
             <Controller

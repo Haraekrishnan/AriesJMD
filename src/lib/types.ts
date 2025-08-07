@@ -125,6 +125,7 @@ export type Vehicle = {
   id:string;
   vehicleNumber: string;
   driverId: string;
+  vendorName?: string;
   seatingCapacity: number;
   vapAccess?: string[];
   vapValidity?: string; // YYYY-MM-DD
