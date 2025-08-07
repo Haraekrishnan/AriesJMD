@@ -71,7 +71,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "ml_default"); 
+    formData.append("upload_preset", "my_unsigned_upload"); 
 
     try {
         const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
