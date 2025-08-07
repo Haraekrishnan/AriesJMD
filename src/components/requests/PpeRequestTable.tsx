@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -40,6 +39,12 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   const isManager = useMemo(() => {
     if(!user) return false;
     return user.role === 'Manager' || user.role === 'Admin';
+  }, [user]);
+  
+  const canIssue = useMemo(() => {
+    if (!user) return false;
+    const storeRoles = ['Store in Charge', 'Assistant Store Incharge', 'Admin'];
+    return storeRoles.includes(user.role);
   }, [user]);
 
   const handleActionClick = (req: PpeRequest, act: 'Approved' | 'Rejected' | 'Issued') => {
@@ -99,15 +104,33 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
           {requests.map(req => {
               const manpower = getManpowerProfile(req.manpowerId);
               const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
-              const commentsArray = Array.isArray(req.comments) ? req.comments : [];
-              const canAct = isManager && (req.status === 'Pending' || req.status === 'Approved');
-              
+              const canApprove = isManager && req.status === 'Pending';
+              const canMarkAsIssued = canIssue && req.status === 'Approved';
+
               return (
                 <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
                 <TableCell className="w-8">
                    {hasUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
                 </TableCell>
-                <TableCell>{manpower?.name}</TableCell>
+                <TableCell>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value={req.id} className="border-none">
+                      <AccordionTrigger className="p-0 hover:no-underline font-normal text-left">{manpower?.name}</AccordionTrigger>
+                      <AccordionContent className="pt-4 text-muted-foreground">
+                        <h4 className="font-semibold text-xs mb-2">PPE Issue History</h4>
+                         {manpower?.ppeHistory && manpower.ppeHistory.length > 0 ? (
+                           <ul className="list-disc pl-4 text-sm">
+                             {manpower.ppeHistory.map(item => (
+                               <li key={item.id}>
+                                {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
+                               </li>
+                             ))}
+                           </ul>
+                         ) : <p className="text-xs">No previous PPE issued.</p>}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </TableCell>
                 <TableCell>{getProjectName(manpower?.eic)}</TableCell>
                 <TableCell>{manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                 <TableCell>{getRejoiningDate(manpower)}</TableCell>
@@ -122,9 +145,9 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            {canAct && req.status === 'Pending' && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
-                            {canAct && req.status === 'Approved' && <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>}
-                            {canAct && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
+                            {canApprove && <DropdownMenuItem onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</DropdownMenuItem>}
+                            {canMarkAsIssued && <DropdownMenuItem onClick={() => handleActionClick(req, 'Issued')}><Truck className="mr-2 h-4 w-4" /> Mark as Issued</DropdownMenuItem>}
+                            {isManager && req.status === 'Pending' && <DropdownMenuItem className="text-destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</DropdownMenuItem>}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </TableCell>
