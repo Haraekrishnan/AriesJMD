@@ -19,6 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -37,7 +39,8 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | null>(null);
   const [comment, setComment] = useState('');
   const { toast } = useToast();
-
+  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+  
   const isManager = useMemo(() => {
     if(!user) return false;
     return user.role === 'Manager' || user.role === 'Admin';
@@ -147,8 +150,8 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
                     {req.remarks && <p className="text-xs text-muted-foreground italic">"{req.remarks}"</p>}
                      {req.attachmentUrl && (
-                        <Button variant="link" size="sm" asChild className="p-0 h-auto">
-                           <Link href={req.attachmentUrl} target="_blank" rel="noopener noreferrer"><Paperclip className="mr-1 h-3 w-3" />View Attachment</Link>
+                        <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setViewingAttachmentUrl(req.attachmentUrl!)}>
+                            <Paperclip className="mr-1 h-3 w-3" />View Attachment
                         </Button>
                     )}
                 </TableCell>
@@ -171,6 +174,17 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </TableBody>
       </Table>
     </div>
+
+    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>Attachment Viewer</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-4">
+                <img src={viewingAttachmentUrl || ''} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />
+            </div>
+        </DialogContent>
+    </Dialog>
 
     {selectedRequest && action && (
         <AlertDialog open={!!(selectedRequest && action)} onOpenChange={() => setSelectedRequest(null)}>
