@@ -120,11 +120,12 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                       <AccordionContent className="pt-4 text-muted-foreground">
                         <h4 className="font-semibold text-xs mb-2">PPE Issue History</h4>
                          {manpower?.ppeHistory && manpower.ppeHistory.length > 0 ? (
-                           <ul className="list-disc pl-4 text-sm">
+                           <ul className="list-disc pl-4 text-sm space-y-1">
                              {manpower.ppeHistory.map(item => (
                                <li key={item.id}>
                                 {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
-                                {item.remarks && <span className="text-muted-foreground text-xs italic"> - "{item.remarks}"</span>}
+                                {item.remarks && <p className="text-muted-foreground text-xs italic">Requester: "{item.remarks}"</p>}
+                                {item.storeComment && <p className="text-muted-foreground text-xs italic">Store: "{item.storeComment}"</p>}
                                </li>
                              ))}
                            </ul>
