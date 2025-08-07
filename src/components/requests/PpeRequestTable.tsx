@@ -102,8 +102,6 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
               const commentsArray = Array.isArray(req.comments) ? req.comments : [];
               const canAct = isManager && (req.status === 'Pending' || req.status === 'Approved');
               
-              const size = req.ppeType === 'Coverall' ? manpower?.coverallSize : manpower?.shoeSize;
-
               return (
                 <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
                 <TableCell className="w-8">
@@ -115,7 +113,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                 <TableCell>{getRejoiningDate(manpower)}</TableCell>
                 <TableCell>
                     <p>{req.requestType} {req.ppeType} {req.quantity ? `(x${req.quantity})` : ''}</p>
-                    <p className="text-sm text-muted-foreground">Size: {size || 'N/A'}</p>
+                    <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
                 </TableCell>
                 <TableCell>
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>

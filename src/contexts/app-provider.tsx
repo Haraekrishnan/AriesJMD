@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -1409,6 +1409,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPpeRequest = useCallback((request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
+
+    const updates: { [key: string]: any } = {};
+    
+    // Create the new PPE request
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     const manager = users.find(u => u.role === 'Manager');
     const newRequestData: Omit<PpeRequest, 'id'> = {
@@ -1420,9 +1424,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       comments: [],
       viewedByRequester: true,
     };
-    set(newRequestRef, newRequestData);
+    updates[`ppeRequests/${newRequestRef.key}`] = newRequestData;
     addActivityLog(user.id, 'PPE Request Created', `For ${request.manpowerId}`);
-  }, [user, users, addActivityLog]);
+
+    // Update the manpower profile with the new size
+    const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
+    if (manpowerProfile) {
+        if (request.ppeType === 'Coverall') {
+            updates[`manpowerProfiles/${request.manpowerId}/coverallSize`] = request.size;
+        } else if (request.ppeType === 'Safety Shoes') {
+            updates[`manpowerProfiles/${request.manpowerId}/shoeSize`] = request.size;
+        }
+    }
+
+    update(ref(rtdb), updates);
+
+  }, [user, users, addActivityLog, manpowerProfiles]);
 
   const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
     if (!user) return;
