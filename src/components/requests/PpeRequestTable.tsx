@@ -7,7 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Paperclip, Edit } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -167,7 +167,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                         </>
                       )}
                       {canMarkAsIssued && (
-                        <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
+                        <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                       )}
                     </div>
                 </TableCell>
@@ -210,3 +210,4 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </>
   );
 }
+
