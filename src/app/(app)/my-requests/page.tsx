@@ -13,11 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NewManagementRequestDialog from '@/components/requests/NewManagementRequestDialog';
 import ManagementRequestTable from '@/components/requests/ManagementRequestTable';
 import { Badge } from '@/components/ui/badge';
+import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
+import PpeRequestTable from '@/components/requests/PpeRequestTable';
 
 export default function MyRequestsPage() {
-    const { user, roles, internalRequests, managementRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
+    const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount } = useAppContext();
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
+    const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
 
     const isStoreApprover = useMemo(() => {
         if (!user) return false;
@@ -25,10 +28,9 @@ export default function MyRequestsPage() {
         return userRole?.permissions.includes('approve_store_requests');
     }, [user, roles]);
 
-    const isManagementApprover = useMemo(() => {
-        if (!user) return false;
-        const managementRoles = ['Admin', 'Manager', 'Supervisor'];
-        return managementRoles.includes(user.role);
+    const isManager = useMemo(() => {
+        if(!user) return false;
+        return user.role === 'Manager' || user.role === 'Admin';
     }, [user]);
 
     const visibleInternalRequests = useMemo(() => {
@@ -44,6 +46,13 @@ export default function MyRequestsPage() {
             .filter(req => req.requesterId === user.id || req.recipientId === user.id)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [managementRequests, user]);
+    
+    const visiblePpeRequests = useMemo(() => {
+        if (!user) return [];
+        return ppeRequests
+            .filter(req => req.requesterId === user.id || isManager)
+            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [ppeRequests, user, isManager]);
 
     return (
         <div className="space-y-8">
@@ -54,29 +63,16 @@ export default function MyRequestsPage() {
                         Track your submitted requests or create a new PPE request.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button asChild>
-                        <Link href="https://docs.google.com/forms/d/1gT2AtCHMgCLgLNaYErxKMKju2Z0OCax1UjM40P_EWrQ/viewform" target="_blank">
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            PPE Request Form
-                        </Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href="https://docs.google.com/spreadsheets/d/15p72GMqmomDqE1vuHbE7JwoULRynOZCf7S2WPq9KYUY/edit?gid=589863394#gid=589863394" target="_blank">
-                             <GanttChartSquare className="mr-2 h-4 w-4" />
-                            View Request Status
-                        </Link>
-                    </Button>
-                </div>
             </div>
             
             <Tabs defaultValue="store-requests">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="store-requests">Internal Store Requests
                          {(pendingInternalRequestCount + updatedInternalRequestCount > 0) && (
                             <Badge className="ml-2" variant="destructive">{pendingInternalRequestCount + updatedInternalRequestCount}</Badge>
                          )}
                     </TabsTrigger>
+                    <TabsTrigger value="ppe-requests">PPE Requests</TabsTrigger>
                     <TabsTrigger value="management-requests">Management Requests
                          {(pendingManagementRequestCount + updatedManagementRequestCount > 0) && (
                             <Badge className="ml-2" variant="destructive">{pendingManagementRequestCount + updatedManagementRequestCount}</Badge>
@@ -99,6 +95,25 @@ export default function MyRequestsPage() {
                         </CardHeader>
                         <CardContent>
                             <InternalRequestTable requests={visibleInternalRequests} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="ppe-requests">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>PPE Requests</CardTitle>
+                                <CardDescription>
+                                    Request coveralls and safety shoes for personnel.
+                                </CardDescription>
+                            </div>
+                            <Button onClick={() => setIsNewPpeRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New PPE Request
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <PpeRequestTable requests={visiblePpeRequests} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -126,6 +141,7 @@ export default function MyRequestsPage() {
 
             <NewInternalRequestDialog isOpen={isNewRequestDialogOpen} setIsOpen={setIsNewRequestDialogOpen} />
             <NewManagementRequestDialog isOpen={isNewMgmtRequestDialogOpen} setIsOpen={setIsNewMgmtRequestDialogOpen} />
+            <NewPpeRequestDialog isOpen={isNewPpeRequestDialogOpen} setIsOpen={setIsNewPpeRequestDialogOpen} />
         </div>
     );
 }

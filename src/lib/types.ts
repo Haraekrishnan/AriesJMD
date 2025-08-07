@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -211,6 +212,8 @@ export type ManpowerProfile = {
   dob?: string; // Date of Birth
   aadharNumber?: string;
   uanNumber?: string;
+  coverallSize?: string;
+  shoeSize?: string;
 
   // Identifiers
   hardCopyFileNo?: string;
@@ -329,6 +332,22 @@ export type ManagementRequest = {
     comments: Comment[];
     viewedByRequester: boolean;
 }
+
+export type PpeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+
+export type PpeRequest = {
+  id: string;
+  requesterId: string;
+  manpowerId: string;
+  ppeType: 'Coverall' | 'Safety Shoes';
+  requestType: 'New' | 'Replacement';
+  date: string; // ISO
+  status: PpeRequestStatus;
+  approverId?: string;
+  comments: Comment[];
+  viewedByRequester: boolean;
+};
+
 
 export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired';
 

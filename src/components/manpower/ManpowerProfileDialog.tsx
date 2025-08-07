@@ -61,6 +61,8 @@ const profileSchema = z.object({
   dob: z.date().optional(),
   aadharNumber: z.string().optional(),
   uanNumber: z.string().optional(),
+  coverallSize: z.string().optional(),
+  shoeSize: z.string().optional(),
   workOrderNumber: z.string().optional(),
   labourLicenseNo: z.string().optional(),
   eic: z.string().optional(),
@@ -371,6 +373,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <div><Label>Date of Birth</Label><DatePickerController name="dob" control={form.control} /></div>
                         <div><Label>Aadhar Number</Label><Input {...form.register('aadharNumber')} /></div>
                         <div><Label>UAN Number</Label><Input {...form.register('uanNumber')} /></div>
+                        <div className="grid grid-cols-2 gap-2">
+                           <div><Label>Coverall Size</Label><Input {...form.register('coverallSize')} /></div>
+                           <div><Label>Safety Shoe Size</Label><Input {...form.register('shoeSize')} /></div>
+                        </div>
                     </div>
                     
                     <div className="space-y-4">

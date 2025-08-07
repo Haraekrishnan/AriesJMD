@@ -103,6 +103,10 @@
       ".read": true,
       ".write": true
     },
+    "ppeRequests": {
+        ".read": true,
+        ".write": true
+    },
     "vehicles": {
       ".read": true,
       ".write": true
