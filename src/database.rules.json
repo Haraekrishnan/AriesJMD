@@ -60,16 +60,16 @@
       ".write": true
     },
     "digitalCameras": {
-       ".read": true,
-       ".write": true
+      ".read": true,
+      ".write": true
     },
     "anemometers": {
-       ".read": true,
-       ".write": true
+      ".read": true,
+      ".write": true
     },
     "otherEquipments": {
-       ".read": true,
-       ".write": true
+      ".read": true,
+      ".write": true
     },
     "machineLogs": {
       ".read": true,
@@ -104,8 +104,12 @@
       ".write": true
     },
     "ppeRequests": {
-        ".read": true,
-        ".write": true
+      ".read": true,
+      ".write": true
+    },
+    "ppeStock": {
+      ".read": true,
+      ".write": true
     },
     "vehicles": {
       ".read": true,
@@ -125,4 +129,3 @@
     }
   }
 }
-

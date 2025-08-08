@@ -95,7 +95,8 @@ export const ALL_PERMISSIONS = [
   'view_activity_logs',
   'manage_accommodation',
   'log_manpower',
-  'manage_job_schedule'
+  'manage_job_schedule',
+  'manage_ppe_stock'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -564,4 +565,12 @@ export type JobSchedule = {
   items: JobScheduleItem[];
   createdAt: string; // ISO
   updatedAt: string; // ISO
+};
+
+export type PpeStock = {
+  id: 'coveralls' | 'safetyShoes';
+  name: string;
+  sizes?: { [size: string]: number }; // For coveralls
+  quantity?: number; // For safety shoes
+  lastUpdated: string; // ISO
 };

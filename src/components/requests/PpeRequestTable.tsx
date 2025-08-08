@@ -35,7 +35,7 @@ const statusVariant: Record<PpeRequestStatus, 'default' | 'secondary' | 'destruc
 };
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
-  const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment } = useAppContext();
+  const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock } = useAppContext();
   const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
   const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
   const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | null>(null);
@@ -50,7 +50,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   
   const canIssue = useMemo(() => {
     if (!user) return false;
-    const storeRoles = ['Store in Charge', 'Assistant Store Incharge', 'Admin'];
+    const storeRoles = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
     return storeRoles.includes(user.role);
   }, [user]);
 
@@ -62,7 +62,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
 
   const handleConfirmAction = () => {
     if (!selectedRequest || !action) return;
-    if (!comment.trim()) {
+    if (!comment.trim() && action !== 'Approved') { // Approve might not need a comment
         toast({ title: 'Comment required', variant: 'destructive'});
         return;
     }
@@ -100,6 +100,19 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     if (user?.id === req.requesterId && !req.viewedByRequester) {
         markPpeRequestAsViewed(req.id);
     }
+  };
+
+  const getStockInfo = (req: PpeRequest): string => {
+    if (req.ppeType === 'Safety Shoes') {
+      const stock = ppeStock.find(s => s.id === 'safetyShoes');
+      return `Current Stock: ${stock?.quantity || 0}`;
+    }
+    if (req.ppeType === 'Coverall') {
+      const stock = ppeStock.find(s => s.id === 'coveralls');
+      const sizeStock = stock?.sizes?.[req.size] || 0;
+      return `Stock (Size ${req.size}): ${sizeStock}`;
+    }
+    return 'Stock info unavailable';
   };
 
   if (requests.length === 0) {
@@ -173,6 +186,9 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                 </TableCell>
                 <TableCell>
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                     {canApprove && (
+                        <p className="text-xs text-muted-foreground mt-1">{getStockInfo(req)}</p>
+                     )}
                 </TableCell>
                 <TableCell className="text-right">
                     <div className="flex gap-2 justify-end items-center">
@@ -203,7 +219,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                                   <DropdownMenuSubTrigger><Paperclip className="mr-2 h-4 w-4" />Attachment</DropdownMenuSubTrigger>
                                   <DropdownMenuPortal>
                                     <DropdownMenuSubContent>
-                                      <DropdownMenuItem onSelect={() => window.open(req.attachmentUrl, '_blank')}>View Attachment</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={() => setViewingAttachmentUrl(req.attachmentUrl!)}>View Attachment</DropdownMenuItem>
                                       <DropdownMenuItem onSelect={() => handleDeleteAttachment(req.id)} className="text-destructive focus:text-destructive">Delete Attachment</DropdownMenuItem>
                                     </DropdownMenuSubContent>
                                   </DropdownMenuPortal>
@@ -237,10 +253,10 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>{action} PPE Request?</AlertDialogTitle>
-                    <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
+                    <AlertDialogDescription>Please provide a comment for this action. {action === 'Approved' && '(Optional)'}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <div>
-                    <Label htmlFor="comment">Comment (Required)</Label>
+                    <Label htmlFor="comment">Comment</Label>
                     <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                 </div>
                 <AlertDialogFooter>
@@ -261,5 +277,4 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </>
   );
 }
-
 
