@@ -5,7 +5,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
@@ -1469,18 +1469,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const rejoiningDate = getRejoiningDate(employeeProfile);
     const lastIssueDate = getLastPpeIssueDate(employeeProfile);
 
+    // Call the Server Action to send the email
     await sendPpeRequestEmail({
       requesterName: user.name,
-      employeeName: employeeProfile?.name || 'N/A',
+      employeeName: manpowerProfile?.name || 'N/A',
       ppeType: requestData.ppeType,
       size: requestData.size,
       quantity: requestData.quantity,
       requestType: requestData.requestType,
       remarks: requestData.remarks,
       attachmentUrl: requestData.attachmentUrl,
-      joiningDate,
-      rejoiningDate,
-      lastIssueDate
     });
 
   }, [user, users, addActivityLog, manpowerProfiles]);
@@ -2314,6 +2312,7 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
 
