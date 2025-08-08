@@ -1,3 +1,4 @@
+
 'use server';
 
 import * as nodemailer from 'nodemailer';
@@ -42,7 +43,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
       <p style="margin-top: 25px;">
         <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; border-top: 12px solid #007bff; border-bottom: 12px solid #007bff; border-right: 18px solid #007bff; border-left: 18px solid #007bff; display: inline-block;">
-            Approve Request
+            Review Request
         </a>
       </p>
     </div>
