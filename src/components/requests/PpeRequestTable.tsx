@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -13,7 +14,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -122,6 +123,12 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
     const previousIssues = sortedHistory.slice(1);
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
 
+    const handleAccordionToggle = (openValue: string) => {
+        if (openValue === req.id && user?.id === req.requesterId && !req.viewedByRequester) {
+            markPpeRequestAsViewed(req.id);
+        }
+    };
+
     return (
         <>
         <TableRow className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
@@ -135,7 +142,7 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
                     <p><strong>Rejoin:</strong> {getRejoiningDate(manpower)}</p>
                 </div>
             </TableCell>
-            <TableCell>
+             <TableCell>
                 {lastIssue ? (
                     <div className="text-xs">
                         <p>{lastIssue.requestType} {lastIssue.ppeType} ({lastIssue.size})</p>
@@ -175,12 +182,30 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
                     </Button>
                 )}
             </TableCell>
-             <TableCell className="max-w-xs">
-                {commentsArray.length > 0 ? (
-                    <div className="text-xs text-muted-foreground">
-                        {commentsArray[commentsArray.length-1].text}
-                    </div>
-                ) : <p className="text-xs text-muted-foreground italic">No comments</p>}
+            <TableCell className="max-w-[200px]">
+                <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
+                    <AccordionItem value={req.id} className="border-none">
+                        <AccordionTrigger className="p-0 hover:no-underline font-normal text-left text-xs text-muted-foreground">
+                            <span className="truncate">{commentsArray[commentsArray.length-1]?.text || 'No comments'}</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2">
+                            <div className="space-y-2">
+                              {commentsArray.length > 0 ? commentsArray.map((c,i) => {
+                                  const commentUser = users.find(u => u.id === c.userId);
+                                  return (
+                                      <div key={i} className="flex items-start gap-2">
+                                          <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                          <div className="text-xs bg-muted p-2 rounded-md w-full">
+                                              <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                              <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                          </div>
+                                      </div>
+                                  )
+                              }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </TableCell>
             <TableCell>
                 <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
@@ -311,7 +336,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                             <TableHead className="w-[15%]">Employee</TableHead>
                             <TableHead className="w-[15%]">Last Issue</TableHead>
                             <TableHead>Project</TableHead>
-                            <TableHead className="w-[15%]">Request</TableHead>
+                            <TableHead>Request</TableHead>
                             <TableHead className="w-[15%]">Comments</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -340,7 +365,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                                         <TableHead className="w-[15%]">Employee</TableHead>
                                         <TableHead className="w-[15%]">Last Issue</TableHead>
                                         <TableHead>Project</TableHead>
-                                        <TableHead className="w-[15%]">Request</TableHead>
+                                        <TableHead>Request</TableHead>
                                         <TableHead className="w-[15%]">Comments</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
