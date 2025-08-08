@@ -1479,6 +1479,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestType: requestData.requestType,
       remarks: requestData.remarks,
       attachmentUrl: requestData.attachmentUrl,
+      joiningDate: joiningDate,
+      rejoiningDate: rejoiningDate,
+      lastIssueDate: lastIssueDate,
     });
 
   }, [user, users, addActivityLog, manpowerProfiles]);
@@ -2312,6 +2315,7 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
 
