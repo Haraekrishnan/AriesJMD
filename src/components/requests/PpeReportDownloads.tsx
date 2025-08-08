@@ -8,6 +8,7 @@ import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parseISO } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface PpeReportDownloadsProps {
   dateRange: DateRange | undefined;
@@ -15,6 +16,7 @@ interface PpeReportDownloadsProps {
 
 export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProps) {
   const { ppeRequests, users, manpowerProfiles, projects } = useAppContext();
+  const { toast } = useToast();
   
   const issuedRequests = useMemo(() => {
     return ppeRequests.filter(r => r.status === 'Issued');
@@ -22,7 +24,11 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
 
   const handleDownloadExcel = () => {
     if (!dateRange || !dateRange.from) {
-        alert("Please select a date range to generate the report.");
+        toast({
+            variant: 'destructive',
+            title: 'No Date Range Selected',
+            description: 'Please select a start and end date to generate the report.',
+        });
         return;
     }
     const { from, to = from } = dateRange;
@@ -32,12 +38,14 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         if (!issuedComment) return false;
         
         const issueDate = parseISO(issuedComment.date);
-        return isWithinInterval(issueDate, { start: from, end: to });
+        return isWithinInterval(issueDate, { start: startOfDay(from), end: startOfDay(to) });
     });
 
     if (filteredRequests.length === 0) {
-        alert("No issued PPE data found for the selected date range.");
-        return;
+        toast({
+            title: 'No Data Found',
+            description: 'Generating an empty report with headers for the selected period.',
+        });
     }
 
     const dataToExport = filteredRequests.map(req => {
