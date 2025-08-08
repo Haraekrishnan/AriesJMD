@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1459,9 +1458,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestType: requestData.requestType,
       remarks: requestData.remarks,
       attachmentUrl: requestData.attachmentUrl,
-      approvalLink: `${window.location.origin}/my-requests?tab=ppe-requests`
+      approvalLink: `${window.location.origin}/my-requests`
     });
-
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock, projects]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
@@ -2293,12 +2291,3 @@ export const useAppContext = (): AppContextType => {
     
 
       
-
-
-
-
-
-
-
-
-    

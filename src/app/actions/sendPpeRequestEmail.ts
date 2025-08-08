@@ -1,32 +1,64 @@
-
 'use server';
 
+import * as nodemailer from 'nodemailer';
+
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
-  const formData = new FormData();
-  for (const key in ppeData) {
-    if (ppeData[key] !== undefined && ppeData[key] !== null) {
-      formData.append(key, ppeData[key].toString());
-    }
+  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
+
+  if (!GMAIL_USER || !GMAIL_APP_PASS) {
+    console.error('Missing Gmail credentials in .env file.');
+    return { success: false, error: 'Server configuration error.' };
   }
 
-  try {
-    // We use 'no-cors' mode because Apps Script web apps can be tricky with CORS pre-flight requests.
-    // Since we are just sending data and not expecting a response back to the client, this is a safe
-    // and reliable way to ensure the request goes through without being blocked by browser CORS policy.
-    const response = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
-      method: 'POST',
-      body: formData,
-      mode: 'no-cors',
-    });
-    
-    // We cannot read the response in no-cors mode, but we can log that the request was sent.
-    console.log('PPE request notification sent to Google Apps Script.');
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: GMAIL_USER,
+      pass: GMAIL_APP_PASS,
+    },
+  });
 
+  const {
+    requesterName,
+    employeeName,
+    ppeType,
+    size,
+    quantity,
+    requestType,
+    remarks,
+    attachmentUrl,
+    approvalLink
+  } = ppeData;
+
+  const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+      <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
+      <p><strong>Requester:</strong> ${requesterName}</p>
+      <p><strong>Employee:</strong> ${employeeName}</p>
+      <p><strong>Type:</strong> ${ppeType} &middot; <strong>Size:</strong> ${size} &middot; <strong>Qty:</strong> ${quantity}</p>
+      <p><strong>Request Type:</strong> ${requestType}</p>
+      <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
+      ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
+      <p style="margin-top: 25px;">
+        <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; border-top: 12px solid #007bff; border-bottom: 12px solid #007bff; border-right: 18px solid #007bff; border-left: 18px solid #007bff; display: inline-block;">
+            Approve Request
+        </a>
+      </p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"Aries PPE Request" <${GMAIL_USER}>`,
+      to: 'ariesmarineandeng@gmail.com',
+      subject: subject,
+      html: htmlBody,
+    });
+    console.log('PPE request notification sent successfully.');
     return { success: true };
   } catch (error) {
-    console.error('Failed to send notification via server action:', error);
+    console.error('Failed to send email:', error);
     return { success: false, error: (error as Error).message };
   }
 }
-
-    
