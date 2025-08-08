@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check, Trash2, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import type { PpeRequest, PpeRequestStatus } from '@/lib/types';
+import type { PpeRequest, PpeRequestStatus, ManpowerProfile } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -90,7 +90,7 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
     const getRequesterName = (id: string) => users.find(u => u.id === id)?.name || 'N/A';
     const getProjectName = (id?: string) => id ? projects.find(p => p.id === id)?.name : 'N/A';
     
-    const getRejoiningDate = (profile?: ReturnType<typeof getManpowerProfile>) => {
+    const getRejoiningDate = (profile?: ManpowerProfile) => {
         if(!profile || !profile.leaveHistory) return 'N/A';
         const lastRejoin = profile.leaveHistory.filter(l => l.rejoinedDate).sort((a,b) => new Date(b.rejoinedDate!).getTime() - new Date(a.rejoinedDate!).getTime())[0];
         return lastRejoin?.rejoinedDate ? format(parseISO(lastRejoin.rejoinedDate), 'dd-MM-yyyy') : 'N/A';
@@ -128,29 +128,27 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
                 {hasUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
             </TableCell>
             <TableCell>
-                <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req)}>
-                    <AccordionItem value={req.id} className="border-none">
-                        <AccordionTrigger className="p-0 hover:no-underline font-normal text-left">{manpower?.name}</AccordionTrigger>
-                        <AccordionContent className="pt-4 text-muted-foreground">
-                            <div className='mb-2 space-y-1 text-sm'>
-                                <p><strong>Joining Date:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</p>
-                                <p><strong>Rejoining Date:</strong> {getRejoiningDate(manpower)}</p>
-                            </div>
-                            <h4 className="font-semibold text-xs mb-2">PPE Issue History</h4>
-                            {manpower?.ppeHistory && manpower.ppeHistory.length > 0 ? (
-                                <ul className="list-disc pl-4 text-sm space-y-1">
-                                    {manpower.ppeHistory.map(item => (
-                                    <li key={item.id}>
-                                        {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
-                                        {item.remarks && <p className="text-muted-foreground text-xs italic">Requester: "{item.remarks}"</p>}
-                                        {item.storeComment && <p className="text-muted-foreground text-xs italic">Store: "{item.storeComment}"</p>}
-                                    </li>
-                                    ))}
-                                </ul>
-                            ) : <p className="text-xs">No previous PPE issued.</p>}
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
+                <div className="space-y-2">
+                    <p className="font-semibold">{manpower?.name}</p>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                        <p><strong>Joining Date:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</p>
+                        <p><strong>Rejoining Date:</strong> {getRejoiningDate(manpower)}</p>
+                    </div>
+                    {manpower?.ppeHistory && manpower.ppeHistory.length > 0 && (
+                        <div className="mt-2">
+                            <p className="text-xs font-semibold text-muted-foreground">PPE Issue History</p>
+                            <ul className="list-disc pl-4 text-xs space-y-1 mt-1">
+                                {manpower.ppeHistory.map(item => (
+                                <li key={item.id}>
+                                    {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
+                                    {item.remarks && <p className="text-muted-foreground italic">Requester: "{item.remarks}"</p>}
+                                    {item.storeComment && <p className="text-muted-foreground italic">Store: "{item.storeComment}"</p>}
+                                </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
             </TableCell>
             <TableCell>{getProjectName(manpower?.eic)}</TableCell>
             <TableCell>{requester?.name || 'N/A'}</TableCell>
@@ -278,7 +276,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <TableHeader>
                         <TableRow>
                             <TableHead></TableHead>
-                            <TableHead>Employee</TableHead>
+                            <TableHead className="w-[30%]">Employee</TableHead>
                             <TableHead>Project</TableHead>
                             <TableHead>Requester</TableHead>
                             <TableHead>Request</TableHead>
@@ -306,7 +304,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead></TableHead>
-                                        <TableHead>Employee</TableHead>
+                                        <TableHead className="w-[30%]">Employee</TableHead>
                                         <TableHead>Project</TableHead>
                                         <TableHead>Requester</TableHead>
                                         <TableHead>Request</TableHead>
