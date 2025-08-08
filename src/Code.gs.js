@@ -1,59 +1,111 @@
 
 // 1. Create a new script project at script.google.com
 // 2. Copy and paste this entire code into the Code.gs file.
-// 3. Replace "YOUR_GOOGLE_DRIVE_FOLDER_ID" with the actual ID of the folder you want to upload files to.
-// 4. Go to Deploy > New deployment.
-// 5. Click the gear icon, select "Web app".
-// 6. For "Execute as", select "Me".
-// 7. For "Who has access", select "Anyone". This is required.
-// 8. Click "Deploy".
-// 9. IMPORTANT: Authorize the permissions when prompted.
-// 10. Copy the Web app URL provided and paste it into the placeholder in your application code.
-
-const FOLDER_ID = "1XUxDNnbGkahtFd9XZRHMlKjaKg3ce5DL"; // Your folder ID
+// 3. Go to Deploy > New deployment.
+// 4. Click the gear icon, select "Web app".
+// 5. For "Execute as", select "Me".
+// 6. For "Who has access", select "Anyone". This is required.
+// 7. Click "Deploy".
+// 8. IMPORTANT: Authorize the permissions when prompted.
+// 9. Copy the Web app URL provided and paste it into the placeholder in your application code.
 
 function doPost(e) {
   try {
-    const { file: base64Data, filename: fileName, mimeType } = e.parameter;
+    const params = e.parameter || {};
+    
+    // --- Request Details ---
+    const requestId = params.requestId || 'N/A';
+    const requestedBy = params.requestedBy || 'N/A';
+    const requestType = params.requestType || 'N/A';
+    const requestedFor = params.requestedFor || 'N/A';
+    const plant = params.plant || 'N/A';
+    const firstJoiningDate = params.firstJoiningDate || 'N/A';
+    const rejoiningDate = params.rejoiningDate || 'N/A';
+    const size = params.size || 'N/A';
+    const quantity = params.quantity || 'N/A';
+    const reasonForRequest = params.reasonForRequest || 'N/A';
+    const lastIssuingDate = params.lastIssuingDate || 'N/A';
+    const returnOfLastIssuedItem = params.returnOfLastIssuedItem || 'N/A';
+    const eligibility = params.eligibility || 'N/A';
 
-    if (!base64Data || !fileName || !mimeType) {
-      throw new Error("Missing file data, filename, or mimeType.");
+    // --- Stock Details ---
+    const stockDetailsString = params.stockDetails || '{}';
+    const stockDetails = JSON.parse(stockDetailsString);
+
+    // --- Attachment & Approval Link ---
+    const attachmentUrl = params.attachmentUrl || '';
+    const approvalLink = params.approvalLink || 'https://your-app-url.com'; // Fallback URL
+
+    const subject = `PPE Approval Request: ${requestedFor} - ${new Date().toLocaleDateString("en-IN")}`;
+    
+    // --- Build HTML Body ---
+    let requestDetailsHtml = `
+      <table border="1" style="border-collapse: collapse; width: 100%;">
+        <tr><td style="padding: 8px; font-weight: bold;">Request ID</td><td style="padding: 8px;">${requestId}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Requested By</td><td style="padding: 8px;">${requestedBy}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Requested Type</td><td style="padding: 8px;">${requestType}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Requested For</td><td style="padding: 8px;">${requestedFor}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Plant</td><td style="padding: 8px;">${plant}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">First Joining Date</td><td style="padding: 8px;">${firstJoiningDate}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Rejoining Date</td><td style="padding: 8px;">${rejoiningDate}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Size</td><td style="padding: 8px;">${size}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Quantity</td><td style="padding: 8px;">${quantity}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Reason for Request</td><td style="padding: 8px;">${reasonForRequest}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Last Issuing Date</td><td style="padding: 8px;">${lastIssuingDate}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Return of Last Issued Item</td><td style="padding: 8px;">${returnOfLastIssuedItem}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Eligibility</td><td style="padding: 8px;">${eligibility}</td></tr>
+      </table>`;
+
+    let stockDetailsHtml = `
+      <table border="1" style="border-collapse: collapse; width: 50%; margin-top: 20px;">
+        <thead style="background-color: #f2f2f2;">
+          <tr><th style="padding: 8px;">Item</th><th style="padding: 8px;">Quantity</th></tr>
+        </thead>
+        <tbody>
+          ${Object.entries(stockDetails).map(([key, value]) => `<tr><td style="padding: 8px;">${key}</td><td style="padding: 8px;">${value}</td></tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    const htmlBody = `
+      <p>Dear Sir,</p>
+      <p>An approval request has been raised with the following details:</p>
+      ${requestDetailsHtml}
+      <br/>
+      <p><strong>Stock Inventory Details:</strong></p>
+      ${stockDetailsHtml}
+      <br/>
+      <p>Please review and update the approval status using the following link:</p>
+      <p><a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #1a73e8; border-top: 12px solid #1a73e8; border-bottom: 12px solid #1a73e8; border-right: 18px solid #1a73e8; border-left: 18px solid #1a73e8; display: inline-block;">Approval Form</a></p>
+    `;
+
+    // --- Handle Attachment ---
+    let emailOptions = {
+      to: 'ariesmarineandeng@gmail.com',
+      subject: subject,
+      htmlBody: htmlBody,
+      name: 'Aries PPE Request'
+    };
+
+    if (attachmentUrl) {
+      try {
+        const imageBlob = UrlFetchApp.fetch(attachmentUrl).getBlob();
+        emailOptions.attachments = [imageBlob];
+      } catch (err) {
+        // Could not fetch attachment, send email without it
+        console.error("Could not fetch attachment: " + err.message);
+      }
     }
 
-    // Decode Base64
-    const decoded = Utilities.base64Decode(base64Data);
-    const fileBlob = Utilities.newBlob(decoded, mimeType, fileName);
+    // --- Send Email ---
+    MailApp.sendEmail(emailOptions);
 
-    // Save to Drive
-    const folder = DriveApp.getFolderById(FOLDER_ID);
-    const newFile = folder.createFile(fileBlob);
-
-    // Make it viewable by link
-    newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    const response = {
-      status: "success",
-      fileId: newFile.getId(),
-      url: `https://drive.google.com/uc?export=view&id=${newFile.getId()}`,
-      name: newFile.getName(),
-    };
-
-    return ContentService.createTextOutput(JSON.stringify(response))
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
       .setMimeType(ContentService.MimeType.JSON)
-      .setHeader("Access-Control-Allow-Origin", "*")
-      .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
-      .setHeader("Access-Control-Allow-Headers", "Content-Type");
+      .setHeader('Access-Control-Allow-Origin', '*');
   } catch (err) {
-    const errorResponse = {
-      status: "error",
-      message: err.message,
-    };
-
-    return ContentService.createTextOutput(JSON.stringify(errorResponse))
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
       .setMimeType(ContentService.MimeType.JSON)
-      .setHeader("Access-Control-Allow-Origin", "*")
-      .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
-      .setHeader("Access-Control-Allow-Headers", "Content-Type");
+      .setHeader('Access-Control-Allow-Origin', '*');
   }
 }
 

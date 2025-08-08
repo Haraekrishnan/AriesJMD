@@ -231,15 +231,11 @@ const createDataListener = <T extends {}>(path: string, setData: React.Dispatch<
 
 async function notifyManager(ppeData: any) {
   const formData = new FormData();
-  formData.append('requesterName', ppeData.requesterName);
-  formData.append('ppeType', ppeData.ppeType);
-  formData.append('size', ppeData.size);
-  formData.append('quantity', String(ppeData.quantity));
-  formData.append('requestType', ppeData.requestType);
-  formData.append('remarks', ppeData.remarks || '');
-  if (ppeData.attachmentUrl) {
-    formData.append('attachmentUrl', ppeData.attachmentUrl);
-  }
+  Object.keys(ppeData).forEach(key => {
+    if (ppeData[key] !== undefined && ppeData[key] !== null) {
+      formData.append(key, ppeData[key]);
+    }
+  });
 
   try {
     const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
@@ -247,7 +243,6 @@ async function notifyManager(ppeData: any) {
       body: formData,
       mode: 'no-cors'
     });
-    // Can't read response with no-cors, so we just assume it worked.
     console.log('Notification request sent to Apps Script.');
   } catch(error) {
     console.error("Failed to send notification:", error);
@@ -1443,16 +1438,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
   }, [user, addActivityLog]);
   
-  const addPpeRequest = useCallback(async (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+  const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
 
     const updates: { [key: string]: any } = {};
-    
-    // Create the new PPE request
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
+    const requestId = newRequestRef.key || `ppe-${Date.now()}`;
+    
     const manager = users.find(u => u.role === 'Manager');
     const newRequestData: Omit<PpeRequest, 'id'> = {
-      ...request,
+      ...requestData,
       requesterId: user.id,
       date: new Date().toISOString(),
       status: 'Pending',
@@ -1460,33 +1455,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
       comments: [],
       viewedByRequester: true,
     };
-    updates[`ppeRequests/${newRequestRef.key}`] = newRequestData;
-    addActivityLog(user.id, 'PPE Request Created', `For ${request.manpowerId}`);
+    updates[`ppeRequests/${requestId}`] = newRequestData;
+    addActivityLog(user.id, 'PPE Request Created', `For ${requestData.manpowerId}`);
 
-    // Update the manpower profile with the new size
-    const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
+    const manpowerProfile = manpowerProfiles.find(p => p.id === requestData.manpowerId);
     if (manpowerProfile) {
-        if (request.ppeType === 'Coverall') {
-            updates[`manpowerProfiles/${request.manpowerId}/coverallSize`] = request.size;
-        } else if (request.ppeType === 'Safety Shoes') {
-            updates[`manpowerProfiles/${request.manpowerId}/shoeSize`] = request.size;
+        if (requestData.ppeType === 'Coverall') {
+            updates[`manpowerProfiles/${requestData.manpowerId}/coverallSize`] = requestData.size;
+        } else if (requestData.ppeType === 'Safety Shoes') {
+            updates[`manpowerProfiles/${requestData.manpowerId}/shoeSize`] = requestData.size;
         }
     }
 
     update(ref(rtdb), updates);
 
-    // Notify manager via Apps Script
-    await notifyManager({
-      requesterName: user.name,
-      ppeType: request.ppeType,
-      size: request.size,
-      quantity: request.quantity,
-      requestType: request.requestType,
-      remarks: request.remarks,
-      attachmentUrl: request.attachmentUrl
-    });
+    // Prepare data for notification
+    const coverallStock = ppeStock.find(s => s.id === 'coveralls')?.sizes || {};
+    const lastPpeRecord = manpowerProfile?.ppeHistory?.slice(-1)[0];
 
-  }, [user, users, addActivityLog, manpowerProfiles]);
+    const notificationData = {
+      requestId: requestId,
+      requestedBy: user.name,
+      requestType: requestData.requestType,
+      requestedFor: manpowerProfile?.name || 'N/A',
+      plant: projects.find(p => p.id === manpowerProfile?.eic)?.name || 'N/A',
+      firstJoiningDate: manpowerProfile?.joiningDate ? format(new Date(manpowerProfile.joiningDate), 'dd-MM-yyyy') : 'N/A',
+      rejoiningDate: manpowerProfile?.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(new Date(manpowerProfile.leaveHistory.find(l => l.rejoinedDate)!.rejoinedDate!), 'dd-MM-yyyy') : 'N/A',
+      size: requestData.size,
+      quantity: String(requestData.quantity || '1'),
+      reasonForRequest: requestData.remarks || '',
+      lastIssuingDate: lastPpeRecord?.issueDate ? format(new Date(lastPpeRecord.issueDate), 'dd-MM-yyyy') : 'N/A',
+      returnOfLastIssuedItem: 'N/A',
+      eligibility: 'N/A',
+      stockDetails: JSON.stringify(coverallStock),
+      attachmentUrl: requestData.attachmentUrl,
+      approvalLink: `${window.location.origin}/my-requests`
+    };
+
+    await notifyManager(notificationData);
+
+  }, [user, users, addActivityLog, manpowerProfiles, ppeStock, projects]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if(!user || user.role !== 'Admin') return;
@@ -2317,3 +2325,4 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
