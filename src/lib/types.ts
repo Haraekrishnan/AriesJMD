@@ -474,6 +474,8 @@ export type MachineLog = {
     status: 'Active' | 'Idle';
     reason?: string;
     attachmentUrl?: string;
+    startingKm?: number;
+    endingKm?: number;
 };
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';

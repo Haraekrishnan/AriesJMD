@@ -344,6 +344,8 @@ export type MachineLog = {
     toTime: string; // HH:mm
     location: string;
     jobDescription: string;
+    startingKm?: number;
+    endingKm?: number;
 };
 
 

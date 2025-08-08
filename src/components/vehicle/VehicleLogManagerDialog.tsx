@@ -24,6 +24,8 @@ const logSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   fromTime: z.string().min(1, 'Start time is required'),
   toTime: z.string().min(1, 'End time is required'),
+  startingKm: z.coerce.number().optional(),
+  endingKm: z.coerce.number().optional(),
   location: z.string().min(1, 'Location is required'),
   jobDescription: z.string().min(1, 'Description is required'),
   userName: z.string().min(1, 'User name is required'),
@@ -51,6 +53,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
   const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
   
   const vehicleLogs = getMachineLogs(vehicle.id);
 
@@ -115,7 +118,9 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
       date: format(new Date(), 'yyyy-MM-dd'),
       jobDescription: '',
       reason: '',
-      attachmentUrl: ''
+      attachmentUrl: '',
+      startingKm: 0,
+      endingKm: 0,
     });
   };
   
@@ -125,6 +130,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
@@ -147,6 +153,16 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
                         <div className="space-y-2">
                             <Label htmlFor="toTime">To</Label>
                             <Input id="toTime" type="time" {...form.register('toTime')} />
+                        </div>
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="startingKm">Starting KM</Label>
+                            <Input id="startingKm" type="number" {...form.register('startingKm')} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="endingKm">Ending KM</Label>
+                            <Input id="endingKm" type="number" {...form.register('endingKm')} />
                         </div>
                     </div>
                      <div className="space-y-2">
@@ -177,10 +193,10 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
                       <Label>Attachment (Optional)</Label>
                        {form.watch('attachmentUrl') ? (
                          <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                            <Link href={form.watch('attachmentUrl')!} target="_blank" className="flex items-center gap-2 truncate hover:underline">
+                            <button type="button" onClick={() => setViewingAttachmentUrl(form.watch('attachmentUrl')!)} className="flex items-center gap-2 truncate hover:underline">
                               <Paperclip className="h-4 w-4"/>
                               <span className="truncate">Uploaded File</span>
-                            </Link>
+                            </button>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', '')}>
                               <X className="h-4 w-4"/>
                             </Button>
@@ -219,7 +235,10 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
                                         <TableCell>
                                             <p className="font-medium">{log.jobDescription}</p>
                                             <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
-                                             {log.attachmentUrl && <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs"><Link href={log.attachmentUrl} target='_blank'><Paperclip className="h-3 w-3 mr-1"/>View Attachment</Link></Button>}
+                                            {(log.startingKm || log.endingKm) && (
+                                                <p className="text-xs text-muted-foreground">KM: {log.startingKm || 'N/A'} - {log.endingKm || 'N/A'}</p>
+                                            )}
+                                             {log.attachmentUrl && <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs"><button onClick={() => setViewingAttachmentUrl(log.attachmentUrl!)}><Paperclip className="h-3 w-3 mr-1"/>View Attachment</button></Button>}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={log.status === 'Active' ? 'success' : 'secondary'}>{log.status}</Badge>
@@ -263,5 +282,17 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>Attachment Viewer</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-4">
+                {viewingAttachmentUrl && <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />}
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
