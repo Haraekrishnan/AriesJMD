@@ -1,8 +1,6 @@
-
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +13,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -95,12 +93,6 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
         const lastRejoin = profile.leaveHistory.filter(l => l.rejoinedDate).sort((a,b) => new Date(b.rejoinedDate!).getTime() - new Date(a.rejoinedDate!).getTime())[0];
         return lastRejoin?.rejoinedDate ? format(parseISO(lastRejoin.rejoinedDate), 'dd-MM-yy') : 'N/A';
     }
-
-    const handleAccordionToggle = (req: PpeRequest) => {
-        if (user?.id === req.requesterId && !req.viewedByRequester) {
-            markPpeRequestAsViewed(req.id);
-        }
-    };
 
     const getStockInfo = (req: PpeRequest): string => {
         if (req.ppeType === 'Safety Shoes') {
@@ -183,7 +175,7 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
                     </Button>
                 )}
             </TableCell>
-            <TableCell>
+             <TableCell className="max-w-xs">
                 {commentsArray.length > 0 ? (
                     <div className="text-xs text-muted-foreground">
                         {commentsArray[commentsArray.length-1].text}
@@ -278,6 +270,8 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
 };
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
+    const { user, markPpeRequestAsViewed } = useAppContext();
+    const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
     const { activeRequests, completedRequests } = useMemo(() => {
         const active: PpeRequest[] = [];
@@ -291,6 +285,17 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         });
         return { activeRequests: active, completedRequests: completed };
     }, [requests]);
+
+    useEffect(() => {
+        if (isCompletedOpen && user) {
+            completedRequests.forEach(req => {
+                if (req.requesterId === user.id && !req.viewedByRequester) {
+                    markPpeRequestAsViewed(req.id);
+                }
+            });
+        }
+    }, [isCompletedOpen, completedRequests, user, markPpeRequestAsViewed]);
+
 
     if (requests.length === 0) {
         return <p className="text-center py-10 text-muted-foreground">No PPE requests found.</p>;
@@ -322,7 +327,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             </div>
             
             {completedRequests.length > 0 && (
-                 <Accordion type="single" collapsible className="w-full">
+                 <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
                     <AccordionItem value="completed-requests" className="border rounded-md">
                         <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
                            Completed & Rejected Requests ({completedRequests.length})
@@ -352,4 +357,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </div>
     );
 }
-
