@@ -1450,15 +1450,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await update(ref(rtdb), updates);
     
-    sendPpeRequestEmail({
+    await sendPpeRequestEmail({
       requesterName: user.name,
+      employeeName: manpowerProfile?.name || 'N/A',
       ppeType: requestData.ppeType,
       size: requestData.size,
       quantity: requestData.quantity,
       requestType: requestData.requestType,
       remarks: requestData.remarks,
       attachmentUrl: requestData.attachmentUrl,
-      approvalLink: `${window.location.origin}/my-requests`
+      approvalLink: `${window.location.origin}/my-requests?tab=ppe-requests`
     });
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock, projects]);
@@ -2298,3 +2299,6 @@ export const useAppContext = (): AppContextType => {
 
 
 
+
+
+    

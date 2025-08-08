@@ -14,6 +14,7 @@ function doPost(e) {
   try {
     const params = e.parameter || {};
     const requesterName = params.requesterName || 'Unknown';
+    const employeeName = params.employeeName || 'N/A';
     const ppeType = params.ppeType || '';
     const size = params.size || '';
     const quantity = params.quantity || '';
@@ -22,17 +23,18 @@ function doPost(e) {
     const attachmentUrl = params.attachmentUrl || '';
     const approvalLink = params.approvalLink || 'https://your-app-url.com'; // Fallback URL
 
-    const subject = `PPE Request from ${requesterName} — ${ppeType}`;
+    const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
     let htmlBody = `
-      <p><strong>PPE Request</strong></p>
+      <p><strong>A new PPE request requires your approval.</strong></p>
       <p><strong>Requester:</strong> ${requesterName}</p>
+      <p><strong>Employee:</strong> ${employeeName}</p>
       <p><strong>Type:</strong> ${ppeType} · <strong>Size:</strong> ${size} · <strong>Qty:</strong> ${quantity}</p>
       <p><strong>Request Type:</strong> ${requestType}</p>
       <p><strong>Remarks:</strong> ${remarks}</p>
     `;
 
     if (approvalLink) {
-        htmlBody += `<p>
+        htmlBody += `<p style="margin-top: 20px;">
             <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #1a73e8; border-top: 12px solid #1a73e8; border-bottom: 12px solid #1a73e8; border-right: 18px solid #1a73e8; border-left: 18px solid #1a73e8; display: inline-block;">
                 Approve Request
             </a>
@@ -83,3 +85,4 @@ function doGet(e) {
 }
 
 
+    

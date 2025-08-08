@@ -10,14 +10,17 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
   }
 
   try {
+    // We use 'no-cors' mode because Apps Script web apps can be tricky with CORS pre-flight requests.
+    // Since we are just sending data and not expecting a response back to the client, this is a safe
+    // and reliable way to ensure the request goes through without being blocked by browser CORS policy.
     const response = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
       method: 'POST',
       body: formData,
+      mode: 'no-cors',
     });
     
-    // We don't need to process the response, but we can log it for debugging
-    const textResponse = await response.text();
-    console.log('Google Apps Script Response:', textResponse);
+    // We cannot read the response in no-cors mode, but we can log that the request was sent.
+    console.log('PPE request notification sent to Google Apps Script.');
 
     return { success: true };
   } catch (error) {
@@ -25,3 +28,5 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     return { success: false, error: (error as Error).message };
   }
 }
+
+    
