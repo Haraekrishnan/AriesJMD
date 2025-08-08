@@ -1490,10 +1490,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
             updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
         }
+        
+        // Deduct from stock
+        if (request.ppeType === 'Coverall') {
+            const coverallStock = ppeStock.find(s => s.id === 'coveralls');
+            if (coverallStock && coverallStock.sizes) {
+                const currentSizeStock = coverallStock.sizes[request.size] || 0;
+                const quantityToDeduct = request.quantity || 1;
+                const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
+                updates[`ppeStock/coveralls/sizes/${request.size}`] = newSizeStock;
+            }
+        } else if (request.ppeType === 'Safety Shoes') {
+            const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
+            if (shoeStock && shoeStock.quantity) {
+                const newQuantity = Math.max(0, shoeStock.quantity - 1); // Safety shoes are always quantity 1 per request
+                updates[`ppeStock/safetyShoes/quantity`] = newQuantity;
+            }
+        }
     }
 
     update(ref(rtdb), updates);
-  }, [user, ppeRequests, manpowerProfiles]);
+  }, [user, ppeRequests, manpowerProfiles, ppeStock]);
   
   const deletePpeRequest = useCallback((requestId: string) => {
       if(!user || user.role !== 'Admin') return;
@@ -2262,3 +2279,6 @@ export const useAppContext = (): AppContextType => {
 };
 
 
+
+
+    
