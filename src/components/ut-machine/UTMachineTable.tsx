@@ -14,6 +14,7 @@ import { UTMachine } from '@/lib/types';
 import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface UTMachineTableProps {
   onEdit: (machine: UTMachine) => void;
@@ -79,6 +80,7 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
 
   return (
     <>
+    <TooltipProvider>
     <Table>
       <TableHeader>
         <TableRow>
@@ -101,39 +103,28 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
             </TableCell>
             <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
             <TableCell className="text-right">
-                <AlertDialog>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => onLogManager(machine)}><FileText className="mr-2 h-4 w-4"/> View/Add Logs</DropdownMenuItem>
-                       <DropdownMenuItem onSelect={() => handleCertRequest(machine)}><BadgeHelp className="mr-2 h-4 w-4"/> Request Certificate</DropdownMenuItem>
-                      {can.manage_equipment_status && <DropdownMenuItem onSelect={() => onEdit(machine)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
-                      {can.manage_equipment_status && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete the machine {machine.machineName}.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(machine.id)}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex items-center justify-end gap-2">
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleCertRequest(machine)}><BadgeHelp className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Request Certificate</p></TooltipContent></Tooltip>
+                    {can.manage_equipment_status && (
+                        <>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(machine)}><Edit className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
+                        <AlertDialog>
+                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                            <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the machine {machine.machineName}.</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(machine.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        </>
+                    )}
+                </div>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+    </TooltipProvider>
      {selectedMachineForCert && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} utMachine={selectedMachineForCert} />}
     </>
   );

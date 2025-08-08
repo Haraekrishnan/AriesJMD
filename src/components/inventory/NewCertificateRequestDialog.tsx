@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '../ui/textarea';
-import type { InventoryItem, UTMachine } from '@/lib/types';
+import type { InventoryItem, UTMachine, DftMachine } from '@/lib/types';
 
 const certRequestSchema = z.object({
   requestType: z.enum(['Calibration Certificate', 'TP Inspection Certificate']),
@@ -23,9 +24,10 @@ interface RequestCertificateDialogProps {
   setIsOpen: (open: boolean) => void;
   item?: InventoryItem;
   utMachine?: UTMachine;
+  dftMachine?: DftMachine;
 }
 
-export default function RequestCertificateDialog({ isOpen, setIsOpen, item, utMachine }: RequestCertificateDialogProps) {
+export default function NewCertificateRequestDialog({ isOpen, setIsOpen, item, utMachine, dftMachine }: RequestCertificateDialogProps) {
   const { addCertificateRequest } = useAppContext();
   const { toast } = useToast();
   
@@ -34,8 +36,8 @@ export default function RequestCertificateDialog({ isOpen, setIsOpen, item, utMa
   });
 
   const onSubmit = (data: CertRequestFormValues) => {
-    const subjectName = item ? item.name : (utMachine ? utMachine.machineName : 'Item');
-    addCertificateRequest({ ...data, itemId: item?.id, utMachineId: utMachine?.id });
+    const subjectName = item ? item.name : (utMachine ? utMachine.machineName : (dftMachine ? dftMachine.machineName : 'Item'));
+    addCertificateRequest({ ...data, itemId: item?.id, utMachineId: utMachine?.id, dftMachineId: dftMachine?.id });
     toast({
       title: 'Certificate Request Submitted',
       description: `Your request for ${subjectName} has been sent.`,
@@ -43,7 +45,7 @@ export default function RequestCertificateDialog({ isOpen, setIsOpen, item, utMa
     setIsOpen(false);
   };
   
-  const subjectName = item ? `${item.name} (SN: ${item.serialNumber})` : (utMachine ? `${utMachine.machineName} (SN: ${utMachine.serialNumber})` : 'Item');
+  const subjectName = item ? `${item.name} (SN: ${item.serialNumber})` : (utMachine ? `${utMachine.machineName} (SN: ${utMachine.serialNumber})` : (dftMachine ? `${dftMachine.machineName} (SN: ${dftMachine.serialNumber})` : 'Item'));
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
