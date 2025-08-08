@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -175,8 +173,9 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                 <TableCell>{getProjectName(manpower?.eic)}</TableCell>
                 <TableCell>{requester?.name || 'N/A'}</TableCell>
                 <TableCell>
-                    <p>{req.requestType} {req.ppeType} {req.quantity ? `(x${req.quantity})` : ''}</p>
+                    <p>{req.requestType} {req.ppeType}</p>
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
+                    {req.quantity && <p className="text-sm text-muted-foreground">Quantity: {req.quantity}</p>}
                     {req.remarks && <p className="text-xs text-muted-foreground italic">"{req.remarks}"</p>}
                      {req.attachmentUrl && (
                         <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setViewingAttachmentUrl(req.attachmentUrl!)}>
@@ -277,4 +276,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </>
   );
 }
-
