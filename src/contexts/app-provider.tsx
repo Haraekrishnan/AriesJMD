@@ -231,14 +231,18 @@ const createDataListener = <T extends {}>(path: string, setData: React.Dispatch<
 };
 
 async function notifyManager(ppeData: any) {
+  const formData = new FormData();
+  Object.keys(ppeData).forEach(key => {
+    if (ppeData[key] !== undefined && ppeData[key] !== null) {
+        formData.append(key, ppeData[key]);
+    }
+  });
+
   try {
     const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
       method: 'POST',
-      mode: 'no-cors', 
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ppeData: JSON.stringify(ppeData)}),
+      mode: 'no-cors',
+      body: formData,
     });
     console.log('Notification request sent to Apps Script.');
   } catch (error) {
@@ -1438,9 +1442,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
 
-    const updates: { [key: string]: any } = {};
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     const requestId = newRequestRef.key || `ppe-${Date.now()}`;
+    const updates: { [key: string]: any } = {};
     
     const manager = users.find(u => u.role === 'Manager');
     const newRequestData: Omit<PpeRequest, 'id'> = {
@@ -1465,31 +1469,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     await update(ref(rtdb), updates);
-
-    // Prepare data for notification
-    const coverallStock = ppeStock.find(s => s.id === 'coveralls')?.sizes || {};
-    const lastPpeRecord = manpowerProfile?.ppeHistory?.slice(-1)[0];
-
-    const notificationData = {
-      requestId: requestId,
-      requestedBy: user.name,
-      requestType: requestData.requestType,
-      requestedFor: manpowerProfile?.name || 'N/A',
-      plant: projects.find(p => p.id === manpowerProfile?.eic)?.name || 'N/A',
-      firstJoiningDate: manpowerProfile?.joiningDate ? format(new Date(manpowerProfile.joiningDate), 'dd-MM-yyyy') : 'N/A',
-      rejoiningDate: manpowerProfile?.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(new Date(manpowerProfile.leaveHistory.find(l => l.rejoinedDate)!.rejoinedDate!), 'dd-MM-yyyy') : 'N/A',
-      size: requestData.size,
-      quantity: String(requestData.quantity || '1'),
-      reasonForRequest: requestData.remarks || '',
-      lastIssuingDate: lastPpeRecord?.issueDate ? format(new Date(lastPpeRecord.issueDate), 'dd-MM-yyyy') : 'N/A',
-      returnOfLastIssuedItem: 'N/A', // This needs a source if required
-      eligibility: 'N/A', // This needs a source if required
-      stockDetails: JSON.stringify(coverallStock),
-      attachmentUrl: requestData.attachmentUrl,
-      approvalLink: `${window.location.origin}/my-requests`
-    };
-
-    await notifyManager(notificationData);
+    
+    await notifyManager({
+        requesterName: user.name,
+        ppeType: requestData.ppeType,
+        size: requestData.size,
+        quantity: String(requestData.quantity || '1'),
+        requestType: requestData.requestType,
+        remarks: requestData.remarks,
+        attachmentUrl: requestData.attachmentUrl,
+        approvalLink: `${window.location.origin}/my-requests`
+    });
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock, projects]);
 
@@ -2322,6 +2312,7 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
 
