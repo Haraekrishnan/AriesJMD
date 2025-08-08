@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,15 +10,12 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check, Trash2, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile } from '@/lib/types';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
-import Link from 'next/link';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 
@@ -128,27 +126,28 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
                 {hasUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
             </TableCell>
             <TableCell>
-                <div className="space-y-2">
-                    <p className="font-semibold">{manpower?.name}</p>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                        <p><strong>Joining Date:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A'}</p>
-                        <p><strong>Rejoining Date:</strong> {getRejoiningDate(manpower)}</p>
-                    </div>
-                    {manpower?.ppeHistory && manpower.ppeHistory.length > 0 && (
-                        <div className="mt-2">
-                            <p className="text-xs font-semibold text-muted-foreground">PPE Issue History</p>
-                            <ul className="list-disc pl-4 text-xs space-y-1 mt-1">
-                                {manpower.ppeHistory.map(item => (
-                                <li key={item.id}>
-                                    {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
-                                    {item.remarks && <p className="text-muted-foreground italic">Requester: "{item.remarks}"</p>}
-                                    {item.storeComment && <p className="text-muted-foreground italic">Store: "{item.storeComment}"</p>}
-                                </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+                <p className="font-semibold">{manpower?.name}</p>
+            </TableCell>
+            <TableCell>
+                <div className="text-xs text-muted-foreground space-y-1">
+                    <p><strong>Joining:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yy') : 'N/A'}</p>
+                    <p><strong>Rejoining:</strong> {getRejoiningDate(manpower)}</p>
                 </div>
+            </TableCell>
+             <TableCell>
+                {manpower?.ppeHistory && manpower.ppeHistory.length > 0 ? (
+                    <ul className="list-disc pl-4 text-xs space-y-1">
+                        {manpower.ppeHistory.map(item => (
+                        <li key={item.id}>
+                            {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
+                            {item.remarks && <p className="text-muted-foreground italic">Requester: "{item.remarks}"</p>}
+                            {item.storeComment && <p className="text-muted-foreground italic">Store: "{item.storeComment}"</p>}
+                        </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-xs text-muted-foreground">No history</p>
+                )}
             </TableCell>
             <TableCell>{getProjectName(manpower?.eic)}</TableCell>
             <TableCell>{requester?.name || 'N/A'}</TableCell>
@@ -276,7 +275,9 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <TableHeader>
                         <TableRow>
                             <TableHead></TableHead>
-                            <TableHead className="w-[30%]">Employee</TableHead>
+                            <TableHead className="w-[15%]">Employee</TableHead>
+                            <TableHead className="w-[10%]">Dates</TableHead>
+                            <TableHead className="w-[20%]">PPE History</TableHead>
                             <TableHead>Project</TableHead>
                             <TableHead>Requester</TableHead>
                             <TableHead>Request</TableHead>
@@ -287,7 +288,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <TableBody>
                         {activeRequests.map(req => <RequestRow key={req.id} req={req} />)}
                         {activeRequests.length === 0 && (
-                            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No active requests.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No active requests.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -304,7 +305,9 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead></TableHead>
-                                        <TableHead className="w-[30%]">Employee</TableHead>
+                                        <TableHead className="w-[15%]">Employee</TableHead>
+                                        <TableHead className="w-[10%]">Dates</TableHead>
+                                        <TableHead className="w-[20%]">PPE History</TableHead>
                                         <TableHead>Project</TableHead>
                                         <TableHead>Requester</TableHead>
                                         <TableHead>Request</TableHead>
@@ -323,3 +326,4 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </div>
     );
 }
+
