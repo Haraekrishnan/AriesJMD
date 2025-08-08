@@ -1449,6 +1449,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await update(ref(rtdb), updates);
     
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    
     await sendPpeRequestEmail({
       requesterName: user.name,
       employeeName: manpowerProfile?.name || 'N/A',
@@ -1458,9 +1460,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestType: requestData.requestType,
       remarks: requestData.remarks,
       attachmentUrl: requestData.attachmentUrl,
-      approvalLink: `${window.location.origin}/my-requests`
+      approvalLink: `${appUrl}/my-requests`
     });
-  }, [user, users, addActivityLog, manpowerProfiles, ppeStock, projects]);
+  }, [user, users, addActivityLog, manpowerProfiles]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if(!user || user.role !== 'Admin') return;
@@ -2291,3 +2293,4 @@ export const useAppContext = (): AppContextType => {
     
 
       
+

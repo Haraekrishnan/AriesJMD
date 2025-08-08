@@ -1,4 +1,3 @@
-
 'use server';
 
 import * as nodemailer from 'nodemailer';
@@ -28,7 +27,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     requestType,
     remarks,
     attachmentUrl,
-    approvalLink
+    approvalLink,
   } = ppeData;
 
   const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
