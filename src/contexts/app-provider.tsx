@@ -2264,7 +2264,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/status`] = status;
     updates[`ppeRequests/${requestId}/approverId`] = user.id;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-    updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
+    
+    if (comment.trim()) {
+        updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
+    }
     
     if (status === 'Issued') {
         const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
