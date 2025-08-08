@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -10,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -229,28 +229,6 @@ const createDataListener = <T extends {}>(path: string, setData: React.Dispatch<
     setData([]);
   });
 };
-
-async function notifyManager(ppeData: any) {
-  const formData = new FormData();
-  Object.keys(ppeData).forEach(key => {
-    if (ppeData[key] !== undefined && ppeData[key] !== null) {
-        formData.append(key, ppeData[key]);
-    }
-  });
-
-  try {
-    // We use 'no-cors' mode because Apps Script web apps can be tricky with CORS preflight requests.
-    // This is a "fire-and-forget" request, so we don't need to read the response.
-    await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
-      method: 'POST',
-      mode: 'no-cors', 
-      body: formData,
-    });
-    console.log('Notification request sent to Apps Script.');
-  } catch (error) {
-    console.error("Failed to send notification:", error);
-  }
-}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -1472,15 +1450,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await update(ref(rtdb), updates);
     
-    await notifyManager({
-        requesterName: user.name,
-        ppeType: requestData.ppeType,
-        size: requestData.size,
-        quantity: String(requestData.quantity || '1'),
-        requestType: requestData.requestType,
-        remarks: requestData.remarks,
-        attachmentUrl: requestData.attachmentUrl,
-        approvalLink: `${window.location.origin}/my-requests`
+    sendPpeRequestEmail({
+      requesterName: user.name,
+      ppeType: requestData.ppeType,
+      size: requestData.size,
+      quantity: requestData.quantity,
+      requestType: requestData.requestType,
+      remarks: requestData.remarks,
+      attachmentUrl: requestData.attachmentUrl,
+      approvalLink: `${window.location.origin}/my-requests`
     });
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock, projects]);
@@ -2314,6 +2292,7 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
 
