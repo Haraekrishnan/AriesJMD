@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -10,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { sendNotification } from '@/ai/flows/send-notification-flow';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1419,7 +1419,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
   }, [user, addActivityLog]);
   
-  const addPpeRequest = useCallback((request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+  const addPpeRequest = useCallback(async (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
 
     const updates: { [key: string]: any } = {};
@@ -1451,7 +1451,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
 
-  }, [user, users, addActivityLog, manpowerProfiles]);
+    // Send email notification
+    if (manager) {
+        try {
+            await sendNotification({
+                to: 'ariesmarineandeng@gmail.com',
+                subject: `New PPE Request for ${manpowerProfile?.name}`,
+                body: `A new PPE request has been submitted by ${user.name} for ${manpowerProfile?.name} and is awaiting your approval.\n\nType: ${request.ppeType}\nSize: ${request.size}\n\nPlease log in to the portal to review and approve the request.`
+            });
+            toast({ title: 'Notification Sent', description: 'The manager has been notified by email.' });
+        } catch (error) {
+            console.error('Failed to send notification email:', error);
+            toast({ variant: 'destructive', title: 'Notification Failed', description: 'Could not send email to the manager.' });
+        }
+    }
+
+  }, [user, users, addActivityLog, manpowerProfiles, toast]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if(!user || user.role !== 'Admin') return;
@@ -2277,8 +2292,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
+    
 
     
