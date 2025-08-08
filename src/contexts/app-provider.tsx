@@ -244,11 +244,11 @@ async function notifyManager(ppeData: any) {
   try {
     const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
       method: 'POST',
-      body: formData
+      body: formData,
+      mode: 'no-cors'
     });
-
-    const json = await res.json();
-    console.log('Notification response:', json);
+    // Can't read response with no-cors, so we just assume it worked.
+    console.log('Notification request sent to Apps Script.');
   } catch(error) {
     console.error("Failed to send notification:", error);
   }
