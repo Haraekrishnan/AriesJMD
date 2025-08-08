@@ -9,10 +9,14 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle, HardHat, Shirt } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import PpeReportDownloads from '@/components/requests/PpeReportDownloads';
+import type { DateRange } from 'react-day-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 export default function PpeStockPage() {
     const { can, ppeStock, updatePpeStock, loading } = useAppContext();
     const { toast } = useToast();
+    const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
 
     const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
     const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
@@ -131,6 +135,17 @@ export default function PpeStockPage() {
                     )}
                 </Card>
             </div>
+            
+             <Card>
+                <CardHeader>
+                    <CardTitle>Generate PPE Issue Report</CardTitle>
+                    <CardDescription>Select a date range to generate a downloadable Excel report of all issued PPE.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row gap-4 items-center">
+                    <DateRangePicker date={reportDateRange} onDateChange={setReportDateRange} />
+                    <PpeReportDownloads dateRange={reportDateRange} />
+                </CardContent>
+            </Card>
         </div>
     );
 }
