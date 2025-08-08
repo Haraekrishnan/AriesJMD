@@ -1,14 +1,18 @@
+
 'use server';
 
 import * as nodemailer from 'nodemailer';
 
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
-  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
+  const { GMAIL_USER, GMAIL_APP_PASS, NEXT_PUBLIC_APP_URL } = process.env;
 
   if (!GMAIL_USER || !GMAIL_APP_PASS) {
     console.error('Missing Gmail credentials in .env file.');
     return { success: false, error: 'Server configuration error.' };
   }
+  
+  const appUrl = NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const approvalLink = `${appUrl}/my-requests`;
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -27,7 +31,6 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     requestType,
     remarks,
     attachmentUrl,
-    approvalLink,
   } = ppeData;
 
   const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
