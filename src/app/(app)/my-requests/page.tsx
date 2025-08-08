@@ -76,19 +76,19 @@ export default function MyRequestsPage() {
                 </div>
             </div>
             
-            <Tabs defaultValue="store-requests">
+            <Tabs defaultValue="ppe-requests">
                 <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
-                        Internal Store Requests
-                         {internalNotifCount > 0 && (
-                            <Badge variant="destructive">{internalNotifCount}</Badge>
-                         )}
-                    </TabsTrigger>
                     <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
                         PPE Requests
                         {ppeNotifCount > 0 && (
                            <Badge variant="destructive">{ppeNotifCount}</Badge>
                         )}
+                    </TabsTrigger>
+                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
+                        Internal Store Requests
+                         {internalNotifCount > 0 && (
+                            <Badge variant="destructive">{internalNotifCount}</Badge>
+                         )}
                     </TabsTrigger>
                     <TabsTrigger value="management-requests" className="flex items-center gap-2">
                         Management Requests
@@ -97,25 +97,6 @@ export default function MyRequestsPage() {
                          )}
                     </TabsTrigger>
                 </TabsList>
-                <TabsContent value="store-requests">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Internal Store Requests</CardTitle>
-                                <CardDescription>
-                                    Create new requests and track their status.
-                                </CardDescription>
-                            </div>
-                            <Button onClick={() => setIsNewRequestDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New Store Request
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            <InternalRequestTable requests={visibleInternalRequests} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
                 <TabsContent value="ppe-requests">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -132,6 +113,25 @@ export default function MyRequestsPage() {
                         </CardHeader>
                         <CardContent>
                             <PpeRequestTable requests={visiblePpeRequests} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="store-requests">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>Internal Store Requests</CardTitle>
+                                <CardDescription>
+                                    Create new requests and track their status.
+                                </CardDescription>
+                            </div>
+                            <Button onClick={() => setIsNewRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New Store Request
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <InternalRequestTable requests={visibleInternalRequests} />
                         </CardContent>
                     </Card>
                 </TabsContent>
