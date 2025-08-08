@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -16,9 +16,10 @@ import { cn } from '@/lib/utils';
 
 interface VehicleTableProps {
   onEdit: (vehicle: Vehicle) => void;
+  onLogManager: (vehicle: Vehicle) => void;
 }
 
-export default function VehicleTable({ onEdit }: VehicleTableProps) {
+export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps) {
   const { vehicles, drivers, can, deleteVehicle } = useAppContext();
   const { toast } = useToast();
 
@@ -66,7 +67,7 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
           <TableHead>Fitness</TableHead>
           <TableHead>Tax</TableHead>
           <TableHead>PUCC</TableHead>
-          {can.manage_vehicles && <TableHead className="text-right">Actions</TableHead>}
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -87,34 +88,39 @@ export default function VehicleTable({ onEdit }: VehicleTableProps) {
             <TableCell className={cn(getDateStyles(vehicle.fitnessValidity))}>{formatDate(vehicle.fitnessValidity)}</TableCell>
             <TableCell className={cn(getDateStyles(vehicle.taxValidity))}>{formatDate(vehicle.taxValidity)}</TableCell>
             <TableCell className={cn(getDateStyles(vehicle.puccValidity))}>{formatDate(vehicle.puccValidity)}</TableCell>
-            {can.manage_vehicles && (
-              <TableCell className="text-right">
+            <TableCell className="text-right">
                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}>
-                        <Edit className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}>
+                        <FileText className="h-4 w-4" />
                     </Button>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete the vehicle {vehicle.vehicleNumber}.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(vehicle.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    {can.manage_vehicles && (
+                      <>
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the vehicle {vehicle.vehicleNumber}.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(vehicle.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
                 </div>
               </TableCell>
-            )}
           </TableRow>
         ))}
       </TableBody>

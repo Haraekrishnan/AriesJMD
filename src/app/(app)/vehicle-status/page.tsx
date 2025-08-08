@@ -13,6 +13,7 @@ import { addDays, isBefore, format, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DriverListTable from '@/components/driver/DriverListTable';
 import AddDriverDialog from '@/components/driver/AddDriverDialog';
+import VehicleLogManagerDialog from '@/components/vehicle/VehicleLogManagerDialog';
 
 export default function VehicleStatusPage() {
     const { can, vehicles, drivers } = useAppContext();
@@ -20,6 +21,7 @@ export default function VehicleStatusPage() {
     // Vehicle State
     const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
     const [isEditVehicleOpen, setIsEditVehicleOpen] = useState(false);
+    const [isLogManagerOpen, setIsLogManagerOpen] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
     // Driver State
@@ -77,6 +79,10 @@ export default function VehicleStatusPage() {
     const handleAddVehicle = () => {
         setSelectedVehicle(null);
         setIsAddVehicleOpen(true);
+    };
+    const handleLogManager = (vehicle: Vehicle) => {
+        setSelectedVehicle(vehicle);
+        setIsLogManagerOpen(true);
     };
 
     // Driver Handlers
@@ -158,7 +164,7 @@ export default function VehicleStatusPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <VehicleTable onEdit={handleEditVehicle} />
+                            <VehicleTable onEdit={handleEditVehicle} onLogManager={handleLogManager} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -191,6 +197,13 @@ export default function VehicleStatusPage() {
                 <EditVehicleDialog 
                     isOpen={isEditVehicleOpen} 
                     setIsOpen={setIsEditVehicleOpen} 
+                    vehicle={selectedVehicle}
+                />
+            )}
+             {selectedVehicle && (
+                <VehicleLogManagerDialog 
+                    isOpen={isLogManagerOpen} 
+                    setIsOpen={setIsLogManagerOpen} 
                     vehicle={selectedVehicle}
                 />
             )}
