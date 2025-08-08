@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check, Trash2, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import type { PpeRequest, PpeRequestStatus, ManpowerProfile } from '@/lib/types';
+import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 
 interface PpeRequestTableProps {
@@ -91,7 +93,7 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
     const getRejoiningDate = (profile?: ManpowerProfile) => {
         if(!profile || !profile.leaveHistory) return 'N/A';
         const lastRejoin = profile.leaveHistory.filter(l => l.rejoinedDate).sort((a,b) => new Date(b.rejoinedDate!).getTime() - new Date(a.rejoinedDate!).getTime())[0];
-        return lastRejoin?.rejoinedDate ? format(parseISO(lastRejoin.rejoinedDate), 'dd-MM-yyyy') : 'N/A';
+        return lastRejoin?.rejoinedDate ? format(parseISO(lastRejoin.rejoinedDate), 'dd-MM-yy') : 'N/A';
     }
 
     const handleAccordionToggle = (req: PpeRequest) => {
@@ -118,6 +120,15 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
     const canApprove = isManager && req.status === 'Pending';
     const canMarkAsIssued = canIssue && req.status === 'Approved';
+    
+    const sortedHistory = useMemo(() => {
+        if (!manpower?.ppeHistory) return [];
+        return [...manpower.ppeHistory].sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+    }, [manpower?.ppeHistory]);
+
+    const lastIssue = sortedHistory[0];
+    const previousIssues = sortedHistory.slice(1);
+    const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
 
     return (
         <>
@@ -127,40 +138,57 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
             </TableCell>
             <TableCell>
                 <p className="font-semibold">{manpower?.name}</p>
-            </TableCell>
-            <TableCell>
-                <div className="text-xs text-muted-foreground space-y-1">
-                    <p><strong>Joining:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yy') : 'N/A'}</p>
-                    <p><strong>Rejoining:</strong> {getRejoiningDate(manpower)}</p>
+                 <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                    <p><strong>Join:</strong> {manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yy') : 'N/A'}</p>
+                    <p><strong>Rejoin:</strong> {getRejoiningDate(manpower)}</p>
                 </div>
             </TableCell>
-             <TableCell>
-                {manpower?.ppeHistory && manpower.ppeHistory.length > 0 ? (
-                    <ul className="list-disc pl-4 text-xs space-y-1">
-                        {manpower.ppeHistory.map(item => (
-                        <li key={item.id}>
-                            {item.requestType} {item.ppeType} ({item.size}) issued on {format(parseISO(item.issueDate), 'dd-MM-yy')}
-                            {item.remarks && <p className="text-muted-foreground italic">Requester: "{item.remarks}"</p>}
-                            {item.storeComment && <p className="text-muted-foreground italic">Store: "{item.storeComment}"</p>}
-                        </li>
-                        ))}
-                    </ul>
+            <TableCell>
+                {lastIssue ? (
+                    <div className="text-xs">
+                        <p>{lastIssue.requestType} {lastIssue.ppeType} ({lastIssue.size})</p>
+                        <p>on {format(parseISO(lastIssue.issueDate), 'dd-MM-yy')}</p>
+                         {previousIssues.length > 0 && (
+                            <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value="history" className="border-none">
+                                    <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View {previousIssues.length} previous</AccordionTrigger>
+                                    <AccordionContent className="pt-2">
+                                        <ul className="list-disc pl-4 text-xs space-y-1">
+                                            {previousIssues.map(item => (
+                                            <li key={item.id}>
+                                                {item.requestType} {item.ppeType} ({item.size}) on {format(parseISO(item.issueDate), 'dd-MM-yy')}
+                                            </li>
+                                            ))}
+                                        </ul>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                         )}
+                    </div>
                 ) : (
-                    <p className="text-xs text-muted-foreground">No history</p>
+                     <p className="text-xs text-muted-foreground">No history</p>
                 )}
             </TableCell>
-            <TableCell>{getProjectName(manpower?.eic)}</TableCell>
-            <TableCell>{requester?.name || 'N/A'}</TableCell>
+            <TableCell>
+                <p>{getProjectName(manpower?.eic)}</p>
+                <p className="text-xs text-muted-foreground">by {requester?.name || 'N/A'}</p>
+            </TableCell>
             <TableCell>
                 <p>{req.requestType} {req.ppeType}</p>
                 <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}</p>
-                {req.quantity && <p className="text-sm text-muted-foreground">Quantity: {req.quantity}</p>}
-                {req.remarks && <p className="text-xs text-muted-foreground italic">"{req.remarks}"</p>}
+                {req.quantity && <p className="text-sm text-muted-foreground">Qty: {req.quantity}</p>}
                 {req.attachmentUrl && (
                     <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setViewingAttachmentUrl(req.attachmentUrl!)}>
                         <Paperclip className="mr-1 h-3 w-3" />View Attachment
                     </Button>
                 )}
+            </TableCell>
+            <TableCell>
+                {commentsArray.length > 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                        {commentsArray[commentsArray.length-1].text}
+                    </div>
+                ) : <p className="text-xs text-muted-foreground italic">No comments</p>}
             </TableCell>
             <TableCell>
                 <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
@@ -276,11 +304,10 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                         <TableRow>
                             <TableHead></TableHead>
                             <TableHead className="w-[15%]">Employee</TableHead>
-                            <TableHead className="w-[10%]">Dates</TableHead>
-                            <TableHead className="w-[20%]">PPE History</TableHead>
+                            <TableHead className="w-[15%]">Last Issue</TableHead>
                             <TableHead>Project</TableHead>
-                            <TableHead>Requester</TableHead>
-                            <TableHead>Request</TableHead>
+                            <TableHead className="w-[15%]">Request</TableHead>
+                            <TableHead className="w-[15%]">Comments</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -288,7 +315,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                     <TableBody>
                         {activeRequests.map(req => <RequestRow key={req.id} req={req} />)}
                         {activeRequests.length === 0 && (
-                            <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No active requests.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">No active requests.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -306,11 +333,10 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                                     <TableRow>
                                         <TableHead></TableHead>
                                         <TableHead className="w-[15%]">Employee</TableHead>
-                                        <TableHead className="w-[10%]">Dates</TableHead>
-                                        <TableHead className="w-[20%]">PPE History</TableHead>
+                                        <TableHead className="w-[15%]">Last Issue</TableHead>
                                         <TableHead>Project</TableHead>
-                                        <TableHead>Requester</TableHead>
-                                        <TableHead>Request</TableHead>
+                                        <TableHead className="w-[15%]">Request</TableHead>
+                                        <TableHead className="w-[15%]">Comments</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
