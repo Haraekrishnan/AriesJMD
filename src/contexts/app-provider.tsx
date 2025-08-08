@@ -234,10 +234,11 @@ async function notifyManager(ppeData: any) {
   try {
     const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
       method: 'POST',
+      mode: 'no-cors', 
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({ ppeData }),
+      body: new URLSearchParams({ppeData: JSON.stringify(ppeData)}),
     });
     console.log('Notification request sent to Apps Script.');
   } catch (error) {
@@ -2321,5 +2322,6 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
