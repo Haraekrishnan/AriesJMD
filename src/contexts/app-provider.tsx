@@ -1457,9 +1457,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return lastRejoin?.rejoinedDate ? format(parseISO(lastRejoin.rejoinedDate), 'dd-MM-yyyy') : 'N/A';
     };
 
-    const getLastPpeIssueDate = (profile?: ManpowerProfile) => {
-      if (!profile || !profile.ppeHistory) return 'N/A';
-      const lastIssue = profile.ppeHistory.sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+    const getLastPpeIssueDate = (profile?: ManpowerProfile, ppeType?: 'Coverall' | 'Safety Shoes') => {
+      if (!profile || !profile.ppeHistory || !ppeType) return 'N/A';
+      const lastIssue = profile.ppeHistory
+        .filter(item => item.ppeType === ppeType)
+        .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
       return lastIssue?.issueDate ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A';
     };
 
@@ -1467,7 +1469,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const employeeProfile = manpowerProfiles.find(p => p.id === requestData.manpowerId);
     const joiningDate = employeeProfile?.joiningDate ? format(parseISO(employeeProfile.joiningDate), 'dd-MM-yyyy') : 'N/A';
     const rejoiningDate = getRejoiningDate(employeeProfile);
-    const lastIssueDate = getLastPpeIssueDate(employeeProfile);
+    const lastIssueDate = getLastPpeIssueDate(employeeProfile, requestData.ppeType);
 
     // Call the Server Action to send the email
     await sendPpeRequestEmail({
@@ -2315,6 +2317,7 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
 
