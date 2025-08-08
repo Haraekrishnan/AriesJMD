@@ -1,4 +1,5 @@
 
+
 // 1. Create a new script project at script.google.com
 // 2. Copy and paste this entire code into the Code.gs file.
 // 3. Go to Deploy > New deployment.
@@ -11,30 +12,30 @@
 
 function doPost(e) {
   try {
-    const params = e.parameter || {};
+    const { ppeData } = JSON.parse(e.postData.contents);
     
     // --- Request Details ---
-    const requestId = params.requestId || 'N/A';
-    const requestedBy = params.requestedBy || 'N/A';
-    const requestType = params.requestType || 'N/A';
-    const requestedFor = params.requestedFor || 'N/A';
-    const plant = params.plant || 'N/A';
-    const firstJoiningDate = params.firstJoiningDate || 'N/A';
-    const rejoiningDate = params.rejoiningDate || 'N/A';
-    const size = params.size || 'N/A';
-    const quantity = params.quantity || 'N/A';
-    const reasonForRequest = params.reasonForRequest || 'N/A';
-    const lastIssuingDate = params.lastIssuingDate || 'N/A';
-    const returnOfLastIssuedItem = params.returnOfLastIssuedItem || 'N/A';
-    const eligibility = params.eligibility || 'N/A';
+    const requestId = ppeData.requestId || 'N/A';
+    const requestedBy = ppeData.requestedBy || 'N/A';
+    const requestType = ppeData.requestType || 'N/A';
+    const requestedFor = ppeData.requestedFor || 'N/A';
+    const plant = ppeData.plant || 'N/A';
+    const firstJoiningDate = ppeData.firstJoiningDate || 'N/A';
+    const rejoiningDate = ppeData.rejoiningDate || 'N/A';
+    const size = ppeData.size || 'N/A';
+    const quantity = ppeData.quantity || 'N/A';
+    const reasonForRequest = ppeData.reasonForRequest || 'N/A';
+    const lastIssuingDate = ppeData.lastIssuingDate || 'N/A';
+    const returnOfLastIssuedItem = ppeData.returnOfLastIssuedItem || 'N/A';
+    const eligibility = ppeData.eligibility || 'N/A';
 
     // --- Stock Details ---
-    const stockDetailsString = params.stockDetails || '{}';
+    const stockDetailsString = ppeData.stockDetails || '{}';
     const stockDetails = JSON.parse(stockDetailsString);
 
     // --- Attachment & Approval Link ---
-    const attachmentUrl = params.attachmentUrl || '';
-    const approvalLink = params.approvalLink || 'https://your-app-url.com'; // Fallback URL
+    const attachmentUrl = ppeData.attachmentUrl || '';
+    const approvalLink = ppeData.approvalLink || 'https://your-app-url.com'; // Fallback URL
 
     const subject = `PPE Approval Request: ${requestedFor} - ${new Date().toLocaleDateString("en-IN")}`;
     

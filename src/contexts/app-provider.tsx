@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -230,21 +231,16 @@ const createDataListener = <T extends {}>(path: string, setData: React.Dispatch<
 };
 
 async function notifyManager(ppeData: any) {
-  const formData = new FormData();
-  Object.keys(ppeData).forEach(key => {
-    if (ppeData[key] !== undefined && ppeData[key] !== null) {
-      formData.append(key, ppeData[key]);
-    }
-  });
-
   try {
     const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
       method: 'POST',
-      body: formData,
-      mode: 'no-cors'
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ppeData }),
     });
     console.log('Notification request sent to Apps Script.');
-  } catch(error) {
+  } catch (error) {
     console.error("Failed to send notification:", error);
   }
 }
@@ -1467,7 +1463,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    update(ref(rtdb), updates);
+    await update(ref(rtdb), updates);
 
     // Prepare data for notification
     const coverallStock = ppeStock.find(s => s.id === 'coveralls')?.sizes || {};
@@ -1485,8 +1481,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       quantity: String(requestData.quantity || '1'),
       reasonForRequest: requestData.remarks || '',
       lastIssuingDate: lastPpeRecord?.issueDate ? format(new Date(lastPpeRecord.issueDate), 'dd-MM-yyyy') : 'N/A',
-      returnOfLastIssuedItem: 'N/A',
-      eligibility: 'N/A',
+      returnOfLastIssuedItem: 'N/A', // This needs a source if required
+      eligibility: 'N/A', // This needs a source if required
       stockDetails: JSON.stringify(coverallStock),
       attachmentUrl: requestData.attachmentUrl,
       approvalLink: `${window.location.origin}/my-requests`
@@ -2325,4 +2321,5 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
