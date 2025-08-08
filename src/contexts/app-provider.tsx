@@ -239,9 +239,11 @@ async function notifyManager(ppeData: any) {
   });
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
+    // We use 'no-cors' mode because Apps Script web apps can be tricky with CORS preflight requests.
+    // This is a "fire-and-forget" request, so we don't need to read the response.
+    await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
       method: 'POST',
-      mode: 'no-cors',
+      mode: 'no-cors', 
       body: formData,
     });
     console.log('Notification request sent to Apps Script.');
@@ -2312,6 +2314,7 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
 
