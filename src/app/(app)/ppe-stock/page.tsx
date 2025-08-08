@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,16 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle, HardHat, Shirt } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PpeStockPage() {
-    const { can, ppeStock, updatePpeStock } = useAppContext();
+    const { can, ppeStock, updatePpeStock, loading } = useAppContext();
     const { toast } = useToast();
 
-    const coverallStock = useMemo(() => ppeStock.find(s => s.id === 'coveralls'), [ppeStock]);
-    const shoeStock = useMemo(() => ppeStock.find(s => s.id === 'safetyShoes'), [ppeStock]);
+    const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
+    const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
 
     const [coverallSizes, setCoverallSizes] = useState(coverallStock?.sizes || {});
     const [shoeQuantity, setShoeQuantity] = useState(shoeStock?.quantity || 0);
+
+    useEffect(() => {
+        if (coverallStock) {
+            setCoverallSizes(coverallStock.sizes || {});
+        }
+        if (shoeStock) {
+            setShoeQuantity(shoeStock.quantity || 0);
+        }
+    }, [coverallStock, shoeStock]);
 
     const canEdit = useMemo(() => can.manage_ppe_stock, [can]);
 
@@ -34,6 +44,18 @@ export default function PpeStockPage() {
         updatePpeStock('safetyShoes', shoeQuantity);
         toast({ title: 'Safety Shoe Stock Updated' });
     };
+
+    if (loading) {
+        return (
+             <div className="space-y-8">
+                <Skeleton className="h-10 w-1/2" />
+                <div className="grid md:grid-cols-2 gap-8">
+                    <Skeleton className="h-64" />
+                    <Skeleton className="h-64" />
+                </div>
+             </div>
+        )
+    }
 
     if (!can.manage_ppe_stock) {
         return (
@@ -112,4 +134,3 @@ export default function PpeStockPage() {
         </div>
     );
 }
-
