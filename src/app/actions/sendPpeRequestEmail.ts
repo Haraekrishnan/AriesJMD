@@ -4,14 +4,14 @@
 import * as nodemailer from 'nodemailer';
 
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
-  const { GMAIL_USER, GMAIL_APP_PASS, NEXT_PUBLIC_APP_URL } = process.env;
+  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
 
   if (!GMAIL_USER || !GMAIL_APP_PASS) {
     console.error('Missing Gmail credentials in .env file.');
     return { success: false, error: 'Server configuration error.' };
   }
   
-  const appUrl = NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const approvalLink = `${appUrl}/my-requests`;
 
   const transporter = nodemailer.createTransport({
@@ -31,18 +31,28 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     requestType,
     remarks,
     attachmentUrl,
+    joiningDate,
+    rejoiningDate,
+    lastIssueDate,
   } = ppeData;
 
   const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
       <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
-      <p><strong>Requester:</strong> ${requesterName}</p>
+      
       <p><strong>Employee:</strong> ${employeeName}</p>
       <p><strong>Type:</strong> ${ppeType} &middot; <strong>Size:</strong> ${size} &middot; <strong>Qty:</strong> ${quantity}</p>
       <p><strong>Request Type:</strong> ${requestType}</p>
       <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
+      <p><strong>Joining Date:</strong> ${joiningDate || 'N/A'}</p>
+      <p><strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}</p>
+      <p><strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}</p>
+      
       ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
+      
+      <p><strong>Requested By:</strong> ${requesterName}</p>
+
       <p style="margin-top: 25px;">
         <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; border-top: 12px solid #007bff; border-bottom: 12px solid #007bff; border-right: 18px solid #007bff; border-left: 18px solid #007bff; display: inline-block;">
             Review Request

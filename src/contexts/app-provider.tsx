@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1450,16 +1451,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await update(ref(rtdb), updates);
     
+    const getRejoiningDate = (profile?: ManpowerProfile) => {
+      if (!profile || !profile.leaveHistory) return 'N/A';
+      const lastRejoin = profile.leaveHistory.filter(l => l.rejoinedDate).sort((a,b) => new Date(b.rejoinedDate!).getTime() - new Date(a.rejoinedDate!).getTime())[0];
+      return lastRejoin?.rejoinedDate ? format(parseISO(lastRejoin.rejoinedDate), 'dd-MM-yyyy') : 'N/A';
+    };
+
+    const getLastPpeIssueDate = (profile?: ManpowerProfile) => {
+      if (!profile || !profile.ppeHistory) return 'N/A';
+      const lastIssue = profile.ppeHistory.sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+      return lastIssue?.issueDate ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A';
+    };
+
+    // Gather extra info for the email
+    const employeeProfile = manpowerProfiles.find(p => p.id === requestData.manpowerId);
+    const joiningDate = employeeProfile?.joiningDate ? format(parseISO(employeeProfile.joiningDate), 'dd-MM-yyyy') : 'N/A';
+    const rejoiningDate = getRejoiningDate(employeeProfile);
+    const lastIssueDate = getLastPpeIssueDate(employeeProfile);
+
     await sendPpeRequestEmail({
       requesterName: user.name,
-      employeeName: manpowerProfile?.name || 'N/A',
+      employeeName: employeeProfile?.name || 'N/A',
       ppeType: requestData.ppeType,
       size: requestData.size,
       quantity: requestData.quantity,
       requestType: requestData.requestType,
       remarks: requestData.remarks,
       attachmentUrl: requestData.attachmentUrl,
+      joiningDate,
+      rejoiningDate,
+      lastIssueDate
     });
+
   }, [user, users, addActivityLog, manpowerProfiles]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
@@ -2291,5 +2314,6 @@ export const useAppContext = (): AppContextType => {
     
 
       
+
 
 
