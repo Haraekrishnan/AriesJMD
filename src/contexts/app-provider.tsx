@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { sendNotification } from '@/ai/flows/send-notification-flow';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -229,6 +228,31 @@ const createDataListener = <T extends {}>(path: string, setData: React.Dispatch<
     setData([]);
   });
 };
+
+async function notifyManager(ppeData: any) {
+  const formData = new FormData();
+  formData.append('requesterName', ppeData.requesterName);
+  formData.append('ppeType', ppeData.ppeType);
+  formData.append('size', ppeData.size);
+  formData.append('quantity', String(ppeData.quantity));
+  formData.append('requestType', ppeData.requestType);
+  formData.append('remarks', ppeData.remarks || '');
+  if (ppeData.attachmentUrl) {
+    formData.append('attachmentUrl', ppeData.attachmentUrl);
+  }
+
+  try {
+    const res = await fetch('https://script.google.com/macros/s/AKfycbx1hSgSunhkCaon1REaVbcPUnLmhKW9srvjL9IcV0X5IL1vz4pdbPo5YeX441BBKvrtDg/exec', {
+      method: 'POST',
+      body: formData
+    });
+
+    const json = await res.json();
+    console.log('Notification response:', json);
+  } catch(error) {
+    console.error("Failed to send notification:", error);
+  }
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -1451,22 +1475,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
 
-    // Send email notification
-    if (manager) {
-        try {
-            await sendNotification({
-                to: 'ariesmarineandeng@gmail.com',
-                subject: `New PPE Request for ${manpowerProfile?.name}`,
-                body: `A new PPE request has been submitted by ${user.name} for ${manpowerProfile?.name} and is awaiting your approval.\n\nType: ${request.ppeType}\nSize: ${request.size}\n\nPlease log in to the portal to review and approve the request.`
-            });
-            toast({ title: 'Notification Sent', description: 'The manager has been notified by email.' });
-        } catch (error) {
-            console.error('Failed to send notification email:', error);
-            toast({ variant: 'destructive', title: 'Notification Failed', description: 'Could not send email to the manager.' });
-        }
-    }
+    // Notify manager via Apps Script
+    await notifyManager({
+      requesterName: user.name,
+      ppeType: request.ppeType,
+      size: request.size,
+      quantity: request.quantity,
+      requestType: request.requestType,
+      remarks: request.remarks,
+      attachmentUrl: request.attachmentUrl
+    });
 
-  }, [user, users, addActivityLog, manpowerProfiles, toast]);
+  }, [user, users, addActivityLog, manpowerProfiles]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if(!user || user.role !== 'Admin') return;
@@ -2295,3 +2315,5 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
+      
