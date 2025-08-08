@@ -526,12 +526,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
   }, [user, tasks, addActivityLog]);
 
-  const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, commentText: string, attachment?: Task['attachment']) => {
+  const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
     if (!user) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     
-    addComment(taskId, commentText);
+    addComment(taskId, comment);
 
     const approverId = task.creatorId;
 
@@ -1428,13 +1428,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     
     const manager = users.find(u => u.role === 'Manager');
+    
+    const initialComment: Comment = {
+      id: `ppe-comm-${Date.now()}`,
+      userId: user.id,
+      text: requestData.remarks || 'Request created.',
+      date: new Date().toISOString()
+    };
+    
     const newRequestData: Omit<PpeRequest, 'id'> = {
       ...requestData,
       requesterId: user.id,
       date: new Date().toISOString(),
       status: 'Pending',
       approverId: manager?.id,
-      comments: [],
+      comments: [initialComment],
       viewedByRequester: true,
     };
     updates[`ppeRequests/${requestId}`] = newRequestData;
@@ -1470,7 +1478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const joiningDate = employeeProfile?.joiningDate ? format(parseISO(employeeProfile.joiningDate), 'dd-MM-yyyy') : 'N/A';
     const rejoiningDate = getRejoiningDate(employeeProfile);
     const lastIssueDate = getLastPpeIssueDate(employeeProfile, requestData.ppeType);
-
+    
     // Call the Server Action to send the email
     await sendPpeRequestEmail({
       requesterName: user.name,
@@ -1495,58 +1503,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'PPE Request Updated by Admin', `Request ID: ${id}`);
   }, [user, addActivityLog]);
 
-  const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
-    if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const newComment: Comment = { id: `ppe-comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
-    
-    const updates: { [key: string]: any } = {};
-    updates[`ppeRequests/${requestId}/status`] = status;
-    updates[`ppeRequests/${requestId}/approverId`] = user.id;
-    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-    updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
-    
-    if (status === 'Issued') {
-        const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
-        if (manpowerProfile) {
-            const ppeHistoryItem: PpeHistoryRecord = {
-                id: `ppe-hist-${Date.now()}`,
-                ppeType: request.ppeType,
-                size: request.size,
-                issueDate: new Date().toISOString(),
-                requestType: request.requestType,
-                remarks: request.remarks,
-                quantity: request.quantity,
-                storeComment: comment,
-            };
-            const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
-            updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
-        }
-        
-        // Deduct from stock
-        if (request.ppeType === 'Coverall') {
-            const coverallStock = ppeStock.find(s => s.id === 'coveralls');
-            if (coverallStock && coverallStock.sizes) {
-                const currentSizeStock = coverallStock.sizes[request.size] || 0;
-                const quantityToDeduct = request.quantity || 1;
-                const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
-                updates[`ppeStock/coveralls/sizes/${request.size}`] = newSizeStock;
-            }
-        } else if (request.ppeType === 'Safety Shoes') {
-            const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
-            if (shoeStock && shoeStock.quantity) {
-                const newQuantity = Math.max(0, shoeStock.quantity - 1); // Safety shoes are always quantity 1 per request
-                updates[`ppeStock/safetyShoes/quantity`] = newQuantity;
-            }
-        }
-    }
-
-    update(ref(rtdb), updates);
-  }, [user, ppeRequests, manpowerProfiles, ppeStock]);
-  
   const deletePpeRequest = useCallback((requestId: string) => {
       if(!user || user.role !== 'Admin') return;
       remove(ref(rtdb, `ppeRequests/${requestId}`));
@@ -2295,6 +2251,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
     }
   }, [user, ppeRequests]);
+  
+  const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newComment: Comment = { id: `ppe-comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`ppeRequests/${requestId}/status`] = status;
+    updates[`ppeRequests/${requestId}/approverId`] = user.id;
+    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+    updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
+    
+    if (status === 'Issued') {
+        const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
+        if (manpowerProfile) {
+            const ppeHistoryItem: PpeHistoryRecord = {
+                id: `ppe-hist-${Date.now()}`,
+                ppeType: request.ppeType,
+                size: request.size,
+                issueDate: new Date().toISOString(),
+                requestType: request.requestType,
+                remarks: request.remarks,
+                quantity: request.quantity,
+                storeComment: comment,
+            };
+            const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
+            updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
+        }
+        
+        // Deduct from stock
+        if (request.ppeType === 'Coverall') {
+            const coverallStock = ppeStock.find(s => s.id === 'coveralls');
+            if (coverallStock && coverallStock.sizes) {
+                const currentSizeStock = coverallStock.sizes[request.size] || 0;
+                const quantityToDeduct = request.quantity || 1;
+                const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
+                updates[`ppeStock/coveralls/sizes/${request.size}`] = newSizeStock;
+            }
+        } else if (request.ppeType === 'Safety Shoes') {
+            const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
+            if (shoeStock && shoeStock.quantity) {
+                const newQuantity = Math.max(0, shoeStock.quantity - 1); // Safety shoes are always quantity 1 per request
+                updates[`ppeStock/safetyShoes/quantity`] = newQuantity;
+            }
+        }
+    }
+
+    update(ref(rtdb), updates);
+  }, [user, ppeRequests, manpowerProfiles, ppeStock]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, appName, appLogo,
@@ -2323,3 +2331,7 @@ export const useAppContext = (): AppContextType => {
 
 
 
+
+
+
+    
