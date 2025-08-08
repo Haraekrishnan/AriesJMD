@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
-import type { LaptopDesktop } from '@/lib/types';
+import type { LaptopDesktop, Role } from '@/lib/types';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -20,6 +20,7 @@ const itemSchema = z.object({
   model: z.string().min(1, 'Model is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
   ariesId: z.string().optional(),
+  password: z.string().optional(),
   remarks: z.string().optional(),
 });
 
@@ -32,12 +33,18 @@ interface EditLaptopDesktopDialogProps {
 }
 
 export default function EditLaptopDesktopDialog({ isOpen, setIsOpen, item }: EditLaptopDesktopDialogProps) {
-  const { users, updateLaptopDesktop } = useAppContext();
+  const { user, users, updateLaptopDesktop } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
   });
+
+  const canEditPassword = useMemo(() => {
+    if (!user) return false;
+    const privilegedRoles: Role[] = ['Admin', 'Store in Charge', 'Assistant Store Incharge'];
+    return privilegedRoles.includes(user.role);
+  }, [user]);
 
   useEffect(() => {
     if (item && isOpen) {
@@ -93,6 +100,10 @@ export default function EditLaptopDesktopDialog({ isOpen, setIsOpen, item }: Edi
                 <Label htmlFor="ariesId">Aries ID</Label>
                 <Input id="ariesId" {...form.register('ariesId')} />
             </div>
+          </div>
+           <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" {...form.register('password')} disabled={!canEditPassword} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>

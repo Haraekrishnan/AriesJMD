@@ -450,6 +450,7 @@ export type LaptopDesktop = {
     serialNumber: string;
     allottedTo: string; // User ID
     ariesId?: string;
+    password?: string;
     remarks?: string;
 };
 

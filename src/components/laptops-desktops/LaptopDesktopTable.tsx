@@ -1,5 +1,6 @@
 
 'use client';
+import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { LaptopDesktop } from '@/lib/types';
+import { LaptopDesktop, Role } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 
 interface LaptopDesktopTableProps {
@@ -15,8 +16,14 @@ interface LaptopDesktopTableProps {
 }
 
 export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) {
-  const { can, laptopsDesktops, users, deleteLaptopDesktop } = useAppContext();
+  const { user, can, laptopsDesktops, users, deleteLaptopDesktop } = useAppContext();
   const { toast } = useToast();
+
+  const canViewPassword = useMemo(() => {
+    if (!user) return false;
+    const privilegedRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge'];
+    return privilegedRoles.includes(user.role);
+  }, [user]);
 
   const handleDelete = (itemId: string) => {
     deleteLaptopDesktop(itemId);
@@ -39,6 +46,7 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
           <TableHead>Model</TableHead>
           <TableHead>Serial Number</TableHead>
           <TableHead>Aries ID</TableHead>
+          {canViewPassword && <TableHead>Password</TableHead>}
           <TableHead>Allotted To</TableHead>
           <TableHead>Remarks</TableHead>
           {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
@@ -53,6 +61,7 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
                     <TableCell>{item.model}</TableCell>
                     <TableCell>{item.serialNumber}</TableCell>
                     <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                    {canViewPassword && <TableCell>{item.password || 'N/A'}</TableCell>}
                     <TableCell>
                          <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">

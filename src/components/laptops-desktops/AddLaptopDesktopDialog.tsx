@@ -18,6 +18,7 @@ const itemSchema = z.object({
   model: z.string().min(1, 'Model is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
   ariesId: z.string().optional(),
+  password: z.string().optional(),
   remarks: z.string().optional(),
 });
 
@@ -90,6 +91,10 @@ export default function AddLaptopDesktopDialog({ isOpen, setIsOpen }: AddLaptopD
                 <Label htmlFor="ariesId">Aries ID</Label>
                 <Input id="ariesId" {...form.register('ariesId')} />
             </div>
+          </div>
+          <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" {...form.register('password')} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
