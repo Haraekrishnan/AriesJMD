@@ -218,7 +218,7 @@ type AppContextType = {
   saveJobSchedule: (schedule: JobSchedule) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
   deleteVendor: (vendorId: string) => void;
-  addPayment: (payment: Omit<Payment, 'id' | 'requesterId' | 'approverId'>) => void;
+  addPayment: (payment: Omit<Payment, 'id' | 'requesterId' | 'status' | 'approverId'>) => void;
   updatePaymentStatus: (paymentId: string, status: PaymentStatus, comment: string) => void;
   deletePayment: (paymentId: string) => void;
 };
@@ -2088,7 +2088,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Job Schedule Saved', `Saved schedule for project ID ${schedule.projectId} on ${schedule.date}`);
   }, [user, addActivityLog]);
   
-  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'requesterId' | 'approverId'>) => {
+  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'requesterId' | 'status' | 'approverId'>) => {
     if (!user) return;
     const newPaymentRef = push(ref(rtdb, 'payments'));
     const manager = users.find(u => u.role === 'Manager');
@@ -2096,7 +2096,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newPayment = { 
         ...payment, 
         requesterId: user.id,
+        status: 'Pending' as PaymentStatus,
         approverId: manager?.id || null, // Assign to manager
+        comments: [{ id: `pay-c-${Date.now()}`, userId: user.id, text: `Ledger created with amount $${payment.amount}.`, date: new Date().toISOString() }],
     };
     
     const cleanPayment = Object.fromEntries(
@@ -2112,8 +2114,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return;
-    update(ref(rtdb, `payments/${paymentId}`), { status });
-    addActivityLog(user.id, 'Payment Status Updated', `Payment to ${vendors.find(v=>v.id === payment.vendorId)?.name} changed to ${status}. Comment: ${comment}`);
+
+    const newComment: Comment = { id: `pay-c-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(payment.comments) ? payment.comments : (payment.comments ? Object.values(payment.comments) : []);
+
+    update(ref(rtdb, `payments/${paymentId}`), { 
+      status,
+      comments: [...existingComments, newComment]
+    });
+    
+    addActivityLog(user.id, 'Payment Status Updated', `Payment to ${vendors.find(v=>v.id === payment.vendorId)?.name} changed to ${status}.`);
   }, [user, addActivityLog, payments, vendors]);
   
   const deletePayment = useCallback((paymentId: string) => {
@@ -2401,10 +2411,3 @@ export const useAppContext = (): AppContextType => {
 
 
     
-
-
-
-
-
-
-

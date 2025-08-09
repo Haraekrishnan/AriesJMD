@@ -22,6 +22,7 @@ export type Payment = {
     emailSentDate?: string; // ISO String
     status: PaymentStatus;
     remarks?: string;
+    comments?: Comment[];
 };
 
 

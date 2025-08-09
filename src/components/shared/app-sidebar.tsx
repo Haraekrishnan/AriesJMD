@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -50,7 +51,7 @@ export function AppSidebar() {
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
     { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount, show: true },
-    { href: '/vendor-management', icon: Briefcase, label: 'Vendor Management', notificationCount: 0, show: can.manage_vendors },
+    { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: 0, show: can.manage_vendors },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0, show: true },
