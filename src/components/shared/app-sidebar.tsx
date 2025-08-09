@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -35,7 +36,7 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount } = useAppContext();
+  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount } = useAppContext();
   const pathname = usePathname();
   
   const navItems = [
@@ -51,7 +52,7 @@ export function AppSidebar() {
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
     { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount, show: true },
-    { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: 0, show: can.manage_vendors },
+    { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: pendingPaymentApprovalCount, show: can.manage_vendors },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0, show: true },
@@ -115,3 +116,5 @@ export function AppSidebar() {
     </aside>
   );
 }
+
+    
