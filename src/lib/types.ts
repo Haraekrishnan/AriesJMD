@@ -1,6 +1,7 @@
 
 
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -122,7 +123,9 @@ export const ALL_PERMISSIONS = [
   'manage_accommodation',
   'log_manpower',
   'manage_job_schedule',
-  'manage_ppe_stock'
+  'manage_ppe_stock',
+  'manage_vendors',
+  'manage_payments'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];

@@ -4,6 +4,7 @@
 
 
 
+
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
@@ -26,7 +27,7 @@ export const ROLES: RoleDefinition[] = [
       'approve_store_requests', 'manage_inventory',
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
-      'log_manpower', 'manage_job_schedule'
+      'log_manpower', 'manage_job_schedule', 'manage_vendors', 'manage_payments'
     ],
     isEditable: false,
   },
