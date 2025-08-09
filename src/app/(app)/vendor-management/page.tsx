@@ -8,15 +8,22 @@ import { Download, Search, PlusCircle } from 'lucide-react';
 import VendorListTable from '@/components/vendor-management/VendorListTable';
 import { Input } from '@/components/ui/input';
 import AddVendorDialog from '@/components/vendor-management/AddVendorDialog';
+import EditVendorDialog from '@/components/vendor-management/EditVendorDialog';
+import { Vendor } from '@/lib/types';
 
 export default function VendorManagementPage() {
     const { vendors, can } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
+    const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
     const filteredVendors = vendors.filter(vendor => 
         vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleEditVendor = (vendor: Vendor) => {
+        setEditingVendor(vendor);
+    };
 
     return (
         <div className="space-y-6">
@@ -49,10 +56,17 @@ export default function VendorManagementPage() {
             </div>
 
             <div className="border rounded-lg">
-                <VendorListTable vendors={filteredVendors} />
+                <VendorListTable vendors={filteredVendors} onEdit={handleEditVendor} />
             </div>
 
             <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
+            {editingVendor && (
+                <EditVendorDialog
+                    isOpen={!!editingVendor}
+                    setIsOpen={() => setEditingVendor(null)}
+                    vendor={editingVendor}
+                />
+            )}
         </div>
     );
 }

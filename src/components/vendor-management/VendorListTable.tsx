@@ -8,15 +8,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Vendor } from '@/lib/types';
-import { format, formatDistanceToNowStrict, parseISO, isPast } from 'date-fns';
+import { format, formatDistanceToNowStrict, parseISO, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 
 interface VendorListTableProps {
   vendors: Vendor[];
+  onEdit: (vendor: Vendor) => void;
 }
 
-export default function VendorListTable({ vendors = [] }: VendorListTableProps) {
+export default function VendorListTable({ vendors = [], onEdit }: VendorListTableProps) {
   const { can, users, deleteVendor } = useAppContext();
   const { toast } = useToast();
 
@@ -110,7 +111,7 @@ export default function VendorListTable({ vendors = [] }: VendorListTableProps) 
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => alert('Edit functionality to be added.')}>
+                      <DropdownMenuItem onSelect={() => onEdit(vendor)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
                       <AlertDialogTrigger asChild>
