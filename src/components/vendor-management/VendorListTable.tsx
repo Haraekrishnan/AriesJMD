@@ -70,12 +70,9 @@ export default function VendorListTable({ vendors = [], onEdit }: VendorListTabl
       <TableHeader>
         <TableRow>
           <TableHead>Merchant</TableHead>
-          <TableHead>Owner</TableHead>
-          <TableHead>Total Spend</TableHead>
-          <TableHead>Last 30 days</TableHead>
-          <TableHead>Next Payment</TableHead>
-          <TableHead>Frequency</TableHead>
-          <TableHead>Owner Dept.</TableHead>
+          <TableHead>Contact Person</TableHead>
+          <TableHead>Contact Info</TableHead>
+          <TableHead>Address</TableHead>
           {can.manage_vendors && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
@@ -89,16 +86,15 @@ export default function VendorListTable({ vendors = [], onEdit }: VendorListTabl
                     </Avatar>
                     <div>
                         <p className="font-medium">{vendor.name}</p>
-                        <p className="text-xs text-muted-foreground">{vendor.category || 'N/A'}</p>
                     </div>
                 </div>
             </TableCell>
-            <TableCell>{getOwnerName(vendor.ownerId)}</TableCell>
-            <TableCell>{formatCurrency(vendor.totalSpend)}</TableCell>
-            <TableCell>{formatCurrency(vendor.last30Days)}</TableCell>
-            <NextPayment date={vendor.nextPaymentDate} amount={vendor.nextPaymentAmount} />
-            <TableCell>{vendor.frequency || 'N/A'}</TableCell>
-            <TableCell>{vendor.ownerDept || 'N/A'}</TableCell>
+            <TableCell>{vendor.contactPerson || 'N/A'}</TableCell>
+            <TableCell>
+                <p>{vendor.contactEmail || 'N/A'}</p>
+                <p className="text-xs text-muted-foreground">{vendor.contactPhone || 'N/A'}</p>
+            </TableCell>
+            <TableCell className="max-w-xs truncate">{vendor.address || 'N/A'}</TableCell>
 
             {can.manage_vendors && (
               <TableCell className="text-right">
