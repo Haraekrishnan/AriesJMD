@@ -14,7 +14,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -334,7 +334,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                         <TableRow>
                             <TableHead></TableHead>
                             <TableHead className="w-[15%]">Employee</TableHead>
-                            <TableHead className="w-[15%]">Last Issue</TableHead>
+                            <TableHead>PPE Issue History</TableHead>
                             <TableHead>Project</TableHead>
                             <TableHead>Request</TableHead>
                             <TableHead className="w-[15%]">Comments</TableHead>
@@ -363,7 +363,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
                                     <TableRow>
                                         <TableHead></TableHead>
                                         <TableHead className="w-[15%]">Employee</TableHead>
-                                        <TableHead className="w-[15%]">Last Issue</TableHead>
+                                        <TableHead>PPE Issue History</TableHead>
                                         <TableHead>Project</TableHead>
                                         <TableHead>Request</TableHead>
                                         <TableHead className="w-[15%]">Comments</TableHead>
