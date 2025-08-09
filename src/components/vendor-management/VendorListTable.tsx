@@ -13,7 +13,7 @@ interface VendorListTableProps {
   vendors: Vendor[];
 }
 
-export default function VendorListTable({ vendors }: VendorListTableProps) {
+export default function VendorListTable({ vendors = [] }: VendorListTableProps) {
   const { can } = useAppContext();
   const { toast } = useToast();
 
