@@ -24,7 +24,7 @@ const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructiv
 };
 
 export default function PaymentsTable({ payments }: PaymentsTableProps) {
-  const { users, vendors, deletePayment } = useAppContext();
+  const { user, users, vendors, deletePayment } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (paymentId: string) => {
@@ -56,13 +56,16 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
           <TableHead>Payment Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Requester</TableHead>
+          <TableHead>Approver</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {payments.map((payment) => {
           const requester = users.find(u => u.id === payment.requesterId);
+          const approver = users.find(u => u.id === payment.approverId);
           const vendor = vendors.find(v => v.id === payment.vendorId);
+          const canManage = user?.id === payment.approverId || user?.role === 'Admin';
           return (
             <TableRow key={payment.id}>
               <TableCell className="font-medium">{vendor?.name || 'N/A'}</TableCell>
@@ -74,10 +77,11 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
               <TableCell>{formatDate(payment.date)}</TableCell>
               <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
               <TableCell>{requester?.name || 'N/A'}</TableCell>
+              <TableCell>{approver?.name || 'N/A'}</TableCell>
               <TableCell className="text-right">
                  <AlertDialog>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0" disabled={!canManage}><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                         <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                         <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>

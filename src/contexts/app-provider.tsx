@@ -218,7 +218,7 @@ type AppContextType = {
   saveJobSchedule: (schedule: JobSchedule) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
   deleteVendor: (vendorId: string) => void;
-  addPayment: (payment: Omit<Payment, 'id' | 'requesterId'>) => void;
+  addPayment: (payment: Omit<Payment, 'id' | 'requesterId' | 'approverId'>) => void;
   deletePayment: (paymentId: string) => void;
 };
 
@@ -2087,10 +2087,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Job Schedule Saved', `Saved schedule for project ID ${schedule.projectId} on ${schedule.date}`);
   }, [user, addActivityLog]);
   
-  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'requesterId'>) => {
+  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'requesterId' | 'approverId'>) => {
     if (!user) return;
     const newPaymentRef = push(ref(rtdb, 'payments'));
-    const newPayment = { ...payment, requesterId: user.id };
+    const manager = users.find(u => u.role === 'Manager');
+    
+    const newPayment = { 
+        ...payment, 
+        requesterId: user.id,
+        approverId: manager?.id || null, // Assign to manager
+    };
     
     const cleanPayment = Object.fromEntries(
         Object.entries(newPayment).filter(([_, v]) => v !== undefined && v !== null && v !== '')
@@ -2099,7 +2105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newPaymentRef, cleanPayment);
     const vendorName = vendors.find(v => v.id === payment.vendorId)?.name || 'a vendor';
     addActivityLog(user.id, 'Payment Added', `Payment to ${vendorName} for $${payment.amount}`);
-  }, [user, addActivityLog, vendors]);
+  }, [user, addActivityLog, vendors, users]);
 
   const deletePayment = useCallback((paymentId: string) => {
     if (!user) return;
@@ -2386,6 +2392,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 

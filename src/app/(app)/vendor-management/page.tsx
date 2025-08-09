@@ -38,32 +38,11 @@ export default function VendorManagementPage() {
                 <p className="text-muted-foreground">Manage vendors and track their payment statuses.</p>
             </div>
 
-            <Tabs defaultValue="vendors">
+            <Tabs defaultValue="payments">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="vendors">Vendors</TabsTrigger>
                     <TabsTrigger value="payments">Payments</TabsTrigger>
+                    <TabsTrigger value="vendors">Vendors</TabsTrigger>
                 </TabsList>
-                <TabsContent value="vendors" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                             <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle>Vendor List</CardTitle>
-                                    <CardDescription>A list of all vendors in the system.</CardDescription>
-                                </div>
-                                {can.manage_vendors && (
-                                    <Button onClick={() => setIsAddVendorOpen(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Vendor
-                                    </Button>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                           <VendorListTable vendors={vendors} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
                  <TabsContent value="payments" className="mt-4">
                     <Card>
                         <CardHeader>
@@ -82,6 +61,27 @@ export default function VendorManagementPage() {
                         </CardHeader>
                         <CardContent>
                            <PaymentsTable payments={payments} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="vendors" className="mt-4">
+                    <Card>
+                        <CardHeader>
+                             <div className="flex justify-between items-center">
+                                <div>
+                                    <CardTitle>Vendor List</CardTitle>
+                                    <CardDescription>A list of all vendors in the system.</CardDescription>
+                                </div>
+                                {can.manage_vendors && (
+                                    <Button onClick={() => setIsAddVendorOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add Vendor
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                           <VendorListTable vendors={vendors} />
                         </CardContent>
                     </Card>
                 </TabsContent>
