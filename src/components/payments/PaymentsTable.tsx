@@ -24,7 +24,7 @@ const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructiv
 };
 
 export default function PaymentsTable({ payments }: PaymentsTableProps) {
-  const { users, deletePayment } = useAppContext();
+  const { users, vendors, deletePayment } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (paymentId: string) => {
@@ -49,7 +49,7 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Recipient</TableHead>
+          <TableHead>Vendor</TableHead>
           <TableHead>Amount</TableHead>
           <TableHead>Duration</TableHead>
           <TableHead>Email Sent Date</TableHead>
@@ -62,9 +62,10 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
       <TableBody>
         {payments.map((payment) => {
           const requester = users.find(u => u.id === payment.requesterId);
+          const vendor = vendors.find(v => v.id === payment.vendorId);
           return (
             <TableRow key={payment.id}>
-              <TableCell className="font-medium">{payment.paymentTo}</TableCell>
+              <TableCell className="font-medium">{vendor?.name || 'N/A'}</TableCell>
               <TableCell>${payment.amount.toFixed(2)}</TableCell>
               <TableCell>
                 {payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}

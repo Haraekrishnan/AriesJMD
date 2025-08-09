@@ -1,12 +1,21 @@
 
 
 
+export type Vendor = {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+};
+
 export type PaymentStatus = 'Pending' | 'Email Sent' | 'Amount Listed Out' | 'Paid' | 'Cancelled';
 
 export type Payment = {
     id: string;
     requesterId: string;
-    paymentTo: string;
+    vendorId: string;
     amount: number;
     date: string; // ISO String
     durationFrom?: string; // ISO String

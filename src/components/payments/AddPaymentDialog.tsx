@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 const paymentSchema = z.object({
-  paymentTo: z.string().min(1, 'Recipient name is required'),
+  vendorId: z.string().min(1, 'Please select a vendor'),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
   date: z.date({ required_error: 'Payment date is required' }),
   status: z.enum(['Pending', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled']),
@@ -32,7 +32,7 @@ interface AddPaymentDialogProps {
 }
 
 export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialogProps) {
-  const { addPayment } = useAppContext();
+  const { vendors, addPayment } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<PaymentFormValues>({
@@ -53,7 +53,7 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
     });
     toast({
       title: 'Payment Added',
-      description: `Payment to ${data.paymentTo} has been recorded.`,
+      description: `Payment has been recorded.`,
     });
     setIsOpen(false);
   };
@@ -74,9 +74,20 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="paymentTo">Payment To</Label>
-            <Input id="paymentTo" {...form.register('paymentTo')} />
-            {form.formState.errors.paymentTo && <p className="text-xs text-destructive">{form.formState.errors.paymentTo.message}</p>}
+            <Label>Vendor</Label>
+            <Controller
+              control={form.control}
+              name="vendorId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue placeholder="Select a vendor..." /></SelectTrigger>
+                  <SelectContent>
+                    {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.vendorId && <p className="text-xs text-destructive">{form.formState.errors.vendorId.message}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

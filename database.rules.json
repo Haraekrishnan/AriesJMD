@@ -1,4 +1,5 @@
 
+
 {
   "rules": {
     ".read": false,
@@ -107,6 +108,10 @@
       ".read": true,
       ".write": true
     },
+    "ppeStock": {
+      ".read": true,
+      ".write": true
+    },
     "vehicles": {
       ".read": true,
       ".write": true
@@ -116,6 +121,18 @@
       ".write": true
     },
     "branding": {
+      ".read": true,
+      ".write": true
+    },
+    "jobSchedules": {
+      ".read": true,
+      ".write": true
+    },
+    "payments": {
+      ".read": true,
+      ".write": true
+    },
+    "vendors": {
       ".read": true,
       ".write": true
     }
