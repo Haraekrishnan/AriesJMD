@@ -5,6 +5,7 @@
 
 
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -14,7 +15,7 @@ export type Vendor = {
   address?: string;
 };
 
-export type PaymentStatus = 'Pending' | 'Email Sent' | 'Amount Listed Out' | 'Paid' | 'Cancelled';
+export type PaymentStatus = 'Pending' | 'Email Sent' | 'Amount Listed Out' | 'Paid' | 'Cancelled' | 'Approved' | 'Rejected';
 
 export type Payment = {
     id: string;
@@ -607,5 +608,6 @@ export type PpeStock = {
   quantity?: number; // For safety shoes
   lastUpdated: string; // ISO
 };
+
 
 

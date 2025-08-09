@@ -4,12 +4,15 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Payment, PaymentStatus } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
+import { useState } from 'react';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
 interface PaymentsTableProps {
   payments: Payment[];
@@ -19,13 +22,18 @@ const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructiv
   Pending: 'secondary',
   'Email Sent': 'default',
   'Amount Listed Out': 'warning',
+  Approved: 'warning',
   Paid: 'success',
   Cancelled: 'destructive',
+  Rejected: 'destructive'
 };
 
 export default function PaymentsTable({ payments }: PaymentsTableProps) {
-  const { user, users, vendors, deletePayment } = useAppContext();
+  const { user, users, vendors, deletePayment, updatePaymentStatus } = useAppContext();
   const { toast } = useToast();
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [action, setAction] = useState<'Approved' | 'Rejected' | null>(null);
+  const [comment, setComment] = useState('');
 
   const handleDelete = (paymentId: string) => {
     deletePayment(paymentId);
@@ -44,8 +52,28 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
     if (!dateString) return 'N/A';
     return format(parseISO(dateString), 'dd MMM, yyyy');
   };
+  
+  const handleActionClick = (payment: Payment, action: 'Approved' | 'Rejected') => {
+    setSelectedPayment(payment);
+    setAction(action);
+    setComment('');
+  };
+
+  const handleConfirmAction = () => {
+    if (!selectedPayment || !action) return;
+    if (!comment.trim()) {
+        toast({ title: 'Comment required', variant: 'destructive'});
+        return;
+    }
+
+    updatePaymentStatus(selectedPayment.id, action, comment);
+    toast({ title: `Payment ${action}` });
+    setSelectedPayment(null);
+    setAction(null);
+  }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -56,16 +84,16 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
           <TableHead>Payment Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Requester</TableHead>
-          <TableHead>Approver</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {payments.map((payment) => {
           const requester = users.find(u => u.id === payment.requesterId);
-          const approver = users.find(u => u.id === payment.approverId);
           const vendor = vendors.find(v => v.id === payment.vendorId);
-          const canManage = user?.id === payment.approverId || user?.role === 'Admin';
+          const canManage = user?.role === 'Admin';
+          const isApprover = user?.id === payment.approverId && payment.status === 'Pending';
+
           return (
             <TableRow key={payment.id}>
               <TableCell className="font-medium">{vendor?.name || 'N/A'}</TableCell>
@@ -77,26 +105,55 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
               <TableCell>{formatDate(payment.date)}</TableCell>
               <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
               <TableCell>{requester?.name || 'N/A'}</TableCell>
-              <TableCell>{approver?.name || 'N/A'}</TableCell>
               <TableCell className="text-right">
-                 <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0" disabled={!canManage}><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                        <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this payment record.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(payment.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                 <div className="flex items-center justify-end gap-2">
+                    {isApprover && (
+                        <>
+                        <Button size="sm" variant="outline" onClick={() => handleActionClick(payment, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleActionClick(payment, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                        </>
+                    )}
+                     {canManage && (
+                         <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this payment record.</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(payment.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                     )}
+                 </div>
               </TableCell>
             </TableRow>
           );
         })}
       </TableBody>
     </Table>
+
+     {selectedPayment && action && (
+        <AlertDialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{action} Payment Request?</AlertDialogTitle>
+                    <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div>
+                    <Label htmlFor="comment">Comment (Required)</Label>
+                    <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )}
+    </>
   );
 }
