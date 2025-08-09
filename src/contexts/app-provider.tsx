@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +47,7 @@ type AppContextType = {
   jobSchedules: JobSchedule[];
   ppeRequests: PpeRequest[];
   ppeStock: PpeStock[];
+  payments: Payment[];
   appName: string;
   appLogo: string | null;
 
@@ -214,6 +214,8 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
+  addPayment: (payment: Omit<Payment, 'id' | 'requesterId'>) => void;
+  deletePayment: (paymentId: string) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -263,6 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [jobSchedules, setJobSchedules] = useState<JobSchedule[]>([]);
   const [ppeRequests, setPpeRequests] = useState<PpeRequest[]>([]);
   const [ppeStock, setPpeStock] = useState<PpeStock[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
 
@@ -288,7 +291,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setManpowerProfiles([]); setInternalRequests([]); setManagementRequests([]);
       setInventoryItems([]); setUtMachines([]); setDftMachines([]); setMobileSims([]);
       setLaptopsDesktops([]); setDigitalCameras([]); setAnemometers([]); setOtherEquipments([]); setMachineLogs([]); setCertificateRequests([]);
-      setAnnouncements([]); setBuildings([]); setJobSchedules([]); setPpeRequests([]); setPpeStock([]);
+      setAnnouncements([]); setBuildings([]); setJobSchedules([]); setPpeRequests([]); setPpeStock([]); setPayments([]);
       return;
     }
   
@@ -323,6 +326,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createDataListener('jobSchedules', setJobSchedules),
       createDataListener('ppeRequests', setPpeRequests),
       createDataListener('ppeStock', setPpeStock),
+      createDataListener('payments', setPayments),
     ];
   
     const brandingRef = ref(rtdb, 'branding');
@@ -2075,6 +2079,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(scheduleRef, schedule);
     addActivityLog(user.id, 'Job Schedule Saved', `Saved schedule for project ID ${schedule.projectId} on ${schedule.date}`);
   }, [user, addActivityLog]);
+  
+  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'requesterId'>) => {
+    if (!user) return;
+    const newPaymentRef = push(ref(rtdb, 'payments'));
+    const newPayment = { ...payment, requesterId: user.id };
+    set(newPaymentRef, newPayment);
+    addActivityLog(user.id, 'Payment Added', `Payment to ${payment.paymentTo} for $${payment.amount}`);
+  }, [user, addActivityLog]);
+
+  const deletePayment = useCallback((paymentId: string) => {
+    if (!user) return;
+    const paymentToDelete = payments.find(p => p.id === paymentId);
+    if (paymentToDelete) {
+        remove(ref(rtdb, `payments/${paymentId}`));
+        addActivityLog(user.id, 'Payment Deleted', `Deleted payment to ${paymentToDelete.paymentTo}`);
+    }
+  }, [user, payments, addActivityLog]);
 
   // Computed Values for Notifications
   const pendingTaskApprovalCount = useMemo(() => {
@@ -2308,8 +2329,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, ppeRequests, manpowerProfiles, ppeStock]);
 
   const contextValue: AppContextType = {
-    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, appName, appLogo,
-    login, logout, updateProfile, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule,
+    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, payments, appName, appLogo,
+    login, logout, updateProfile, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addPayment, deletePayment,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount
   };
 

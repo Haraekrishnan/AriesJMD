@@ -1,5 +1,16 @@
 
+export type PaymentStatus = 'Pending' | 'Paid' | 'Cancelled';
 
+export type Payment = {
+    id: string;
+    requesterId: string;
+    paymentTo: string;
+    amount: number;
+    date: string; // ISO String
+    paymentMethod: 'Cash' | 'Bank Transfer' | 'Cheque';
+    status: PaymentStatus;
+    remarks?: string;
+};
 
 
 export type User = {
