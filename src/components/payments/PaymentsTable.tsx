@@ -92,6 +92,8 @@ export default function PaymentsTable() {
                 {Object.entries(groupedPayments).map(([vendorId, vendorPayments]) => {
                     const vendor = vendors.find(v => v.id === vendorId);
                     if (!vendor) return null;
+                    
+                    const hasPendingPayment = user?.role === 'Manager' && vendorPayments.some(p => p.status === 'Pending');
 
                     return (
                         <Accordion key={vendorId} type="single" collapsible className="w-full">
@@ -99,6 +101,7 @@ export default function PaymentsTable() {
                                 <AccordionTrigger className="p-4 hover:no-underline w-full">
                                     <div className="flex items-center justify-between w-full">
                                         <div className="flex items-center gap-3">
+                                            {hasPendingPayment && <div className="h-2.5 w-2.5 rounded-full bg-destructive" title="Pending Approval" />}
                                             <Avatar>
                                                 <AvatarFallback>{vendor.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
