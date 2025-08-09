@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Search, PlusCircle, Briefcase } from 'lucide-react';
@@ -16,7 +16,7 @@ import AddPaymentDialog from '@/components/payments/AddPaymentDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function VendorManagementPage() {
-    const { vendors, can } = useAppContext();
+    const { user, vendors, can } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
     const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
@@ -29,6 +29,11 @@ export default function VendorManagementPage() {
     const handleEditVendor = (vendor: Vendor) => {
         setEditingVendor(vendor);
     };
+    
+    const canAddPayment = useMemo(() => {
+        if (!user) return false;
+        return user.role === 'Admin' || user.role === 'Project Coordinator';
+    }, [user]);
 
     return (
         <div className="space-y-6">
@@ -37,18 +42,20 @@ export default function VendorManagementPage() {
                     <Briefcase className="h-8 w-8" />
                     Vendor Ledger
                 </h1>
-                {can.manage_vendors && (
-                    <div className="flex gap-2">
+                <div className="flex gap-2">
+                    {canAddPayment && (
                         <Button onClick={() => setIsAddPaymentOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Add Payment
                         </Button>
+                    )}
+                    {can.manage_vendors && (
                         <Button variant="outline" onClick={() => setIsAddVendorOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Add Vendor
                         </Button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
             
             <Tabs defaultValue="payments" className="w-full">
