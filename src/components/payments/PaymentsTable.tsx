@@ -102,6 +102,7 @@ export default function PaymentsTable() {
                                     <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
                                     <TableCell className="text-right">
+                                      <AlertDialog>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -134,6 +135,7 @@ export default function PaymentsTable() {
                                                 <AlertDialogAction onClick={() => handleDelete(payment.id)}>Delete</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
+                                      </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             );
