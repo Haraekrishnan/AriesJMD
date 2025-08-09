@@ -1,5 +1,6 @@
 
-export type PaymentStatus = 'Pending' | 'Paid' | 'Cancelled';
+
+export type PaymentStatus = 'Pending' | 'Email Sent' | 'Amount Listed Out' | 'Paid' | 'Cancelled';
 
 export type Payment = {
     id: string;
@@ -7,7 +8,9 @@ export type Payment = {
     paymentTo: string;
     amount: number;
     date: string; // ISO String
-    paymentMethod: 'Cash' | 'Bank Transfer' | 'Cheque';
+    durationFrom?: string; // ISO String
+    durationTo?: string; // ISO String
+    emailSentDate?: string; // ISO String
     status: PaymentStatus;
     remarks?: string;
 };

@@ -9,14 +9,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Payment, PaymentStatus } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 interface PaymentsTableProps {
   payments: Payment[];
 }
 
-const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructive' | 'success'> = {
+const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructive' | 'success' | 'warning'> = {
   Pending: 'secondary',
+  'Email Sent': 'default',
+  'Amount Listed Out': 'warning',
   Paid: 'success',
   Cancelled: 'destructive',
 };
@@ -38,14 +40,20 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
     return <p className="text-muted-foreground text-center py-8">No payments recorded yet.</p>;
   }
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return format(parseISO(dateString), 'dd MMM, yyyy');
+  };
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Recipient</TableHead>
           <TableHead>Amount</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Method</TableHead>
+          <TableHead>Duration</TableHead>
+          <TableHead>Email Sent Date</TableHead>
+          <TableHead>Payment Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Requester</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -58,8 +66,11 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
             <TableRow key={payment.id}>
               <TableCell className="font-medium">{payment.paymentTo}</TableCell>
               <TableCell>${payment.amount.toFixed(2)}</TableCell>
-              <TableCell>{format(new Date(payment.date), 'dd MMM, yyyy')}</TableCell>
-              <TableCell>{payment.paymentMethod}</TableCell>
+              <TableCell>
+                {payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}
+              </TableCell>
+              <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
+              <TableCell>{formatDate(payment.date)}</TableCell>
               <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
               <TableCell>{requester?.name || 'N/A'}</TableCell>
               <TableCell className="text-right">

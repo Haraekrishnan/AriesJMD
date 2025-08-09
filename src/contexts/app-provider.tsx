@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -2084,7 +2085,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newPaymentRef = push(ref(rtdb, 'payments'));
     const newPayment = { ...payment, requesterId: user.id };
-    set(newPaymentRef, newPayment);
+    
+    const cleanPayment = Object.fromEntries(
+        Object.entries(newPayment).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+
+    set(newPaymentRef, cleanPayment);
     addActivityLog(user.id, 'Payment Added', `Payment to ${payment.paymentTo} for $${payment.amount}`);
   }, [user, addActivityLog]);
 
@@ -2359,3 +2365,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
