@@ -21,7 +21,6 @@ import { parseISO } from 'date-fns';
 const paymentSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
-  date: z.date({ required_error: 'Payment date is required' }),
   duration: z.object({
       from: z.date().optional(),
       to: z.date().optional()
@@ -49,13 +48,14 @@ export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPa
   useEffect(() => {
     if (payment && isOpen) {
         form.reset({
-            ...payment,
-            date: parseISO(payment.date),
+            vendorId: payment.vendorId,
+            amount: payment.amount,
             duration: {
                 from: payment.durationFrom ? parseISO(payment.durationFrom) : undefined,
                 to: payment.durationTo ? parseISO(payment.durationTo) : undefined,
             },
             emailSentDate: payment.emailSentDate ? parseISO(payment.emailSentDate) : undefined,
+            remarks: payment.remarks,
         });
     }
   }, [payment, isOpen, form]);
@@ -64,7 +64,6 @@ export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPa
     updatePayment({
         ...payment,
         ...data,
-        date: data.date.toISOString(),
         durationFrom: data.duration?.from?.toISOString(),
         durationTo: data.duration?.to?.toISOString(),
         emailSentDate: data.emailSentDate?.toISOString(),
@@ -122,16 +121,9 @@ export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPa
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>Payment Date</Label>
-                    <Controller name="date" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                    {form.formState.errors.date && <p className="text-xs text-destructive">{form.formState.errors.date.message}</p>}
-                </div>
-                <div className="space-y-2">
-                    <Label>Email Sent Date (Optional)</Label>
-                    <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                </div>
+            <div className="space-y-2">
+                <Label>Email Sent Date (Optional)</Label>
+                <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
             </div>
 
             <div className="space-y-2">

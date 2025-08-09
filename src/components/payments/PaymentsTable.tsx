@@ -58,7 +58,7 @@ export default function PaymentsTable() {
         toast({ title: 'Payment Deleted', variant: 'destructive' });
     }
 
-    const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd MMM, yyyy') : 'N/A';
     
     const visiblePayments = payments.filter(p => {
@@ -82,7 +82,7 @@ export default function PaymentsTable() {
                             <TableHead>Amount</TableHead>
                             <TableHead>Duration</TableHead>
                             <TableHead>Email Sent Date</TableHead>
-                            <TableHead>Payment Date</TableHead>
+                            <TableHead>Remarks</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Requester</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -100,7 +100,7 @@ export default function PaymentsTable() {
                                     <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                     <TableCell>{payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}</TableCell>
                                     <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
-                                    <TableCell>{formatDate(payment.date)}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{payment.remarks || 'N/A'}</TableCell>
                                     <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
                                     <TableCell className="text-right">
