@@ -14,10 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DateRangePicker } from '../ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { Payment } from '@/lib/types';
+import { useEffect } from 'react';
+import { parseISO } from 'date-fns';
 
 const paymentSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
+  date: z.date({ required_error: 'Payment date is required' }),
   duration: z.object({
       from: z.date().optional(),
       to: z.date().optional()
@@ -28,33 +32,47 @@ const paymentSchema = z.object({
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
-interface AddPaymentDialogProps {
+interface EditPaymentDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  payment: Payment;
 }
 
-export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialogProps) {
-  const { addPayment, vendors } = useAppContext();
+export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPaymentDialogProps) {
+  const { updatePayment, vendors } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
   });
+  
+  useEffect(() => {
+    if (payment && isOpen) {
+        form.reset({
+            ...payment,
+            date: parseISO(payment.date),
+            duration: {
+                from: payment.durationFrom ? parseISO(payment.durationFrom) : undefined,
+                to: payment.durationTo ? parseISO(payment.durationTo) : undefined,
+            },
+            emailSentDate: payment.emailSentDate ? parseISO(payment.emailSentDate) : undefined,
+        });
+    }
+  }, [payment, isOpen, form]);
 
   const onSubmit = (data: PaymentFormValues) => {
-    addPayment({
+    updatePayment({
+        ...payment,
         ...data,
-        date: new Date().toISOString(), // Set payment date to now
+        date: data.date.toISOString(),
         durationFrom: data.duration?.from?.toISOString(),
         durationTo: data.duration?.to?.toISOString(),
         emailSentDate: data.emailSentDate?.toISOString(),
     });
     toast({
-      title: 'Payment Logged',
-      description: 'The payment has been sent to the manager for approval.',
+      title: 'Payment Updated',
     });
     setIsOpen(false);
-    form.reset();
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -68,8 +86,7 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add New Payment Ledger</DialogTitle>
-          <DialogDescription>Log a new payable amount for a vendor.</DialogDescription>
+          <DialogTitle>Edit Payment Ledger</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -107,6 +124,11 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                    <Label>Payment Date</Label>
+                    <Controller name="date" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                    {form.formState.errors.date && <p className="text-xs text-destructive">{form.formState.errors.date.message}</p>}
+                </div>
+                <div className="space-y-2">
                     <Label>Email Sent Date (Optional)</Label>
                     <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
                 </div>
@@ -119,7 +141,7 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Submit for Approval</Button>
+            <Button type="submit">Save Changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>

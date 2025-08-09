@@ -13,6 +13,7 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import EditPaymentDialog from './EditPaymentDialog';
 
 const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
     'Pending': 'secondary',
@@ -30,6 +31,7 @@ export default function PaymentsTable() {
     const { user, payments, vendors, users, can, updatePaymentStatus, deletePayment } = useAppContext();
     const { toast } = useToast();
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const [action, setAction] = useState<PaymentStatus | null>(null);
     const [comment, setComment] = useState('');
 
@@ -90,7 +92,7 @@ export default function PaymentsTable() {
                         {visiblePayments.map(payment => {
                             const vendor = vendors.find(v => v.id === payment.vendorId);
                             const requester = users.find(u => u.id === payment.requesterId);
-                            const canManagePayment = user?.role === 'Manager' && payment.approverId === user.id;
+                            const canManagePayment = user?.role === 'Manager' || user?.role === 'Admin';
 
                             return (
                                 <TableRow key={payment.id}>
@@ -111,6 +113,11 @@ export default function PaymentsTable() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                {canManagePayment && (
+                                                    <DropdownMenuItem onSelect={() => setEditingPayment(payment)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit Ledger
+                                                    </DropdownMenuItem>
+                                                )}
                                                 {canManagePayment && statusOptions.map(status => (
                                                      <DropdownMenuItem key={status} onSelect={() => handleActionClick(payment, status)}>
                                                         Set to {status}
@@ -143,7 +150,7 @@ export default function PaymentsTable() {
                     </TableBody>
                 </Table>
             </div>
-             {selectedPayment && action && (
+            {selectedPayment && action && (
                 <AlertDialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
@@ -160,6 +167,13 @@ export default function PaymentsTable() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+            )}
+            {editingPayment && can.manage_vendors && (
+                <EditPaymentDialog
+                    isOpen={!!editingPayment}
+                    setIsOpen={() => setEditingPayment(null)}
+                    payment={editingPayment}
+                />
             )}
         </>
     );
