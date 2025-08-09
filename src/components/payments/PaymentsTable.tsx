@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Payment, PaymentStatus } from '@/lib/types';
@@ -22,17 +22,19 @@ const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructiv
   Pending: 'secondary',
   'Email Sent': 'default',
   'Amount Listed Out': 'warning',
-  Approved: 'warning',
+  Approved: 'success',
   Paid: 'success',
   Cancelled: 'destructive',
   Rejected: 'destructive'
 };
 
+const statusOptions: PaymentStatus[] = ['Pending', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled', 'Approved', 'Rejected'];
+
 export default function PaymentsTable({ payments }: PaymentsTableProps) {
   const { user, users, vendors, deletePayment, updatePaymentStatus } = useAppContext();
   const { toast } = useToast();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [action, setAction] = useState<'Approved' | 'Rejected' | null>(null);
+  const [action, setAction] = useState<PaymentStatus | null>(null);
   const [comment, setComment] = useState('');
 
   const handleDelete = (paymentId: string) => {
@@ -53,7 +55,7 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
     return format(parseISO(dateString), 'dd MMM, yyyy');
   };
   
-  const handleActionClick = (payment: Payment, action: 'Approved' | 'Rejected') => {
+  const handleActionClick = (payment: Payment, action: PaymentStatus) => {
     setSelectedPayment(payment);
     setAction(action);
     setComment('');
@@ -61,13 +63,15 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
 
   const handleConfirmAction = () => {
     if (!selectedPayment || !action) return;
-    if (!comment.trim()) {
+    
+    // For critical actions, a comment is required.
+    if ((action === 'Approved' || action === 'Rejected') && !comment.trim()) {
         toast({ title: 'Comment required', variant: 'destructive'});
         return;
     }
 
     updatePaymentStatus(selectedPayment.id, action, comment);
-    toast({ title: `Payment ${action}` });
+    toast({ title: `Payment Status Updated` });
     setSelectedPayment(null);
     setAction(null);
   }
@@ -92,7 +96,7 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
           const requester = users.find(u => u.id === payment.requesterId);
           const vendor = vendors.find(v => v.id === payment.vendorId);
           const canManage = user?.role === 'Admin';
-          const isApprover = user?.id === payment.approverId && payment.status === 'Pending';
+          const isApprover = user?.id === payment.approverId;
 
           return (
             <TableRow key={payment.id}>
@@ -107,19 +111,27 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
               <TableCell>{requester?.name || 'N/A'}</TableCell>
               <TableCell className="text-right">
                  <div className="flex items-center justify-end gap-2">
-                    {isApprover && (
-                        <>
-                        <Button size="sm" variant="outline" onClick={() => handleActionClick(payment, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleActionClick(payment, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
-                        </>
-                    )}
-                     {canManage && (
+                     {(canManage || isApprover) && (
                          <AlertDialog>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                                  <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                      {statusOptions.map(status => (
+                                        <DropdownMenuItem key={status} onSelect={() => handleActionClick(payment, status)}>{status}</DropdownMenuItem>
+                                      ))}
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                                {canManage && (
+                                <>
+                                  <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                  <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
+                                </>
+                                )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <AlertDialogContent>
@@ -140,16 +152,16 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
         <AlertDialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>{action} Payment Request?</AlertDialogTitle>
-                    <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
+                    <AlertDialogTitle>Change status to "{action}"?</AlertDialogTitle>
+                    <AlertDialogDescription>Please provide a comment for this action. {(action === 'Approved' || action === 'Rejected') && '(Required)'}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <div>
-                    <Label htmlFor="comment">Comment (Required)</Label>
+                    <Label htmlFor="comment">Comment</Label>
                     <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                 </div>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                    <AlertDialogAction onClick={handleConfirmAction}>Confirm</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

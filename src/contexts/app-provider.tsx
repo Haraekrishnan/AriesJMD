@@ -219,7 +219,7 @@ type AppContextType = {
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
   deleteVendor: (vendorId: string) => void;
   addPayment: (payment: Omit<Payment, 'id' | 'requesterId' | 'approverId'>) => void;
-  updatePaymentStatus: (paymentId: string, status: 'Approved' | 'Rejected', comment: string) => void;
+  updatePaymentStatus: (paymentId: string, status: PaymentStatus, comment: string) => void;
   deletePayment: (paymentId: string) => void;
 };
 
@@ -2108,12 +2108,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Payment Added', `Payment to ${vendorName} for $${payment.amount}`);
   }, [user, addActivityLog, vendors, users]);
 
-  const updatePaymentStatus = useCallback((paymentId: string, status: 'Approved' | 'Rejected', comment: string) => {
+  const updatePaymentStatus = useCallback((paymentId: string, status: PaymentStatus, comment: string) => {
     if (!user) return;
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return;
     update(ref(rtdb, `payments/${paymentId}`), { status });
-    addActivityLog(user.id, 'Payment Status Updated', `Payment to ${vendors.find(v=>v.id === payment.vendorId)?.name} ${status.toLowerCase()}. Comment: ${comment}`);
+    addActivityLog(user.id, 'Payment Status Updated', `Payment to ${vendors.find(v=>v.id === payment.vendorId)?.name} changed to ${status}. Comment: ${comment}`);
   }, [user, addActivityLog, payments, vendors]);
   
   const deletePayment = useCallback((paymentId: string) => {
@@ -2401,6 +2401,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
