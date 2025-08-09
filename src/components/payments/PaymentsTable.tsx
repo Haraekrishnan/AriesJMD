@@ -4,15 +4,15 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Payment, PaymentStatus } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 
 interface PaymentsTableProps {
@@ -21,7 +21,7 @@ interface PaymentsTableProps {
 
 const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructive' | 'success' | 'warning'> = {
   Pending: 'secondary',
-  Approved: 'default',
+  Approved: 'success',
   Rejected: 'destructive',
   'Email Sent': 'default',
   'Amount Listed Out': 'warning',
@@ -29,23 +29,14 @@ const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructiv
   Cancelled: 'destructive',
 };
 
-const ALL_STATUSES: PaymentStatus[] = ['Pending', 'Approved', 'Rejected', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled'];
 
 export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
-  const { user, users, vendors, deletePayment, updatePaymentStatus } = useAppContext();
+  const { user, users, vendors, updatePaymentStatus } = useAppContext();
   const { toast } = useToast();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [action, setAction] = useState<PaymentStatus | null>(null);
+  const [action, setAction] = useState<'Approved' | 'Rejected' | null>(null);
   const [comment, setComment] = useState('');
 
-  const handleDelete = (paymentId: string) => {
-    deletePayment(paymentId);
-    toast({
-      variant: 'destructive',
-      title: 'Payment Deleted',
-      description: 'The payment record has been removed.',
-    });
-  };
 
   if (payments.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No payments recorded yet.</p>;
@@ -63,7 +54,7 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
     return `${fromDate} - ${toDate}`;
   };
   
-  const handleActionClick = (payment: Payment, action: PaymentStatus) => {
+  const handleActionClick = (payment: Payment, action: 'Approved' | 'Rejected') => {
     setSelectedPayment(payment);
     setAction(action);
     setComment('');
@@ -72,13 +63,13 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
   const handleConfirmAction = () => {
     if (!selectedPayment || !action) return;
     
-    if (action !== 'Approved' && !comment.trim()) {
-        toast({ title: 'Comment required', variant: 'destructive'});
+    if (action === 'Rejected' && !comment.trim()) {
+        toast({ title: 'Comment required for rejection', variant: 'destructive'});
         return;
     }
 
     updatePaymentStatus(selectedPayment.id, action, comment);
-    toast({ title: `Payment Status Updated` });
+    toast({ title: `Payment ${action}` });
     setSelectedPayment(null);
     setAction(null);
   }
@@ -91,7 +82,7 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
           <TableHead>Vendor</TableHead>
           <TableHead className="text-right">Amount</TableHead>
           <TableHead>Duration</TableHead>
-          <TableHead>Email Sent Date</TableHead>
+          <TableHead>Email Sent</TableHead>
           <TableHead>Payment Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Requester</TableHead>
@@ -103,6 +94,7 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
           const requester = users.find(u => u.id === payment.requesterId);
           const vendor = vendors.find(v => v.id === payment.vendorId);
           const isManager = user?.role === 'Manager' || user?.role === 'Admin';
+          const isPending = payment.status === 'Pending';
 
           return (
             <TableRow key={payment.id}>
@@ -112,24 +104,22 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
               <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
               <TableCell>{formatDate(payment.date)}</TableCell>
               <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
-              <TableCell>{requester?.name || 'N/A'}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                        <AvatarImage src={requester?.avatar} />
+                        <AvatarFallback>{requester?.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{requester?.name || 'N/A'}</span>
+                </div>
+              </TableCell>
               <TableCell className="text-right">
-                 <div className="flex items-center justify-end gap-2">
-                     {isManager && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">Change Status</Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {ALL_STATUSES.map(status => (
-                                    <DropdownMenuItem key={status} onSelect={() => handleActionClick(payment, status)}>
-                                        {status}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                     )}
-                 </div>
+                 {isManager && isPending && (
+                    <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleActionClick(payment, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleActionClick(payment, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                    </div>
+                 )}
               </TableCell>
             </TableRow>
           );
@@ -141,8 +131,8 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
         <AlertDialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Change status to "{action}"?</AlertDialogTitle>
-                    <AlertDialogDescription>Please provide a comment for your action. This is required for most status changes.</AlertDialogDescription>
+                    <AlertDialogTitle>{action} Payment?</AlertDialogTitle>
+                    <AlertDialogDescription>Please provide a comment for your action. This is required for rejection.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <div>
                     <Label htmlFor="comment">Comment</Label>
@@ -150,7 +140,7 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
                 </div>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmAction}>Confirm</AlertDialogAction>
+                    <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
