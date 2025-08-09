@@ -1,5 +1,6 @@
 
 
+
 export type PaymentStatus = 'Pending' | 'Email Sent' | 'Amount Listed Out' | 'Paid' | 'Cancelled';
 
 export type Payment = {

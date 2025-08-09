@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -2306,7 +2307,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 issueDate: new Date().toISOString(),
                 requestType: request.requestType,
                 remarks: request.remarks,
-                quantity: request.quantity,
                 storeComment: comment,
             };
             const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
@@ -2365,4 +2365,5 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
