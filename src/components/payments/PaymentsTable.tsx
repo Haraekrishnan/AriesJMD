@@ -54,6 +54,11 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
     if (!dateString) return 'N/A';
     return format(parseISO(dateString), 'dd MMM, yyyy');
   };
+
+  const formatDuration = (from?: string, to?: string) => {
+    if (!from || !to) return 'N/A';
+    return `${format(parseISO(from), 'dd MMM, yyyy')} - ${format(parseISO(to), 'dd MMM, yyyy')}`;
+  };
   
   const handleActionClick = (payment: Payment, action: PaymentStatus) => {
     setSelectedPayment(payment);
@@ -102,9 +107,7 @@ export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
             <TableRow key={payment.id}>
               <TableCell className="font-medium">{vendor?.name || 'N/A'}</TableCell>
               <TableCell>${payment.amount.toFixed(2)}</TableCell>
-              <TableCell>
-                {payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}
-              </TableCell>
+              <TableCell>{formatDuration(payment.durationFrom, payment.durationTo)}</TableCell>
               <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
               <TableCell>{formatDate(payment.date)}</TableCell>
               <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>

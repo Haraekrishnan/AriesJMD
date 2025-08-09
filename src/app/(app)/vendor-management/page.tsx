@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -38,26 +37,24 @@ export default function VendorManagementPage() {
                 <p className="text-muted-foreground">Manage vendors and track their payment statuses.</p>
             </div>
 
-            <Tabs defaultValue="payments">
+            <Tabs defaultValue="payments" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="payments">Payments</TabsTrigger>
                     <TabsTrigger value="vendors">Vendors</TabsTrigger>
                 </TabsList>
                  <TabsContent value="payments" className="mt-4">
                     <Card>
-                        <CardHeader>
-                             <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle>Payment Records</CardTitle>
-                                    <CardDescription>A list of all payment records.</CardDescription>
-                                </div>
-                                {can.manage_payments && (
-                                    <Button onClick={() => setIsAddPaymentOpen(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Payment
-                                    </Button>
-                                )}
+                        <CardHeader className="flex flex-row items-center justify-between">
+                             <div>
+                                <CardTitle>Payment Records</CardTitle>
+                                <CardDescription>A list of all payment records.</CardDescription>
                             </div>
+                            {can.manage_payments && (
+                                <Button onClick={() => setIsAddPaymentOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Payment
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
                            <PaymentsTable payments={payments} />
@@ -66,19 +63,17 @@ export default function VendorManagementPage() {
                 </TabsContent>
                 <TabsContent value="vendors" className="mt-4">
                     <Card>
-                        <CardHeader>
-                             <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle>Vendor List</CardTitle>
-                                    <CardDescription>A list of all vendors in the system.</CardDescription>
-                                </div>
-                                {can.manage_vendors && (
-                                    <Button onClick={() => setIsAddVendorOpen(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Vendor
-                                    </Button>
-                                )}
+                        <CardHeader className="flex flex-row items-center justify-between">
+                             <div>
+                                <CardTitle>Vendor List</CardTitle>
+                                <CardDescription>A list of all vendors in the system.</CardDescription>
                             </div>
+                            {can.manage_vendors && (
+                                <Button onClick={() => setIsAddVendorOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Vendor
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
                            <VendorListTable vendors={vendors} />
