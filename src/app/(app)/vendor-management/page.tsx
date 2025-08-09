@@ -4,13 +4,15 @@
 import { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Download, Search } from 'lucide-react';
+import { Download, Search, PlusCircle } from 'lucide-react';
 import VendorListTable from '@/components/vendor-management/VendorListTable';
 import { Input } from '@/components/ui/input';
+import AddVendorDialog from '@/components/vendor-management/AddVendorDialog';
 
 export default function VendorManagementPage() {
     const { vendors } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
 
     const filteredVendors = vendors.filter(vendor => 
         vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -22,6 +24,12 @@ export default function VendorManagementPage() {
                 <h1 className="text-3xl font-bold">
                     Vendors <span className="text-lg font-normal text-muted-foreground">{vendors.length}</span>
                 </h1>
+                {can.manage_vendors && (
+                    <Button onClick={() => setIsAddVendorOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Vendor
+                    </Button>
+                )}
             </div>
 
             <div className="flex justify-between items-center">
@@ -43,6 +51,8 @@ export default function VendorManagementPage() {
             <div className="border rounded-lg">
                 <VendorListTable vendors={filteredVendors} />
             </div>
+
+            <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
         </div>
     );
 }
