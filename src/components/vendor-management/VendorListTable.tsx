@@ -31,7 +31,7 @@ export default function VendorListTable({ vendors = [], onEdit }: VendorListTabl
   };
 
   const formatCurrency = (amount?: number) => {
-    if (amount === undefined) return 'N/A';
+    if (amount === undefined || amount === null) return 'N/A';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
   
