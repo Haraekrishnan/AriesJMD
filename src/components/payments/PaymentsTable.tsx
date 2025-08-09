@@ -30,7 +30,7 @@ const statusVariant: Record<PaymentStatus, 'default' | 'secondary' | 'destructiv
 
 const statusOptions: PaymentStatus[] = ['Pending', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled', 'Approved', 'Rejected'];
 
-export default function PaymentsTable({ payments }: PaymentsTableProps) {
+export default function PaymentsTable({ payments = [] }: PaymentsTableProps) {
   const { user, users, vendors, deletePayment, updatePaymentStatus } = useAppContext();
   const { toast } = useToast();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);

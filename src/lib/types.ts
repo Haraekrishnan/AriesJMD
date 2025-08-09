@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 export type Vendor = {
   id: string;
   name: string;
@@ -608,6 +601,3 @@ export type PpeStock = {
   quantity?: number; // For safety shoes
   lastUpdated: string; // ISO
 };
-
-
-

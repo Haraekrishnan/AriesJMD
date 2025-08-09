@@ -17,7 +17,7 @@ const paymentSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
   date: z.date({ required_error: 'Payment date is required' }),
-  status: z.enum(['Pending', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled']),
+  status: z.enum(['Pending', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled', 'Approved', 'Rejected']),
   remarks: z.string().optional(),
   durationFrom: z.date().optional(),
   durationTo: z.date().optional(),
