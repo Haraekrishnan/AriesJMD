@@ -93,7 +93,7 @@ export default function PaymentsTable() {
                         {visiblePayments.map(payment => {
                             const vendor = vendors.find(v => v.id === payment.vendorId);
                             const requester = users.find(u => u.id === payment.requesterId);
-                            const canManageLedger = user?.role === 'Admin' || user?.role === 'Project Coordinator';
+                            const canManageLedger = (user?.role === 'Admin' || user?.role === 'Project Coordinator') && payment.status === 'Pending';
                             const canChangeStatus = user?.role === 'Manager';
 
                             return (
