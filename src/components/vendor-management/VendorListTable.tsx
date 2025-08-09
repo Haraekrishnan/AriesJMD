@@ -14,15 +14,15 @@ interface VendorListTableProps {
 }
 
 export default function VendorListTable({ vendors = [] }: VendorListTableProps) {
-  const { can } = useAppContext();
+  const { can, deleteVendor } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (vendorId: string) => {
-    // This function will be implemented in a future step.
+    deleteVendor(vendorId);
     toast({
       variant: 'destructive',
-      title: 'Vendor Deleted (Not Implemented)',
-      description: 'The vendor deletion logic is not yet connected.',
+      title: 'Vendor Deleted',
+      description: 'The vendor has been removed from the system.',
     });
   };
 
