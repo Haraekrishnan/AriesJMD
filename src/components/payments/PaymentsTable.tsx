@@ -43,7 +43,7 @@ export default function PaymentsTable() {
 
     const handleConfirmAction = () => {
         if (!selectedPayment || !action) return;
-        if (!comment.trim() && (action === 'Approved' || action === 'Rejected')) {
+        if (!comment.trim() && (action === 'Approved' || action === 'Rejected' || action === 'Cancelled')) {
             toast({ title: 'Comment required for this action.', variant: 'destructive' });
             return;
         }
@@ -92,7 +92,8 @@ export default function PaymentsTable() {
                         {visiblePayments.map(payment => {
                             const vendor = vendors.find(v => v.id === payment.vendorId);
                             const requester = users.find(u => u.id === payment.requesterId);
-                            const canManagePayment = user?.role === 'Manager' || user?.role === 'Admin';
+                            const canManageLedger = user?.role === 'Admin' || user?.role === 'Project Coordinator';
+                            const canChangeStatus = user?.role === 'Manager';
 
                             return (
                                 <TableRow key={payment.id}>
@@ -113,23 +114,23 @@ export default function PaymentsTable() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                {canManagePayment && (
-                                                    <DropdownMenuItem onSelect={() => setEditingPayment(payment)}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Edit Ledger
-                                                    </DropdownMenuItem>
+                                                {canManageLedger && (
+                                                    <>
+                                                        <DropdownMenuItem onSelect={() => setEditingPayment(payment)}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Edit Ledger
+                                                        </DropdownMenuItem>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                    </>
                                                 )}
-                                                {canManagePayment && statusOptions.map(status => (
+                                                {canChangeStatus && statusOptions.map(status => (
                                                      <DropdownMenuItem key={status} onSelect={() => handleActionClick(payment, status)}>
-                                                        Set to {status}
+                                                        {status}
                                                     </DropdownMenuItem>
                                                 ))}
-                                                 {user?.role === 'Admin' && (
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         <AlertDialogContent>
