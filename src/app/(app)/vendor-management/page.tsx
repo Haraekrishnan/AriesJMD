@@ -3,87 +3,46 @@
 
 import { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Download, Search } from 'lucide-react';
 import VendorListTable from '@/components/vendor-management/VendorListTable';
-import AddVendorDialog from '@/components/vendor-management/AddVendorDialog';
-import PaymentsTable from '@/components/payments/PaymentsTable';
-import AddPaymentDialog from '@/components/payments/AddPaymentDialog';
+import { Input } from '@/components/ui/input';
 
 export default function VendorManagementPage() {
-    const { can, vendors, payments } = useAppContext();
-    const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
-    const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+    const { vendors } = useAppContext();
+    const [searchTerm, setSearchTerm] = useState('');
 
-    if (!can.manage_payments) {
-        return (
-            <Card className="w-full max-w-md mx-auto mt-20">
-                <CardHeader className="text-center items-center">
-                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
-                        <AlertTriangle className="h-10 w-10 text-destructive" />
-                    </div>
-                    <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to manage vendors and payments.</CardDescription>
-                </CardHeader>
-            </Card>
-        );
-    }
-    
+    const filteredVendors = vendors.filter(vendor => 
+        vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
-        <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Vendor Ledger & Payments</h1>
-                <p className="text-muted-foreground">Log and approve vendor payments, and manage vendor information.</p>
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">
+                    Vendors <span className="text-lg font-normal text-muted-foreground">{vendors.length}</span>
+                </h1>
             </div>
 
-            <Tabs defaultValue="payments" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="payments">Payments Ledger</TabsTrigger>
-                    <TabsTrigger value="vendors">Vendor List</TabsTrigger>
-                </TabsList>
-                 <TabsContent value="payments" className="mt-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                             <div>
-                                <CardTitle>Payments Ledger</CardTitle>
-                                <CardDescription>A record of all vendor payables and their approval status.</CardDescription>
-                            </div>
-                            {can.manage_payments && (
-                                <Button onClick={() => setIsAddPaymentOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add Payment
-                                </Button>
-                            )}
-                        </CardHeader>
-                        <CardContent>
-                           <PaymentsTable payments={payments} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="vendors" className="mt-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                             <div>
-                                <CardTitle>Vendor List</CardTitle>
-                                <CardDescription>A list of all vendors in the system.</CardDescription>
-                            </div>
-                            {can.manage_vendors && (
-                                <Button onClick={() => setIsAddVendorOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add Vendor
-                                </Button>
-                            )}
-                        </CardHeader>
-                        <CardContent>
-                           <VendorListTable vendors={vendors} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-            <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
-            <AddPaymentDialog isOpen={isAddPaymentOpen} setIsOpen={setIsAddPaymentOpen} />
+            <div className="flex justify-between items-center">
+                 <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Filter & Search Vendors" 
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                </Button>
+            </div>
+
+            <div className="border rounded-lg">
+                <VendorListTable vendors={filteredVendors} />
+            </div>
         </div>
     );
 }

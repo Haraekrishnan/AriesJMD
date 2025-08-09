@@ -1,11 +1,17 @@
 
+
 export type Vendor = {
   id: string;
   name: string;
-  contactPerson?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  address?: string;
+  category?: string;
+  ownerId?: string;
+  totalSpend?: number;
+  last30Days?: number;
+  nextPaymentAmount?: number;
+  nextPaymentDate?: string; // ISO String
+  frequency?: 'Monthly' | 'Rolling' | 'Annual';
+  ownerDept?: string;
+  icon?: string;
 };
 
 export type PaymentStatus = 'Pending' | 'Approved' | 'Rejected' | 'Paid' | 'Cancelled' | 'Email Sent' | 'Amount Listed Out';

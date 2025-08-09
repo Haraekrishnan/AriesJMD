@@ -3,18 +3,21 @@
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Vendor } from '@/lib/types';
+import { format, formatDistanceToNowStrict, parseISO, isPast } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 
 interface VendorListTableProps {
   vendors: Vendor[];
 }
 
 export default function VendorListTable({ vendors = [] }: VendorListTableProps) {
-  const { can, deleteVendor } = useAppContext();
+  const { can, users, deleteVendor } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (vendorId: string) => {
@@ -26,6 +29,37 @@ export default function VendorListTable({ vendors = [] }: VendorListTableProps) 
     });
   };
 
+  const formatCurrency = (amount?: number) => {
+    if (amount === undefined) return 'N/A';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+  
+  const getOwnerName = (ownerId?: string) => {
+      if(!ownerId) return 'N/A';
+      return users.find(u => u.id === ownerId)?.name || 'Unknown';
+  }
+
+  const NextPayment = ({ date, amount }: { date?: string, amount?: number }) => {
+      if (!date) return <TableCell>N/A</TableCell>;
+      const paymentDate = parseISO(date);
+      const isOverdue = isPast(paymentDate) && !isToday(paymentDate);
+      const distance = formatDistanceToNowStrict(paymentDate, { addSuffix: true });
+
+      return (
+          <TableCell>
+              <div className="flex items-center gap-2">
+                   <Clock className={cn("h-4 w-4", isOverdue ? 'text-red-500' : 'text-gray-400')} />
+                  <div>
+                    <p className="font-medium">{formatCurrency(amount)}</p>
+                    <p className={cn("text-xs", isOverdue ? "text-red-500" : "text-muted-foreground")}>
+                        {isOverdue ? `Overdue by ${distance.replace('ago', '')}` : `In ${distance.replace('in ', '')}`}
+                    </p>
+                  </div>
+              </div>
+          </TableCell>
+      )
+  }
+
   if (vendors.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No vendors found.</p>;
   }
@@ -34,20 +68,37 @@ export default function VendorListTable({ vendors = [] }: VendorListTableProps) 
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Vendor Name</TableHead>
-          <TableHead>Contact Person</TableHead>
-          <TableHead>Contact Email</TableHead>
-          <TableHead>Contact Phone</TableHead>
+          <TableHead>Merchant</TableHead>
+          <TableHead>Owner</TableHead>
+          <TableHead>Total Spend</TableHead>
+          <TableHead>Last 30 days</TableHead>
+          <TableHead>Next Payment</TableHead>
+          <TableHead>Frequency</TableHead>
+          <TableHead>Owner Dept.</TableHead>
           {can.manage_vendors && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
         {vendors.map((vendor) => (
           <TableRow key={vendor.id}>
-            <TableCell className="font-medium">{vendor.name}</TableCell>
-            <TableCell>{vendor.contactPerson || 'N/A'}</TableCell>
-            <TableCell>{vendor.contactEmail || 'N/A'}</TableCell>
-            <TableCell>{vendor.contactPhone || 'N/A'}</TableCell>
+            <TableCell>
+                <div className="flex items-center gap-3">
+                    <Avatar>
+                        <AvatarFallback>{vendor.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-medium">{vendor.name}</p>
+                        <p className="text-xs text-muted-foreground">{vendor.category || 'N/A'}</p>
+                    </div>
+                </div>
+            </TableCell>
+            <TableCell>{getOwnerName(vendor.ownerId)}</TableCell>
+            <TableCell>{formatCurrency(vendor.totalSpend)}</TableCell>
+            <TableCell>{formatCurrency(vendor.last30Days)}</TableCell>
+            <NextPayment date={vendor.nextPaymentDate} amount={vendor.nextPaymentAmount} />
+            <TableCell>{vendor.frequency || 'N/A'}</TableCell>
+            <TableCell>{vendor.ownerDept || 'N/A'}</TableCell>
+
             {can.manage_vendors && (
               <TableCell className="text-right">
                 <AlertDialog>
