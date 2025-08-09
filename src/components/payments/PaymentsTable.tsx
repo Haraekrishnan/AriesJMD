@@ -5,8 +5,8 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { Payment, PaymentStatus, Comment } from '@/lib/types';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import type { Payment, PaymentStatus } from '@/lib/types';
+import { format, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
@@ -14,8 +14,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import EditPaymentDialog from './EditPaymentDialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 
 const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
@@ -85,7 +83,7 @@ export default function PaymentsTable() {
                             <TableHead>Amount</TableHead>
                             <TableHead>Duration</TableHead>
                             <TableHead>Email Sent Date</TableHead>
-                            <TableHead>Remarks & History</TableHead>
+                            <TableHead>Remarks</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Requester</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -95,9 +93,8 @@ export default function PaymentsTable() {
                         {visiblePayments.map(payment => {
                             const vendor = vendors.find(v => v.id === payment.vendorId);
                             const requester = users.find(u => u.id === payment.requesterId);
-                            const canManageLedger = (user?.role === 'Admin' || user?.role === 'Project Coordinator') && payment.status === 'Pending';
+                            const canManageLedger = user?.role === 'Admin' || user?.role === 'Project Coordinator';
                             const canChangeStatus = user?.role === 'Manager';
-                             const commentsArray = Array.isArray(payment.comments) ? payment.comments : (payment.comments ? Object.values(payment.comments) : []);
 
                             return (
                                 <TableRow key={payment.id}>
@@ -105,31 +102,7 @@ export default function PaymentsTable() {
                                     <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                     <TableCell>{payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}</TableCell>
                                     <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
-                                    <TableCell className="max-w-xs">
-                                        <Accordion type="single" collapsible className="w-full">
-                                            <AccordionItem value={payment.id} className="border-none">
-                                                <AccordionTrigger className="p-0 hover:no-underline font-normal text-left text-sm">
-                                                   <p className="truncate">{payment.remarks || 'No remarks'}</p>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="pt-2">
-                                                     <div className="space-y-2">
-                                                      {commentsArray.length > 0 ? commentsArray.map((c: Comment,i: number) => {
-                                                          const commentUser = users.find(u => u.id === c.userId);
-                                                          return (
-                                                              <div key={i} className="flex items-start gap-2">
-                                                                  <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                  <div className="text-xs bg-muted p-2 rounded-md w-full">
-                                                                      <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                                                      <p className="text-foreground/80 mt-1">{c.text}</p>
-                                                                  </div>
-                                                              </div>
-                                                          )
-                                                      }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                                                    </div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </Accordion>
-                                    </TableCell>
+                                    <TableCell className="max-w-xs truncate">{payment.remarks || 'N/A'}</TableCell>
                                     <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
                                     <TableCell className="text-right">
