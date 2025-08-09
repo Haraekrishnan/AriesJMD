@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import AddVendorDialog from '@/components/vendor-management/AddVendorDialog';
 
 export default function VendorManagementPage() {
-    const { vendors } = useAppContext();
+    const { vendors, can } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
 
