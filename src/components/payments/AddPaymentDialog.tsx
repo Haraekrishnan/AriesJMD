@@ -17,7 +17,6 @@ const paymentSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
   date: z.date({ required_error: 'Payment date is required' }),
-  status: z.enum(['Pending', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled', 'Approved', 'Rejected']),
   remarks: z.string().optional(),
   durationFrom: z.date().optional(),
   durationTo: z.date().optional(),
@@ -38,7 +37,6 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-      status: 'Pending',
       date: new Date(),
     },
   });
@@ -52,8 +50,8 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
       emailSentDate: data.emailSentDate?.toISOString(),
     });
     toast({
-      title: 'Payment Added',
-      description: `Payment has been recorded.`,
+      title: 'Payment Logged',
+      description: `Payment for ${vendors.find(v=>v.id === data.vendorId)?.name} has been sent for approval.`,
     });
     setIsOpen(false);
   };
@@ -69,8 +67,8 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Payment</DialogTitle>
-          <DialogDescription>Enter the details for the new payment record.</DialogDescription>
+          <DialogTitle>Add New Payment Ledger</DialogTitle>
+          <DialogDescription>Enter the details for the new payment record. It will be sent to the manager for approval.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
@@ -120,33 +118,13 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
           </div>
           
           <div className="space-y-2">
-              <Label>Status</Label>
-              <Controller
-                name="status"
-                control={form.control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Email Sent">Email Sent</SelectItem>
-                      <SelectItem value="Amount Listed Out">Amount Listed Out</SelectItem>
-                      <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          
-          <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
             <Textarea id="remarks" {...form.register('remarks')} />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Add Payment</Button>
+            <Button type="submit">Add to Ledger</Button>
           </DialogFooter>
         </form>
       </DialogContent>

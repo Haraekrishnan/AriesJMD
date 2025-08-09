@@ -8,7 +8,7 @@ export type Vendor = {
   address?: string;
 };
 
-export type PaymentStatus = 'Pending' | 'Email Sent' | 'Amount Listed Out' | 'Paid' | 'Cancelled' | 'Approved' | 'Rejected';
+export type PaymentStatus = 'Pending' | 'Approved' | 'Rejected' | 'Paid' | 'Cancelled' | 'Email Sent' | 'Amount Listed Out';
 
 export type Payment = {
     id: string;

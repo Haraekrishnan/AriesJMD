@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -33,21 +34,21 @@ export default function VendorManagementPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Vendor Management</h1>
-                <p className="text-muted-foreground">Manage vendors and track their payment statuses.</p>
+                <h1 className="text-3xl font-bold tracking-tight">Vendor Ledger & Payments</h1>
+                <p className="text-muted-foreground">Log and approve vendor payments, and manage vendor information.</p>
             </div>
 
             <Tabs defaultValue="payments" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="payments">Payments</TabsTrigger>
-                    <TabsTrigger value="vendors">Vendors</TabsTrigger>
+                    <TabsTrigger value="payments">Payments Ledger</TabsTrigger>
+                    <TabsTrigger value="vendors">Vendor List</TabsTrigger>
                 </TabsList>
                  <TabsContent value="payments" className="mt-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                              <div>
-                                <CardTitle>Payment Records</CardTitle>
-                                <CardDescription>A list of all payment records.</CardDescription>
+                                <CardTitle>Payments Ledger</CardTitle>
+                                <CardDescription>A record of all vendor payables and their approval status.</CardDescription>
                             </div>
                             {can.manage_payments && (
                                 <Button onClick={() => setIsAddPaymentOpen(true)}>
