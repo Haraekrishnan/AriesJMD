@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo } from 'react';
 import type { PpeRequest } from '@/lib/types';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parseISO } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface PpeReportDownloadsProps {
@@ -34,25 +35,30 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     const { from, to = from } = dateRange;
 
     const filteredRequests = issuedRequests.filter(req => {
-        const issuedComment = (Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {})).find(c => c.text.toLowerCase().includes('issued'));
+        const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+        const issuedComment = comments.find(c => c.text.toLowerCase().includes('issued by'));
+        
         if (!issuedComment) return false;
         
         const issueDate = parseISO(issuedComment.date);
-        return isWithinInterval(issueDate, { start: startOfDay(from), end: startOfDay(to) });
+        return isWithinInterval(issueDate, { start: startOfDay(from), end: endOfDay(to) });
     });
 
     if (filteredRequests.length === 0) {
         toast({
+            variant: 'destructive',
             title: 'No Data Found',
-            description: 'Generating an empty report with headers for the selected period.',
+            description: 'No PPE was issued in the selected date range.',
         });
+        return;
     }
 
     const dataToExport = filteredRequests.map(req => {
       const manpower = manpowerProfiles.find(p => p.id === req.manpowerId);
       const requester = users.find(u => u.id === req.requesterId);
       const approver = users.find(u => u.id === req.approverId);
-      const issuedComment = (Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {})).find(c => c.text.toLowerCase().includes('issued'));
+      const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+      const issuedComment = comments.find(c => c.text.toLowerCase().includes('issued by'));
       const issuer = issuedComment ? users.find(u => u.id === issuedComment.userId) : null;
       
       return {

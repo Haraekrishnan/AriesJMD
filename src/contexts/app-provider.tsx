@@ -1,6 +1,5 @@
 
 
-
       
 'use client';
 
@@ -2147,7 +2146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, payments, vendors]);
   
   const deletePayment = useCallback((paymentId: string) => {
-    if (!user) return;
+    if (!user || user.role !== 'Admin') return;
     const paymentToDelete = payments.find(p => p.id === paymentId);
     if (paymentToDelete) {
         remove(ref(rtdb, `payments/${paymentId}`));

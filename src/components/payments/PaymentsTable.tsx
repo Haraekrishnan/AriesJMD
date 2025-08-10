@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -10,8 +11,10 @@ import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import ViewPurchaseRegisterDialog from '../purchase-register/ViewPurchaseRegisterDialog';
 import { Button } from '../ui/button';
-import { Edit } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import EditPaymentDialog from './EditPaymentDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 interface PaymentsTableProps {
   payments: Payment[];
@@ -19,7 +22,7 @@ interface PaymentsTableProps {
 }
 
 export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
-    const { user, vendors, users, purchaseRegisters } = useAppContext();
+    const { user, vendors, users, purchaseRegisters, deletePayment } = useAppContext();
     const { toast } = useToast();
     const [viewingPurchase, setViewingPurchase] = useState<string | null>(null);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -34,6 +37,11 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
     const purchaseRegisterMap = useMemo(() => {
         return new Map(purchaseRegisters.map(pr => [pr.id, pr]));
     }, [purchaseRegisters]);
+    
+    const handleDelete = (paymentId: string) => {
+        deletePayment(paymentId);
+        toast({ title: 'Payment Deleted', variant: 'destructive' });
+    }
 
 
     if (payments.length === 0) {
@@ -86,9 +94,28 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
                                     {user?.role === 'Admin' && (
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => setEditingPayment(payment)}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex justify-end gap-1">
+                                                <Button variant="ghost" size="icon" onClick={() => setEditingPayment(payment)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                 <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>This action will permanently delete this payment record.</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(payment.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
                                         </TableCell>
                                     )}
                                 </TableRow>
