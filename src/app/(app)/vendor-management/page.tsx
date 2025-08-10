@@ -19,6 +19,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { isWithinInterval, parseISO } from 'date-fns';
 import PaymentReportDownloads from '@/components/payments/PaymentReportDownloads';
+import { Badge } from '@/components/ui/badge';
 
 
 export default function VendorManagementPage() {
