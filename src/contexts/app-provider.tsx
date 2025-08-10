@@ -1,4 +1,5 @@
 
+
       
 'use client';
 
@@ -2105,7 +2106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         status: 'Pending' as PaymentStatus,
         approverId: manager?.id || null, // Assign to manager
-        comments: [{ id: `pay-c-${Date.now()}`, userId: user.id, text: `Ledger created with amount $${payment.amount}.`, date: new Date().toISOString() }],
+        comments: [{ id: `pay-c-${Date.now()}`, userId: user.id, text: `Ledger created with amount ${payment.amount}.`, date: new Date().toISOString() }],
     };
     
     const cleanPayment = Object.fromEntries(
@@ -2114,7 +2115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     set(newPaymentRef, cleanPayment);
     const vendorName = vendors.find(v => v.id === payment.vendorId)?.name || 'a vendor';
-    addActivityLog(user.id, 'Payment Added', `Payment to ${vendorName} for $${payment.amount}`);
+    addActivityLog(user.id, 'Payment Added', `Payment to ${vendorName} for ${payment.amount}`);
   }, [user, addActivityLog, vendors, users]);
   
   const updatePayment = useCallback((payment: Payment) => {
@@ -2174,19 +2175,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (vendorToDelete) addActivityLog(user.id, 'Vendor Deleted', `Deleted vendor: ${vendorToDelete.name}`);
   }, [user, vendors, addActivityLog]);
 
-  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date' | 'durationFrom' | 'durationTo'> & { duration?: { from?: Date; to?: Date }, emailSentDate?: Date }) => {
+  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'> & { duration?: { from?: Date; to?: Date }, emailSentDate?: Date }) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'purchaseRegisters'));
     const purchaseId = newRef.key!;
     
-    const { duration, ...restOfPurchase } = purchase;
-
     const newPurchaseRegister: Omit<PurchaseRegister, 'id'> = {
-        ...restOfPurchase,
+        vendorId: purchase.vendorId,
         creatorId: user.id,
         date: new Date().toISOString(),
-        durationFrom: duration?.from?.toISOString() || null,
-        durationTo: duration?.to?.toISOString() || null,
+        items: purchase.items,
+        subTotal: purchase.subTotal,
+        totalTax: purchase.totalTax,
+        grandTotal: purchase.grandTotal,
+        durationFrom: purchase.duration?.from?.toISOString() || null,
+        durationTo: purchase.duration?.to?.toISOString() || null,
         emailSentDate: purchase.emailSentDate?.toISOString() || null,
     };
     
@@ -2199,8 +2202,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'Pending' as PaymentStatus,
         remarks: `From Purchase Register #${purchaseId.slice(-6)}`,
         purchaseRegisterId: purchaseId,
-        durationFrom: duration?.from?.toISOString() || null,
-        durationTo: duration?.to?.toISOString() || null,
+        durationFrom: purchase.duration?.from?.toISOString() || null,
+        durationTo: purchase.duration?.to?.toISOString() || null,
         emailSentDate: purchase.emailSentDate?.toISOString() || null,
     };
     

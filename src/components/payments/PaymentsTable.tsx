@@ -1,5 +1,6 @@
 
 'use client';
+
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,10 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Payment, PaymentStatus } from '@/lib/types';
 import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { Avatar, AvatarFallback } from '../ui/avatar';
 import ViewPurchaseRegisterDialog from '../purchase-register/ViewPurchaseRegisterDialog';
-
 
 const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
     'Pending': 'secondary',
@@ -36,15 +34,8 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd MMM, yyyy') : 'N/A';
     
-    const groupedPayments = useMemo(() => {
-        return payments.reduce((acc, payment) => {
-            const vendorId = payment.vendorId;
-            if (!acc[vendorId]) {
-                acc[vendorId] = [];
-            }
-            acc[vendorId].push(payment);
-            return acc;
-        }, {} as Record<string, Payment[]>);
+    const sortedPayments = useMemo(() => {
+        return payments.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     }, [payments]);
 
     const purchaseRegisterMap = useMemo(() => {
@@ -64,73 +55,47 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
     return (
         <>
             <h3 className="text-lg font-semibold mb-2">{title} ({payments.length})</h3>
-            <div className="space-y-2">
-                {Object.entries(groupedPayments).map(([vendorId, vendorPayments]) => {
-                    const vendor = vendors.find(v => v.id === vendorId);
-                    if (!vendor) return null;
-                    
-                    const hasPendingPayment = user?.role === 'Manager' && vendorPayments.some(p => p.status === 'Pending');
+             <div className="border rounded-md">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Vendor</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Duration</TableHead>
+                            <TableHead>Email Sent Date</TableHead>
+                            <TableHead>Remarks</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Logged By</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedPayments.map(payment => {
+                            const vendor = vendors.find(v => v.id === payment.vendorId);
+                            const requester = users.find(u => u.id === payment.requesterId);
+                            const isPurchaseLink = payment.purchaseRegisterId && purchaseRegisterMap.has(payment.purchaseRegisterId);
 
-                    return (
-                        <Accordion key={vendorId} type="single" collapsible className="w-full">
-                            <AccordionItem value={vendorId} className="border rounded-lg bg-card">
-                                <AccordionTrigger className="p-4 hover:no-underline w-full">
-                                    <div className="flex items-center justify-between w-full">
-                                        <div className="flex items-center gap-3">
-                                            {hasPendingPayment && <div className="h-2.5 w-2.5 rounded-full bg-destructive" title="Pending Approval" />}
-                                            <Avatar>
-                                                <AvatarFallback>{vendor.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <p className="font-semibold text-lg">{vendor.name}</p>
-                                            <Badge variant="secondary">{vendorPayments.length} payments</Badge>
-                                        </div>
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="p-1 border-t">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Amount</TableHead>
-                                                    <TableHead>Duration</TableHead>
-                                                    <TableHead>Email Sent Date</TableHead>
-                                                    <TableHead>Remarks</TableHead>
-                                                    <TableHead>Status</TableHead>
-                                                    <TableHead>Requester</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {vendorPayments.map(payment => {
-                                                    const requester = users.find(u => u.id === payment.requesterId);
-                                                    const isPurchaseLink = payment.purchaseRegisterId && purchaseRegisterMap.has(payment.purchaseRegisterId);
-
-                                                    return (
-                                                        <TableRow key={payment.id}>
-                                                            <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                                                            <TableCell>{payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}</TableCell>
-                                                            <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
-                                                            <TableCell className="max-w-xs truncate">
-                                                                {isPurchaseLink ? (
-                                                                    <Button variant="link" className="p-0 h-auto" onClick={() => setViewingPurchase(payment.purchaseRegisterId!)}>
-                                                                        {payment.remarks}
-                                                                    </Button>
-                                                                ) : (
-                                                                    payment.remarks || 'N/A'
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
-                                                            <TableCell>{requester?.name || 'Unknown'}</TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    )
-                })}
+                            return (
+                                <TableRow key={payment.id}>
+                                    <TableCell>{vendor?.name || 'N/A'}</TableCell>
+                                    <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                                    <TableCell>{payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}</TableCell>
+                                    <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
+                                    <TableCell className="max-w-xs truncate">
+                                        {isPurchaseLink ? (
+                                            <Button variant="link" className="p-0 h-auto" onClick={() => setViewingPurchase(payment.purchaseRegisterId!)}>
+                                                Purchase Register
+                                            </Button>
+                                        ) : (
+                                            payment.remarks || 'N/A'
+                                        )}
+                                    </TableCell>
+                                    <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
+                                    <TableCell>{requester?.name || 'Unknown'}</TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
             </div>
             
              {viewingPurchase && (
