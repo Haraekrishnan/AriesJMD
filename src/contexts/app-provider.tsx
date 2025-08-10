@@ -1,5 +1,5 @@
 
-
+      
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -2174,17 +2174,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (vendorToDelete) addActivityLog(user.id, 'Vendor Deleted', `Deleted vendor: ${vendorToDelete.name}`);
   }, [user, vendors, addActivityLog]);
 
-  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'> & { duration?: { from?: Date; to?: Date }, emailSentDate?: Date }) => {
+  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date' | 'durationFrom' | 'durationTo'> & { duration?: { from?: Date; to?: Date }, emailSentDate?: Date }) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'purchaseRegisters'));
     const purchaseId = newRef.key!;
     
+    const { duration, ...restOfPurchase } = purchase;
+
     const newPurchaseRegister: Omit<PurchaseRegister, 'id'> = {
-        ...purchase,
+        ...restOfPurchase,
         creatorId: user.id,
         date: new Date().toISOString(),
-        durationFrom: purchase.duration?.from?.toISOString() || null,
-        durationTo: purchase.duration?.to?.toISOString() || null,
+        durationFrom: duration?.from?.toISOString() || null,
+        durationTo: duration?.to?.toISOString() || null,
         emailSentDate: purchase.emailSentDate?.toISOString() || null,
     };
     
@@ -2197,9 +2199,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'Pending' as PaymentStatus,
         remarks: `From Purchase Register #${purchaseId.slice(-6)}`,
         purchaseRegisterId: purchaseId,
-        durationFrom: purchase.duration?.from?.toISOString(),
-        durationTo: purchase.duration?.to?.toISOString(),
-        emailSentDate: purchase.emailSentDate?.toISOString(),
+        durationFrom: duration?.from?.toISOString() || null,
+        durationTo: duration?.to?.toISOString() || null,
+        emailSentDate: purchase.emailSentDate?.toISOString() || null,
     };
     
     const newPaymentRef = push(ref(rtdb, 'payments'));
@@ -2461,21 +2463,4 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
     
-
     
-
-      
-
-
-
-
-
-
-
-
-
-    
-
-    
-
-
