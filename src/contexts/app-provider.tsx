@@ -2174,7 +2174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (vendorToDelete) addActivityLog(user.id, 'Vendor Deleted', `Deleted vendor: ${vendorToDelete.name}`);
   }, [user, vendors, addActivityLog]);
 
-  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => {
+  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'> & { duration?: { from?: Date; to?: Date }, emailSentDate?: Date }) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'purchaseRegisters'));
     const purchaseId = newRef.key!;
@@ -2183,9 +2183,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...purchase,
         creatorId: user.id,
         date: new Date().toISOString(),
-        durationFrom: purchase.durationFrom?.toISOString(),
-        durationTo: purchase.durationTo?.toISOString(),
-        emailSentDate: purchase.emailSentDate?.toISOString(),
+        durationFrom: purchase.duration?.from?.toISOString() || null,
+        durationTo: purchase.duration?.to?.toISOString() || null,
+        emailSentDate: purchase.emailSentDate?.toISOString() || null,
     };
     
     set(newRef, newPurchaseRegister);
@@ -2197,8 +2197,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'Pending' as PaymentStatus,
         remarks: `From Purchase Register #${purchaseId.slice(-6)}`,
         purchaseRegisterId: purchaseId,
-        durationFrom: purchase.durationFrom?.toISOString(),
-        durationTo: purchase.durationTo?.toISOString(),
+        durationFrom: purchase.duration?.from?.toISOString(),
+        durationTo: purchase.duration?.to?.toISOString(),
         emailSentDate: purchase.emailSentDate?.toISOString(),
     };
     
@@ -2477,4 +2477,5 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
 
