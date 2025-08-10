@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import PurchaseRegisterForm from '@/components/purchase-register/PurchaseRegisterForm';
 import { useAppContext } from '@/contexts/app-provider';
 import { AlertTriangle } from 'lucide-react';
+import PurchaseRegisterList from '@/components/purchase-register/PurchaseRegisterList';
 
 
 export default function PurchaseRegisterPage() {
@@ -40,6 +41,16 @@ export default function PurchaseRegisterPage() {
                 </CardHeader>
                 <CardContent>
                     <PurchaseRegisterForm />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Purchase History</CardTitle>
+                    <CardDescription>View all logged purchases and add PO numbers.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <PurchaseRegisterList />
                 </CardContent>
             </Card>
         </div>

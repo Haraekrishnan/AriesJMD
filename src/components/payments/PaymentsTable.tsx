@@ -4,22 +4,12 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Payment, PaymentStatus } from '@/lib/types';
 import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import ViewPurchaseRegisterDialog from '../purchase-register/ViewPurchaseRegisterDialog';
-
-const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
-    'Pending': 'secondary',
-    'Approved': 'default',
-    'Rejected': 'destructive',
-    'Email Sent': 'warning',
-    'Amount Listed Out': 'outline',
-    'Paid': 'success',
-    'Cancelled': 'destructive',
-};
+import { Button } from '../ui/button';
 
 interface PaymentsTableProps {
   payments: Payment[];
@@ -64,7 +54,6 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                             <TableHead>Duration</TableHead>
                             <TableHead>Email Sent Date</TableHead>
                             <TableHead>Remarks</TableHead>
-                            <TableHead>Status</TableHead>
                             <TableHead>Logged By</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -89,7 +78,6 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                                             payment.remarks || 'N/A'
                                         )}
                                     </TableCell>
-                                    <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
                                 </TableRow>
                             );

@@ -1,5 +1,6 @@
 
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -42,7 +43,6 @@ export type PurchaseItem = {
     unitRate: number;
     quantity: number;
     tax: number;
-    total: number;
 };
 
 export type PurchaseRegister = {
@@ -54,9 +54,10 @@ export type PurchaseRegister = {
     subTotal: number;
     totalTax: number;
     grandTotal: number;
-    durationFrom?: string; // ISO String
-    durationTo?: string; // ISO String
-    emailSentDate?: string; // ISO String
+    durationFrom: string | null;
+    durationTo: string | null;
+    emailSentDate: string | null;
+    poNumber?: string;
 };
 
 
