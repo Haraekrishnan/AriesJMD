@@ -131,6 +131,15 @@
     "payments": {
       ".read": true,
       ".write": true
+    },
+    "vendors": {
+      ".read": true,
+      ".write": true
+    },
+    "purchaseRegisters": {
+      ".read": true,
+      ".write": true
     }
   }
 }
+

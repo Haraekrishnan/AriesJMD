@@ -27,6 +27,7 @@ import {
   Package,
   CreditCard,
   Briefcase,
+  ShoppingCart,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -44,6 +45,7 @@ export function AppSidebar() {
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, show: true },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
+    { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: can.manage_purchase_register },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount, show: true },
     { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },

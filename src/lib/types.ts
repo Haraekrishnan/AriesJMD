@@ -1,4 +1,5 @@
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -32,6 +33,27 @@ export type Payment = {
     status: PaymentStatus;
     remarks?: string;
     comments: Comment[];
+    purchaseRegisterId?: string;
+};
+
+export type PurchaseItem = {
+    id: string;
+    name: string;
+    unitRate: number;
+    quantity: number;
+    tax: number;
+    total: number;
+};
+
+export type PurchaseRegister = {
+    id: string;
+    vendorId: string;
+    creatorId: string;
+    date: string; // ISO String
+    items: PurchaseItem[];
+    subTotal: number;
+    totalTax: number;
+    grandTotal: number;
 };
 
 
@@ -133,7 +155,8 @@ export const ALL_PERMISSIONS = [
   'manage_job_schedule',
   'manage_ppe_stock',
   'manage_vendors',
-  'manage_payments'
+  'manage_payments',
+  'manage_purchase_register'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -279,7 +302,6 @@ export type ManpowerProfile = {
   cardCategory?: string;
   cardType?: string;
   epNumber?: string;
-  plantName?: string;
   
   // Documents and Skills
   documents: ManpowerDocument[];
