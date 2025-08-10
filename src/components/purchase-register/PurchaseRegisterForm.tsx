@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -37,14 +38,18 @@ export default function PurchaseRegisterForm() {
   
   const allItemsEverPurchased = useMemo(() => {
     const itemMap = new Map<string, { lastPrice: number }>();
-    purchaseRegisters.forEach(reg => {
-      reg.items.forEach(item => {
-        const existing = itemMap.get(item.name.toLowerCase());
-        if (!existing || item.unitRate > existing.lastPrice) {
-          itemMap.set(item.name.toLowerCase(), { lastPrice: item.unitRate });
-        }
-      });
-    });
+    if (purchaseRegisters && Array.isArray(purchaseRegisters)) {
+        purchaseRegisters.forEach(reg => {
+            if (reg.items && Array.isArray(reg.items)) {
+                reg.items.forEach(item => {
+                    const existing = itemMap.get(item.name.toLowerCase());
+                    if (!existing || item.unitRate > existing.lastPrice) {
+                        itemMap.set(item.name.toLowerCase(), { lastPrice: item.unitRate });
+                    }
+                });
+            }
+        });
+    }
     return itemMap;
   }, [purchaseRegisters]);
 
