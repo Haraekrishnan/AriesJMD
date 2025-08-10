@@ -105,11 +105,9 @@ export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialog
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>Email Sent Date (Optional)</Label>
-                    <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                </div>
+            <div className="space-y-2">
+                <Label>Email Sent Date (Optional)</Label>
+                <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
             </div>
 
             <div className="space-y-2">

@@ -4,23 +4,41 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Search, PlusCircle, Briefcase } from 'lucide-react';
+import { Search, PlusCircle, Briefcase, FileDown } from 'lucide-react';
 import VendorListTable from '@/components/vendor-management/VendorListTable';
 import { Input } from '@/components/ui/input';
 import AddVendorDialog from '@/components/vendor-management/AddVendorDialog';
 import EditVendorDialog from '@/components/vendor-management/EditVendorDialog';
-import type { Vendor } from '@/lib/types';
+import type { Vendor, Payment } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PaymentsTable from '@/components/payments/PaymentsTable';
 import AddPaymentDialog from '@/components/payments/AddPaymentDialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
+import { isWithinInterval, parseISO } from 'date-fns';
+import PaymentReportDownloads from '@/components/payments/PaymentReportDownloads';
+
 
 export default function VendorManagementPage() {
-    const { user, vendors, can } = useAppContext();
+    const { user, vendors, payments, can, pendingPaymentApprovalCount } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
     const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+
+    // Filters
+    const [selectedVendorId, setSelectedVendorId] = useState('all');
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+    const filteredPayments = useMemo(() => {
+        return payments.filter(payment => {
+            const vendorMatch = selectedVendorId === 'all' || payment.vendorId === selectedVendorId;
+            const dateMatch = !dateRange?.from || isWithinInterval(parseISO(payment.date), { start: dateRange.from, end: dateRange.to || dateRange.from });
+            return vendorMatch && dateMatch;
+        });
+    }, [payments, selectedVendorId, dateRange]);
 
     const filteredVendors = vendors.filter(vendor => 
         vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -34,6 +52,16 @@ export default function VendorManagementPage() {
         if (!user) return false;
         return user.role === 'Admin' || user.role === 'Project Coordinator';
     }, [user]);
+
+    const ledgerTitle = useMemo(() => {
+        if (selectedVendorId !== 'all' && dateRange?.from) {
+            return `Payments for ${vendors.find(v => v.id === selectedVendorId)?.name}`;
+        }
+        if (selectedVendorId !== 'all') {
+            return `All Payments for ${vendors.find(v => v.id === selectedVendorId)?.name}`;
+        }
+        return 'All Payments';
+    }, [selectedVendorId, dateRange, vendors]);
 
     return (
         <div className="space-y-6">
@@ -60,16 +88,31 @@ export default function VendorManagementPage() {
             
             <Tabs defaultValue="payments" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="payments">Payments Ledger</TabsTrigger>
+                    <TabsTrigger value="payments" className="flex items-center gap-2">
+                        Payments Ledger
+                        {pendingPaymentApprovalCount > 0 && <Badge variant="destructive">{pendingPaymentApprovalCount}</Badge>}
+                    </TabsTrigger>
                     <TabsTrigger value="vendors">Vendor List</TabsTrigger>
                 </TabsList>
                 <TabsContent value="payments" className="mt-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>All Payments</CardTitle>
+                            <CardTitle>Filters</CardTitle>
+                            <CardDescription>Filter the payment ledger by vendor and date range.</CardDescription>
+                             <div className="flex flex-wrap items-center gap-4 pt-4">
+                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                                    <SelectTrigger className="w-[220px]"><SelectValue placeholder="All Vendors" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Vendors</SelectItem>
+                                        {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+                                <PaymentReportDownloads payments={filteredPayments} />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                             <PaymentsTable />
+                             <PaymentsTable payments={filteredPayments} title={ledgerTitle} />
                         </CardContent>
                     </Card>
                 </TabsContent>

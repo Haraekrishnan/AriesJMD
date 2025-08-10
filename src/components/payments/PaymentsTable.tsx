@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Payment, PaymentStatus } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
@@ -30,8 +30,13 @@ const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructiv
 
 const statusOptions: PaymentStatus[] = ['Approved', 'Rejected', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled'];
 
-export default function PaymentsTable() {
-    const { user, payments, vendors, users, can, updatePaymentStatus, deletePayment } = useAppContext();
+interface PaymentsTableProps {
+  payments: Payment[];
+  title: string;
+}
+
+export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
+    const { user, vendors, users, can, updatePaymentStatus, deletePayment } = useAppContext();
     const { toast } = useToast();
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -64,14 +69,8 @@ export default function PaymentsTable() {
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd MMM, yyyy') : 'N/A';
     
-    const visiblePayments = payments.filter(p => {
-        if (can.manage_payments) return true;
-        if (user?.role === 'Manager' && p.approverId === user.id) return true;
-        return p.requesterId === user?.id;
-    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
     const groupedPayments = useMemo(() => {
-        return visiblePayments.reduce((acc, payment) => {
+        return payments.reduce((acc, payment) => {
             const vendorId = payment.vendorId;
             if (!acc[vendorId]) {
                 acc[vendorId] = [];
@@ -79,15 +78,16 @@ export default function PaymentsTable() {
             acc[vendorId].push(payment);
             return acc;
         }, {} as Record<string, Payment[]>);
-    }, [visiblePayments]);
+    }, [payments]);
 
 
-    if (visiblePayments.length === 0) {
-        return <div className="text-center py-10 text-muted-foreground">No payments found.</div>
+    if (payments.length === 0) {
+        return <div className="text-center py-10 text-muted-foreground">No payments match the current filters.</div>
     }
 
     return (
         <>
+            <h3 className="text-lg font-semibold mb-2">{title} ({payments.length})</h3>
             <div className="space-y-2">
                 {Object.entries(groupedPayments).map(([vendorId, vendorPayments]) => {
                     const vendor = vendors.find(v => v.id === vendorId);
@@ -127,7 +127,7 @@ export default function PaymentsTable() {
                                             <TableBody>
                                                 {vendorPayments.map(payment => {
                                                     const requester = users.find(u => u.id === payment.requesterId);
-                                                    const canManageLedger = (user?.role === 'Admin' || user?.role === 'Project Coordinator') && payment.status === 'Pending';
+                                                    const canEditLedger = (user?.role === 'Admin' || user?.role === 'Project Coordinator') && payment.status === 'Pending';
                                                     const canChangeStatus = user?.role === 'Manager';
 
                                                     return (
@@ -148,7 +148,7 @@ export default function PaymentsTable() {
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
-                                                                        {canManageLedger && (
+                                                                        {canEditLedger && (
                                                                             <>
                                                                                 <DropdownMenuItem onSelect={() => setEditingPayment(payment)}>
                                                                                     <Edit className="mr-2 h-4 w-4" /> Edit Ledger

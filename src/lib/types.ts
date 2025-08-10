@@ -1,5 +1,4 @@
 
-
 export type Vendor = {
   id: string;
   name: string;
@@ -12,6 +11,10 @@ export type Vendor = {
   frequency?: 'Monthly' | 'Rolling' | 'Annual';
   ownerDept?: string;
   icon?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
 };
 
 export type PaymentStatus = 'Pending' | 'Approved' | 'Rejected' | 'Paid' | 'Cancelled' | 'Email Sent' | 'Amount Listed Out';

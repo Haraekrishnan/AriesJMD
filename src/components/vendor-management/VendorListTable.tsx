@@ -8,8 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Vendor } from '@/lib/types';
-import { format, formatDistanceToNowStrict, parseISO, isPast, isToday } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 
 interface VendorListTableProps {
@@ -18,7 +16,7 @@ interface VendorListTableProps {
 }
 
 export default function VendorListTable({ vendors = [], onEdit }: VendorListTableProps) {
-  const { can, users, deleteVendor } = useAppContext();
+  const { can, deleteVendor } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (vendorId: string) => {
@@ -29,37 +27,6 @@ export default function VendorListTable({ vendors = [], onEdit }: VendorListTabl
       description: 'The vendor has been removed from the system.',
     });
   };
-
-  const formatCurrency = (amount?: number) => {
-    if (amount === undefined || amount === null) return 'N/A';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-  };
-  
-  const getOwnerName = (ownerId?: string) => {
-      if(!ownerId) return 'N/A';
-      return users.find(u => u.id === ownerId)?.name || 'Unknown';
-  }
-
-  const NextPayment = ({ date, amount }: { date?: string, amount?: number }) => {
-      if (!date) return <TableCell>N/A</TableCell>;
-      const paymentDate = parseISO(date);
-      const isOverdue = isPast(paymentDate) && !isToday(paymentDate);
-      const distance = formatDistanceToNowStrict(paymentDate, { addSuffix: true });
-
-      return (
-          <TableCell>
-              <div className="flex items-center gap-2">
-                   <Clock className={cn("h-4 w-4", isOverdue ? 'text-red-500' : 'text-gray-400')} />
-                  <div>
-                    <p className="font-medium">{formatCurrency(amount)}</p>
-                    <p className={cn("text-xs", isOverdue ? "text-red-500" : "text-muted-foreground")}>
-                        {isOverdue ? `Overdue by ${distance.replace('ago', '')}` : `In ${distance.replace('in ', '')}`}
-                    </p>
-                  </div>
-              </div>
-          </TableCell>
-      )
-  }
 
   if (vendors.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No vendors found.</p>;
