@@ -1493,12 +1493,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
       return lastIssue?.issueDate ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A';
     };
+    
+    const getStockInfo = (req: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>): string => {
+        if (req.ppeType === 'Safety Shoes') {
+            const stock = ppeStock.find(s => s.id === 'safetyShoes');
+            return `${stock?.quantity || 0}`;
+        }
+        if (req.ppeType === 'Coverall') {
+            const stock = ppeStock.find(s => s.id === 'coveralls');
+            const sizeStock = stock?.sizes?.[req.size] || 0;
+            return `${sizeStock}`;
+        }
+        return 'N/A';
+    };
+
 
     // Gather extra info for the email
     const employeeProfile = manpowerProfiles.find(p => p.id === requestData.manpowerId);
     const joiningDate = employeeProfile?.joiningDate ? format(parseISO(employeeProfile.joiningDate), 'dd-MM-yyyy') : 'N/A';
     const rejoiningDate = getRejoiningDate(employeeProfile);
     const lastIssueDate = getLastPpeIssueDate(employeeProfile, requestData.ppeType);
+    const stockInfo = getStockInfo(requestData);
     
     // Call the Server Action to send the email
     await sendPpeRequestEmail({
@@ -1513,9 +1528,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       joiningDate: joiningDate,
       rejoiningDate: rejoiningDate,
       lastIssueDate: lastIssueDate,
+      stockInfo: stockInfo,
     });
 
-  }, [user, users, addActivityLog, manpowerProfiles]);
+  }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
 
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if(!user || user.role !== 'Admin') return;
@@ -2475,3 +2491,4 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+

@@ -34,6 +34,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     joiningDate,
     rejoiningDate,
     lastIssueDate,
+    stockInfo,
   } = ppeData;
 
   const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
@@ -48,6 +49,8 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       <p><strong>Joining Date:</strong> ${joiningDate || 'N/A'}</p>
       <p><strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}</p>
       <p><strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}</p>
+      <p><strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span></p>
+
       
       ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
       
