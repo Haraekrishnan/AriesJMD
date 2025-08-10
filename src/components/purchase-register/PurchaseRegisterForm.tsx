@@ -15,6 +15,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronsUpDown, Trash2, PlusCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
+import { DateRangePicker } from '../ui/date-range-picker';
+import { DatePickerInput } from '../ui/date-picker-input';
+import type { DateRange } from 'react-day-picker';
 
 const itemSchema = z.object({
   id: z.string(),
@@ -27,6 +30,11 @@ const itemSchema = z.object({
 const purchaseSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   items: z.array(itemSchema).min(1, 'Please add at least one item.'),
+  duration: z.object({
+      from: z.date().optional(),
+      to: z.date().optional()
+  }).optional(),
+  emailSentDate: z.date().optional(),
 });
 
 type PurchaseFormValues = z.infer<typeof purchaseSchema>;
@@ -76,8 +84,7 @@ export default function PurchaseRegisterForm() {
 
   const onSubmit = (data: PurchaseFormValues) => {
     addPurchaseRegister({
-        vendorId: data.vendorId,
-        items: data.items.map(item => ({ ...item, total: (item.quantity * item.unitRate) * (1 + item.tax / 100) })),
+        ...data,
         subTotal: totals.subTotal,
         totalTax: totals.totalTax,
         grandTotal: totals.grandTotal,
@@ -89,41 +96,57 @@ export default function PurchaseRegisterForm() {
   return (
     <>
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <div className="flex items-end gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
         <div className="flex-1 space-y-2">
             <Label>Vendor</Label>
-            <Controller
-                name="vendorId"
-                control={form.control}
-                render={({ field }) => (
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-full justify-between">
-                                {field.value ? vendors.find(v => v.id === field.value)?.name : "Select vendor..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search vendors..." />
-                                <CommandList>
-                                <CommandEmpty>No vendor found.</CommandEmpty>
-                                <CommandGroup>
-                                    {vendors.map(vendor => (
-                                    <CommandItem key={vendor.id} value={vendor.name} onSelect={() => form.setValue("vendorId", vendor.id)}>
-                                        {vendor.name}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                )}
-            />
+            <div className="flex items-center gap-2">
+              <Controller
+                  name="vendorId"
+                  control={form.control}
+                  render={({ field }) => (
+                      <Popover>
+                          <PopoverTrigger asChild>
+                              <Button variant="outline" role="combobox" className="w-full justify-between">
+                                  {field.value ? vendors.find(v => v.id === field.value)?.name : "Select vendor..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                              <Command>
+                                  <CommandInput placeholder="Search vendors..." />
+                                  <CommandList>
+                                  <CommandEmpty>No vendor found.</CommandEmpty>
+                                  <CommandGroup>
+                                      {vendors.map(vendor => (
+                                      <CommandItem key={vendor.id} value={vendor.name} onSelect={() => form.setValue("vendorId", vendor.id)}>
+                                          {vendor.name}
+                                      </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                                  </CommandList>
+                              </Command>
+                          </PopoverContent>
+                      </Popover>
+                  )}
+              />
+              <Button type="button" variant="outline" onClick={() => setIsAddVendorOpen(true)}>New</Button>
+            </div>
              {form.formState.errors.vendorId && <p className="text-xs text-destructive">{form.formState.errors.vendorId.message}</p>}
         </div>
-        <Button type="button" variant="outline" onClick={() => setIsAddVendorOpen(true)}>Add New Vendor</Button>
+         <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Service Duration (Optional)</Label>
+              <Controller
+                name="duration"
+                control={form.control}
+                render={({ field }) => <DateRangePicker date={field.value as DateRange} onDateChange={field.onChange} />}
+              />
+            </div>
+             <div className="space-y-2">
+                <Label>Email Sent Date (Optional)</Label>
+                <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+            </div>
+        </div>
       </div>
 
       <div className="space-y-4">

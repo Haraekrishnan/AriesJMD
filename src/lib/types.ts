@@ -54,6 +54,9 @@ export type PurchaseRegister = {
     subTotal: number;
     totalTax: number;
     grandTotal: number;
+    durationFrom?: string; // ISO String
+    durationTo?: string; // ISO String
+    emailSentDate?: string; // ISO String
 };
 
 

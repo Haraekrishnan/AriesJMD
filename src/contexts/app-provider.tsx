@@ -225,7 +225,7 @@ type AppContextType = {
   updatePayment: (payment: Payment) => void;
   updatePaymentStatus: (paymentId: string, status: PaymentStatus, comment: string) => void;
   deletePayment: (paymentId: string) => void;
-  addPurchaseRegister: (purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => void;
+  addPurchaseRegister: (purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'> & { duration?: { from?: Date; to?: Date }, emailSentDate?: Date }) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -2183,6 +2183,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...purchase,
         creatorId: user.id,
         date: new Date().toISOString(),
+        durationFrom: purchase.durationFrom?.toISOString(),
+        durationTo: purchase.durationTo?.toISOString(),
+        emailSentDate: purchase.emailSentDate?.toISOString(),
     };
     
     set(newRef, newPurchaseRegister);
@@ -2194,6 +2197,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'Pending' as PaymentStatus,
         remarks: `From Purchase Register #${purchaseId.slice(-6)}`,
         purchaseRegisterId: purchaseId,
+        durationFrom: purchase.durationFrom?.toISOString(),
+        durationTo: purchase.durationTo?.toISOString(),
+        emailSentDate: purchase.emailSentDate?.toISOString(),
     };
     
     const newPaymentRef = push(ref(rtdb, 'payments'));
@@ -2471,3 +2477,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
