@@ -7,15 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Payment, PaymentStatus } from '@/lib/types';
 import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '../ui/textarea';
-import { Label } from '../ui/label';
-import EditPaymentDialog from './EditPaymentDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback } from '../ui/avatar';
+import ViewPurchaseRegisterDialog from '../purchase-register/ViewPurchaseRegisterDialog';
 
 
 const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
@@ -28,44 +23,16 @@ const statusVariant: Record<PaymentStatus, "default" | "secondary" | "destructiv
     'Cancelled': 'destructive',
 };
 
-const statusOptions: PaymentStatus[] = ['Approved', 'Rejected', 'Email Sent', 'Amount Listed Out', 'Paid', 'Cancelled'];
-
 interface PaymentsTableProps {
   payments: Payment[];
   title: string;
 }
 
 export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
-    const { user, vendors, users, can, updatePaymentStatus, deletePayment } = useAppContext();
+    const { user, vendors, users, purchaseRegisters } = useAppContext();
     const { toast } = useToast();
-    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
-    const [action, setAction] = useState<PaymentStatus | null>(null);
-    const [comment, setComment] = useState('');
-
-    const handleActionClick = (payment: Payment, status: PaymentStatus) => {
-        setSelectedPayment(payment);
-        setAction(status);
-        setComment('');
-    };
-
-    const handleConfirmAction = () => {
-        if (!selectedPayment || !action) return;
-        if (!comment.trim() && (action === 'Approved' || action === 'Rejected' || action === 'Cancelled')) {
-            toast({ title: 'Comment required for this action.', variant: 'destructive' });
-            return;
-        }
-        updatePaymentStatus(selectedPayment.id, action, comment);
-        toast({ title: `Payment status updated to ${action}.` });
-        setSelectedPayment(null);
-        setAction(null);
-    };
+    const [viewingPurchase, setViewingPurchase] = useState<string | null>(null);
     
-    const handleDelete = (paymentId: string) => {
-        deletePayment(paymentId);
-        toast({ title: 'Payment Deleted', variant: 'destructive' });
-    }
-
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd MMM, yyyy') : 'N/A';
     
@@ -80,9 +47,18 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
         }, {} as Record<string, Payment[]>);
     }, [payments]);
 
+    const purchaseRegisterMap = useMemo(() => {
+        return new Map(purchaseRegisters.map(pr => [pr.id, pr]));
+    }, [purchaseRegisters]);
+
 
     if (payments.length === 0) {
-        return <div className="text-center py-10 text-muted-foreground">No payments match the current filters.</div>
+        return (
+            <>
+                <h3 className="text-lg font-semibold mb-2">{title} (0)</h3>
+                <div className="text-center py-10 text-muted-foreground">No payments match the current filters.</div>
+            </>
+        )
     }
 
     return (
@@ -121,64 +97,29 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                                                     <TableHead>Remarks</TableHead>
                                                     <TableHead>Status</TableHead>
                                                     <TableHead>Requester</TableHead>
-                                                    <TableHead className="text-right">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {vendorPayments.map(payment => {
                                                     const requester = users.find(u => u.id === payment.requesterId);
-                                                    const canEditLedger = (user?.role === 'Admin' || user?.role === 'Project Coordinator') && payment.status === 'Pending';
-                                                    const canChangeStatus = user?.role === 'Manager';
+                                                    const isPurchaseLink = payment.purchaseRegisterId && purchaseRegisterMap.has(payment.purchaseRegisterId);
 
                                                     return (
                                                         <TableRow key={payment.id}>
                                                             <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                                             <TableCell>{payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}</TableCell>
                                                             <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
-                                                            <TableCell className="max-w-xs truncate">{payment.remarks || 'N/A'}</TableCell>
+                                                            <TableCell className="max-w-xs truncate">
+                                                                {isPurchaseLink ? (
+                                                                    <Button variant="link" className="p-0 h-auto" onClick={() => setViewingPurchase(payment.purchaseRegisterId!)}>
+                                                                        {payment.remarks}
+                                                                    </Button>
+                                                                ) : (
+                                                                    payment.remarks || 'N/A'
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell><Badge variant={statusVariant[payment.status]}>{payment.status}</Badge></TableCell>
                                                             <TableCell>{requester?.name || 'Unknown'}</TableCell>
-                                                            <TableCell className="text-right">
-                                                              <AlertDialog>
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                            <span className="sr-only">Open menu</span>
-                                                                            <MoreHorizontal className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end">
-                                                                        {canEditLedger && (
-                                                                            <>
-                                                                                <DropdownMenuItem onSelect={() => setEditingPayment(payment)}>
-                                                                                    <Edit className="mr-2 h-4 w-4" /> Edit Ledger
-                                                                                </DropdownMenuItem>
-                                                                                <AlertDialogTrigger asChild>
-                                                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                                    </DropdownMenuItem>
-                                                                                </AlertDialogTrigger>
-                                                                            </>
-                                                                        )}
-                                                                        {canChangeStatus && statusOptions.map(status => (
-                                                                             <DropdownMenuItem key={status} onSelect={() => handleActionClick(payment, status)}>
-                                                                                {status}
-                                                                            </DropdownMenuItem>
-                                                                        ))}
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>This will permanently delete this payment record.</AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => handleDelete(payment.id)}>Delete</AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                              </AlertDialog>
-                                                            </TableCell>
                                                         </TableRow>
                                                     );
                                                 })}
@@ -192,29 +133,11 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                 })}
             </div>
             
-            {selectedPayment && action && (
-                <AlertDialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Change Status to "{action}"?</AlertDialogTitle>
-                            <AlertDialogDescription>Please provide a comment for this action. This is required for approvals and rejections.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div>
-                            <Label htmlFor="comment">Comment</Label>
-                            <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
-                        </div>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmAction}>Confirm</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-            {editingPayment && can.manage_vendors && (
-                <EditPaymentDialog
-                    isOpen={!!editingPayment}
-                    setIsOpen={() => setEditingPayment(null)}
-                    payment={editingPayment}
+             {viewingPurchase && (
+                <ViewPurchaseRegisterDialog
+                    isOpen={!!viewingPurchase}
+                    setIsOpen={() => setViewingPurchase(null)}
+                    purchaseRegister={purchaseRegisterMap.get(viewingPurchase)}
                 />
             )}
         </>
