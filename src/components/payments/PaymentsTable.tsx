@@ -10,6 +10,8 @@ import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import ViewPurchaseRegisterDialog from '../purchase-register/ViewPurchaseRegisterDialog';
 import { Button } from '../ui/button';
+import { Edit } from 'lucide-react';
+import EditPaymentDialog from './EditPaymentDialog';
 
 interface PaymentsTableProps {
   payments: Payment[];
@@ -20,6 +22,7 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
     const { user, vendors, users, purchaseRegisters } = useAppContext();
     const { toast } = useToast();
     const [viewingPurchase, setViewingPurchase] = useState<string | null>(null);
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd MMM, yyyy') : 'N/A';
@@ -52,9 +55,10 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                             <TableHead>Vendor</TableHead>
                             <TableHead>Amount</TableHead>
                             <TableHead>Duration</TableHead>
-                            <TableHead>Email Sent Date</TableHead>
+                            <TableHead>PO Number</TableHead>
                             <TableHead>Remarks</TableHead>
                             <TableHead>Logged By</TableHead>
+                            {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -62,13 +66,14 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                             const vendor = vendors.find(v => v.id === payment.vendorId);
                             const requester = users.find(u => u.id === payment.requesterId);
                             const isPurchaseLink = payment.purchaseRegisterId && purchaseRegisterMap.has(payment.purchaseRegisterId);
+                            const purchaseOrder = isPurchaseLink ? purchaseRegisterMap.get(payment.purchaseRegisterId) : null;
 
                             return (
                                 <TableRow key={payment.id}>
                                     <TableCell>{vendor?.name || 'N/A'}</TableCell>
                                     <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                     <TableCell>{payment.durationFrom ? `${formatDate(payment.durationFrom)} - ${formatDate(payment.durationTo)}` : 'N/A'}</TableCell>
-                                    <TableCell>{formatDate(payment.emailSentDate)}</TableCell>
+                                    <TableCell>{purchaseOrder?.poNumber || 'N/A'}</TableCell>
                                     <TableCell className="max-w-xs truncate">
                                         {isPurchaseLink ? (
                                             <Button variant="link" className="p-0 h-auto" onClick={() => setViewingPurchase(payment.purchaseRegisterId!)}>
@@ -79,6 +84,13 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                                         )}
                                     </TableCell>
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
+                                    {user?.role === 'Admin' && (
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => setEditingPayment(payment)}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             );
                         })}
@@ -91,6 +103,13 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                     isOpen={!!viewingPurchase}
                     setIsOpen={() => setViewingPurchase(null)}
                     purchaseRegister={purchaseRegisterMap.get(viewingPurchase)}
+                />
+            )}
+            {editingPayment && (
+                <EditPaymentDialog 
+                    isOpen={!!editingPayment}
+                    setIsOpen={() => setEditingPayment(null)}
+                    payment={editingPayment}
                 />
             )}
         </>

@@ -16,11 +16,14 @@ export default function PurchaseRegisterList() {
     const [poNumbers, setPoNumbers] = useState<Record<string, string>>({});
     const { toast } = useToast();
 
-    const canEditPo = useMemo(() => {
+    const canEditPo = (poNumberExists: boolean) => {
         if (!user) return false;
-        const editableRoles: Role[] = ['Admin', 'Project Coordinator', 'Store in Charge', 'Document Controller'];
+        if (user.role === 'Admin') return true;
+        if (poNumberExists) return false;
+
+        const editableRoles: Role[] = ['Project Coordinator', 'Store in Charge', 'Document Controller'];
         return editableRoles.includes(user.role);
-    }, [user]);
+    };
 
     const sortedRegisters = useMemo(() => {
         return [...purchaseRegisters].sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
@@ -57,6 +60,9 @@ export default function PurchaseRegisterList() {
             <TableBody>
                 {sortedRegisters.map(pr => {
                     const vendor = vendors.find(v => v.id === pr.vendorId);
+                    const poExists = !!pr.poNumber;
+                    const canEditThisPo = canEditPo(poExists);
+
                     return (
                         <TableRow key={pr.id}>
                             <TableCell>{format(parseISO(pr.date), 'dd MMM, yyyy')}</TableCell>
@@ -67,10 +73,10 @@ export default function PurchaseRegisterList() {
                                     <Input 
                                         defaultValue={pr.poNumber || ''}
                                         onChange={(e) => handlePoChange(pr.id, e.target.value)}
-                                        disabled={!canEditPo}
+                                        disabled={!canEditThisPo}
                                         className="h-8"
                                     />
-                                    {canEditPo && (
+                                    {canEditThisPo && (
                                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleSavePo(pr.id)}>
                                             <Save className="h-4 w-4" />
                                         </Button>

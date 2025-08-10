@@ -16,7 +16,7 @@ interface VendorListTableProps {
 }
 
 export default function VendorListTable({ vendors = [], onEdit }: VendorListTableProps) {
-  const { can, deleteVendor } = useAppContext();
+  const { can, user, deleteVendor } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (vendorId: string) => {
@@ -77,11 +77,13 @@ export default function VendorListTable({ vendors = [], onEdit }: VendorListTabl
                       <DropdownMenuItem onSelect={() => onEdit(vendor)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
+                      {user?.role === 'Admin' && (
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <AlertDialogContent>
