@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -11,11 +12,62 @@ export default function IgpOgpList() {
     const { igpOgpRecords = [] } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
 
+    const groupedByMrn = useMemo(() => {
+        const groups: { [mrn: string]: { igpItems: any[], ogpItems: any[] } } = {};
+        
+        igpOgpRecords.forEach(record => {
+            if (!groups[record.mrnNumber]) {
+                groups[record.mrnNumber] = { igpItems: [], ogpItems: [] };
+            }
+            if (record.type === 'IGP') {
+                groups[record.mrnNumber].igpItems.push(...record.items);
+            } else {
+                groups[record.mrnNumber].ogpItems.push(...record.items);
+            }
+        });
+
+        return Object.entries(groups).map(([mrnNumber, { igpItems, ogpItems }]) => {
+            const itemMap = new Map<string, { inward: number, outward: number, uom: string }>();
+
+            igpItems.forEach(item => {
+                const key = `${item.itemName.toLowerCase()}_${item.uom.toLowerCase()}`;
+                const existing = itemMap.get(key) || { inward: 0, outward: 0, uom: item.uom };
+                existing.inward += item.quantity;
+                itemMap.set(key, existing);
+            });
+
+            ogpItems.forEach(item => {
+                const key = `${item.itemName.toLowerCase()}_${item.uom.toLowerCase()}`;
+                const existing = itemMap.get(key) || { inward: 0, outward: 0, uom: item.uom };
+                existing.outward += item.quantity;
+                itemMap.set(key, existing);
+            });
+            
+            const summary = Array.from(itemMap.entries()).map(([key, { inward, outward, uom }]) => ({
+                itemName: igpItems.find(i => `${i.itemName.toLowerCase()}_${i.uom.toLowerCase()}` === key)?.itemName || ogpItems.find(i => `${i.itemName.toLowerCase()}_${i.uom.toLowerCase()}` === key)?.itemName,
+                uom,
+                inward,
+                outward,
+                balance: inward - outward,
+            }));
+
+            return {
+                mrnNumber,
+                summary,
+                // Get the latest date from any record associated with this MRN
+                lastActivity: igpOgpRecords
+                  .filter(r => r.mrnNumber === mrnNumber)
+                  .map(r => parseISO(r.date))
+                  .sort((a,b) => b.getTime() - a.getTime())[0]
+            };
+        });
+    }, [igpOgpRecords]);
+
     const filteredRecords = useMemo(() => {
-        return igpOgpRecords.filter(record => 
-            record.mrnNumber.toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    }, [igpOgpRecords, searchTerm]);
+        return groupedByMrn.filter(group => 
+            group.mrnNumber.toLowerCase().includes(searchTerm.toLowerCase())
+        ).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+    }, [groupedByMrn, searchTerm]);
 
     if (igpOgpRecords.length === 0) {
         return <p className="text-center text-muted-foreground py-8">No records found.</p>;
@@ -30,49 +82,51 @@ export default function IgpOgpList() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <div className="border rounded-md">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Type</TableHead>
-                            <TableHead>MRN No.</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Location</TableHead>
-                            <TableHead>Items</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredRecords.map(record => (
-                            <TableRow key={record.id}>
-                                <TableCell>
-                                    <Badge variant={record.type === 'IGP' ? 'success' : 'warning'}>{record.type}</Badge>
-                                </TableCell>
-                                <TableCell className="font-medium">{record.mrnNumber}</TableCell>
-                                <TableCell>{format(parseISO(record.date), 'dd MMM, yyyy')}</TableCell>
-                                <TableCell>{record.location}</TableCell>
-                                <TableCell>
-                                     <Accordion type="single" collapsible className="w-full">
-                                        <AccordionItem value={record.id} className="border-none">
-                                            <AccordionTrigger className="p-0 hover:no-underline font-normal text-left text-primary">
-                                                {record.items.length} item(s)
-                                            </AccordionTrigger>
-                                            <AccordionContent className="pt-2 text-muted-foreground">
-                                                <ul className="list-disc pl-4 text-sm">
-                                                    {record.items.map((item) => (
-                                                        <li key={item.id}>
-                                                            {item.itemName} - {item.quantity} {item.uom}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+             <Accordion type="multiple" className="w-full space-y-2">
+                {filteredRecords.map(({ mrnNumber, summary, lastActivity }) => (
+                    <AccordionItem key={mrnNumber} value={mrnNumber} className="border rounded-lg bg-card">
+                        <AccordionTrigger className="p-4 hover:no-underline">
+                            <div className="flex justify-between w-full items-center">
+                                <span className="font-semibold text-lg">{mrnNumber}</span>
+                                <div className="flex items-center gap-4 text-sm">
+                                    <span className="text-muted-foreground">Last Activity: {format(lastActivity, 'dd MMM, yyyy')}</span>
+                                    {summary.every(s => s.balance <= 0) && <Badge variant="destructive">Exhausted</Badge>}
+                                </div>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Item Name</TableHead>
+                                        <TableHead className="text-center">UOM</TableHead>
+                                        <TableHead className="text-center">Inward (IGP)</TableHead>
+                                        <TableHead className="text-center">Outward (OGP)</TableHead>
+                                        <TableHead className="text-center">Balance</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {summary.map(item => (
+                                        <TableRow key={item.itemName}>
+                                            <TableCell>{item.itemName}</TableCell>
+                                            <TableCell className="text-center">{item.uom}</TableCell>
+                                            <TableCell className="text-center text-green-600 font-medium">{item.inward}</TableCell>
+                                            <TableCell className="text-center text-red-600 font-medium">{item.outward}</TableCell>
+                                            <TableCell className="text-center font-bold">
+                                                {item.balance > 0 ? (
+                                                    item.balance
+                                                ) : (
+                                                    <Badge variant="destructive">Exhausted</Badge>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </AccordionContent>
+                    </AccordionItem>
+                ))}
+            </Accordion>
         </div>
     );
 }
