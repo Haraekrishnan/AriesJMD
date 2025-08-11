@@ -2205,13 +2205,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subTotal: purchase.subTotal,
         totalTax: purchase.totalTax,
         grandTotal: purchase.grandTotal,
-        durationFrom: purchase.durationFrom || null,
-        durationTo: purchase.durationTo || null,
-        emailSentDate: purchase.emailSentDate || null,
+        durationFrom: purchase.durationFrom,
+        durationTo: purchase.durationTo,
+        emailSentDate: purchase.emailSentDate,
         poNumber: '',
     };
     
-    set(newRef, newPurchaseRegister);
+    const cleanPurchaseRegister = Object.fromEntries(
+        Object.entries(newPurchaseRegister).map(([key, value]) => [key, value === undefined ? null : value])
+    );
+    
+    set(newRef, cleanPurchaseRegister);
 
     const paymentData = {
         vendorId: purchase.vendorId,
@@ -2220,14 +2224,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'Pending' as PaymentStatus,
         remarks: `From Purchase Register #${purchaseId.slice(-6)}`,
         purchaseRegisterId: purchaseId,
-        durationFrom: purchase.durationFrom || null,
-        durationTo: purchase.durationTo || null,
-        emailSentDate: purchase.emailSentDate || null,
+        durationFrom: purchase.durationFrom,
+        durationTo: purchase.durationTo,
+        emailSentDate: purchase.emailSentDate,
     };
     
+    const cleanPaymentData = Object.fromEntries(
+        Object.entries(paymentData).map(([key, value]) => [key, value === undefined ? null : value])
+    );
+
     const newPaymentRef = push(ref(rtdb, 'payments'));
     const manager = users.find(u => u.role === 'Manager');
-    set(newPaymentRef, { ...paymentData, requesterId: user.id, approverId: manager?.id || null, comments: [] });
+    set(newPaymentRef, { ...cleanPaymentData, requesterId: user.id, approverId: manager?.id || null, comments: [] });
     
     addActivityLog(user.id, 'Purchase Registered', `Ref ID: ${purchaseId.slice(-6)}`);
   }, [user, users, addActivityLog]);
@@ -2434,7 +2442,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (status === 'Issued') {
         const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
         if (manpowerProfile) {
-            const ppeHistoryItem: PpeHistoryRecord = {
+            const ppeHistoryItem: Partial<PpeHistoryRecord> = {
                 id: `ppe-hist-${Date.now()}`,
                 ppeType: request.ppeType,
                 size: request.size,
@@ -2445,6 +2453,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 requestId: request.id,
                 issuedById: user.id
             };
+            if (request.ppeType === 'Coverall') {
+              ppeHistoryItem.quantity = request.quantity;
+            }
             const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
             updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
         }
@@ -2493,5 +2504,6 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+
 
 
