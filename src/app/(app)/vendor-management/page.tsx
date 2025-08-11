@@ -133,7 +133,7 @@ export default function VendorManagementPage() {
             </div>
             
              <StatCard 
-                title="Total Payable for Period" 
+                title="Total amount for the period" 
                 value={formatCurrency(filteredTotal)} 
                 icon={IndianRupee}
                 description="Sum of all payments matching the current filter"
