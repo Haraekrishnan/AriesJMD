@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 
@@ -430,9 +430,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, updateUser]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-    const targetUser = users.find(u => u.email === email);
-    if (!targetUser) return false;
-
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) {
+        return false;
+    }
+    const userData = snapshot.val();
+    const userId = Object.keys(userData)[0];
+    const targetUser = { id: userId, ...userData[userId] };
+    
     const newRequest: Omit<PasswordResetRequest, 'id'> = {
       userId: targetUser.id,
       email: targetUser.email,
@@ -442,7 +448,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
     await set(newRequestRef, newRequest);
     return true;
-  }, [users]);
+  }, []);
   
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -2532,6 +2538,7 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+
 
 
 
