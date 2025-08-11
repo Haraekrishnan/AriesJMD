@@ -9,11 +9,12 @@ export default function ActivityTrackerPage() {
     const { user, users, activityLogs, can } = useAppContext();
 
     const visibleLogs = useMemo(() => {
+        const sortedLogs = [...activityLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         if (!user) return [];
         if (can.view_activity_logs) {
-            return activityLogs;
+            return sortedLogs;
         }
-        return activityLogs.filter(log => log.userId === user.id);
+        return sortedLogs.filter(log => log.userId === user.id);
     }, [activityLogs, user, can.view_activity_logs]);
 
     if (!can.view_activity_logs) {
@@ -34,7 +35,7 @@ export default function ActivityTrackerPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Activity Tracker</h1>
-                <p className="text-muted-foreground">Review user login sessions and activities.</p>
+                <p className="text-muted-foreground">Review user login sessions and activities from the last 30 days.</p>
             </div>
 
             <Card>

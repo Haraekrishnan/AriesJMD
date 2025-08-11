@@ -235,7 +235,7 @@ type AppContextType = {
   deletePayment: (paymentId: string) => void;
   addPurchaseRegister: (purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => void;
   updatePurchaseRegisterPoNumber: (purchaseRegisterId: string, poNumber: string) => void;
-  addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
+  addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -374,6 +374,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       brandingListener();
     };
   }, [user]);
+
+  // Effect for cleaning up old activity logs
+  useEffect(() => {
+    if (user?.role === 'Admin' && activityLogs.length > 0) {
+      const thirtyDaysAgo = sub(new Date(), { days: 30 }).toISOString();
+      const logsToDelete = activityLogs.filter(log => log.timestamp < thirtyDaysAgo);
+
+      if (logsToDelete.length > 0) {
+        const updates: { [key: string]: null } = {};
+        logsToDelete.forEach(log => {
+          updates[`/activityLogs/${log.id}`] = null;
+        });
+        update(ref(rtdb), updates).then(() => {
+          console.log(`Deleted ${logsToDelete.length} old activity logs.`);
+        });
+      }
+    }
+  }, [user, activityLogs]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
@@ -2596,6 +2614,7 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+
 
 
 
