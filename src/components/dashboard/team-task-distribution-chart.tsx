@@ -35,11 +35,14 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
   const [selectedUserId, setSelectedUserId] = useState(() => {
     if (!user) return 'all';
     
+    // Admins, Managers, and Project Coordinators always default to 'all'
     const managementRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
-    const isManagerial = managementRoles.includes(user.role);
-
-    // If user is in a management role or has subordinates, default to 'all'
-    if (isManagerial || hasSubordinates) {
+    if (managementRoles.includes(user.role)) {
+        return 'all';
+    }
+    
+    // Any other user with subordinates also defaults to 'all'
+    if (hasSubordinates) {
         return 'all';
     }
     
