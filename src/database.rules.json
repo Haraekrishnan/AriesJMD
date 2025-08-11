@@ -1,5 +1,3 @@
-
-
 {
   "rules": {
     ".read": false,
@@ -143,8 +141,12 @@
     },
     "passwordResetRequests": {
       ".read": true,
+      ".write": true,
+      ".indexOn": "email"
+    },
+    "igpOgpRecords": {
+      ".read": true,
       ".write": true
     }
   }
 }
-

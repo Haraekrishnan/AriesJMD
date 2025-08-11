@@ -1,11 +1,4 @@
-
-
-
-
-
-
-
-import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building } from './types';
+import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
 
@@ -40,7 +33,7 @@ export const ROLES: RoleDefinition[] = [
       'approve_store_requests', 'manage_inventory',
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
-      'log_manpower', 'manage_job_schedule'
+      'log_manpower', 'manage_job_schedule', 'manage_igp_ogp'
     ],
     isEditable: false,
   },
@@ -81,6 +74,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'view_performance_reports',
       'manage_vehicles',
+      'manage_igp_ogp',
     ],
     isEditable: false,
   },
@@ -367,8 +361,7 @@ export const MANPOWER_PROFILES: ManpowerProfile[] = [
         status: 'Working',
         hardCopyFileNo: 'File-A',
         epNumber: 'EP12345',
-        plantName: 'SEZ',
-        eicName: 'EIC-A',
+        eic: 'proj-1',
         joiningDate: new Date().toISOString(),
         documents: [
             { name: 'Aadhar Card', details: '1234 5678 9012', status: 'Collected' },
@@ -509,3 +502,5 @@ export const BUILDINGS: Building[] = [
         ]
     }
 ];
+
+export const IGP_OGP_RECORDS: IgpOgpRecord[] = [];

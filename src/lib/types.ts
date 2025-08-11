@@ -1,8 +1,21 @@
+export type IgpOgpItem = {
+  id: string;
+  itemName: string;
+  quantity: number;
+  uom: string;
+};
 
-
-
-
-
+export type IgpOgpRecord = {
+  id: string;
+  type: 'IGP' | 'OGP';
+  mrnNumber: string;
+  date: string; // ISO String
+  location: string;
+  materialInBy?: string;
+  materialOutBy?: string;
+  items: IgpOgpItem[];
+  creatorId: string;
+};
 
 export type Vendor = {
   id: string;
@@ -176,6 +189,7 @@ export const ALL_PERMISSIONS = [
   'manage_payments',
   'manage_purchase_register',
   'manage_password_resets',
+  'manage_igp_ogp',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
