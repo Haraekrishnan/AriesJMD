@@ -2442,6 +2442,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 requestType: request.requestType,
                 remarks: request.remarks,
                 storeComment: comment,
+                requestId: request.id,
+                issuedById: user.id
             };
             const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
             updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
@@ -2491,4 +2493,5 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+
 

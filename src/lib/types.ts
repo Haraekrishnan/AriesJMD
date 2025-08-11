@@ -1,6 +1,7 @@
 
 
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -273,6 +274,8 @@ export type PpeHistoryRecord = {
   requestType: 'New' | 'Replacement';
   remarks?: string;
   storeComment?: string;
+  requestId?: string;
+  issuedById?: string;
 };
 
 export type ManpowerProfile = {
