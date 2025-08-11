@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { PurchaseRegister } from '@/lib/types';
+import { useAppContext } from '@/contexts/app-provider';
+import { format } from 'date-fns';
 
 interface ViewPurchaseRegisterDialogProps {
   isOpen: boolean;
@@ -14,10 +16,13 @@ interface ViewPurchaseRegisterDialogProps {
 }
 
 export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchaseRegister }: ViewPurchaseRegisterDialogProps) {
+  const { vendors } = useAppContext();
   
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
   if (!purchaseRegister) return null;
+  
+  const vendor = vendors.find(v => v.id === purchaseRegister.vendorId);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -25,7 +30,7 @@ export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchase
         <DialogHeader>
           <DialogTitle>Purchase Details</DialogTitle>
           <DialogDescription>
-            Showing items from Purchase Register #{purchaseRegister.id.slice(-6)}
+            Showing items from Purchase Register #{purchaseRegister.id.slice(-6)} for {vendor?.name} on {format(new Date(purchaseRegister.date), 'dd MMM, yyyy')}.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
