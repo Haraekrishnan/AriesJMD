@@ -19,10 +19,6 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
   const { ppeRequests, users, manpowerProfiles, projects } = useAppContext();
   const { toast } = useToast();
   
-  const issuedRequests = useMemo(() => {
-    return ppeRequests.filter(r => r.status === 'Issued');
-  }, [ppeRequests]);
-
   const handleDownloadExcel = () => {
     if (!dateRange || !dateRange.from) {
         toast({
@@ -34,17 +30,17 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     }
     const { from, to = from } = dateRange;
 
-    const filteredRequests = issuedRequests.filter(req => {
-        const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
-        const issuedComment = comments.find(c => c.text.toLowerCase().includes('issued by'));
-        
-        if (!issuedComment) return false;
-        
-        const issueDate = parseISO(issuedComment.date);
-        return isWithinInterval(issueDate, { start: startOfDay(from), end: endOfDay(to) });
-    });
+    const issuedItems = manpowerProfiles.flatMap(profile => 
+        (profile.ppeHistory || [])
+            .filter(item => {
+                const issueDate = parseISO(item.issueDate);
+                return isWithinInterval(issueDate, { start: startOfDay(from), end: endOfDay(to) });
+            })
+            .map(item => ({ ...item, employee: profile }))
+    );
 
-    if (filteredRequests.length === 0) {
+
+    if (issuedItems.length === 0) {
         toast({
             variant: 'destructive',
             title: 'No Data Found',
@@ -53,28 +49,25 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         return;
     }
 
-    const dataToExport = filteredRequests.map(req => {
-      const manpower = manpowerProfiles.find(p => p.id === req.manpowerId);
-      const requester = users.find(u => u.id === req.requesterId);
-      const approver = users.find(u => u.id === req.approverId);
-      const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
-      const issuedComment = comments.find(c => c.text.toLowerCase().includes('issued by'));
-      const issuer = issuedComment ? users.find(u => u.id === issuedComment.userId) : null;
+    const dataToExport = issuedItems.map(item => {
+      const request = ppeRequests.find(r => r.id === item.requestId);
+      const requester = request ? users.find(u => u.id === request.requesterId) : null;
+      const approver = request ? users.find(u => u.id === request.approverId) : null;
       
       return {
-        'Issue Date': issuedComment ? format(parseISO(issuedComment.date), 'dd-MM-yyyy') : 'N/A',
-        'Employee Name': manpower?.name || 'N/A',
-        'Trade': manpower?.trade || 'N/A',
-        'Project': manpower?.eic ? projects.find(p => p.id === manpower.eic)?.name : 'N/A',
-        'PPE Type': req.ppeType,
-        'Size': req.size,
-        'Quantity': req.quantity || (req.ppeType === 'Safety Shoes' ? 1 : 'N/A'),
-        'Request Type': req.requestType,
+        'Issue Date': item.issueDate ? format(parseISO(item.issueDate), 'dd-MM-yyyy') : 'N/A',
+        'Employee Name': item.employee.name,
+        'Trade': item.employee.trade,
+        'Project': item.employee.eic ? projects.find(p => p.id === item.employee.eic)?.name : 'N/A',
+        'PPE Type': item.ppeType,
+        'Size': item.size,
+        'Quantity': item.quantity || (item.ppeType === 'Safety Shoes' ? 1 : 'N/A'),
+        'Request Type': item.requestType,
         'Requester': requester?.name || 'N/A',
         'Approver': approver?.name || 'N/A',
-        'Issued By': issuer?.name || 'N/A',
-        'Requester Remarks': req.remarks || '',
-        'Store Remarks': issuedComment?.text || '',
+        'Issued By': users.find(u=>u.id === item.issuedById)?.name || 'N/A',
+        'Requester Remarks': item.remarks || '',
+        'Store Remarks': item.storeComment || '',
       };
     });
 
