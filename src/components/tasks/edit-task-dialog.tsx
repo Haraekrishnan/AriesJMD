@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -241,10 +242,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             </Alert>
           )}
            {taskToDisplay.status === 'Pending Approval' && taskToDisplay.pendingAssigneeId && (
-            <Alert variant="default" className="mt-2">
-                <UserRoundCog className="h-4 w-4" />
-                <AlertTitle>Reassignment Request</AlertTitle>
-                <AlertDescription>
+            <Alert variant="default" className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700">
+                <UserRoundCog className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertTitle className="text-blue-800 dark:text-blue-300">Reassignment Request</AlertTitle>
+                <AlertDescription className="text-blue-700 dark:text-blue-400">
                    Request to reassign task to <span className='font-semibold'>{pendingAssignee?.name}</span>. Please review comments and approve or return.
                 </AlertDescription>
             </Alert>
