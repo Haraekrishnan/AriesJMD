@@ -543,6 +543,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator' && u.role !== 'Manager');
     }
 
+    if (user.role === 'Document Controller') {
+      const rolesToExclude: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
+      return users.filter(u => !rolesToExclude.includes(u.role));
+    }
+
     if (user.role === 'Admin' || user.role === 'Manager' || user.role === 'Project Coordinator') {
         return users.filter(u => u.role !== 'Manager');
     }
@@ -2574,6 +2579,7 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+
 
 
 
