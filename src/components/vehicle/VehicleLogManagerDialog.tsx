@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -238,7 +239,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
                                             {(log.startingKm || log.endingKm) && (
                                                 <p className="text-xs text-muted-foreground">KM: {log.startingKm || 'N/A'} - {log.endingKm || 'N/A'}</p>
                                             )}
-                                             {log.attachmentUrl && <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs"><button onClick={() => setViewingAttachmentUrl(log.attachmentUrl!)}><Paperclip className="h-3 w-3 mr-1"/>View Attachment</button></Button>}
+                                             {log.attachmentUrl && <Button type="button" variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setViewingAttachmentUrl(log.attachmentUrl!)}><Paperclip className="h-3 w-3 mr-1"/>View Attachment</Button>}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={log.status === 'Active' ? 'success' : 'secondary'}>{log.status}</Badge>

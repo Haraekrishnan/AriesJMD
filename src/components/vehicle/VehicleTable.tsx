@@ -13,6 +13,7 @@ import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import type { Vehicle } from '@/lib/types';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface VehicleTableProps {
   onEdit: (vehicle: Vehicle) => void;
@@ -55,6 +56,7 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
   };
 
   return (
+    <TooltipProvider>
     <Table>
       <TableHeader>
         <TableRow>
@@ -90,20 +92,12 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
             <TableCell className={cn(getDateStyles(vehicle.puccValidity))}>{formatDate(vehicle.puccValidity)}</TableCell>
             <TableCell className="text-right">
                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}>
-                        <FileText className="h-4 w-4" />
-                    </Button>
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}><FileText className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
                     {can.manage_vehicles && (
                       <>
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
+                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -125,5 +119,6 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
         ))}
       </TableBody>
     </Table>
+    </TooltipProvider>
   );
 }

@@ -52,6 +52,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
   const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
   
   const machineLogs = getMachineLogs(machine.id);
 
@@ -126,6 +127,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
@@ -178,10 +180,10 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                       <Label>Attachment (Optional)</Label>
                        {form.watch('attachmentUrl') ? (
                          <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                            <Link href={form.watch('attachmentUrl')!} target="_blank" className="flex items-center gap-2 truncate hover:underline">
+                            <button type="button" onClick={() => setViewingAttachmentUrl(form.watch('attachmentUrl')!)} className="flex items-center gap-2 truncate hover:underline">
                               <Paperclip className="h-4 w-4"/>
                               <span className="truncate">Uploaded File</span>
-                            </Link>
+                            </button>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', '')}>
                               <X className="h-4 w-4"/>
                             </Button>
@@ -220,7 +222,7 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
                                         <TableCell>
                                             <p className="font-medium">{log.jobDescription}</p>
                                             <p className="text-xs text-muted-foreground">{format(new Date(log.date), 'dd MMM yyyy')}, {log.fromTime} - {log.toTime}</p>
-                                            {log.attachmentUrl && <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs"><Link href={log.attachmentUrl} target='_blank'><Paperclip className="h-3 w-3 mr-1"/>View Attachment</Link></Button>}
+                                            {log.attachmentUrl && <Button type="button" variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setViewingAttachmentUrl(log.attachmentUrl!)}><Paperclip className="h-3 w-3 mr-1"/>View Attachment</Button>}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={log.status === 'Active' ? 'success' : 'secondary'}>{log.status}</Badge>
@@ -264,5 +266,16 @@ export default function UTMachineLogManagerDialog({ isOpen, setIsOpen, machine }
         </div>
       </DialogContent>
     </Dialog>
+    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>Attachment Viewer</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-4">
+                {viewingAttachmentUrl && <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />}
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
