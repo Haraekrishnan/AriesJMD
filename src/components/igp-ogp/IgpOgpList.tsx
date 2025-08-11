@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function IgpOgpList() {
-    const { igpOgpRecords } = useAppContext();
+    const { igpOgpRecords = [] } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredRecords = useMemo(() => {
