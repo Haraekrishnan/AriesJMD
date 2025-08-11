@@ -2205,14 +2205,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subTotal: purchase.subTotal,
         totalTax: purchase.totalTax,
         grandTotal: purchase.grandTotal,
-        durationFrom: purchase.durationFrom,
-        durationTo: purchase.durationTo,
-        emailSentDate: purchase.emailSentDate,
         poNumber: '',
     };
     
     const cleanPurchaseRegister = Object.fromEntries(
-        Object.entries(newPurchaseRegister).map(([key, value]) => [key, value === undefined ? null : value])
+      Object.entries(newPurchaseRegister).map(([key, value]) => [key, value === undefined ? null : value])
     );
     
     set(newRef, cleanPurchaseRegister);
@@ -2435,7 +2432,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/approverId`] = user.id;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
     
-    if (comment.trim()) {
+    if (comment.trim() || status === 'Approved') { // Add comment if provided or if it's an approval
         updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
     }
     
@@ -2451,7 +2448,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 remarks: request.remarks,
                 storeComment: comment,
                 requestId: request.id,
-                issuedById: user.id
+                issuedById: user.id,
+                approverId: request.approverId,
             };
             if (request.ppeType === 'Coverall') {
               ppeHistoryItem.quantity = request.quantity;
@@ -2504,6 +2502,7 @@ export const useAppContext = (): AppContextType => {
 };
     
     
+
 
 
 
