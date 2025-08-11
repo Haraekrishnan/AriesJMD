@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
-import { isWithinInterval, parseISO, getYear, getMonth, startOfYear, endOfYear, startOfMonth, endOfMonth, subYears, addYears } from 'date-fns';
+import { format, isWithinInterval, parseISO, getYear, getMonth, startOfYear, endOfYear, startOfMonth, endOfMonth, subYears, addYears } from 'date-fns';
 import PaymentReportDownloads from '@/components/payments/PaymentReportDownloads';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
@@ -183,7 +183,7 @@ export default function VendorManagementPage() {
                                         <SelectContent>
                                             {Array.from({length: 12}, (_, i) => <SelectItem key={i} value={(i + 1).toString()}>{format(new Date(2000, i), 'MMMM')}</SelectItem>)}
                                         </SelectContent>
-                                    </Select>
+                                     </Select>
                                 )}
                                 {filterType === 'custom' && (
                                     <DateRangePicker date={customDateRange} onDateChange={setCustomDateRange} />
