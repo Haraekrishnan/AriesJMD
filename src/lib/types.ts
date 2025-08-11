@@ -3,6 +3,7 @@
 
 
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -75,6 +76,15 @@ export type User = {
   supervisorId?: string;
   projectId?: string;
   planningScore?: number;
+};
+
+export type PasswordResetRequest = {
+  id: string;
+  userId: string;
+  email: string;
+  date: string; // ISO String
+  status: 'pending' | 'handled';
+  resetCode?: string;
 };
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pending Approval' | 'Overdue' | 'Completed';
@@ -164,7 +174,8 @@ export const ALL_PERMISSIONS = [
   'manage_ppe_stock',
   'manage_vendors',
   'manage_payments',
-  'manage_purchase_register'
+  'manage_purchase_register',
+  'manage_password_resets',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useAppContext } from '@/contexts/app-provider';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -19,17 +20,26 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const resetRequestSchema = z.object({
+  email: z.string().email('Please enter a valid email address.'),
+});
+type ResetRequestFormValues = z.infer<typeof resetRequestSchema>;
+
 export function LoginForm() {
   const { login } = useAuth();
+  const { requestPasswordReset } = useAppContext();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
+  });
+  
+  const resetForm = useForm<ResetRequestFormValues>({
+    resolver: zodResolver(resetRequestSchema),
+    defaultValues: { email: '' },
   });
 
   const handleLogin = async (data: LoginFormValues) => {
@@ -44,11 +54,27 @@ export function LoginForm() {
       });
       setIsLoading(false);
     }
-    // On success, the AuthProvider will handle setting the user state,
-    // and the redirect will be handled by the login page's useEffect.
+  };
+  
+  const handleResetRequest = async (data: ResetRequestFormValues) => {
+    const success = await requestPasswordReset(data.email);
+    if(success) {
+      toast({
+        title: 'Request Sent',
+        description: 'Your password reset request has been sent to the administrator.',
+      });
+      setIsResetDialogOpen(false);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Request Failed',
+        description: 'No user was found with that email address.',
+      });
+    }
   };
 
   return (
+    <>
     <form onSubmit={form.handleSubmit(handleLogin)}>
       <Card className="bg-card shadow-none border-none">
         <CardContent className="p-6 space-y-4">
@@ -60,22 +86,7 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button type="button" variant="link" className="text-xs p-0 h-auto">Forgot password?</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Password Reset</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                To reset your password, please contact your system administrator.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogAction>OK</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <Button type="button" variant="link" className="text-xs p-0 h-auto" onClick={() => setIsResetDialogOpen(true)}>Forgot password?</Button>
             </div>
             <Input id="password" type="password" placeholder="••••••••" {...form.register('password')} />
             {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
@@ -88,5 +99,28 @@ export function LoginForm() {
         </CardFooter>
       </Card>
     </form>
+
+    <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Request Password Reset</DialogTitle>
+          <DialogDescription>
+            Enter your email address to request a password reset. An administrator will be notified.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={resetForm.handleSubmit(handleResetRequest)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">Your Email Address</Label>
+              <Input id="reset-email" type="email" placeholder="name@example.com" {...resetForm.register('email')} />
+              {resetForm.formState.errors.email && <p className="text-xs text-destructive">{resetForm.formState.errors.email.message}</p>}
+            </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
+            <Button type="submit">Send Request</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

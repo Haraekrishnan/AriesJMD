@@ -139,6 +139,10 @@
     "purchaseRegisters": {
       ".read": true,
       ".write": true
+    },
+    "passwordResetRequests": {
+      ".read": true,
+      ".write": true
     }
   }
 }
