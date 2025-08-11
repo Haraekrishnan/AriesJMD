@@ -17,6 +17,7 @@ const vendorSchema = z.object({
   contactEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
   contactPhone: z.string().optional(),
   address: z.string().optional(),
+  gstNumber: z.string().optional(),
 });
 
 type VendorFormValues = z.infer<typeof vendorSchema>;
@@ -63,6 +64,10 @@ export default function AddVendorDialog({ isOpen, setIsOpen }: AddVendorDialogPr
             <Label htmlFor="name">Vendor Name</Label>
             <Input id="name" {...form.register('name')} />
             {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gstNumber">GST Number (Optional)</Label>
+            <Input id="gstNumber" {...form.register('gstNumber')} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="contactPerson">Contact Person</Label>

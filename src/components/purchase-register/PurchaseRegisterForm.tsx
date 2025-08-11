@@ -23,6 +23,7 @@ const itemSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Item name is required'),
   quantity: z.coerce.number().min(1, 'Must be at least 1'),
+  uom: z.string().min(1, 'UOM is required'),
   unitRate: z.coerce.number().min(0.01, 'Must be > 0'),
   tax: z.coerce.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100'),
 });
@@ -63,7 +64,7 @@ export default function PurchaseRegisterForm() {
 
   const form = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema),
-    defaultValues: { vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, unitRate: 0, tax: 0 }] }
+    defaultValues: { vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: '', unitRate: 0, tax: 0 }] }
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -90,7 +91,7 @@ export default function PurchaseRegisterForm() {
         grandTotal: totals.grandTotal,
     });
     toast({ title: 'Purchase Registered', description: 'The entry has been saved and sent for approval.' });
-    form.reset({ vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, unitRate: 0, tax: 0 }] });
+    form.reset({ vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: '', unitRate: 0, tax: 0 }] });
   };
   
   return (
@@ -151,8 +152,9 @@ export default function PurchaseRegisterForm() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-12 gap-4 font-semibold text-sm px-2">
-            <div className="col-span-4">Item Name</div>
+            <div className="col-span-3">Item Name</div>
             <div className="col-span-2">Quantity</div>
+            <div className="col-span-1">UOM</div>
             <div className="col-span-2">Unit Rate</div>
             <div className="col-span-1">Tax %</div>
             <div className="col-span-2">Total</div>
@@ -167,7 +169,7 @@ export default function PurchaseRegisterForm() {
 
             return (
                 <div key={field.id} className="grid grid-cols-12 gap-4 items-start">
-                    <div className="col-span-4 space-y-1">
+                    <div className="col-span-3 space-y-1">
                         <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Cement Bag" />
                         {isOverpriced && (
                             <div className="flex items-center gap-1 text-xs text-orange-600">
@@ -177,6 +179,7 @@ export default function PurchaseRegisterForm() {
                         )}
                     </div>
                     <div className="col-span-2"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
+                    <div className="col-span-1"><Input {...form.register(`items.${index}.uom`)} /></div>
                     <div className="col-span-2"><Input type="number" {...form.register(`items.${index}.unitRate`)} step="0.01" /></div>
                     <div className="col-span-1"><Input type="number" {...form.register(`items.${index}.tax`)} /></div>
                     <div className="col-span-2 flex items-center h-10 px-3 text-sm font-medium">{formatCurrency(itemTotal)}</div>
@@ -186,7 +189,7 @@ export default function PurchaseRegisterForm() {
         })}
       </div>
       
-      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, name: '', quantity: 1, unitRate: 0, tax: 0 })}>
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, name: '', quantity: 1, uom: '', unitRate: 0, tax: 0 })}>
         <PlusCircle className="mr-2 h-4 w-4"/>Add Item
       </Button>
       {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}

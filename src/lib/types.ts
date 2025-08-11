@@ -2,6 +2,7 @@
 
 
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -18,6 +19,7 @@ export type Vendor = {
   contactEmail?: string;
   contactPhone?: string;
   address?: string;
+  gstNumber?: string;
 };
 
 export type PaymentStatus = 'Pending' | 'Approved' | 'Rejected' | 'Paid' | 'Cancelled' | 'Email Sent' | 'Amount Listed Out';
@@ -41,6 +43,7 @@ export type Payment = {
 export type PurchaseItem = {
     id: string;
     name: string;
+    uom: string;
     unitRate: number;
     quantity: number;
     tax: number;
@@ -276,6 +279,7 @@ export type PpeHistoryRecord = {
   storeComment?: string;
   requestId?: string;
   issuedById?: string;
+  approverId?: string;
 };
 
 export type ManpowerProfile = {
