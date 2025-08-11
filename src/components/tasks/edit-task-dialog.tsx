@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2 } from 'lucide-react';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -232,11 +232,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             Assigned by <span className='font-semibold'>{creator?.name}</span> to <span className='font-semibold'>{assignee?.name}</span>.
           </DialogDescription>
           {taskToDisplay.status === 'Pending Approval' && taskToDisplay.pendingStatus && (
-            <Alert variant="default" className="mt-2">
-                <BellRing className="h-4 w-4" />
-                <AlertTitle>Status Change Request</AlertTitle>
-                <AlertDescription>
-                    {assignee?.name} requests to change status from <Badge variant="secondary">{taskToDisplay.previousStatus}</Badge> to <Badge variant="secondary">{taskToDisplay.pendingStatus}</Badge>. Please review comments.
+             <Alert variant="default" className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700">
+                <BellRing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertTitle className="text-blue-800 dark:text-blue-300">Status Change Request</AlertTitle>
+                <AlertDescription className="text-blue-700 dark:text-blue-400">
+                    {assignee?.name} requests to change status from <Badge variant="secondary">{taskToDisplay.previousStatus}</Badge> <ArrowRight className="inline-block h-4 w-4 mx-1" /> <Badge variant="secondary">{taskToDisplay.pendingStatus}</Badge>. Please review comments.
                 </AlertDescription>
             </Alert>
           )}
