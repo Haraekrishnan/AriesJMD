@@ -13,7 +13,7 @@ import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import type { Vehicle } from '@/lib/types';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface VehicleTableProps {
   onEdit: (vehicle: Vehicle) => void;
