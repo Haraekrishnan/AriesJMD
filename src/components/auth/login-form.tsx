@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -26,8 +27,8 @@ export function LoginForm() {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'alex@ariesmarine.com',
-      password: 'password',
+      email: '',
+      password: '',
     },
   });
 
@@ -57,7 +58,25 @@ export function LoginForm() {
             {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button type="button" variant="link" className="text-xs p-0 h-auto">Forgot password?</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Password Reset</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                To reset your password, please contact your system administrator.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction>OK</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
             <Input id="password" type="password" placeholder="••••••••" {...form.register('password')} />
             {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
           </div>
