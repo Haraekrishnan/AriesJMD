@@ -37,7 +37,7 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount } = useAppContext();
+  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount } = useAppContext();
   const pathname = usePathname();
   
   const navItems = [
@@ -57,7 +57,7 @@ export function AppSidebar() {
     { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: pendingPaymentApprovalCount, show: can.manage_vendors },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
-    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: 0, show: true },
+    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount, show: true },
   ];
 
   return (
