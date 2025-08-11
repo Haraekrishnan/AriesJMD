@@ -10,7 +10,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, ShieldPlus } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, ShieldPlus, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -19,6 +19,7 @@ import RoleManagementTable from '@/components/account/role-management-table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import ProjectManagementTable from '@/components/account/project-management-table';
 import { Skeleton } from '@/components/ui/skeleton';
+import PasswordResetRequests from '@/components/account/password-reset-requests';
 
 export default function AccountPage() {
   const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
@@ -144,6 +145,9 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground">{user.role}</p>
             </CardHeader>
           </Card>
+           {can.manage_password_resets && (
+              <PasswordResetRequests />
+            )}
         </div>
         <div className="md:col-span-2">
           <form onSubmit={handleProfileSave}>

@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/contexts/app-provider';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -25,21 +26,34 @@ const resetRequestSchema = z.object({
 });
 type ResetRequestFormValues = z.infer<typeof resetRequestSchema>;
 
+const resetPasswordSchema = z.object({
+    email: z.string().email('Please enter a valid email address.'),
+    resetCode: z.string().length(6, 'Reset code must be 6 digits.'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters.'),
+});
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
 export function LoginForm() {
   const { login } = useAuth();
-  const { requestPasswordReset } = useAppContext();
+  const { requestPasswordReset, resetPassword } = useAppContext();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('request');
 
-  const form = useForm<LoginFormValues>({
+  const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
   
-  const resetForm = useForm<ResetRequestFormValues>({
+  const resetRequestForm = useForm<ResetRequestFormValues>({
     resolver: zodResolver(resetRequestSchema),
     defaultValues: { email: '' },
+  });
+  
+  const resetPasswordForm = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { email: '', resetCode: '', newPassword: '' },
   });
 
   const handleLogin = async (data: LoginFormValues) => {
@@ -63,7 +77,7 @@ export function LoginForm() {
         title: 'Request Sent',
         description: 'Your password reset request has been sent to the administrator.',
       });
-      setIsResetDialogOpen(false);
+      setActiveTab('reset');
     } else {
       toast({
         variant: 'destructive',
@@ -72,24 +86,41 @@ export function LoginForm() {
       });
     }
   };
+  
+  const handleResetPassword = async (data: ResetPasswordFormValues) => {
+    const success = await resetPassword(data.email, data.resetCode, data.newPassword);
+    if (success) {
+      toast({
+        title: 'Password Reset Successful',
+        description: 'You can now log in with your new password.',
+      });
+      setIsResetDialogOpen(false);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Reset Failed',
+        description: 'The email or reset code is incorrect. Please try again.',
+      });
+    }
+  };
 
   return (
     <>
-    <form onSubmit={form.handleSubmit(handleLogin)}>
+    <form onSubmit={loginForm.handleSubmit(handleLogin)}>
       <Card className="bg-card shadow-none border-none">
         <CardContent className="p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="name@example.com" {...form.register('email')} />
-            {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
+            <Input id="email" type="email" placeholder="name@example.com" {...loginForm.register('email')} />
+            {loginForm.formState.errors.email && <p className="text-xs text-destructive">{loginForm.formState.errors.email.message}</p>}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Button type="button" variant="link" className="text-xs p-0 h-auto" onClick={() => setIsResetDialogOpen(true)}>Forgot password?</Button>
             </div>
-            <Input id="password" type="password" placeholder="••••••••" {...form.register('password')} />
-            {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
+            <Input id="password" type="password" placeholder="••••••••" {...loginForm.register('password')} />
+            {loginForm.formState.errors.password && <p className="text-xs text-destructive">{loginForm.formState.errors.password.message}</p>}
           </div>
         </CardContent>
         <CardFooter className="p-6 pt-0">
@@ -103,22 +134,53 @@ export function LoginForm() {
     <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Request Password Reset</DialogTitle>
+          <DialogTitle>Reset Your Password</DialogTitle>
           <DialogDescription>
-            Enter your email address to request a password reset. An administrator will be notified.
+            Request a code or enter one you've received from an administrator.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={resetForm.handleSubmit(handleResetRequest)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="reset-email">Your Email Address</Label>
-              <Input id="reset-email" type="email" placeholder="name@example.com" {...resetForm.register('email')} />
-              {resetForm.formState.errors.email && <p className="text-xs text-destructive">{resetForm.formState.errors.email.message}</p>}
-            </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
-            <Button type="submit">Send Request</Button>
-          </DialogFooter>
-        </form>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="request">Request Code</TabsTrigger>
+                <TabsTrigger value="reset">Enter Code</TabsTrigger>
+            </TabsList>
+            <TabsContent value="request">
+                <form onSubmit={resetRequestForm.handleSubmit(handleResetRequest)} className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Your Email Address</Label>
+                      <Input id="reset-email" type="email" placeholder="name@example.com" {...resetRequestForm.register('email')} />
+                      {resetRequestForm.formState.errors.email && <p className="text-xs text-destructive">{resetRequestForm.formState.errors.email.message}</p>}
+                    </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit">Send Request</Button>
+                  </DialogFooter>
+                </form>
+            </TabsContent>
+             <TabsContent value="reset">
+                <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="reset-pw-email">Your Email Address</Label>
+                        <Input id="reset-pw-email" type="email" {...resetPasswordForm.register('email')} />
+                         {resetPasswordForm.formState.errors.email && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.email.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="reset-code">Reset Code</Label>
+                        <Input id="reset-code" {...resetPasswordForm.register('resetCode')} />
+                         {resetPasswordForm.formState.errors.resetCode && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.resetCode.message}</p>}
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input id="new-password" type="password" {...resetPasswordForm.register('newPassword')} />
+                         {resetPasswordForm.formState.errors.newPassword && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.newPassword.message}</p>}
+                    </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit">Set New Password</Button>
+                  </DialogFooter>
+                </form>
+            </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
     </>
