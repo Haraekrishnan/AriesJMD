@@ -27,19 +27,18 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
     return getVisibleUsers().filter(u => u.role !== 'Manager');
   }, [getVisibleUsers]);
 
-  const hasSubordinates = useMemo(() => {
+  const canSelectAll = useMemo(() => {
     if (!user) return false;
     const managementRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
     if (managementRoles.includes(user.role)) {
         return true;
     }
-    // Check if there are other users visible besides the user themselves.
     return visibleUsers.some(u => u.id !== user.id);
   }, [user, visibleUsers]);
 
   const [selectedUserId, setSelectedUserId] = useState(() => {
     if (!user) return 'all';
-    return hasSubordinates ? 'all' : user.id;
+    return canSelectAll ? 'all' : user.id;
   });
 
   const selectedUserName = useMemo(() => {
@@ -64,8 +63,6 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
       .map(([name, value]) => ({ name, value }))
       .filter(d => d.value > 0);
   }, [tasks, selectedUserId]);
-
-  const canSelectAll = hasSubordinates;
 
   return (
     <Card>
