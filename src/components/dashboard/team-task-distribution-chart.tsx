@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import type { Task, User } from '@/lib/types';
+import type { Task, User, Role } from '@/lib/types';
 
 const COLORS: Record<string, string> = {
   'To Do': 'hsl(var(--chart-1))',
@@ -34,11 +33,18 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
   }, [visibleUsers]);
 
   const [selectedUserId, setSelectedUserId] = useState(() => {
-    // If the user has no subordinates, default to their own ID. Otherwise, default to 'all'.
-    if (!hasSubordinates && user) {
-        return user.id;
+    if (!user) return 'all';
+    
+    const managementRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
+    const isManagerial = managementRoles.includes(user.role);
+
+    // If user is in a management role or has subordinates, default to 'all'
+    if (isManagerial || hasSubordinates) {
+        return 'all';
     }
-    return 'all';
+    
+    // Otherwise, default to their own tasks.
+    return user.id;
   });
 
   const selectedUserName = useMemo(() => {
@@ -64,7 +70,7 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
       .filter(d => d.value > 0);
   }, [tasks, selectedUserId]);
 
-  const canSelectAll = visibleUsers.length > 1;
+  const canSelectAll = visibleUsers.length > 1 || ['Admin', 'Manager', 'Project Coordinator'].includes(user?.role || '');
 
   return (
     <Card>
