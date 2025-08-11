@@ -6,7 +6,8 @@
     ".write": false,
     "users": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": "email"
     },
     "roles": {
       ".read": true,

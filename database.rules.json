@@ -6,7 +6,8 @@
     ".write": false,
     "users": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": "email"
     },
     "roles": {
       ".read": true,
@@ -133,6 +134,14 @@
       ".write": true
     },
     "vendors": {
+      ".read": true,
+      ".write": true
+    },
+    "purchaseRegisters": {
+      ".read": true,
+      ".write": true
+    },
+    "passwordResetRequests": {
       ".read": true,
       ".write": true
     }
