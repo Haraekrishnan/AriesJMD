@@ -28,26 +28,18 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
   }, [getVisibleUsers]);
 
   const hasSubordinates = useMemo(() => {
-    // A user has subordinates if their visible list contains more than just themselves.
-    return visibleUsers.length > 1;
-  }, [visibleUsers]);
+    if (!user) return false;
+    const managementRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
+    if (managementRoles.includes(user.role)) {
+        return true;
+    }
+    // Check if there are other users visible besides the user themselves.
+    return visibleUsers.some(u => u.id !== user.id);
+  }, [user, visibleUsers]);
 
   const [selectedUserId, setSelectedUserId] = useState(() => {
     if (!user) return 'all';
-    
-    // Admins, Managers, and Project Coordinators always default to 'all'
-    const managementRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
-    if (managementRoles.includes(user.role)) {
-        return 'all';
-    }
-    
-    // Any other user with subordinates also defaults to 'all'
-    if (hasSubordinates) {
-        return 'all';
-    }
-    
-    // Otherwise, default to their own tasks.
-    return user.id;
+    return hasSubordinates ? 'all' : user.id;
   });
 
   const selectedUserName = useMemo(() => {
@@ -73,7 +65,7 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
       .filter(d => d.value > 0);
   }, [tasks, selectedUserId]);
 
-  const canSelectAll = visibleUsers.length > 1 || ['Admin', 'Manager', 'Project Coordinator'].includes(user?.role || '');
+  const canSelectAll = hasSubordinates;
 
   return (
     <Card>
