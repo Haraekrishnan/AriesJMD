@@ -23,11 +23,23 @@ interface TeamTaskDistributionChartProps {
 
 export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributionChartProps) {
   const { user, getVisibleUsers } = useAppContext();
-  const [selectedUserId, setSelectedUserId] = useState('all');
 
   const visibleUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
   }, [getVisibleUsers]);
+
+  const hasSubordinates = useMemo(() => {
+    // A user has subordinates if their visible list contains more than just themselves.
+    return visibleUsers.length > 1;
+  }, [visibleUsers]);
+
+  const [selectedUserId, setSelectedUserId] = useState(() => {
+    // If the user has no subordinates, default to their own ID. Otherwise, default to 'all'.
+    if (!hasSubordinates && user) {
+        return user.id;
+    }
+    return 'all';
+  });
 
   const selectedUserName = useMemo(() => {
     if (selectedUserId === 'all') return 'All Visible Members';
