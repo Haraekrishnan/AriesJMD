@@ -158,6 +158,7 @@ type AppContextType = {
   addMemoOrWarning: (manpowerId: string, memo: Omit<MemoRecord, 'id'>) => void;
   updateMemoRecord: (manpowerId: string, memo: MemoRecord) => void;
   deleteMemoRecord: (manpowerId: string, memoId: string) => void;
+  addPpeHistoryRecord: (manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => void;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
@@ -2349,6 +2350,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'IGP/OGP Record Added', `MRN: ${record.mrnNumber}`);
   }, [user, addActivityLog]);
 
+  const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
+    if (!user) return;
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return;
+
+    const updates: { [key: string]: any } = {};
+
+    const newHistoryItem: PpeHistoryRecord = { ...record, id: `ppe-hist-${Date.now()}` };
+    const updatedPpeHistory = [...(profile.ppeHistory || []), newHistoryItem];
+    updates[`/manpowerProfiles/${manpowerId}/ppeHistory`] = updatedPpeHistory;
+
+    // Deduct from stock
+    if (record.ppeType === 'Coverall') {
+      const coverallStock = ppeStock.find(s => s.id === 'coveralls');
+      if (coverallStock && coverallStock.sizes) {
+          const currentSizeStock = coverallStock.sizes[record.size] || 0;
+          const quantityToDeduct = record.quantity || 1;
+          const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
+          updates[`/ppeStock/coveralls/sizes/${record.size}`] = newSizeStock;
+      }
+    } else if (record.ppeType === 'Safety Shoes') {
+        const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
+        if (shoeStock && shoeStock.quantity) {
+            const newQuantity = Math.max(0, shoeStock.quantity - 1);
+            updates[`/ppeStock/safetyShoes/quantity`] = newQuantity;
+        }
+    }
+    
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'PPE History Added', `Added ${record.ppeType} for ${profile.name}`);
+  }, [user, addActivityLog, manpowerProfiles, ppeStock]);
+
   const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
     if (!user) return { importedCount: 0, notFoundCount: 0 };
     
@@ -2373,14 +2406,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const profile = findProfile(employeeName);
       
       if (profile) {
-        const parsedDate = dateValue instanceof Date ? dateValue : parseISO(dateValue);
-        if (!isValid(parsedDate)) {
+        let parsedDate: Date | null = null;
+        if (dateValue instanceof Date && isValid(dateValue)) {
+            parsedDate = dateValue;
+        } else if (typeof dateValue === 'string') {
+            parsedDate = parse(dateValue, 'dd-MM-yyyy', new Date());
+            if (!isValid(parsedDate)) {
+                parsedDate = parseISO(dateValue);
+            }
+        } else if (typeof dateValue === 'number') { // Handle Excel date serial numbers
+            const excelEpoch = new Date(1899, 11, 30);
+            parsedDate = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        }
+
+        if (!parsedDate || !isValid(parsedDate)) {
             console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
             notFoundCount++;
             continue;
         }
 
         const issueDate = parsedDate.toISOString();
+
         const newHistoryItem: PpeHistoryRecord = {
           id: `ppe-hist-import-${Date.now()}-${importedCount}`,
           ppeType: 'Coverall',
@@ -2648,7 +2694,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else if (request.ppeType === 'Safety Shoes') {
             const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
             if (shoeStock && shoeStock.quantity) {
-                const newQuantity = Math.max(0, shoeStock.quantity - 1); // Safety shoes are always quantity 1 per request
+                const newQuantity = Math.max(0, shoeStock.quantity - 1);
                 updates[`ppeStock/safetyShoes/quantity`] = newQuantity;
             }
         }
@@ -2669,7 +2715,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addPpeHistoryFromExcel,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addPpeHistoryFromExcel,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount,
   };
 
@@ -2700,3 +2746,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+

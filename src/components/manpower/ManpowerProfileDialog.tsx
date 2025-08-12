@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -11,9 +12,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
-import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord } from '@/lib/types';
+import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, PlusCircle, FileWarning } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, FileWarning, Shirt } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -24,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Badge } from '../ui/badge';
 import EditMemoDialog from './EditMemoDialog';
+import AddPpeHistoryDialog from './AddPpeHistoryDialog';
 
 
 const documentSchema = z.object({
@@ -164,6 +166,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
+  const [isPpeDialogOpen, setIsPpeDialogOpen] = useState(false);
+
+  const canAddPpe = useMemo(() => {
+    if (!user) return false;
+    const allowedRoles: Role[] = ['Admin', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
+    return allowedRoles.includes(user.role);
+  }, [user]);
 
   const parseDate = (dateString?: string): Date | undefined => {
     if (!dateString) return undefined;
@@ -558,8 +567,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     )}
                      {(liveProfile?.ppeHistory || []).length > 0 && (
                         <div className="space-y-4 md:col-span-3">
-                            <Separator />
-                            <h3 className="text-lg font-semibold border-b pb-2">PPE Issue History</h3>
+                            <div className="flex justify-between items-center border-b pb-2">
+                                <h3 className="text-lg font-semibold">PPE Issue History</h3>
+                                {canAddPpe && (
+                                    <Button type="button" size="sm" onClick={() => setIsPpeDialogOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Record
+                                    </Button>
+                                )}
+                            </div>
                              <Table>
                                 <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Issue Date</TableHead><TableHead>Request Type</TableHead></TableRow></TableHeader>
                                 <TableBody>
@@ -592,6 +607,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             profile={profile}
         />
     )}
+    {profile && (
+        <AddPpeHistoryDialog
+            isOpen={isPpeDialogOpen}
+            setIsOpen={setIsPpeDialogOpen}
+            profile={profile}
+        />
+    )}
     </>
   );
 }
+
