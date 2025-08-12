@@ -1,3 +1,4 @@
+
 'use server';
 
 import * as nodemailer from 'nodemailer';
@@ -44,12 +45,15 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       <p><strong>Employee:</strong> ${employeeName}</p>
       <p><strong>Type:</strong> ${ppeType} &middot; <strong>Size:</strong> ${size} &middot; <strong>Qty:</strong> ${quantity}</p>
       <p><strong>Request Type:</strong> ${requestType}</p>
-      <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
-      <p><strong>Joining Date:</strong> ${joiningDate || 'N/A'}</p>
-      <p><strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}</p>
-      <p><strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}</p>
-      <p><strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span></p>
+      
+      <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+        <strong>Joining Date:</strong> ${joiningDate || 'N/A'}<br>
+        <strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}<br>
+        <strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}<br>
+        <strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span>
+      </p>
 
+      <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
       
       ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
       
