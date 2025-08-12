@@ -7,16 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, HardHat, Shirt } from 'lucide-react';
+import { AlertTriangle, HardHat, Shirt, Upload } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PpeReportDownloads from '@/components/requests/PpeReportDownloads';
 import type { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+import ImportPpeDistributionDialog from '@/components/requests/ImportPpeDistributionDialog';
 
 export default function PpeStockPage() {
     const { can, ppeStock, updatePpeStock, loading } = useAppContext();
     const { toast } = useToast();
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
+    const [isImportOpen, setIsImportOpen] = useState(false);
 
     const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
     const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
@@ -79,9 +81,12 @@ export default function PpeStockPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">PPE Stock Management</h1>
-                <p className="text-muted-foreground">Update and monitor stock levels for Coveralls and Safety Shoes.</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                  <h1 className="text-3xl font-bold tracking-tight">PPE Stock Management</h1>
+                  <p className="text-muted-foreground">Update stock levels and import distribution data.</p>
+              </div>
+              <Button onClick={() => setIsImportOpen(true)}><Upload className="mr-2 h-4 w-4"/> Import Distribution</Button>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">
@@ -146,6 +151,8 @@ export default function PpeStockPage() {
                     <PpeReportDownloads dateRange={reportDateRange} />
                 </CardContent>
             </Card>
+
+            <ImportPpeDistributionDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
         </div>
     );
 }
