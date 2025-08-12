@@ -20,20 +20,19 @@ export default function PpeStockPage() {
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [isImportOpen, setIsImportOpen] = useState(false);
 
-    const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
-    const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
-
-    const [coverallSizes, setCoverallSizes] = useState(coverallStock?.sizes || {});
-    const [shoeQuantity, setShoeQuantity] = useState(shoeStock?.quantity || 0);
+    const [coverallSizes, setCoverallSizes] = useState({});
+    const [shoeQuantity, setShoeQuantity] = useState(0);
 
     useEffect(() => {
+        const coverallStock = ppeStock?.find(s => s.id === 'coveralls');
+        const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
         if (coverallStock) {
             setCoverallSizes(coverallStock.sizes || {});
         }
         if (shoeStock) {
             setShoeQuantity(shoeStock.quantity || 0);
         }
-    }, [coverallStock, shoeStock]);
+    }, [ppeStock]);
 
     const canEdit = useMemo(() => can.manage_ppe_stock, [can]);
 
@@ -77,7 +76,7 @@ export default function PpeStockPage() {
         );
     }
     
-    const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
     return (
         <div className="space-y-8">
@@ -102,7 +101,7 @@ export default function PpeStockPage() {
                                 <Input 
                                     id={`coverall-${size}`} 
                                     type="number" 
-                                    value={coverallSizes[size] || ''}
+                                    value={coverallSizes[size as keyof typeof coverallSizes] || ''}
                                     onChange={(e) => handleCoverallChange(size, e.target.value)}
                                     disabled={!canEdit}
                                 />
