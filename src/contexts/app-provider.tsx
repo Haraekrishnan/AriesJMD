@@ -2352,7 +2352,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
     if (!user) return { importedCount: 0, notFoundCount: 0 };
     
-    // Simple fuzzy matching function
     const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
     const findProfile = (name: string) => {
         const normalizedName = normalize(name);
@@ -2367,14 +2366,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     for (const row of data) {
       const employeeName = row['Employee Name'];
       const size = row['Size']?.toString().toUpperCase();
-      const date = row['Date'];
+      const dateValue = row['Date'];
       
-      if (!employeeName || !size || !date) continue;
-      
+      if (!employeeName || !size || !dateValue) continue;
+
       const profile = findProfile(employeeName);
       
       if (profile) {
-        const issueDate = (date instanceof Date ? date : new Date(date)).toISOString();
+        const parsedDate = dateValue instanceof Date ? dateValue : parseISO(dateValue);
+        if (!isValid(parsedDate)) {
+            console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
+            notFoundCount++;
+            continue;
+        }
+
+        const issueDate = parsedDate.toISOString();
         const newHistoryItem: PpeHistoryRecord = {
           id: `ppe-hist-import-${Date.now()}-${importedCount}`,
           ppeType: 'Coverall',
@@ -2388,7 +2394,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : [];
         updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newHistoryItem];
         
-        // Prepare stock update
         coverallsStockUpdates[size] = (coverallsStockUpdates[size] || 0) + 1;
         
         importedCount++;
@@ -2397,7 +2402,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Apply stock updates
     const coverallsStock = ppeStock.find(s => s.id === 'coveralls');
     if (coverallsStock) {
         const currentSizes = coverallsStock.sizes || {};
