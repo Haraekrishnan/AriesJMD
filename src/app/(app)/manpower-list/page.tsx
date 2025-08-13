@@ -120,7 +120,7 @@ export default function ManpowerListPage() {
             }
 
             return true;
-        });
+        }).sort((a, b) => a.name.localeCompare(b.name));
     }, [manpowerProfiles, filters, projects, searchTerm]);
 
     const handleEdit = (profile: ManpowerProfile) => {
