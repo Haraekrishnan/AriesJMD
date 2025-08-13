@@ -464,6 +464,7 @@ export type PpeRequest = {
     eligible: boolean;
     reason: string;
   } | null;
+  newRequestJustification?: string;
 };
 
 

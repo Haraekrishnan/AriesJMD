@@ -170,7 +170,7 @@ type AppContextType = {
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'|'eligibility'> & { eligibility: any }) => void;
+  addPpeRequest: (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
@@ -1652,19 +1652,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // Call the Server Action to send the email
     await sendPpeRequestEmail({
+      ...requestData,
       requesterName: user.name,
       employeeName: manpowerProfile?.name || 'N/A',
-      ppeType: requestData.ppeType,
-      size: requestData.size,
-      quantity: requestData.quantity,
-      requestType: requestData.requestType,
-      remarks: requestData.remarks,
-      attachmentUrl: requestData.attachmentUrl,
       joiningDate: joiningDate,
       rejoiningDate: rejoiningDate,
       lastIssueDate: lastIssueDate,
       stockInfo: stockInfo,
-      eligibility: requestData.eligibility,
     });
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
@@ -2606,13 +2600,3 @@ export const useAppContext = (): AppContextType => {
 
 
     
-
-
-
-
-
-
-
-
-
-

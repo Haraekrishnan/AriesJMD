@@ -190,6 +190,12 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
                             <span className="truncate">{commentsArray[commentsArray.length-1]?.text || 'No comments'}</span>
                         </AccordionTrigger>
                         <AccordionContent className="pt-2">
+                             {req.newRequestJustification && (
+                                <div className="mb-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-md">
+                                    <p className="text-xs font-bold text-amber-800 dark:text-amber-200">Justification for 'New' Request:</p>
+                                    <p className="text-xs text-amber-700 dark:text-amber-300">{req.newRequestJustification}</p>
+                                </div>
+                            )}
                             <div className="space-y-2">
                               {commentsArray.length > 0 ? commentsArray.map((c,i) => {
                                   const commentUser = users.find(u => u.id === c.userId);
