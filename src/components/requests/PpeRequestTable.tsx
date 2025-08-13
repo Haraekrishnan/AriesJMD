@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -209,6 +210,14 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
             </TableCell>
             <TableCell>
                 <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                {req.eligibility && (
+                    <p className={cn(
+                        "text-xs mt-1",
+                        req.eligibility.eligible ? "text-green-600" : "text-destructive"
+                    )}>
+                        {req.eligibility.eligible ? "Eligible" : "Not Eligible"}
+                    </p>
+                )}
                 {canApprove && (
                     <p className="text-xs text-muted-foreground mt-1">{getStockInfo(req)}</p>
                 )}
@@ -382,3 +391,5 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </div>
     );
 }
+
+    
