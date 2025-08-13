@@ -167,7 +167,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-[50px]"></TableHead>
-                        <TableHead className="w-[50px]">DB Sr. No.</TableHead>
+                        <TableHead className="w-[50px]">DB No.</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Trade</TableHead>
                         <TableHead>Status</TableHead>
