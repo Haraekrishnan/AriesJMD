@@ -63,7 +63,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
+    <aside className="w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed hidden md:flex">
       <div className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center h-8 w-8">
