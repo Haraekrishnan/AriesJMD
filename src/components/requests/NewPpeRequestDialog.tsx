@@ -17,7 +17,7 @@ import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { useEffect, useState, useMemo } from 'react';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { isAfter, addYears, format, parseISO } from 'date-fns';
+import { isAfter, addYears, format, parseISO, isToday, isFuture } from 'date-fns';
 import { PpeHistoryRecord } from '@/lib/types';
 
 const ppeRequestSchema = z.object({
@@ -73,26 +73,28 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const isNewEmployee = useMemo(() => {
     if (!manpowerId) return false;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
-    // An employee is considered "new" if they have no PPE history at all.
-    return !profile?.ppeHistory || profile.ppeHistory.length === 0;
+    if (!profile?.joiningDate) return true; // Treat as new if no joining date
+    const joiningDate = parseISO(profile.joiningDate);
+    return isToday(joiningDate) || isFuture(joiningDate);
   }, [manpowerId, manpowerProfiles]);
 
   const showJustificationField = useMemo(() => {
-    // Show justification if user selects "New" for an existing employee.
-    return requestType === 'New' && !isNewEmployee;
-  }, [requestType, isNewEmployee]);
+    if (requestType !== 'New') return false;
+    if (!manpowerId) return true; // Show by default if no employee selected yet
+    return !isNewEmployee;
+  }, [requestType, isNewEmployee, manpowerId]);
 
   const eligibility = useMemo(() => {
     if (!manpowerId || !ppeType) return null;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile) return null;
 
-    // A truly new employee is always eligible for a 'New' request.
     if (isNewEmployee) {
         return { eligible: true, reason: 'Eligible for initial issue as a new employee.' };
     }
-
-    const history = (profile.ppeHistory || []).filter(h => h.ppeType === ppeType)
+    
+    const history = (profile.ppeHistory || [])
+      .filter(h => h.ppeType === ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
     
     const lastIssue = history[0];
