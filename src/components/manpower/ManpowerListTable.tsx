@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 
 
 interface ManpowerListTableProps {
-    profiles: ManpowerProfile[];
+    profiles: (ManpowerProfile & { dbIndex: number })[];
     onEdit: (profile: ManpowerProfile) => void;
 }
 
@@ -178,7 +178,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {profiles.map((profile, index) => {
+                    {profiles.map((profile) => {
                         const isExpanded = expandedRows.has(profile.id);
                         const nextExpiry = getNextExpiry(profile);
                         const daysToExpiry = nextExpiry ? differenceInDays(nextExpiry.date, new Date()) : null;
@@ -194,7 +194,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                         </Button>
                                     </TableCell>
-                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>{profile.dbIndex}</TableCell>
                                     <TableCell className="font-medium">{profile.name}</TableCell>
                                     <TableCell>{profile.trade}</TableCell>
                                     <TableCell><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></TableCell>

@@ -79,9 +79,17 @@ export default function ManpowerListPage() {
                 .map(l => ({ profile: p, leave: l }))
         );
     }, [manpowerProfiles, can.manage_manpower_list]);
+    
+    const profilesWithDbIndex = useMemo(() =>
+      manpowerProfiles.map((profile, index) => ({
+        ...profile,
+        dbIndex: index + 1,
+      })),
+      [manpowerProfiles]
+    );
 
     const filteredProfiles = useMemo(() => {
-        return manpowerProfiles.filter(profile => {
+        return profilesWithDbIndex.filter(profile => {
             if (searchTerm && !profile.name.toLowerCase().includes(searchTerm.toLowerCase()) && !profile.hardCopyFileNo?.toLowerCase().includes(searchTerm.toLowerCase())) {
                 return false;
             }
@@ -120,8 +128,8 @@ export default function ManpowerListPage() {
             }
 
             return true;
-        });
-    }, [manpowerProfiles, filters, projects, searchTerm]);
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [profilesWithDbIndex, filters, searchTerm]);
 
     const handleEdit = (profile: ManpowerProfile) => {
         setSelectedProfile(profile);
@@ -359,5 +367,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
-    
