@@ -23,16 +23,17 @@ export default function PpeStockPage() {
     const [coverallSizes, setCoverallSizes] = useState({});
     const [shoeQuantity, setShoeQuantity] = useState(0);
 
+    const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
+    const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
+
     useEffect(() => {
-        const coverallStock = ppeStock?.find(s => s.id === 'coveralls');
-        const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
         if (coverallStock) {
             setCoverallSizes(coverallStock.sizes || {});
         }
         if (shoeStock) {
             setShoeQuantity(shoeStock.quantity || 0);
         }
-    }, [ppeStock]);
+    }, [coverallStock, shoeStock]);
 
     const canEdit = useMemo(() => can.manage_ppe_stock, [can]);
 
