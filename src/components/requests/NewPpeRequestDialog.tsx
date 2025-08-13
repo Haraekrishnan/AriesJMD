@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,32 +76,28 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     
     const lastIssue = history[0];
 
-    if (ppeType === 'Safety Shoes') {
-        if (!lastIssue) {
-            return { eligible: true, reason: 'Eligible for initial issue.' };
-        }
-        const nextEligibleDate = addYears(new Date(lastIssue.issueDate), 1);
-        if (isAfter(new Date(), nextEligibleDate)) {
-            return { eligible: true, reason: 'Eligible for replacement (1 year passed).' };
-        }
-        return { eligible: false, reason: `Not eligible until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+    // For new members, they are always eligible for the first issue.
+    if (requestType === 'New' && !lastIssue) {
+        return { eligible: true, reason: 'Eligible for initial issue as a new employee.' };
+    }
+    
+    // For existing members, or replacements for new members.
+    const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
+    
+    if (!baselineDateStr) {
+      return { eligible: false, reason: 'Joining date not set. Cannot determine eligibility.' };
     }
 
-    if (ppeType === 'Coverall') {
-        const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
-        if (!baselineDateStr) {
-            return { eligible: false, reason: 'Joining date not set. Cannot determine eligibility.' };
-        }
-        const baselineDate = parseISO(baselineDateStr);
-        const nextEligibleDate = addYears(baselineDate, 1);
-        if (isAfter(new Date(), nextEligibleDate)) {
-            return { eligible: true, reason: `Eligible for new coverall. Last was issued on ${format(baselineDate, 'dd MMM, yyyy')}.` };
-        }
-        return { eligible: false, reason: `Next eligibility is on ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
-    }
+    const baselineDate = parseISO(baselineDateStr);
+    const nextEligibleDate = addYears(baselineDate, 1);
 
-    return null;
-  }, [manpowerId, ppeType, manpowerProfiles]);
+    if (isAfter(new Date(), nextEligibleDate)) {
+        return { eligible: true, reason: `Eligible for replacement. Last issue or joining date was ${format(baselineDate, 'dd MMM, yyyy')}.` };
+    } else {
+        return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+    }
+  }, [manpowerId, ppeType, requestType, manpowerProfiles]);
+
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
