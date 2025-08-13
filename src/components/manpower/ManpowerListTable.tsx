@@ -167,6 +167,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-[50px]"></TableHead>
+                        <TableHead className="w-[50px]">Sr.No.</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Trade</TableHead>
                         <TableHead>Status</TableHead>
@@ -177,7 +178,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {profiles.map(profile => {
+                    {profiles.map((profile, index) => {
                         const isExpanded = expandedRows.has(profile.id);
                         const nextExpiry = getNextExpiry(profile);
                         const daysToExpiry = nextExpiry ? differenceInDays(nextExpiry.date, new Date()) : null;
@@ -193,6 +194,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                         </Button>
                                     </TableCell>
+                                    <TableCell>{index + 1}</TableCell>
                                     <TableCell className="font-medium">{profile.name}</TableCell>
                                     <TableCell>{profile.trade}</TableCell>
                                     <TableCell><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></TableCell>
@@ -266,7 +268,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                 </TableRow>
                                 {isExpanded && (
                                     <TableRow>
-                                        <TableCell colSpan={can.manage_manpower_list ? 8 : 7} className="p-0">
+                                        <TableCell colSpan={can.manage_manpower_list ? 9 : 8} className="p-0">
                                             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50">
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Personal & Work Details</h4>
