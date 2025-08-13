@@ -8,7 +8,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut } from 'lucide-react';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon } from 'lucide-react';
 import { AppSidebar } from './app-sidebar';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
