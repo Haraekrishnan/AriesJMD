@@ -36,13 +36,10 @@ export default function Header() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="flex flex-col p-0 bg-card text-card-foreground w-64 border-r">
-            <SheetHeader>
-              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-            </SheetHeader>
              <AppSidebar />
           </SheetContent>
         </Sheet>
-        <h1 className="text-2xl font-bold text-foreground hidden md:block">{getPageTitle()}</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-foreground hidden md:block">{getPageTitle()}</h1>
       </div>
       <div className="flex items-center gap-2">
         <AnnouncementApprovalDialog />

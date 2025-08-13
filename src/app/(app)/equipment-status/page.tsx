@@ -299,7 +299,7 @@ export default function EquipmentStatusPage() {
                     <DateRangePicker date={activeDaysDateRange} onDateChange={setActiveDaysDateRange} />
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-[260px] justify-between">
+                            <Button variant="outline" className="w-full sm:w-[260px] justify-between">
                                 {selectedMachineIds.length > 0 ? `${selectedMachineIds.length} machine(s) selected` : "Select machines..."}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
@@ -370,7 +370,7 @@ export default function EquipmentStatusPage() {
             </Card>
 
             <Tabs defaultValue="ut-machines" className="w-full">
-                <TabsList className="grid w-full grid-cols-7">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-7">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
                     <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>

@@ -50,8 +50,7 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold tracking-tight">Welcome, {user?.name}!</h1>
             <p className="text-muted-foreground">Here's a summary of your team's activity.</p>
         </div>
-        <div className="flex gap-2">
-            
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button variant="outline" asChild>
                 <Link href="/reports">
                     <FileText />

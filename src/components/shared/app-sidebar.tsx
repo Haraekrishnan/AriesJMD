@@ -35,6 +35,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 export function AppSidebar() {
   const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount } = useAppContext();
@@ -75,15 +76,15 @@ export function AppSidebar() {
             <h1 className="text-xl font-bold">{appName}</h1>
         </Link>
       </div>
-      <nav className="flex-1 px-4 overflow-y-auto">
-        <ul className="space-y-2">
+      <ScrollArea className="flex-1 px-2">
+        <ul className="space-y-1 p-2">
           {navItems.map(item => (
             item.show && (
               <li key={item.href}>
                 <Button
                   asChild
                   variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
-                  className="w-full justify-start text-base py-6"
+                  className="w-full justify-start"
                 >
                   <Link href={item.href} className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
@@ -99,7 +100,7 @@ export function AppSidebar() {
             )
           ))}
         </ul>
-      </nav>
+      </ScrollArea>
       <div className="p-4 mt-auto">
         <Separator className="my-4" />
         <div className="flex items-center gap-3">
