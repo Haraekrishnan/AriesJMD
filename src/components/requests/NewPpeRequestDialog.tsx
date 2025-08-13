@@ -28,6 +28,10 @@ const ppeRequestSchema = z.object({
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
   attachmentUrl: z.string().optional(),
+  newRequestJustification: z.string().optional(),
+}).refine(data => {
+    // This custom refinement will be handled in the component logic
+    return true;
 });
 
 type PpeRequestFormValues = z.infer<typeof ppeRequestSchema>;
@@ -66,22 +70,32 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     }
   }, [manpowerId, ppeType, manpowerProfiles, form]);
 
+  const isNewEmployee = useMemo(() => {
+    if (!manpowerId) return false;
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    // An employee is considered "new" if they have no PPE history at all.
+    return !profile?.ppeHistory || profile.ppeHistory.length === 0;
+  }, [manpowerId, manpowerProfiles]);
+
+  const showJustificationField = useMemo(() => {
+    // Show justification if user selects "New" for an existing employee.
+    return requestType === 'New' && !isNewEmployee;
+  }, [requestType, isNewEmployee]);
+
   const eligibility = useMemo(() => {
     if (!manpowerId || !ppeType) return null;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile) return null;
 
+    // A truly new employee is always eligible for a 'New' request.
+    if (isNewEmployee) {
+        return { eligible: true, reason: 'Eligible for initial issue as a new employee.' };
+    }
+
     const history = (profile.ppeHistory || []).filter(h => h.ppeType === ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
     
     const lastIssue = history[0];
-
-    // For new members, they are always eligible for the first issue.
-    if (requestType === 'New' && !lastIssue) {
-        return { eligible: true, reason: 'Eligible for initial issue as a new employee.' };
-    }
-    
-    // For existing members, or replacements for new members.
     const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
     
     if (!baselineDateStr) {
@@ -96,7 +110,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     } else {
         return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
     }
-  }, [manpowerId, ppeType, requestType, manpowerProfiles]);
+  }, [manpowerId, ppeType, isNewEmployee, manpowerProfiles]);
 
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,6 +149,11 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   };
 
   const onSubmit = (data: PpeRequestFormValues) => {
+    if (showJustificationField && !data.newRequestJustification?.trim()) {
+        form.setError("newRequestJustification", { type: "manual", message: "Justification is required for a 'New' request for an existing employee." });
+        return;
+    }
+
     addPpeRequest({ ...data, eligibility });
     toast({
       title: 'PPE Request Submitted',
@@ -233,6 +252,14 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                     </Select>
                 )}/>
             </div>
+            
+            {showJustificationField && (
+                <div className="space-y-2">
+                    <Label htmlFor="newRequestJustification">Justification for 'New' Request</Label>
+                    <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why a new item is needed instead of a replacement." />
+                    {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
+                </div>
+            )}
 
           {eligibility && (
             <Alert variant={eligibility.eligible ? "default" : "destructive"}>

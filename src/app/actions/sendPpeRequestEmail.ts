@@ -36,12 +36,20 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     lastIssueDate,
     stockInfo,
     eligibility,
+    newRequestJustification,
   } = ppeData;
 
   const eligibilityHtml = eligibility ? `
     <p style="margin-top: 20px; padding: 10px; border-left: 4px solid ${eligibility.eligible ? '#28a745' : '#dc3545'}; background-color: #f8f9fa;">
       <strong style="color: ${eligibility.eligible ? '#28a745' : '#dc3545'};">Eligibility Status: ${eligibility.eligible ? 'Eligible' : 'Not Eligible'}</strong><br>
       ${eligibility.reason}
+    </p>
+  ` : '';
+  
+  const justificationHtml = newRequestJustification ? `
+    <p style="margin-top: 20px; padding: 10px; border-left: 4px solid #ffc107; background-color: #fff3cd;">
+      <strong style="color: #856404;">Justification for 'New' Request:</strong><br>
+      ${newRequestJustification}
     </p>
   ` : '';
 
@@ -54,6 +62,8 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       <p><strong>Type:</strong> ${ppeType} &middot; <strong>Size:</strong> ${size} &middot; <strong>Qty:</strong> ${quantity}</p>
       <p><strong>Request Type:</strong> ${requestType}</p>
       
+       ${justificationHtml}
+
       <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
         <strong>Joining Date:</strong> ${joiningDate || 'N/A'}<br>
         <strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}<br>
