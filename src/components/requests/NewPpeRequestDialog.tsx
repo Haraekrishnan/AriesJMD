@@ -78,12 +78,6 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     return isToday(joiningDate) || isFuture(joiningDate);
   }, [manpowerId, manpowerProfiles]);
 
-  const showJustificationField = useMemo(() => {
-    if (requestType !== 'New') return false;
-    if (!manpowerId) return true; // Show by default if no employee selected yet
-    return !isNewEmployee;
-  }, [requestType, isNewEmployee, manpowerId]);
-
   const eligibility = useMemo(() => {
     if (!manpowerId || !ppeType) return null;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
@@ -101,7 +95,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
     
     if (!baselineDateStr) {
-      return { eligible: false, reason: 'Joining date not set. Cannot determine eligibility.' };
+      return { eligible: true, reason: 'No previous issue or joining date found, eligible for first issue.' };
     }
 
     const baselineDate = parseISO(baselineDateStr);
@@ -113,6 +107,10 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
         return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
     }
   }, [manpowerId, ppeType, isNewEmployee, manpowerProfiles]);
+
+  const showJustificationField = useMemo(() => {
+    return eligibility?.eligible === false;
+  }, [eligibility]);
 
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,7 +150,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
   const onSubmit = (data: PpeRequestFormValues) => {
     if (showJustificationField && !data.newRequestJustification?.trim()) {
-        form.setError("newRequestJustification", { type: "manual", message: "Justification is required for a 'New' request for an existing employee." });
+        form.setError("newRequestJustification", { type: "manual", message: "Justification is required for a non-eligible request." });
         return;
     }
 
@@ -255,50 +253,50 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 )}/>
             </div>
             
+            {eligibility && (
+                <Alert variant={eligibility.eligible ? "default" : "destructive"}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
+                    <AlertDescription>{eligibility.reason}</AlertDescription>
+                </Alert>
+            )}
+
             {showJustificationField && (
                 <div className="space-y-2">
-                    <Label htmlFor="newRequestJustification">Justification for 'New' Request</Label>
-                    <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why a new item is needed instead of a replacement." />
+                    <Label htmlFor="newRequestJustification">Justification for Non-Eligible Request</Label>
+                    <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed urgently despite eligibility status." />
                     {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
                 </div>
             )}
 
-          {eligibility && (
-            <Alert variant={eligibility.eligible ? "default" : "destructive"}>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
-                <AlertDescription>{eligibility.reason}</AlertDescription>
-            </Alert>
-          )}
-
-          {requestType === 'Replacement' && (
-            <div className="space-y-2">
-              <Label>Attach Photo of Damaged Item</Label>
-              {form.getValues('attachmentUrl') || attachmentFile ? (
-                 <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                    <div className="flex items-center gap-2 truncate">
-                      <Paperclip className="h-4 w-4"/>
-                      <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
-                      <X className="h-4 w-4"/>
+            {requestType === 'Replacement' && (
+              <div className="space-y-2">
+                <Label>Attach Photo of Damaged Item</Label>
+                {form.getValues('attachmentUrl') || attachmentFile ? (
+                   <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                      <div className="flex items-center gap-2 truncate">
+                        <Paperclip className="h-4 w-4"/>
+                        <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
+                        <X className="h-4 w-4"/>
+                      </Button>
+                   </div>
+                ) : (
+                  <div className="relative">
+                    <Button asChild variant="outline" size="sm">
+                      <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
                     </Button>
-                 </div>
-              ) : (
-                <div className="relative">
-                  <Button asChild variant="outline" size="sm">
-                    <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
-                  </Button>
-                  <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
-                </div>
-              )}
+                    <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label>Remarks</Label>
+              <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
             </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label>Remarks</Label>
-            <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
-          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
