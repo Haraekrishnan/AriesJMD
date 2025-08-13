@@ -19,6 +19,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { isAfter, addYears, format, parseISO, isToday, isFuture } from 'date-fns';
 import { PpeHistoryRecord } from '@/lib/types';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
@@ -47,6 +49,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const form = useForm<PpeRequestFormValues>({
     resolver: zodResolver(ppeRequestSchema),
@@ -73,10 +76,9 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const isNewEmployee = useMemo(() => {
     if (!manpowerId) return false;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
-    if (!profile?.joiningDate) return true; // No joining date, treat as new
+    if (!profile?.joiningDate) return true; // Default to new if no joining date
     const joiningDate = parseISO(profile.joiningDate);
-    const cutoffDate = new Date('2025-08-01T00:00:00.000Z');
-    return isAfter(joiningDate, cutoffDate);
+    return isToday(joiningDate) || isFuture(joiningDate);
   }, [manpowerId, manpowerProfiles]);
 
   const eligibility = useMemo(() => {
@@ -93,10 +95,14 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
     
     const lastIssue = history[0];
+    // For existing employees, if no history, their joining date is the baseline
+    // as their initial issues were given then.
     const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
     
     if (!baselineDateStr) {
-      return { eligible: true, reason: 'No previous issue or joining date found, eligible for first issue.' };
+      // This case handles employees added before the system, with no joining date recorded.
+      // Treat them as not automatically eligible.
+      return { eligible: false, reason: 'Eligibility cannot be determined automatically. Joining date is missing.' };
     }
 
     const baselineDate = parseISO(baselineDateStr);
@@ -163,7 +169,6 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
       description: 'Your request has been submitted to the manager for approval.',
     });
     setIsOpen(false);
-    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -175,138 +180,157 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New PPE Request</DialogTitle>
           <DialogDescription>Request a coverall or safety shoes for an employee.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Employee</Label>
-            <Controller
-              name="manpowerId"
-              control={form.control}
-              render={({ field }) => (
-                <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" className="w-full justify-between">
-                      {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
-                    <Command>
-                      <CommandInput placeholder="Search manpower..." />
-                      <CommandList>
-                        <CommandEmpty>No one found.</CommandEmpty>
-                        <CommandGroup>
-                          {manpowerProfiles.map(mp => (
-                            <CommandItem
-                              key={mp.id}
-                              value={mp.name}
-                              onSelect={() => {
-                                form.setValue("manpowerId", mp.id);
-                                setIsManpowerPopoverOpen(false);
-                              }}
-                            >
-                              {mp.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              )}
-            />
-            {form.formState.errors.manpowerId && <p className="text-xs text-destructive">{form.formState.errors.manpowerId.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }}>
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-                <Label>PPE Type</Label>
-                <Controller name="ppeType" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
-                        <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
-                    </Select>
-                )}/>
-                {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
-            </div>
-             <div className="space-y-2">
-                <Label>Size</Label>
-                <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
-                {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
-            </div>
-          </div>
-          {ppeType === 'Coverall' && (
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input type="number" {...form.register('quantity')} />
-            </div>
-          )}
-           <div className="space-y-2">
-                <Label>Request Type</Label>
-                <Controller name="requestType" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
-                    </Select>
-                )}/>
-            </div>
-            
-            {eligibility && (
-                <Alert variant={eligibility.eligible ? "default" : "destructive"}>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
-                    <AlertDescription>{eligibility.reason}</AlertDescription>
-                </Alert>
-            )}
-
-            {showJustificationField && (
-                <div className="space-y-2">
-                    <Label htmlFor="newRequestJustification">Justification for Request</Label>
-                    <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed." />
-                    {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
-                </div>
-            )}
-
-            {requestType === 'Replacement' && (
-              <div className="space-y-2">
-                <Label>Attach Photo of Damaged Item</Label>
-                {form.getValues('attachmentUrl') || attachmentFile ? (
-                   <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                      <div className="flex items-center gap-2 truncate">
-                        <Paperclip className="h-4 w-4"/>
-                        <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
-                        <X className="h-4 w-4"/>
+              <Label>Employee</Label>
+              <Controller
+                name="manpowerId"
+                control={form.control}
+                render={({ field }) => (
+                  <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between">
+                        {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
-                   </div>
-                ) : (
-                  <div className="relative">
-                    <Button asChild variant="outline" size="sm">
-                      <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
-                    </Button>
-                    <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
-                  </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search manpower..." />
+                        <CommandList>
+                          <CommandEmpty>No one found.</CommandEmpty>
+                          <CommandGroup>
+                            {manpowerProfiles.map(mp => (
+                              <CommandItem
+                                key={mp.id}
+                                value={mp.name}
+                                onSelect={() => {
+                                  form.setValue("manpowerId", mp.id);
+                                  setIsManpowerPopoverOpen(false);
+                                }}
+                              >
+                                {mp.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
+              />
+              {form.formState.errors.manpowerId && <p className="text-xs text-destructive">{form.formState.errors.manpowerId.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                  <Label>PPE Type</Label>
+                  <Controller name="ppeType" control={form.control} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
+                          <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
+                      </Select>
+                  )}/>
+                  {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
+              </div>
+               <div className="space-y-2">
+                  <Label>Size</Label>
+                  <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+                  {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
+              </div>
+            </div>
+            {ppeType === 'Coverall' && (
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input type="number" {...form.register('quantity')} />
               </div>
             )}
-            
-            <div className="space-y-2">
-              <Label>Remarks</Label>
-              <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
-            </div>
+             <div className="space-y-2">
+                  <Label>Request Type</Label>
+                  <Controller name="requestType" control={form.control} render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger><SelectValue/></SelectTrigger>
+                          <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
+                      </Select>
+                  )}/>
+              </div>
+              
+              {eligibility && (
+                  <Alert variant={eligibility.eligible ? "default" : "destructive"}>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
+                      <AlertDescription>{eligibility.reason}</AlertDescription>
+                  </Alert>
+              )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isUploading}>Submit Request</Button>
-          </DialogFooter>
+              {showJustificationField && (
+                  <div className="space-y-2">
+                      <Label htmlFor="newRequestJustification">Justification for Request</Label>
+                      <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed." />
+                      {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
+                  </div>
+              )}
+
+              {requestType === 'Replacement' && (
+                <div className="space-y-2">
+                  <Label>Attach Photo of Damaged Item</Label>
+                  {form.getValues('attachmentUrl') || attachmentFile ? (
+                     <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                        <div className="flex items-center gap-2 truncate">
+                          <Paperclip className="h-4 w-4"/>
+                          <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
+                          <X className="h-4 w-4"/>
+                        </Button>
+                     </div>
+                  ) : (
+                    <div className="relative">
+                      <Button asChild variant="outline" size="sm">
+                        <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
+                      </Button>
+                      <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label>Remarks</Label>
+                <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+              <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                      <Button type="button" disabled={isUploading}>Submit Request</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              Please review the entered details. This request will be sent directly to the manager for approval and cannot be reversed.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Back to Review</AlertDialogCancel>
+                          <AlertDialogAction onClick={form.handleSubmit(onSubmit)}>OK, Proceed</AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+            </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
