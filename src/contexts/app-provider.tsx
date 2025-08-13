@@ -170,7 +170,7 @@ type AppContextType = {
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
+  addPpeRequest: (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'|'eligibility'> & { eligibility: any }) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
@@ -1204,7 +1204,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     return isValid(date) ? date.toISOString() : undefined;
                 }
                 if (typeof dateInput === 'string') {
-                    // Try parsing DD/MM/YYYY first, then DD-MM-YYYY
+                    // Try parsing various common formats
                     let parsedDate = parse(dateInput, 'dd/MM/yyyy', new Date());
                     if (!isValid(parsedDate)) {
                         parsedDate = parse(dateInput, 'dd-MM-yyyy', new Date());
@@ -1441,6 +1441,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Deleted Memo/Warning', `For ${profile.name}`);
   }, [user, manpowerProfiles, addActivityLog]);
   
+  const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
+    if (!user) return;
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return;
+
+    const updates: { [key: string]: any } = {};
+
+    const newHistoryItem: PpeHistoryRecord = { ...record, id: `ppe-hist-${Date.now()}` };
+    const updatedPpeHistory = [...(profile.ppeHistory || []), newHistoryItem];
+    updates[`/manpowerProfiles/${manpowerId}/ppeHistory`] = updatedPpeHistory;
+
+    // Deduct from stock
+    if (record.ppeType === 'Coverall') {
+      const coverallStock = ppeStock.find(s => s.id === 'coveralls');
+      if (coverallStock && coverallStock.sizes) {
+          const currentSizeStock = coverallStock.sizes[record.size] || 0;
+          const quantityToDeduct = record.quantity || 1;
+          const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
+          updates[`/ppeStock/coveralls/sizes/${record.size}`] = newSizeStock;
+      }
+    } else if (record.ppeType === 'Safety Shoes') {
+        const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
+        if (shoeStock && shoeStock.quantity) {
+            const newQuantity = Math.max(0, shoeStock.quantity - 1);
+            updates[`/ppeStock/safetyShoes/quantity`] = newQuantity;
+        }
+    }
+    
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'PPE History Added', `Added ${record.ppeType} for ${profile.name}`);
+  }, [user, addActivityLog, manpowerProfiles, ppeStock]);
+
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if(user) {
         const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -1536,6 +1568,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Management Request Deleted', `Request ID: ${requestId}`);
   }, [user, addActivityLog]);
   
+  const markManagementRequestAsViewed = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = managementRequests.find(r => r.id === requestId);
+    if (request && request.requesterId === user.id && !request.viewedByRequester) {
+      update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, managementRequests]);
+  
   const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
 
@@ -1624,6 +1664,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       rejoiningDate: rejoiningDate,
       lastIssueDate: lastIssueDate,
       stockInfo: stockInfo,
+      eligibility: requestData.eligibility,
     });
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
@@ -1646,6 +1687,155 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
       addActivityLog(user.id, 'PPE Attachment Deleted', `For Request ID: ${requestId}`);
   }, [user, addActivityLog]);
+  
+  const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newComment: Comment = { id: `ppe-comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`ppeRequests/${requestId}/status`] = status;
+    updates[`ppeRequests/${requestId}/approverId`] = user.id;
+    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+    updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
+
+    if (status === 'Issued') {
+        const manpowerId = request.manpowerId;
+        const profile = manpowerProfiles.find(p => p.id === manpowerId);
+        if (profile) {
+            const newHistoryItem: PpeHistoryRecord = {
+                id: `ppe-hist-${Date.now()}`,
+                ppeType: request.ppeType,
+                size: request.size,
+                quantity: request.quantity,
+                issueDate: new Date().toISOString(),
+                requestType: request.requestType,
+                remarks: request.remarks,
+                storeComment: comment,
+                requestId: request.id,
+                issuedById: user.id,
+                approverId: request.approverId
+            };
+            const updatedPpeHistory = [...(profile.ppeHistory || []), newHistoryItem];
+            updates[`/manpowerProfiles/${manpowerId}/ppeHistory`] = updatedPpeHistory;
+        }
+
+        if (request.ppeType === 'Coverall') {
+            const coverallStock = ppeStock.find(s => s.id === 'coveralls');
+            if (coverallStock?.sizes) {
+                const currentSizeStock = coverallStock.sizes[request.size] || 0;
+                const quantityToDeduct = request.quantity || 1;
+                updates[`/ppeStock/coveralls/sizes/${request.size}`] = Math.max(0, currentSizeStock - quantityToDeduct);
+            }
+        } else if (request.ppeType === 'Safety Shoes') {
+            const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
+            if (shoeStock?.quantity) {
+                updates[`/ppeStock/safetyShoes/quantity`] = Math.max(0, shoeStock.quantity - 1);
+            }
+        }
+    }
+
+    update(ref(rtdb), updates);
+  }, [user, ppeRequests, manpowerProfiles, ppeStock]);
+
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    if (!user) return { importedCount: 0, notFoundCount: 0 };
+    
+    const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
+    const findProfile = (name: string) => {
+        const normalizedName = normalize(name);
+        return manpowerProfiles.find(p => normalize(p.name) === normalizedName);
+    };
+
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+    const coverallsStockUpdates: { [size: string]: number } = {};
+    
+    for (const row of data) {
+      const employeeName = row['Employee Name'];
+      const size = row['Size']?.toString().toUpperCase();
+      const dateValue = row['Date'];
+      
+      if (!employeeName || !size || !dateValue) continue;
+
+      const profile = findProfile(employeeName);
+      
+      if (profile) {
+        let parsedDate: Date | null = null;
+        if (dateValue instanceof Date && isValid(dateValue)) {
+            parsedDate = dateValue;
+        } else if (typeof dateValue === 'string') {
+            const trimmedDate = dateValue.trim();
+            // Try parsing various common formats
+            const formatsToTry = ['dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'yyyy/MM/dd', 'dd/MM/yy', 'd/M/yy'];
+            for (const fmt of formatsToTry) {
+                parsedDate = parse(trimmedDate, fmt, new Date());
+                if (isValid(parsedDate)) break;
+            }
+            if (!isValid(parsedDate)) parsedDate = parseISO(trimmedDate);
+        } else if (typeof dateValue === 'number') { // Handle Excel date serial numbers
+            const excelEpoch = new Date(1899, 11, 30);
+            parsedDate = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        }
+
+        if (!parsedDate || !isValid(parsedDate)) {
+            console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
+            notFoundCount++;
+            continue;
+        }
+
+        const issueDate = parsedDate.toISOString();
+
+        const newHistoryItem: PpeHistoryRecord = {
+          id: `ppe-hist-import-${Date.now()}-${importedCount}`,
+          ppeType: 'Coverall',
+          size,
+          quantity: 1,
+          issueDate,
+          requestType: 'New', // Default for imported records
+          issuedById: user.id,
+        };
+
+        const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : [];
+        updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newHistoryItem];
+        
+        coverallsStockUpdates[size] = (coverallsStockUpdates[size] || 0) + 1;
+        
+        importedCount++;
+      } else {
+        notFoundCount++;
+      }
+    }
+    
+    const coverallsStock = ppeStock.find(s => s.id === 'coveralls');
+    if (coverallsStock) {
+        const currentSizes = coverallsStock.sizes || {};
+        for (const size in coverallsStockUpdates) {
+            currentSizes[size] = (currentSizes[size] || 0) - coverallsStockUpdates[size];
+            if (currentSizes[size] < 0) currentSizes[size] = 0;
+        }
+        updates['/ppeStock/coveralls/sizes'] = currentSizes;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} records. ${notFoundCount} names not found.`);
+    }
+
+    return { importedCount, notFoundCount };
+  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
+
+  const markPpeRequestAsViewed = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (request && request.requesterId === user.id && !request.viewedByRequester) {
+      update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, ppeRequests]);
 
   const updatePpeStock = useCallback((stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => {
     if (!user) return;
@@ -1764,11 +1954,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
   }, [user, addActivityLog, addCertificateRequestComment]);
-  
-  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
-    remove(ref(rtdb, `certificateRequests/${requestId}`));
-  }, []);
-  
+
   const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
     if (!user) return;
     const updates: { [key: string]: any } = {};
@@ -2114,93 +2300,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Occupant Unassigned', `${occupantName} from bed in Building ${building.buildingNumber}`);
   }, [user, buildings, manpowerProfiles, addActivityLog]);
 
-  const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
-    if (user) {
-        const recipients = new Set<string>();
-        if (user.supervisorId) recipients.add(user.supervisorId);
-        const hseUser = users.find(u => u.role === 'HSE');
-        if (hseUser) recipients.add(hseUser.id);
-        const now = new Date().toISOString();
-        const newIncidentRef = push(ref(rtdb, 'incidentReports'));
-        const newIncident: Omit<IncidentReport, 'id'> = {
-            ...incidentData,
-            reporterId: user.id,
-            reportTime: now,
-            incidentTime: now,
-            projectId: incidentData.projectId,
-            unitArea: incidentData.unitArea,
-            incidentDetails: incidentData.incidentDetails,
-            status: 'New',
-            isPublished: false,
-            comments: [{ id: `inc-c-${Date.now()}`, userId: user.id, text: `Incident reported.`, date: now }],
-            reportedToUserIds: Array.from(recipients),
-            lastUpdated: now,
-            viewedBy: [user.id]
-        };
-        set(newIncidentRef, newIncident);
-    }
-  }, [user, users]);
-
-  const updateIncident = useCallback((incident: IncidentReport, commentText: string) => {
-      if (!user) return;
-      const now = new Date().toISOString();
-      const newComment: Comment = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
-      
-      const existingComments = Array.isArray(incident.comments) 
-        ? incident.comments 
-        : Object.values(incident.comments || {});
-
-      const updatedIncident = {
-          ...incident,
-          lastUpdated: now,
-          viewedBy: [user.id],
-          comments: [...existingComments, newComment]
-      };
-      
-      const { id, ...data } = updatedIncident;
-      update(ref(rtdb, `incidentReports/${id}`), data);
-  }, [user]);
-
-
-  const addIncidentComment = useCallback((incidentId: string, text: string) => {
-      if (!user) return;
-      const now = new Date().toISOString();
-      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: now };
-      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-      set(newCommentRef, newComment);
-      update(ref(rtdb, `incidentReports/${incidentId}`), { lastUpdated: now, viewedBy: [user.id] });
-  }, [user]);
-
-  const publishIncident = useCallback((incidentId: string, commentText: string) => {
-      if (!user) return;
-      const now = new Date().toISOString();
-      const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
-      const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-      set(newCommentRef, newComment);
-      update(ref(rtdb, `incidentReports/${incidentId}`), { isPublished: true, lastUpdated: now, viewedBy: [user.id] });
-  }, [user]);
-
-  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], commentText: string) => {
-    if (!user) return;
-    const now = new Date().toISOString();
-    const newComment: Omit<Comment, 'id'> = { id: `inc-c-${Date.now()}`, userId: user.id, text: commentText, date: now };
-    const incident = incidentReports.find(i => i.id === incidentId);
-    if (!incident) return;
-    const updatedUserIds = [...new Set([...(incident.reportedToUserIds || []), ...userIds])];
-    
-    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    set(newCommentRef, newComment);
-    update(ref(rtdb, `incidentReports/${incidentId}`), { reportedToUserIds: updatedUserIds, lastUpdated: now, viewedBy: [user.id] });
-  }, [user, incidentReports]);
-  
-  const markIncidentAsViewed = useCallback((incidentId: string) => {
-      if (!user) return;
-      const incident = incidentReports.find(i => i.id === incidentId);
-      if (incident && !incident.viewedBy.includes(user.id)) {
-          update(ref(rtdb, `incidentReports/${incidentId}`), { viewedBy: [...incident.viewedBy, user.id] });
-      }
-  }, [user, incidentReports]);
-
   const saveJobSchedule = useCallback((schedule: JobSchedule) => {
     if (!user) return;
     const scheduleRef = ref(rtdb, `jobSchedules/${schedule.id}`);
@@ -2300,6 +2399,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subTotal: purchase.subTotal,
         totalTax: purchase.totalTax,
         grandTotal: purchase.grandTotal,
+        durationFrom: purchase.durationFrom,
+        durationTo: purchase.durationTo,
+        emailSentDate: purchase.emailSentDate,
         poNumber: '',
     };
     
@@ -2349,374 +2451,132 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newRecord);
     addActivityLog(user.id, 'IGP/OGP Record Added', `MRN: ${record.mrnNumber}`);
   }, [user, addActivityLog]);
+  
+  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+  }, []);
 
-  const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
+  const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
     if (!user) return;
-    const profile = manpowerProfiles.find(p => p.id === manpowerId);
-    if (!profile) return;
-
-    const updates: { [key: string]: any } = {};
-
-    const newHistoryItem: PpeHistoryRecord = { ...record, id: `ppe-hist-${Date.now()}` };
-    const updatedPpeHistory = [...(profile.ppeHistory || []), newHistoryItem];
-    updates[`/manpowerProfiles/${manpowerId}/ppeHistory`] = updatedPpeHistory;
-
-    // Deduct from stock
-    if (record.ppeType === 'Coverall') {
-      const coverallStock = ppeStock.find(s => s.id === 'coveralls');
-      if (coverallStock && coverallStock.sizes) {
-          const currentSizeStock = coverallStock.sizes[record.size] || 0;
-          const quantityToDeduct = record.quantity || 1;
-          const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
-          updates[`/ppeStock/coveralls/sizes/${record.size}`] = newSizeStock;
+    const newIncidentRef = push(ref(rtdb, 'incidentReports'));
+    
+    const supervisors = new Set<string>();
+    if (user.supervisorId) supervisors.add(user.supervisorId);
+    
+    users.forEach(u => {
+      if (u.role === 'HSE' || (u.supervisorId === user.supervisorId && u.role === 'Supervisor')) {
+        supervisors.add(u.id);
       }
-    } else if (record.ppeType === 'Safety Shoes') {
-        const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
-        if (shoeStock && shoeStock.quantity) {
-            const newQuantity = Math.max(0, shoeStock.quantity - 1);
-            updates[`/ppeStock/safetyShoes/quantity`] = newQuantity;
-        }
-    }
-    
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'PPE History Added', `Added ${record.ppeType} for ${profile.name}`);
-  }, [user, addActivityLog, manpowerProfiles, ppeStock]);
+    });
 
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-    const findProfile = (name: string) => {
-        const normalizedName = normalize(name);
-        return manpowerProfiles.find(p => normalize(p.name) === normalizedName);
+    const newIncident: Omit<IncidentReport, 'id'> = {
+      ...incidentData,
+      reporterId: user.id,
+      reportTime: new Date().toISOString(),
+      status: 'New',
+      isPublished: false,
+      reportedToUserIds: Array.from(supervisors),
+      comments: [{ id: 'comm-1', userId: user.id, text: 'Incident reported.', date: new Date().toISOString() }],
+      lastUpdated: new Date().toISOString(),
+      viewedBy: [user.id],
     };
 
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-    const coverallsStockUpdates: { [size: string]: number } = {};
-    
-    for (const row of data) {
-      const employeeName = row['Employee Name'];
-      const size = row['Size']?.toString().toUpperCase();
-      const dateValue = row['Date'];
-      
-      if (!employeeName || !size || !dateValue) continue;
+    set(newIncidentRef, newIncident);
+    addActivityLog(user.id, 'Incident Reported');
+  }, [user, users, addActivityLog]);
 
-      const profile = findProfile(employeeName);
-      
-      if (profile) {
-        let parsedDate: Date | null = null;
-        if (dateValue instanceof Date && isValid(dateValue)) {
-            parsedDate = dateValue;
-        } else if (typeof dateValue === 'string') {
-            parsedDate = parse(dateValue, 'dd-MM-yyyy', new Date());
-            if (!isValid(parsedDate)) {
-                parsedDate = parseISO(dateValue);
-            }
-        } else if (typeof dateValue === 'number') { // Handle Excel date serial numbers
-            const excelEpoch = new Date(1899, 11, 30);
-            parsedDate = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        }
-
-        if (!parsedDate || !isValid(parsedDate)) {
-            console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
-            notFoundCount++;
-            continue;
-        }
-
-        const issueDate = parsedDate.toISOString();
-
-        const newHistoryItem: PpeHistoryRecord = {
-          id: `ppe-hist-import-${Date.now()}-${importedCount}`,
-          ppeType: 'Coverall',
-          size,
-          quantity: 1,
-          issueDate,
-          requestType: 'New', // Default for imported records
-          issuedById: user.id,
-        };
-
-        const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : [];
-        updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newHistoryItem];
-        
-        coverallsStockUpdates[size] = (coverallsStockUpdates[size] || 0) + 1;
-        
-        importedCount++;
-      } else {
-        notFoundCount++;
-      }
-    }
-    
-    const coverallsStock = ppeStock.find(s => s.id === 'coveralls');
-    if (coverallsStock) {
-        const currentSizes = coverallsStock.sizes || {};
-        for (const size in coverallsStockUpdates) {
-            currentSizes[size] = (currentSizes[size] || 0) - coverallsStockUpdates[size];
-            if (currentSizes[size] < 0) currentSizes[size] = 0;
-        }
-        updates['/ppeStock/coveralls/sizes'] = currentSizes;
-    }
-    
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} records. ${notFoundCount} names not found.`);
-    }
-
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
-  
-
-  // Computed Values for Notifications
-  const pendingTaskApprovalCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(task => task.status === 'Pending Approval' && task.approverId === user.id).length;
-  }, [tasks, user]);
-
-  const myNewTaskCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(task => {
-        const isParticipant = task.participants?.includes(user.id);
-        const hasUnreadUpdate = !(task.viewedBy || []).includes(user.id);
-        return !!isParticipant && hasUnreadUpdate;
-    }).length;
-  }, [tasks, user]);
-
-  const myPendingTaskRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(task => {
-        const isMySubmittedTask = task.assigneeId === user.id && task.status === 'Pending Approval';
-        const isReturnedToMe = task.assigneeId === user.id && task.approvalState === 'returned';
-        return isMySubmittedTask || isReturnedToMe;
-    }).length;
-  }, [tasks, user]);
-  
-  const myFulfilledEquipmentCertRequests = useMemo(() => {
-    if (!user) return [];
-    return certificateRequests.filter(req => 
-      req.requesterId === user.id && 
-      req.status === 'Completed' && 
-      (req.utMachineId || req.dftMachineId)
-    );
-  }, [certificateRequests, user]);
-  
-  const pendingStoreCertRequestCount = useMemo(() => {
-    if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
-    if (!storeRoles.includes(user.role)) return 0;
-    return certificateRequests.filter(req => req.status === 'Pending' && req.itemId).length;
-  }, [certificateRequests, user]);
-
-  const pendingEquipmentCertRequestCount = useMemo(() => {
-    if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
-    if (!storeRoles.includes(user.role)) return 0;
-    return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId)).length;
-  }, [certificateRequests, user]);
-
-  const myFulfilledStoreCertRequestCount = useMemo(() => {
-      if (!user) return 0;
-      return certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && !r.viewedByRequester && r.itemId).length;
-  }, [certificateRequests, user]);
-
-  const unreadPlannerCommentDays = useMemo(() => {
-    if (!user) return [];
-    return dailyPlannerComments
-        .filter(dpc => {
-             const plannerUserId = dpc.id.split('_')[1];
-             return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
-        })
-        .map(dpc => dpc.id);
-  }, [dailyPlannerComments, user]);
-
-  const plannerNotificationCount = useMemo(() => {
-    if (!user) return 0;
-    const myUnreadComments = dailyPlannerComments.filter(dpc => {
-      const plannerUserId = dpc.plannerUserId;
-      // Notify me if a comment is on my planner and I haven't seen it yet.
-      return plannerUserId === user.id && !dpc.viewedBy?.includes(user.id);
-    });
-    return myUnreadComments.length;
-  }, [dailyPlannerComments, user]);
-
-  const pendingInternalRequestCount = useMemo(() => {
-    if (!user) return 0;
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
-    if (!storeRoles.includes(user.role)) {
-        return 0;
-    }
-    return internalRequests.filter(r => r.status === 'Pending').length;
-  }, [internalRequests, user]);
-
-  const updatedInternalRequestCount = useMemo(() => (user ? internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [internalRequests, user]);
-  const pendingManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length : 0), [managementRequests, user]);
-  const updatedManagementRequestCount = useMemo(() => (user ? managementRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length : 0), [managementRequests, user]);
-  
-  const onLeaveManpowerCount = useMemo(() => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    let totalLeave = 0;
-    projects.forEach(project => {
-        const latestLogForProjectDay = manpowerLogs
-            .filter(log => log.date === todayStr && log.projectId === project.id)
-            .sort((a,b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime())[0];
-        
-        if (latestLogForProjectDay) {
-            totalLeave += (latestLogForProjectDay.countOnLeave || 0);
-        }
-    });
-    return totalLeave;
-  }, [manpowerLogs, projects]);
-
-  const workingManpowerCount = useMemo(() => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const yesterdayStr = format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd');
-
-    const projectTotals = new Map<string, number>();
-
-    projects.forEach(project => {
-        const logsForProjectBeforeToday = manpowerLogs
-            .filter(l => l.projectId === project.id && l.date <= yesterdayStr)
-            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        let startingCount = 0;
-        if(logsForProjectBeforeToday.length > 0) {
-          startingCount = logsForProjectBeforeToday[0].total || 0;
-        }
-        
-        const logsForProjectToday = manpowerLogs
-            .filter(l => l.projectId === project.id && l.date === todayStr)
-            .sort((a, b) => new Date(b.updatedBy).getTime() - new Date(a.updatedBy).getTime());
-        
-        const latestLogToday = logsForProjectToday[0];
-
-        if (latestLogToday) {
-            projectTotals.set(project.id, latestLogToday.total);
-        } else {
-            projectTotals.set(project.id, startingCount);
-        }
-    });
-
-    return Array.from(projectTotals.values()).reduce((sum, count) => sum + count, 0);
-  }, [manpowerLogs, projects]);
-  
-  const incidentNotificationCount = useMemo(() => {
-    if (!user) return 0;
-    const myIncidents = incidentReports.filter(i => {
-        const isParticipant = i.reporterId === user.id || (i.reportedToUserIds || []).includes(user.id);
-        return i.isPublished || isParticipant;
-    });
-    return myIncidents.filter(i => !i.viewedBy.includes(user.id)).length;
-  }, [incidentReports, user]);
-
-  const pendingPpeRequestCount = useMemo(() => {
-    if (!user) return 0;
-    // For Managers
-    if (user.role === 'Manager' || user.role === 'Admin') {
-      return ppeRequests.filter(r => r.status === 'Pending').length;
-    }
-    // For Store Personnel
-    const storeRoles = ['Store in Charge', 'Assistant Store Incharge'];
-    if (storeRoles.includes(user.role)) {
-      return ppeRequests.filter(r => r.status === 'Approved').length;
-    }
-    return 0;
-  }, [ppeRequests, user]);
-
-  const updatedPpeRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return ppeRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester).length;
-  }, [ppeRequests, user]);
-
-  const markManagementRequestAsViewed = useCallback((requestId: string) => {
+  const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
     if (!user) return;
-    const request = managementRequests.find(r => r.id === requestId);
-    if (request && request.requesterId === user.id && !request.viewedByRequester) {
-      update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
-    }
-  }, [user, managementRequests]);
+    const { id, ...data } = incident;
 
-  const markPpeRequestAsViewed = useCallback((requestId: string) => {
-    if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (request && request.requesterId === user.id && !request.viewedByRequester) {
-      update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
-    }
-  }, [user, ppeRequests]);
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(incident.comments) ? incident.comments : (incident.comments ? Object.values(incident.comments) : []);
+
+    const updates = {
+      ...data,
+      comments: [...existingComments, newComment],
+      lastUpdated: new Date().toISOString(),
+      viewedBy: [user.id],
+    };
+    
+    update(ref(rtdb, `incidentReports/${id}`), updates);
+    addActivityLog(user.id, 'Incident Updated', `Incident ID: ${id}`);
+  }, [user, addActivityLog]);
   
-  const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
     if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (!request) return;
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text, date: new Date().toISOString() };
+    const existingComments = Array.isArray(incident.comments) ? incident.comments : (incident.comments ? Object.values(incident.comments) : []);
+    
+    update(ref(rtdb, `incidentReports/${incidentId}`), {
+      comments: [...existingComments, newComment],
+      lastUpdated: new Date().toISOString(),
+      viewedBy: [user.id]
+    });
+  }, [user, incidentReports]);
 
-    const newComment: Comment = { id: `ppe-comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
-    
-    const updates: { [key: string]: any } = {};
-    updates[`ppeRequests/${requestId}/status`] = status;
-    updates[`ppeRequests/${requestId}/approverId`] = user.id;
-    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-    
-    if (comment.trim() || status === 'Approved') { // Add comment if provided or if it's an approval
-        updates[`ppeRequests/${requestId}/comments`] = [...existingComments, newComment];
-    }
-    
-    if (status === 'Issued') {
-        const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
-        if (manpowerProfile) {
-            const ppeHistoryItem: Partial<PpeHistoryRecord> = {
-                id: `ppe-hist-${Date.now()}`,
-                ppeType: request.ppeType,
-                size: request.size,
-                issueDate: new Date().toISOString(),
-                requestType: request.requestType,
-                remarks: request.remarks,
-                storeComment: comment,
-                requestId: request.id,
-                issuedById: user.id,
-                approverId: request.approverId,
-            };
-            if (request.ppeType === 'Coverall') {
-              ppeHistoryItem.quantity = request.quantity;
-            }
-            const updatedPpeHistory = [...(manpowerProfile.ppeHistory || []), ppeHistoryItem];
-            updates[`manpowerProfiles/${request.manpowerId}/ppeHistory`] = updatedPpeHistory;
-        }
-        
-        // Deduct from stock
-        if (request.ppeType === 'Coverall') {
-            const coverallStock = ppeStock.find(s => s.id === 'coveralls');
-            if (coverallStock && coverallStock.sizes) {
-                const currentSizeStock = coverallStock.sizes[request.size] || 0;
-                const quantityToDeduct = request.quantity || 1;
-                const newSizeStock = Math.max(0, currentSizeStock - quantityToDeduct);
-                updates[`ppeStock/coveralls/sizes/${request.size}`] = newSizeStock;
-            }
-        } else if (request.ppeType === 'Safety Shoes') {
-            const shoeStock = ppeStock.find(s => s.id === 'safetyShoes');
-            if (shoeStock && shoeStock.quantity) {
-                const newQuantity = Math.max(0, shoeStock.quantity - 1);
-                updates[`ppeStock/safetyShoes/quantity`] = newQuantity;
-            }
-        }
-    }
+  const publishIncident = useCallback((incidentId: string, comment: string) => {
+    if (!user || user.role !== 'Admin') return;
+    addIncidentComment(incidentId, comment);
+    update(ref(rtdb, `incidentReports/${incidentId}`), { isPublished: true, viewedBy: [user.id] });
+    addActivityLog(user.id, 'Incident Published', `Incident ID: ${incidentId}`);
+  }, [user, addActivityLog, addIncidentComment]);
 
-    update(ref(rtdb), updates);
-  }, [user, ppeRequests, manpowerProfiles, ppeStock]);
+  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
+    if (!user) return;
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+    addIncidentComment(incidentId, comment);
+    const updatedParticipants = Array.from(new Set([...(incident.reportedToUserIds || []), ...userIds]));
+    update(ref(rtdb, `incidentReports/${incidentId}`), { reportedToUserIds: updatedParticipants, viewedBy: [user.id] });
+  }, [user, incidentReports, addIncidentComment]);
   
-  const pendingPaymentApprovalCount = useMemo(() => {
-    if (user?.role !== 'Manager') return 0;
-    return payments.filter(p => p.status === 'Pending').length;
-  }, [user, payments]);
+  const markIncidentAsViewed = useCallback((incidentId: string) => {
+    if (!user) return;
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (incident && !incident.viewedBy.includes(user.id)) {
+      update(ref(rtdb, `incidentReports/${incidentId}`), { viewedBy: [...incident.viewedBy, user.id] });
+    }
+  }, [user, incidentReports]);
 
-  const pendingPasswordResetRequestCount = useMemo(() => {
-    if (!can.manage_password_resets) return 0;
-    return passwordResetRequests.filter(r => r.status === 'pending').length;
-  }, [can.manage_password_resets, passwordResetRequests]);
+  const computedValue = useMemo(() => {
+    if (!user) {
+      return { pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0 };
+    }
+    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.status === 'Pending Approval').length;
+    const myNewTaskCount = tasks.filter(t => t.assigneeIds.includes(user.id) && !(t.viewedBy || []).includes(user.id)).length;
+    const myPendingTaskRequestCount = tasks.filter(t => t.assigneeId === user.id && (t.status === 'Pending Approval' || t.approvalState === 'returned')).length;
+    const myFulfilledStoreCertRequestCount = certificateRequests.filter(req => req.requesterId === user.id && !!req.itemId && req.status === 'Completed' && !req.viewedByRequester).length;
+    const myFulfilledEquipmentCertRequests = certificateRequests.filter(req => req.requesterId === user.id && (!!req.utMachineId || !!req.dftMachineId) && req.status === 'Completed' && !req.viewedByRequester);
+    const workingManpowerCount = manpowerProfiles.filter(p => p.status === 'Working').length;
+    const onLeaveManpowerCount = manpowerProfiles.filter(p => p.status === 'On Leave').length;
+    const pendingStoreCertRequestCount = can.manage_inventory ? certificateRequests.filter(req => req.status === 'Pending' && !!req.itemId).length : 0;
+    const pendingEquipmentCertRequestCount = can.manage_equipment_status ? certificateRequests.filter(req => req.status === 'Pending' && (!!req.utMachineId || !!req.dftMachineId)).length : 0;
+    const unreadPlannerCommentDays = dailyPlannerComments
+        .filter(dpc => dpc.plannerUserId === user.id && !(dpc.viewedBy || []).includes(user.id))
+        .map(dpc => dpc.day);
+    const plannerNotificationCount = unreadPlannerCommentDays.length;
+    const pendingInternalRequestCount = can.approve_store_requests ? internalRequests.filter(r => r.status === 'Pending').length : 0;
+    const updatedInternalRequestCount = internalRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester && r.status !== 'Pending').length;
+    const isManager = user.role === 'Manager' || user.role === 'Admin';
+    const pendingManagementRequestCount = managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length;
+    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester && r.status !== 'Pending').length;
+    const incidentNotificationCount = incidentReports.filter(i => i.reportedToUserIds.includes(user.id) && !i.viewedBy.includes(user.id)).length;
+    const pendingPpeRequestCount = isManager ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
+    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester && r.status !== 'Pending').length;
+    const pendingPaymentApprovalCount = isManager ? payments.filter(p => p.status === 'Pending').length : 0;
+    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
+
+    return { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount };
+  }, [user, tasks, certificateRequests, manpowerProfiles, can.manage_inventory, can.manage_equipment_status, dailyPlannerComments, internalRequests, can.approve_store_requests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, can.manage_password_resets]);
+
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, appName, appLogo,
     login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addPpeHistoryFromExcel,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledStoreCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount,
+    ...computedValue,
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
@@ -2746,4 +2606,13 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+
+
+
+
+
+
+
+
 

@@ -35,7 +35,15 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     rejoiningDate,
     lastIssueDate,
     stockInfo,
+    eligibility,
   } = ppeData;
+
+  const eligibilityHtml = eligibility ? `
+    <p style="margin-top: 20px; padding: 10px; border-left: 4px solid ${eligibility.eligible ? '#28a745' : '#dc3545'}; background-color: #f8f9fa;">
+      <strong style="color: ${eligibility.eligible ? '#28a745' : '#dc3545'};">Eligibility Status: ${eligibility.eligible ? 'Eligible' : 'Not Eligible'}</strong><br>
+      ${eligibility.reason}
+    </p>
+  ` : '';
 
   const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
   const htmlBody = `
@@ -52,6 +60,8 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
         <strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}<br>
         <strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span>
       </p>
+
+      ${eligibilityHtml}
 
       <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
       

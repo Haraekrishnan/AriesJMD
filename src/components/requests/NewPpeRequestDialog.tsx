@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,10 +11,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ChevronsUpDown, Paperclip, Upload, X } from 'lucide-react';
+import { ChevronsUpDown, Paperclip, Upload, X, AlertCircle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import { isAfter, addYears, format, parseISO } from 'date-fns';
+import { PpeHistoryRecord } from '@/lib/types';
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
@@ -63,6 +65,42 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     }
   }, [manpowerId, ppeType, manpowerProfiles, form]);
 
+  const eligibility = useMemo(() => {
+    if (!manpowerId || !ppeType) return null;
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return null;
+
+    const history = (profile.ppeHistory || []).filter(h => h.ppeType === ppeType)
+      .sort((a, b) => new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime());
+
+    if (history.length === 0) {
+      return { eligible: true, reason: 'Eligible for initial issue.' };
+    }
+
+    if (ppeType === 'Safety Shoes') {
+      const lastIssue = history[history.length - 1];
+      const nextEligibleDate = addYears(new Date(lastIssue.issueDate), 1);
+      if (isAfter(new Date(), nextEligibleDate)) {
+        return { eligible: true, reason: 'Eligible for replacement (1 year passed).' };
+      }
+      return { eligible: false, reason: `Not eligible until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+    }
+
+    if (ppeType === 'Coverall') {
+      if (history.length < 2) {
+        return { eligible: true, reason: 'Eligible for initial set.' };
+      }
+      const oldestIssue = history[0];
+      const nextEligibleDate = addYears(new Date(oldestIssue.issueDate), 1);
+      if (isAfter(new Date(), nextEligibleDate)) {
+        return { eligible: true, reason: `Eligible for replacement of coverall issued on ${format(parseISO(oldestIssue.issueDate), 'dd MMM, yyyy')}.` };
+      }
+      return { eligible: false, reason: `Not eligible until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+    }
+
+    return null;
+  }, [manpowerId, ppeType, manpowerProfiles]);
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -99,7 +137,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   };
 
   const onSubmit = (data: PpeRequestFormValues) => {
-    addPpeRequest(data);
+    addPpeRequest({ ...data, eligibility });
     toast({
       title: 'PPE Request Submitted',
       description: 'Your request has been submitted to the manager for approval.',
@@ -198,14 +236,22 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 )}/>
             </div>
 
+          {eligibility && (
+            <Alert variant={eligibility.eligible ? "default" : "destructive"}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
+                <AlertDescription>{eligibility.reason}</AlertDescription>
+            </Alert>
+          )}
+
           {requestType === 'Replacement' && (
             <div className="space-y-2">
               <Label>Attach Photo of Damaged Item</Label>
-              {attachmentFile ? (
+              {form.getValues('attachmentUrl') || attachmentFile ? (
                  <div className="flex items-center justify-between p-2 rounded-md border text-sm">
                     <div className="flex items-center gap-2 truncate">
                       <Paperclip className="h-4 w-4"/>
-                      <span className="truncate">{attachmentFile.name}</span>
+                      <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
                       <X className="h-4 w-4"/>

@@ -1,3 +1,5 @@
+
+
 export type IgpOgpItem = {
   id: string;
   itemName: string;
@@ -458,6 +460,10 @@ export type PpeRequest = {
   comments: Comment[];
   viewedByRequester: boolean;
   attachmentUrl?: string;
+  eligibility?: {
+    eligible: boolean;
+    reason: string;
+  } | null;
 };
 
 
