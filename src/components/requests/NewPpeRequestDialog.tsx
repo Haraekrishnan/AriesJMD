@@ -71,31 +71,32 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     if (!profile) return null;
 
     const history = (profile.ppeHistory || []).filter(h => h.ppeType === ppeType)
-      .sort((a, b) => new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime());
-
-    if (history.length === 0) {
-      return { eligible: true, reason: 'Eligible for initial issue.' };
-    }
+      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+    
+    const lastIssue = history[0];
 
     if (ppeType === 'Safety Shoes') {
-      const lastIssue = history[history.length - 1];
-      const nextEligibleDate = addYears(new Date(lastIssue.issueDate), 1);
-      if (isAfter(new Date(), nextEligibleDate)) {
-        return { eligible: true, reason: 'Eligible for replacement (1 year passed).' };
-      }
-      return { eligible: false, reason: `Not eligible until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+        if (!lastIssue) {
+            return { eligible: true, reason: 'Eligible for initial issue.' };
+        }
+        const nextEligibleDate = addYears(new Date(lastIssue.issueDate), 1);
+        if (isAfter(new Date(), nextEligibleDate)) {
+            return { eligible: true, reason: 'Eligible for replacement (1 year passed).' };
+        }
+        return { eligible: false, reason: `Not eligible until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
     }
 
     if (ppeType === 'Coverall') {
-      if (history.length < 2) {
-        return { eligible: true, reason: 'Eligible for initial set.' };
-      }
-      const oldestIssue = history[0];
-      const nextEligibleDate = addYears(new Date(oldestIssue.issueDate), 1);
-      if (isAfter(new Date(), nextEligibleDate)) {
-        return { eligible: true, reason: `Eligible for replacement of coverall issued on ${format(parseISO(oldestIssue.issueDate), 'dd MMM, yyyy')}.` };
-      }
-      return { eligible: false, reason: `Not eligible until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+        const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
+        if (!baselineDateStr) {
+            return { eligible: false, reason: 'Joining date not set. Cannot determine eligibility.' };
+        }
+        const baselineDate = parseISO(baselineDateStr);
+        const nextEligibleDate = addYears(baselineDate, 1);
+        if (isAfter(new Date(), nextEligibleDate)) {
+            return { eligible: true, reason: `Eligible for new coverall. Last was issued on ${format(baselineDate, 'dd MMM, yyyy')}.` };
+        }
+        return { eligible: false, reason: `Next eligibility is on ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
     }
 
     return null;
