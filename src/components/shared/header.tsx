@@ -44,18 +44,6 @@ const MobileSidebar = () => {
   
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b">
-          <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-8 w-8">
-                  {appLogo ? (
-                    <img src={appLogo} alt={appName} className="h-full w-full object-contain" />
-                  ) : (
-                    <Ship className="h-8 w-8 text-primary" />
-                  )}
-              </div>
-              <h1 className="text-xl font-bold">{appName}</h1>
-          </Link>
-        </div>
         <ScrollArea className="flex-1 px-2">
           <ul className="space-y-1 p-2">
             {navItems.map(item => (
@@ -102,7 +90,7 @@ const MobileSidebar = () => {
 
 
 export default function Header() {
-  const { user, roles } = useAppContext();
+  const { user, roles, appName, appLogo } = useAppContext();
   const pathname = usePathname();
   
   const getPageTitle = () => {
@@ -123,6 +111,20 @@ export default function Header() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="flex flex-col p-0 bg-card text-card-foreground w-64 border-r">
+             <SheetHeader className="p-4 border-b">
+                <SheetTitle>
+                    <Link href="/dashboard" className="flex items-center gap-3">
+                        <div className="flex items-center justify-center h-8 w-8">
+                            {appLogo ? (
+                                <img src={appLogo} alt={appName} className="h-full w-full object-contain" />
+                            ) : (
+                                <Ship className="h-8 w-8 text-primary" />
+                            )}
+                        </div>
+                        <h1 className="text-xl font-bold">{appName}</h1>
+                    </Link>
+                </SheetTitle>
+             </SheetHeader>
              <MobileSidebar />
           </SheetContent>
         </Sheet>
