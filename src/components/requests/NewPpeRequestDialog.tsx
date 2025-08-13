@@ -73,20 +73,21 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const isNewEmployee = useMemo(() => {
     if (!manpowerId) return false;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
-    if (!profile?.joiningDate) return true; // Treat as new if no joining date
+    if (!profile?.joiningDate) return true; // No joining date, treat as new
     const joiningDate = parseISO(profile.joiningDate);
-    return isToday(joiningDate) || isFuture(joiningDate);
+    const cutoffDate = new Date('2025-08-01T00:00:00.000Z');
+    return isAfter(joiningDate, cutoffDate);
   }, [manpowerId, manpowerProfiles]);
 
   const eligibility = useMemo(() => {
     if (!manpowerId || !ppeType) return null;
-    const profile = manpowerProfiles.find(p => p.id === manpowerId);
-    if (!profile) return null;
-
-    if (isNewEmployee) {
+    if (isNewEmployee && requestType === 'New') {
         return { eligible: true, reason: 'Eligible for initial issue as a new employee.' };
     }
     
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return null;
+
     const history = (profile.ppeHistory || [])
       .filter(h => h.ppeType === ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
@@ -106,11 +107,13 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     } else {
         return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
     }
-  }, [manpowerId, ppeType, isNewEmployee, manpowerProfiles]);
-
+  }, [manpowerId, ppeType, isNewEmployee, requestType, manpowerProfiles]);
+  
   const showJustificationField = useMemo(() => {
-    return eligibility?.eligible === false;
-  }, [eligibility]);
+    if (eligibility?.eligible === false) return true;
+    if (!isNewEmployee && requestType === 'New') return true;
+    return false;
+  }, [eligibility, isNewEmployee, requestType]);
 
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,7 +153,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
   const onSubmit = (data: PpeRequestFormValues) => {
     if (showJustificationField && !data.newRequestJustification?.trim()) {
-        form.setError("newRequestJustification", { type: "manual", message: "Justification is required for a non-eligible request." });
+        form.setError("newRequestJustification", { type: "manual", message: "Justification is required for this request." });
         return;
     }
 
@@ -263,8 +266,8 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
             {showJustificationField && (
                 <div className="space-y-2">
-                    <Label htmlFor="newRequestJustification">Justification for Non-Eligible Request</Label>
-                    <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed urgently despite eligibility status." />
+                    <Label htmlFor="newRequestJustification">Justification for Request</Label>
+                    <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed." />
                     {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
                 </div>
             )}
