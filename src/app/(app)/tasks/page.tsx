@@ -48,8 +48,8 @@ export default function TasksPage() {
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        const isMySubmittedTask = task.assigneeId === user.id && task.status === 'Pending Approval';
-        const isReturnedToMe = task.assigneeId === user.id && task.approvalState === 'returned';
+        const isMySubmittedTask = task.assigneeIds?.includes(user.id) && task.status === 'Pending Approval';
+        const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
         return isMySubmittedTask || isReturnedToMe;
     });
   }, [tasks, user]);
