@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight } from 'lucide-react';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -24,7 +24,7 @@ import { Badge } from '../ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { TransferList } from '../ui/transfer-list';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -281,13 +281,50 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         control={form.control}
                         name="assigneeIds"
                         render={({ field }) => (
-                           <TransferList
-                                options={assignableUsers}
-                                selected={field.value}
-                                onChange={field.onChange}
-                                availableTitle="Available Users"
-                                selectedTitle="Selected Assignees"
-                            />
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-start h-auto min-h-10" disabled={!canReassign}>
+                                <div className="flex flex-wrap gap-1">
+                                    {field.value.length > 0 ? (
+                                    field.value.map(id => {
+                                        const user = assignableUsers.find(u => u.value === id);
+                                        return <Badge key={id} variant="secondary">{user?.label}</Badge>
+                                    })
+                                    ) : (
+                                    <span className="text-muted-foreground">Select assignees...</span>
+                                    )}
+                                </div>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                <CommandInput placeholder="Search users..." />
+                                <CommandList>
+                                    <CommandEmpty>No users found.</CommandEmpty>
+                                    <CommandGroup>
+                                    {assignableUsers.map(option => {
+                                        const isSelected = field.value.includes(option.value);
+                                        return (
+                                        <CommandItem
+                                            key={option.value}
+                                            onSelect={() => {
+                                            if (isSelected) {
+                                                field.onChange(field.value.filter(id => id !== option.value));
+                                            } else {
+                                                field.onChange([...field.value, option.value]);
+                                            }
+                                            }}
+                                        >
+                                            <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                            {option.label}
+                                        </CommandItem>
+                                        );
+                                    })}
+                                    </CommandGroup>
+                                </CommandList>
+                                </Command>
+                            </PopoverContent>
+                            </Popover>
                         )}
                     />
                      {form.formState.errors.assigneeIds && <p className="text-xs text-destructive">{form.formState.errors.assigneeIds.message}</p>}

@@ -20,9 +20,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Check, ChevronsUpDown } from 'lucide-react';
 import type { Role, User } from '@/lib/types';
-import { TransferList } from '../ui/transfer-list';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Badge } from '../ui/badge';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -98,19 +100,56 @@ export default function CreateTaskDialog() {
 
           <div className="space-y-2">
               <Label>Assignees</Label>
-              <Controller
-                control={form.control}
-                name="assigneeIds"
-                render={({ field }) => (
-                  <TransferList
-                    options={assignableUsers}
-                    selected={field.value}
-                    onChange={field.onChange}
-                    availableTitle="Available Users"
-                    selectedTitle="Selected Assignees"
-                  />
-                )}
-              />
+                <Controller
+                  control={form.control}
+                  name="assigneeIds"
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-start h-auto min-h-10">
+                          <div className="flex flex-wrap gap-1">
+                            {field.value.length > 0 ? (
+                              field.value.map(id => {
+                                const user = assignableUsers.find(u => u.value === id);
+                                return <Badge key={id} variant="secondary">{user?.label}</Badge>
+                              })
+                            ) : (
+                              <span className="text-muted-foreground">Select assignees...</span>
+                            )}
+                          </div>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search users..." />
+                          <CommandList>
+                            <CommandEmpty>No users found.</CommandEmpty>
+                            <CommandGroup>
+                              {assignableUsers.map(option => {
+                                const isSelected = field.value.includes(option.value);
+                                return (
+                                  <CommandItem
+                                    key={option.value}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        field.onChange(field.value.filter(id => id !== option.value));
+                                      } else {
+                                        field.onChange([...field.value, option.value]);
+                                      }
+                                    }}
+                                  >
+                                    <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                    {option.label}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
               {form.formState.errors.assigneeIds && <p className="text-xs text-destructive">{form.formState.errors.assigneeIds.message}</p>}
             </div>
 
