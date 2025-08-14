@@ -339,38 +339,40 @@ export default function EquipmentStatusPage() {
                 </CardContent>
                 {activeDaysDateRange?.from && (
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Machine Name</TableHead>
-                                    <TableHead>Serial Number</TableHead>
-                                    <TableHead className="text-right">Total Active Days</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {activeDaysSummary.length > 0 ? (
-                                    activeDaysSummary.map(item => (
-                                        <TableRow key={item.id}>
-                                            <TableCell>{item.name}</TableCell>
-                                            <TableCell>{item.serialNumber}</TableCell>
-                                            <TableCell className="text-right font-bold">{item.activeDays}</TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center text-muted-foreground">
-                                            No active days recorded for selected machines in this period.
-                                        </TableCell>
+                                        <TableHead>Machine Name</TableHead>
+                                        <TableHead>Serial Number</TableHead>
+                                        <TableHead className="text-right">Total Active Days</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {activeDaysSummary.length > 0 ? (
+                                        activeDaysSummary.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell>{item.name}</TableCell>
+                                                <TableCell>{item.serialNumber}</TableCell>
+                                                <TableCell className="text-right font-bold">{item.activeDays}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                                No active days recorded for selected machines in this period.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 )}
             </Card>
 
             <Tabs defaultValue="ut-machines" className="w-full">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-7">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
                     <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
