@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock, FileWarning, UserCog } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock, FileWarning, UserCog, Shirt } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -21,6 +21,7 @@ import ImportManpowerDialog from '@/components/manpower/ImportManpowerDialog';
 import RejoinDialog from '@/components/manpower/RejoinDialog';
 import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
 import IssueMemoDialog from '@/components/manpower/IssueMemoDialog';
+import AddPpeHistoryDialog from '@/components/manpower/AddPpeHistoryDialog';
 
 
 export default function ManpowerListPage() {
@@ -31,6 +32,7 @@ export default function ManpowerListPage() {
     const [isRejoinDialogOpen, setIsRejoinDialogOpen] = useState(false);
     const [isExtendLeaveOpen, setIsExtendLeaveOpen] = useState(false);
     const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false);
+    const [isPpeDialogOpen, setIsPpeDialogOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -202,6 +204,7 @@ export default function ManpowerListPage() {
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
                          <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Update Rejoin</Button>
                          <Button onClick={() => setIsMemoDialogOpen(true)}><FileWarning className="mr-2 h-4 w-4" /> Issue Memo</Button>
+                         <Button variant="outline" onClick={() => setIsPpeDialogOpen(true)}><Shirt className="mr-2 h-4 w-4"/> Issue PPE</Button>
                          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
                          <Button onClick={handleAdd}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -350,6 +353,13 @@ export default function ManpowerListPage() {
                         isOpen={isMemoDialogOpen}
                         setIsOpen={setIsMemoDialogOpen}
                     />
+                    {profile && (
+                        <AddPpeHistoryDialog
+                            isOpen={isPpeDialogOpen}
+                            setIsOpen={setIsPpeDialogOpen}
+                            profile={profile}
+                        />
+                    )}
                     <ImportManpowerDialog
                         isOpen={isImportDialogOpen}
                         setIsOpen={setIsImportDialogOpen}

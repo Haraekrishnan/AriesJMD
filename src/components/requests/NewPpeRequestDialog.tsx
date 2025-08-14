@@ -90,26 +90,23 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile) return null;
 
-    const history = (profile.ppeHistory || [])
+    const lastIssue = (profile.ppeHistory || [])
       .filter(h => h.ppeType === ppeType)
-      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
     
-    const lastIssue = history[0];
-    // For existing employees, if no history, their joining date is the baseline
-    // as their initial issues were given then.
+    // Prioritize last issue date. If no issue history, fall back to joining date.
     const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
     
     if (!baselineDateStr) {
-      // This case handles employees added before the system, with no joining date recorded.
-      // Treat them as not automatically eligible.
-      return { eligible: false, reason: 'Eligibility cannot be determined automatically. Joining date is missing.' };
+      return { eligible: false, reason: 'Eligibility cannot be determined. Joining date is missing and no prior issue history found.' };
     }
 
     const baselineDate = parseISO(baselineDateStr);
     const nextEligibleDate = addYears(baselineDate, 1);
+    const referencePoint = lastIssue ? 'last issue' : 'joining date';
 
     if (isAfter(new Date(), nextEligibleDate)) {
-        return { eligible: true, reason: `Eligible for replacement. Last issue or joining date was ${format(baselineDate, 'dd MMM, yyyy')}.` };
+        return { eligible: true, reason: `Eligible for replacement. The ${referencePoint} was ${format(baselineDate, 'dd MMM, yyyy')}.` };
     } else {
         return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
     }
