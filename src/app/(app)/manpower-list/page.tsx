@@ -21,7 +21,7 @@ import ImportManpowerDialog from '@/components/manpower/ImportManpowerDialog';
 import RejoinDialog from '@/components/manpower/RejoinDialog';
 import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
 import IssueMemoDialog from '@/components/manpower/IssueMemoDialog';
-import AddPpeHistoryDialog from '@/components/manpower/AddPpeHistoryDialog';
+import IssuePpeDialog from '@/components/manpower/IssuePpeDialog';
 
 
 export default function ManpowerListPage() {
@@ -353,13 +353,10 @@ export default function ManpowerListPage() {
                         isOpen={isMemoDialogOpen}
                         setIsOpen={setIsMemoDialogOpen}
                     />
-                    {profile && (
-                        <AddPpeHistoryDialog
-                            isOpen={isPpeDialogOpen}
-                            setIsOpen={setIsPpeDialogOpen}
-                            profile={profile}
-                        />
-                    )}
+                    <IssuePpeDialog
+                        isOpen={isPpeDialogOpen}
+                        setIsOpen={setIsPpeDialogOpen}
+                    />
                     <ImportManpowerDialog
                         isOpen={isImportDialogOpen}
                         setIsOpen={setIsImportDialogOpen}
@@ -377,3 +374,4 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
