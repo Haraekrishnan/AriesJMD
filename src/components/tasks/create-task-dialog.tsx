@@ -1,6 +1,4 @@
 
-
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -24,11 +22,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { PlusCircle } from 'lucide-react';
 import type { Role, User } from '@/lib/types';
+import { TransferList } from '../ui/transfer-list';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  assigneeId: z.string().min(1, 'Please select an assignee'),
+  assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
   dueDate: z.string().min(1, 'Due date is required'),
   priority: z.enum(['Low', 'Medium', 'High']),
 });
@@ -45,13 +44,13 @@ export default function CreateTaskDialog() {
     defaultValues: {
       title: '',
       description: '',
-      assigneeId: '',
+      assigneeIds: [],
       priority: 'Medium',
     },
   });
 
   const assignableUsers = useMemo(() => {
-    return getAssignableUsers();
+    return getAssignableUsers().map(u => ({ value: u.id, label: u.name }));
   }, [getAssignableUsers]);
 
   const onSubmit = (data: TaskFormValues) => {
@@ -79,7 +78,7 @@ export default function CreateTaskDialog() {
           New Task
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>Fill in the details below to create a new task.</DialogDescription>
@@ -97,49 +96,49 @@ export default function CreateTaskDialog() {
             {form.formState.errors.description && <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>}
           </div>
 
+          <div className="space-y-2">
+              <Label>Assignees</Label>
+              <Controller
+                control={form.control}
+                name="assigneeIds"
+                render={({ field }) => (
+                  <TransferList
+                    options={assignableUsers}
+                    selected={field.value}
+                    onChange={field.onChange}
+                    availableTitle="Available Users"
+                    selectedTitle="Selected Assignees"
+                  />
+                )}
+              />
+              {form.formState.errors.assigneeIds && <p className="text-xs text-destructive">{form.formState.errors.assigneeIds.message}</p>}
+            </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Assignee</Label>
-              <Controller
-                control={form.control}
-                name="assigneeId"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
-                    <SelectContent>
-                      {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                <Label>Priority</Label>
+                <Controller
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="High">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
             </div>
             <div className="space-y-2">
-              <Label>Priority</Label>
-              <Controller
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+                <Label htmlFor="dueDate">Due Date</Label>
+                <Input id="dueDate" type="date" {...form.register('dueDate')} />
+                {form.formState.errors.dueDate && <p className="text-xs text-destructive">{form.formState.errors.dueDate.message}</p>}
             </div>
           </div>
           
-          <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date</Label>
-              <Input id="dueDate" type="date" {...form.register('dueDate')} />
-              {form.formState.errors.dueDate && <p className="text-xs text-destructive">{form.formState.errors.dueDate.message}</p>}
-          </div>
-
-
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Create Task</Button>

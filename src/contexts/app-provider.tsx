@@ -93,7 +93,7 @@ type AppContextType = {
   // Functions
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
-  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeId: string }) => void;
+  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
@@ -580,9 +580,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, users, getSubordinateChain]);
 
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeIds' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeId: string }) => {
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
-    const { assigneeId, ...rest } = taskData;
+    const { assigneeIds, ...rest } = taskData;
     const tasksRef = ref(rtdb, 'tasks');
     const newTaskRef = push(tasksRef);
     const now = new Date().toISOString();
@@ -590,10 +590,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...rest,
         creatorId: user.id,
         status: 'To Do',
-        assigneeId: assigneeId,
-        assigneeIds: [assigneeId],
+        assigneeId: assigneeIds[0], // Keep first for backwards compatibility for now
+        assigneeIds: assigneeIds,
         comments: [],
-        participants: [user.id, assigneeId],
+        participants: [user.id, ...assigneeIds],
         lastUpdated: now,
         viewedBy: [user.id],
         approvalState: 'none',
@@ -601,8 +601,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         viewedByRequester: false,
     };
     set(newTaskRef, newTask);
-    const assignee = users.find(u => u.id === newTask.assigneeId);
-    addActivityLog(user.id, 'Task Created', `Task "${newTask.title}" for ${assignee?.name}`);
+    const assigneeNames = users.filter(u => assigneeIds.includes(u.id)).map(u => u.name).join(', ');
+    addActivityLog(user.id, 'Task Created', `Task "${newTask.title}" for ${assigneeNames}`);
   }, [user, users, addActivityLog]);
 
   const updateTask = useCallback((taskData: Task) => {
@@ -631,7 +631,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newCommentRef, newComment);
     
     // Update participants list and reset viewedBy
-    const updatedParticipants = Array.from(new Set([...(task.participants || [task.creatorId, task.assigneeId]), user.id]));
+    const updatedParticipants = Array.from(new Set([...(task.participants || [task.creatorId, ...task.assigneeIds]), user.id]));
     const updates: Partial<Task> = {
       participants: updatedParticipants,
       viewedBy: [user.id],
@@ -2541,7 +2541,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.status === 'Pending Approval').length;
     const myNewTaskCount = tasks.filter(t => t.assigneeIds.includes(user.id) && !(t.viewedBy || []).includes(user.id)).length;
-    const myPendingTaskRequestCount = tasks.filter(t => t.assigneeId === user.id && (t.status === 'Pending Approval' || t.approvalState === 'returned')).length;
+    const myPendingTaskRequestCount = tasks.filter(t => t.assigneeIds.includes(user.id) && (t.status === 'Pending Approval' || t.approvalState === 'returned')).length;
     const myFulfilledStoreCertRequestCount = certificateRequests.filter(req => req.requesterId === user.id && !!req.itemId && req.status === 'Completed' && !req.viewedByRequester).length;
     const myFulfilledEquipmentCertRequests = certificateRequests.filter(req => req.requesterId === user.id && (!!req.utMachineId || !!req.dftMachineId) && req.status === 'Completed' && !req.viewedByRequester);
     const workingManpowerCount = manpowerProfiles.filter(p => p.status === 'Working').length;
@@ -2600,3 +2600,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+

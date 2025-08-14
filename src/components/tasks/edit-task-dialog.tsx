@@ -24,11 +24,12 @@ import { Badge } from '../ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { TransferList } from '../ui/transfer-list';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  assigneeId: z.string().min(1, 'Assignee is required'),
+  assigneeIds: z.array(z.string()).min(1, 'At least one assignee is required'),
   dueDate: z.date({ required_error: 'Due date is required' }),
   priority: z.enum(['Low', 'Medium', 'High']),
 });
@@ -50,7 +51,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const taskToDisplay = useMemo(() => tasks.find(t => t.id === task.id) || task, [tasks, task]);
 
   const creator = useMemo(() => users.find(u => u.id === taskToDisplay.creatorId), [users, taskToDisplay.creatorId]);
-  const assignee = useMemo(() => users.find(u => u.id === taskToDisplay.assigneeId), [users, taskToDisplay.assigneeId]);
+  const assignees = useMemo(() => users.filter(u => taskToDisplay.assigneeIds?.includes(u.id)), [users, taskToDisplay.assigneeIds]);
   const pendingAssignee = useMemo(() => users.find(u => u.id === taskToDisplay.pendingAssigneeId), [users, taskToDisplay.pendingAssigneeId]);
 
 
@@ -67,7 +68,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Supervisor' || user?.role === 'HSE' || user?.role === 'Store in Charge') && (!isCompleted || isAdmin);
   
   const assignableUsers = useMemo(() => {
-    return getAssignableUsers();
+    return getAssignableUsers().map(u => ({value: u.id, label: u.name}));
   }, [getAssignableUsers]);
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       form.reset({
         title: taskToDisplay.title,
         description: taskToDisplay.description,
-        assigneeId: taskToDisplay.assigneeId,
+        assigneeIds: taskToDisplay.assigneeIds || [],
         dueDate: new Date(taskToDisplay.dueDate),
         priority: taskToDisplay.priority,
       });
@@ -148,7 +149,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const onSubmit = (data: TaskFormValues) => {
     if (!user) return;
     
-    const hasAssigneeChanged = data.assigneeId !== taskToDisplay.assigneeId;
+    const hasAssigneeChanged = JSON.stringify(data.assigneeIds.sort()) !== JSON.stringify(taskToDisplay.assigneeIds.sort());
 
     if (hasAssigneeChanged) {
         if (!newComment.trim()) {
@@ -156,10 +157,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             return;
         }
 
-        const newAssignee = users.find(u => u.id === data.assigneeId);
+        const newAssigneeId = data.assigneeIds[0];
+        const newAssignee = users.find(u => u.id === newAssigneeId);
         if (!newAssignee) return;
         
-        requestTaskReassignment(task.id, newAssignee.id, newComment);
+        requestTaskReassignment(task.id, newAssigneeId, newComment);
         toast({ title: 'Reassignment Requested', description: 'Your request has been sent for approval.' });
 
     } else { 
@@ -192,7 +194,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   }, [user, taskToDisplay]);
 
 
-  const isAssignee = user?.id === taskToDisplay.assigneeId;
+  const isAssignee = useMemo(() => user?.id && taskToDisplay.assigneeIds?.includes(user.id), [user, taskToDisplay]);
 
   const renderActionButtons = () => {
     if (taskToDisplay.status === 'Pending Approval') {
@@ -230,14 +232,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         <DialogHeader>
           <DialogTitle>Task Details: {taskToDisplay.title}</DialogTitle>
           <DialogDescription>
-            Assigned by <span className='font-semibold'>{creator?.name}</span> to <span className='font-semibold'>{assignee?.name}</span>.
+            Assigned by <span className='font-semibold'>{creator?.name}</span> to <span className='font-semibold'>{assignees.map(a => a.name).join(', ')}</span>.
           </DialogDescription>
           {taskToDisplay.status === 'Pending Approval' && taskToDisplay.pendingStatus && (
              <Alert variant="default" className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700">
                 <BellRing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertTitle className="text-blue-800 dark:text-blue-300">Status Change Request</AlertTitle>
                 <AlertDescription className="text-blue-700 dark:text-blue-400">
-                    {assignee?.name} requests to change status from <Badge variant="secondary">{taskToDisplay.previousStatus}</Badge> <ArrowRight className="inline-block h-4 w-4 mx-1" /> <Badge variant="secondary">{taskToDisplay.pendingStatus}</Badge>. Please review comments.
+                    {assignees.map(a => a.name).join(', ')} requests to change status from <Badge variant="secondary">{taskToDisplay.previousStatus}</Badge> <ArrowRight className="inline-block h-4 w-4 mx-1" /> <Badge variant="secondary">{taskToDisplay.pendingStatus}</Badge>. Please review comments.
                 </AlertDescription>
             </Alert>
           )}
@@ -274,19 +276,21 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
 
                 <div>
-                  <Label>Assignee</Label>
-                  <Controller
-                      control={form.control}
-                      name="assigneeId"
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!canReassign}>
-                            <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
-                            <SelectContent>
-                            {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                      )}
-                  />
+                  <Label>Assignee(s)</Label>
+                    <Controller
+                        control={form.control}
+                        name="assigneeIds"
+                        render={({ field }) => (
+                           <TransferList
+                                options={assignableUsers}
+                                selected={field.value}
+                                onChange={field.onChange}
+                                availableTitle="Available Users"
+                                selectedTitle="Selected Assignees"
+                            />
+                        )}
+                    />
+                     {form.formState.errors.assigneeIds && <p className="text-xs text-destructive">{form.formState.errors.assigneeIds.message}</p>}
                 </div>
                 
                 <div className='grid grid-cols-2 gap-4'>
