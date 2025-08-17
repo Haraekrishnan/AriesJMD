@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCheck, Clock, FileWarning, UserCog, Shirt } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -202,7 +202,7 @@ export default function ManpowerListPage() {
                         <>
                          <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
-                         <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCheck className="mr-2 h-4 w-4" /> Update Rejoin</Button>
+                         <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCog className="mr-2 h-4 w-4" /> Update Rejoin</Button>
                          <Button onClick={() => setIsMemoDialogOpen(true)}><FileWarning className="mr-2 h-4 w-4" /> Issue Memo</Button>
                          <Button variant="outline" onClick={() => setIsPpeDialogOpen(true)}><Shirt className="mr-2 h-4 w-4"/> Issue PPE</Button>
                          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
@@ -313,12 +313,12 @@ export default function ManpowerListPage() {
 
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div>
                             <CardTitle>All Manpower ({filteredProfiles.length})</CardTitle>
                             <CardDescription>A list of all manpower profiles in the system.</CardDescription>
                         </div>
-                        <div className="relative w-full max-w-sm">
+                        <div className="relative w-full sm:w-auto sm:max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
                                 placeholder="Search by name or file no..." 
@@ -374,4 +374,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-

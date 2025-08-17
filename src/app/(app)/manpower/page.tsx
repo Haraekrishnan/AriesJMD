@@ -31,7 +31,7 @@ export default function ManpowerPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Manpower Details</h1>
                     <p className="text-muted-foreground">Track daily manpower logs and generate reports.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                     <Button asChild variant="outline">
                         <Link href="/manpower-list">
                             <Users className="mr-2 h-4 w-4" />
@@ -96,7 +96,7 @@ export default function ManpowerPage() {
                     <CardTitle>Generate Manpower Report</CardTitle>
                     <CardDescription>Select a date range to generate downloadable reports.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row gap-4 items-center">
+                <CardContent className="flex flex-col sm:flex-row gap-4 items-center flex-wrap">
                      <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -131,8 +131,10 @@ export default function ManpowerPage() {
                           />
                         </PopoverContent>
                       </Popover>
-                      <ManpowerLogReportDownloads dateRange={reportDateRange} />
-                      <ManpowerSummaryReportDownloads dateRange={reportDateRange} />
+                      <div className="flex gap-2">
+                        <ManpowerLogReportDownloads dateRange={reportDateRange} />
+                        <ManpowerSummaryReportDownloads dateRange={reportDateRange} />
+                      </div>
                 </CardContent>
             </Card>
 

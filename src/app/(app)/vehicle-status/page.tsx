@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -113,9 +114,11 @@ export default function VehicleStatusPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
-                <p className="text-muted-foreground">Manage and track vehicle details and driver information.</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
+                    <p className="text-muted-foreground">Manage and track vehicle details and driver information.</p>
+                </div>
             </div>
             
              {expiringItems.length > 0 && (
@@ -150,7 +153,7 @@ export default function VehicleStatusPage() {
                 <TabsContent value="vehicles" className="mt-4">
                     <Card>
                         <CardHeader>
-                             <div className="flex justify-between items-center">
+                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                 <div>
                                     <CardTitle>Vehicle Fleet</CardTitle>
                                     <CardDescription>A list of all vehicles in the system.</CardDescription>
@@ -172,7 +175,7 @@ export default function VehicleStatusPage() {
                 <TabsContent value="drivers" className="mt-4">
                     <Card>
                         <CardHeader>
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                 <div>
                                     <CardTitle>Driver List</CardTitle>
                                     <CardDescription>A list of all driver profiles in the system.</CardDescription>
