@@ -32,7 +32,7 @@ export async function sendPpeRequestEmail(
   
   const lastIssue = (employee.ppeHistory || [])
       .filter(h => h.ppeType === ppeType)
-      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
   const lastIssueDate = lastIssue ? new Date(lastIssue.issueDate).toLocaleDateString() : 'N/A';
   const joiningDate = employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A';
 
