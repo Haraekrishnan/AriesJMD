@@ -1,20 +1,27 @@
 
 'use server';
 import 'dotenv/config';
-
+import nodemailer from 'nodemailer';
 import type { ManpowerProfile, PpeRequest, User } from '@/lib/types';
-import { transporter } from '@/lib/nodemailer';
 
 export async function sendPpeRequestEmail(
   ppeData: PpeRequest,
   requester: User,
   employee: ManpowerProfile
 ) {
-  const { GMAIL_USER } = process.env;
-  if (!GMAIL_USER) {
-    console.error('Missing Gmail user in .env file.');
+  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
+  if (!GMAIL_USER || !GMAIL_APP_PASS) {
+    console.error('Missing Gmail user or app password in .env file.');
     return { success: false, error: 'Server configuration error.' };
   }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: GMAIL_USER,
+      pass: GMAIL_APP_PASS,
+    },
+  });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const approvalLink = `${appUrl}/my-requests`;
