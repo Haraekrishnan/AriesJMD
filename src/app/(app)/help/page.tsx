@@ -11,6 +11,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Faq from '@/components/help/faq';
 import { HelpCircle } from 'lucide-react';
+import { useAppContext } from '@/contexts/app-provider';
+import { useState } from 'react';
+import { sendFeedbackEmail } from '@/app/actions/sendFeedbackEmail';
 
 const feedbackSchema = z.object({
   subject: z.string().min(5, 'Subject must be at least 5 characters long.'),
@@ -21,17 +24,44 @@ type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 
 export default function HelpPage() {
   const { toast } = useToast();
+  const { user } = useAppContext();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(feedbackSchema),
   });
 
-  const onSubmit = (data: FeedbackFormValues) => {
-    console.log('Feedback Submitted:', data);
-    toast({
-      title: 'Feedback Sent',
-      description: "Thank you! We've received your feedback.",
+  const onSubmit = async (data: FeedbackFormValues) => {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'You must be logged in to submit feedback.',
+        });
+        return;
+    }
+    setIsSubmitting(true);
+    
+    const result = await sendFeedbackEmail({
+        ...data,
+        userName: user.name,
+        userEmail: user.email,
     });
-    form.reset({ subject: '', message: ''});
+
+    if (result.success) {
+        toast({
+          title: 'Feedback Sent',
+          description: "Thank you! We've received your feedback and will review it shortly.",
+        });
+        form.reset({ subject: '', message: ''});
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Failed to Send',
+            description: 'There was a problem sending your feedback. Please try again later.',
+        });
+    }
+    setIsSubmitting(false);
   };
 
   return (
@@ -73,7 +103,9 @@ export default function HelpPage() {
             </div>
             </CardContent>
             <CardFooter>
-            <Button type="submit">Send Feedback</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Send Feedback'}
+            </Button>
             </CardFooter>
         </form>
       </Card>
