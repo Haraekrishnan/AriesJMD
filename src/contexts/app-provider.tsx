@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1620,6 +1621,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     await update(ref(rtdb), updates);
+    
+    if (manpowerProfile) {
+      sendPpeRequestEmail(newRequestData as PpeRequest, user, manpowerProfile);
+    }
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
   
@@ -2596,6 +2601,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
