@@ -97,7 +97,7 @@ export async function sendPpeRequestEmail(
 
   const mailOptions = {
     from: `"Aries PPE Request" <${GMAIL_USER}>`,
-    to: 'harikrishnan.bornagain@gmail.com',
+    to: 'ariesmarineandeng@gmail.com',
     subject: subject,
     html: htmlBody,
   };
