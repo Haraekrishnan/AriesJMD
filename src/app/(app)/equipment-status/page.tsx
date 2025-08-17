@@ -295,7 +295,7 @@ export default function EquipmentStatusPage() {
                     <CardTitle>Usage Report</CardTitle>
                     <CardDescription>Count active usage days for machines within a date range.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-wrap">
+                <CardContent className="flex flex-col sm:flex-row gap-4 items-center flex-wrap">
                     <DateRangePicker date={activeDaysDateRange} onDateChange={setActiveDaysDateRange} />
                     <Popover>
                         <PopoverTrigger asChild>

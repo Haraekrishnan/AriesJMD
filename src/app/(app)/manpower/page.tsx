@@ -31,7 +31,7 @@ export default function ManpowerPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Manpower Details</h1>
                     <p className="text-muted-foreground">Track daily manpower logs and generate reports.</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap justify-end">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
                     <Button asChild variant="outline">
                         <Link href="/manpower-list">
                             <Users className="mr-2 h-4 w-4" />

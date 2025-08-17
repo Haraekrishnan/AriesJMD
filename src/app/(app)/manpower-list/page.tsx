@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -196,7 +196,7 @@ export default function ManpowerListPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Manpower List</h1>
                     <p className="text-muted-foreground">Manage manpower profiles and documentation.</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap justify-end">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
@@ -313,7 +313,7 @@ export default function ManpowerListPage() {
 
             <Card>
                 <CardHeader>
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <CardTitle>All Manpower ({filteredProfiles.length})</CardTitle>
                             <CardDescription>A list of all manpower profiles in the system.</CardDescription>
