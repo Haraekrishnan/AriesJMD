@@ -61,8 +61,8 @@ export function AppSidebar() {
     { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: pendingPaymentApprovalCount, show: can.manage_vendors },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
-    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount, show: true },
-    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: pendingFeedbackCount, show: true },
+    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount, show: true },
+    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
   ];
 
   return (
