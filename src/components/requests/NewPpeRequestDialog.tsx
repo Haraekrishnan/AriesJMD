@@ -115,6 +115,8 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const showJustificationField = useMemo(() => {
     if (eligibility?.eligible === false) return true;
     if (!isNewEmployee && requestType === 'New') return true;
+    if (requestType === 'Replacement' && eligibility?.eligible === false) return true;
+    if (requestType === 'Replacement' && eligibility?.eligible === true) return false; // This is the fix
     return false;
   }, [eligibility, isNewEmployee, requestType]);
 
