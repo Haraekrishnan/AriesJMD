@@ -153,7 +153,7 @@ export default function TasksPage() {
             <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
             <p className="text-muted-foreground">Drag and drop tasks to change their status, or use filters to generate a report.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
               <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)}>
                   <History className="mr-2 h-4 w-4" />
