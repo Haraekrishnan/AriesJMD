@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +16,7 @@ import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { useEffect, useState } from 'react';
 import type { PpeRequest } from '@/lib/types';
+import { ScrollArea } from '../ui/scroll-area';
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
@@ -134,88 +134,91 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
           <DialogTitle>Edit PPE Request</DialogTitle>
           <DialogDescription>Update the details for this PPE request.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Employee</Label>
-            <Controller
-              name="manpowerId"
-              control={form.control}
-              render={({ field }) => (
-                <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" className="w-full justify-between" disabled>
-                      {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                </Popover>
-              )}
-            />
-          </div>
+        <form onSubmit={form.handleSubmit(onSubmit)} >
+          <ScrollArea className="max-h-[70vh] p-1">
+            <div className="space-y-4 p-4">
+              <div className="space-y-2">
+                <Label>Employee</Label>
+                <Controller
+                  name="manpowerId"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between" disabled>
+                          {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                    </Popover>
+                  )}
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label>PPE Type</Label>
-                <Controller name="ppeType" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
-                        <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
-                    </Select>
-                )}/>
-                {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
-            </div>
-             <div className="space-y-2">
-                <Label>Size</Label>
-                <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
-                {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
-            </div>
-          </div>
-          {ppeType === 'Coverall' && (
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input type="number" {...form.register('quantity')} />
-            </div>
-          )}
-           <div className="space-y-2">
-                <Label>Request Type</Label>
-                <Controller name="requestType" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
-                    </Select>
-                )}/>
-            </div>
-
-          {requestType === 'Replacement' && (
-            <div className="space-y-2">
-              <Label>Attach Photo of Damaged Item</Label>
-              {form.getValues('attachmentUrl') || attachmentFile ? (
-                 <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                    <div className="flex items-center gap-2 truncate">
-                      <Paperclip className="h-4 w-4"/>
-                      <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
-                      <X className="h-4 w-4"/>
-                    </Button>
-                 </div>
-              ) : (
-                <div className="relative">
-                  <Button asChild variant="outline" size="sm">
-                    <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
-                  </Button>
-                  <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>PPE Type</Label>
+                    <Controller name="ppeType" control={form.control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
+                            <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
+                        </Select>
+                    )}/>
+                    {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
+                </div>
+                 <div className="space-y-2">
+                    <Label>Size</Label>
+                    <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+                    {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
+                </div>
+              </div>
+              {ppeType === 'Coverall' && (
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input type="number" {...form.register('quantity')} />
                 </div>
               )}
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label>Remarks</Label>
-            <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
-          </div>
+               <div className="space-y-2">
+                    <Label>Request Type</Label>
+                    <Controller name="requestType" control={form.control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
+                        </Select>
+                    )}/>
+                </div>
 
-          <DialogFooter>
+              {requestType === 'Replacement' && (
+                <div className="space-y-2">
+                  <Label>Attach Photo of Damaged Item</Label>
+                  {form.getValues('attachmentUrl') || attachmentFile ? (
+                     <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                        <div className="flex items-center gap-2 truncate">
+                          <Paperclip className="h-4 w-4"/>
+                          <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
+                          <X className="h-4 w-4"/>
+                        </Button>
+                     </div>
+                  ) : (
+                    <div className="relative">
+                      <Button asChild variant="outline" size="sm">
+                        <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
+                      </Button>
+                      <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label>Remarks</Label>
+                <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isUploading}>Save Changes</Button>
           </DialogFooter>

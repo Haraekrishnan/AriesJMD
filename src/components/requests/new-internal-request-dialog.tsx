@@ -112,7 +112,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
               </Button>
             </div>
           </ScrollArea>
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 mt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Submit Request</Button>
           </DialogFooter>

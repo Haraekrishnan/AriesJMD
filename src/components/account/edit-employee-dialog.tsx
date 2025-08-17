@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@/lib/types';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '../ui/scroll-area';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -83,79 +84,82 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
           <DialogTitle>Edit User</DialogTitle>
           <DialogDescription>Update the details for {userToEdit.name}.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input id="name" {...form.register('name')} placeholder="Full Name" />
-            {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
-          </div>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <ScrollArea className="max-h-[70vh] p-1">
+            <div className="space-y-4 p-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" {...form.register('name')} placeholder="Full Name" />
+                {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" {...form.register('email')} />
-            {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" {...form.register('email')} />
+                {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
+              </div>
 
-          <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input id="password" type="password" {...form.register('password')} placeholder="Leave blank to keep current" />
-              {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
-          </div>
+              <div className="space-y-2">
+                  <Label htmlFor="password">New Password</Label>
+                  <Input id="password" type="password" {...form.register('password')} placeholder="Leave blank to keep current" />
+                  {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
+              </div>
 
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Controller
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
-                  <SelectContent>
-                    {roles.map(r => (
-                        <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-             {form.formState.errors.role && <p className="text-xs text-destructive">{form.formState.errors.role.message}</p>}
-          </div>
-          
-          <div className="space-y-2">
-            <Label>Supervisor</Label>
-            <Controller
-              control={form.control}
-              name="supervisorId"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                  <SelectTrigger><SelectValue placeholder="Assign a supervisor" /></SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="none">No Supervisor</SelectItem>
-                      {possibleSupervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Controller
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
+                      <SelectContent>
+                        {roles.map(r => (
+                            <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                 {form.formState.errors.role && <p className="text-xs text-destructive">{form.formState.errors.role.message}</p>}
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Supervisor</Label>
+                <Controller
+                  control={form.control}
+                  name="supervisorId"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                      <SelectTrigger><SelectValue placeholder="Assign a supervisor" /></SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="none">No Supervisor</SelectItem>
+                          {possibleSupervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label>Project / Location</Label>
-            <Controller
-              control={form.control}
-              name="projectId"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value || ''}>
-                  <SelectTrigger><SelectValue placeholder="Assign a project" /></SelectTrigger>
-                  <SelectContent>
-                      {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
-          </div>
-          
-          <DialogFooter>
+              <div className="space-y-2">
+                <Label>Project / Location</Label>
+                <Controller
+                  control={form.control}
+                  name="projectId"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <SelectTrigger><SelectValue placeholder="Assign a project" /></SelectTrigger>
+                      <SelectContent>
+                          {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>
           </DialogFooter>

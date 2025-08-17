@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,6 +19,7 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { isAfter, addYears, format, parseISO, isToday, isFuture } from 'date-fns';
 import { PpeHistoryRecord } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 const ppeRequestSchema = z.object({
@@ -185,7 +185,8 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
           <DialogDescription>Request a coverall or safety shoes for an employee.</DialogDescription>
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }}>
-          <div className="space-y-4 py-4">
+          <ScrollArea className="max-h-[70vh] p-1">
+          <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Employee</Label>
               <Controller
@@ -305,6 +306,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
               </div>
             </div>
+          </ScrollArea>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
               <AlertDialog>
