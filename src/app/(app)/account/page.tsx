@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import ProjectManagementTable from '@/components/account/project-management-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordResetRequests from '@/components/account/password-reset-requests';
+import FeedbackManagement from '@/components/account/FeedbackManagement';
 
 export default function AccountPage() {
   const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
@@ -182,6 +183,18 @@ export default function AccountPage() {
         </div>
       </div>
       
+      {can.manage_feedback && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Feedback & Complaints</CardTitle>
+                <CardDescription>Review and manage user-submitted feedback.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FeedbackManagement />
+            </CardContent>
+        </Card>
+      )}
+
       {can.manage_branding && (
         <Card>
           <form onSubmit={handleBrandingSave}>

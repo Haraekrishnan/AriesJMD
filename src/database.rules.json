@@ -1,3 +1,5 @@
+
+
 {
   "rules": {
     ".read": false,
@@ -144,9 +146,12 @@
       ".write": true,
       ".indexOn": "email"
     },
-    "igpOgpRecords": {
+    "feedback": {
       ".read": true,
       ".write": true
     }
   }
 }
+
+
+

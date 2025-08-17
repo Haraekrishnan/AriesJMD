@@ -13,7 +13,6 @@ import Faq from '@/components/help/faq';
 import { HelpCircle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { useState } from 'react';
-import { sendFeedbackEmail } from '@/app/actions/sendFeedbackEmail';
 
 const feedbackSchema = z.object({
   subject: z.string().min(5, 'Subject must be at least 5 characters long.'),
@@ -24,7 +23,7 @@ type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 
 export default function HelpPage() {
   const { toast } = useToast();
-  const { user } = useAppContext();
+  const { user, addFeedback } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FeedbackFormValues>({
@@ -42,26 +41,22 @@ export default function HelpPage() {
     }
     setIsSubmitting(true);
     
-    const result = await sendFeedbackEmail({
-        ...data,
-        userName: user.name,
-        userEmail: user.email,
-    });
-
-    if (result.success) {
+    try {
+        await addFeedback(data.subject, data.message);
         toast({
           title: 'Feedback Sent',
           description: "Thank you! We've received your feedback and will review it shortly.",
         });
         form.reset({ subject: '', message: ''});
-    } else {
+    } catch (error) {
         toast({
             variant: 'destructive',
             title: 'Failed to Send',
             description: 'There was a problem sending your feedback. Please try again later.',
         });
+    } finally {
+        setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (

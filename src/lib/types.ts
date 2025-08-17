@@ -192,6 +192,7 @@ export const ALL_PERMISSIONS = [
   'manage_purchase_register',
   'manage_password_resets',
   'manage_igp_ogp',
+  'manage_feedback',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -676,3 +677,15 @@ export type PpeStock = {
   quantity?: number; // For safety shoes
   lastUpdated: string; // ISO
 };
+
+export type FeedbackStatus = 'New' | 'In Progress' | 'Resolved';
+
+export type Feedback = {
+  id: string;
+  userId: string;
+  subject: string;
+  message: string;
+  date: string; // ISO String
+  status: FeedbackStatus;
+};
+
