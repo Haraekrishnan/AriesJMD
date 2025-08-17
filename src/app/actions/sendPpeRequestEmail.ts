@@ -1,5 +1,6 @@
 
 'use server';
+import 'dotenv/config';
 
 import type { ManpowerProfile, PpeRequest, User } from '@/lib/types';
 import { transporter } from '@/lib/nodemailer';
@@ -97,7 +98,7 @@ export async function sendPpeRequestEmail(
 
   const mailOptions = {
     from: `"Aries PPE Request" <${GMAIL_USER}>`,
-    to: 'ariesmarineandeng@gmail.com',
+    to: 'ariesmarineandeneg@gmail.com',
     subject: subject,
     html: htmlBody,
   };
