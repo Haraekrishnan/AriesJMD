@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import type { ManpowerProfile } from '@/lib/types';
@@ -162,6 +163,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     }
 
     return (
+        <div className="overflow-x-auto">
         <TooltipProvider>
             <Table>
                 <TableHeader>
@@ -311,5 +313,6 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 </TableBody>
             </Table>
         </TooltipProvider>
+        </div>
     );
 }

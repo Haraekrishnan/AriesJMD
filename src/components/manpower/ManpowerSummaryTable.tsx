@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -69,6 +70,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
 
     return (
         <>
+        <div className="overflow-x-auto">
         <Table>
             <TableHeader>
                 <TableRow>
@@ -115,6 +117,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                 </TableRow>
             </TableBody>
         </Table>
+        </div>
         {editingLog && <EditManpowerLogDialog isOpen={!!editingLog} setIsOpen={() => setEditingLog(null)} log={editingLog} />}
         </>
     );

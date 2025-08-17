@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -56,6 +57,7 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
   };
 
   return (
+    <div className="overflow-x-auto">
     <TooltipProvider>
     <Table>
       <TableHeader>
@@ -120,5 +122,6 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
       </TableBody>
     </Table>
     </TooltipProvider>
+    </div>
   );
 }

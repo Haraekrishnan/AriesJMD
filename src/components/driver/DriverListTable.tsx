@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -49,6 +50,7 @@ export default function DriverListTable({ onEdit }: DriverListTableProps) {
     };
 
     return (
+        <div className="overflow-x-auto">
         <Table>
             <TableHeader>
                 <TableRow>
@@ -91,10 +93,7 @@ export default function DriverListTable({ onEdit }: DriverListTableProps) {
                                             </Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>This will permanently delete the driver record for {driver.name}.</AlertDialogDescription>
-                                            </AlertDialogHeader>
+                                            <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the driver record for {driver.name}.</AlertDialogDescription></AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                 <AlertDialogAction onClick={() => handleDelete(driver.id)}>Delete</AlertDialogAction>
@@ -108,5 +107,6 @@ export default function DriverListTable({ onEdit }: DriverListTableProps) {
                 ))}
             </TableBody>
         </Table>
+        </div>
     );
 }
