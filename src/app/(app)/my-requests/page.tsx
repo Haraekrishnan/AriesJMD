@@ -77,7 +77,7 @@ export default function MyRequestsPage() {
             </div>
             
             <Tabs defaultValue="ppe-requests">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
                     <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
                         PPE Requests
                         {ppeNotifCount > 0 && (
