@@ -1,5 +1,6 @@
 'use server';
 
+import 'dotenv/config';
 import nodemailer from 'nodemailer';
 import type { PpeRequest, ManpowerProfile, User } from '@/lib/types';
 
@@ -8,6 +9,11 @@ export async function sendPpeRequestEmail(
     requester: User,
     manpower: ManpowerProfile
 ) {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+        console.error('Email credentials are not set in environment variables.');
+        return { success: false, error: 'Email service is not configured.' };
+    }
+
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
