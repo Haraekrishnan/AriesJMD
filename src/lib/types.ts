@@ -687,5 +687,5 @@ export type Feedback = {
   message: string;
   date: string; // ISO String
   status: FeedbackStatus;
+  viewedBy?: string[];
 };
-

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -39,7 +40,7 @@ import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount } = useAppContext();
+  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount } = useAppContext();
   const pathname = usePathname();
   
   const navItems = [
@@ -61,7 +62,7 @@ export function AppSidebar() {
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount, show: true },
-    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
+    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: pendingFeedbackCount, show: true },
   ];
 
   return (

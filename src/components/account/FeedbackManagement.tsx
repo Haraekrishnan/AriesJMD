@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -20,11 +20,15 @@ const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'>
 const statusOptions: FeedbackStatus[] = ['New', 'In Progress', 'Resolved'];
 
 export default function FeedbackManagement() {
-    const { feedback, users, updateFeedbackStatus } = useAppContext();
+    const { feedback, users, updateFeedbackStatus, markFeedbackAsViewed } = useAppContext();
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
+    
+    useEffect(() => {
+        markFeedbackAsViewed();
+    }, [markFeedbackAsViewed]);
 
     const filteredFeedback = useMemo(() => {
-        if (!feedback || feedback.length === 0) return [];
+        if (!feedback || !Array.isArray(feedback)) return [];
         const sorted = [...feedback].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         if (filter === 'all') {
             return sorted;
