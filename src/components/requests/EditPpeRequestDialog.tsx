@@ -129,14 +129,13 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Edit PPE Request</DialogTitle>
           <DialogDescription>Update the details for this PPE request.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full p-4 pr-6">
-            <div className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
+          <div className="space-y-4 px-4">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Controller
@@ -217,12 +216,11 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
                 <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
               </div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="mt-4 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isUploading}>Save Changes</Button>
-          </DialogFooter>
         </form>
+        <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6">
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={isUploading} onClick={form.handleSubmit(onSubmit)}>Save Changes</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

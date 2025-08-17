@@ -179,14 +179,13 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   return (
     <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>New PPE Request</DialogTitle>
           <DialogDescription>Request a coverall or safety shoes for an employee.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }} className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full p-4 pr-6">
-            <div className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }} className="flex-1 overflow-y-auto">
+            <div className="space-y-4 px-4">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Controller
@@ -306,28 +305,27 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                   <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
                 </div>
               </div>
-          </ScrollArea>
-            <DialogFooter className="mt-4 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                      <Button type="button" disabled={isUploading}>Submit Request</Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                      <AlertDialogHeader>
-                          <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
-                          <AlertDialogDescription>
-                              Please review the entered details. This request will be sent directly to the manager for approval and cannot be reversed.
-                          </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                          <AlertDialogCancel>Back to Review</AlertDialogCancel>
-                          <AlertDialogAction onClick={form.handleSubmit(onSubmit)}>OK, Proceed</AlertDialogAction>
-                      </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
-            </DialogFooter>
         </form>
+        <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6">
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+          <AlertDialog>
+              <AlertDialogTrigger asChild>
+                  <Button type="button" disabled={isUploading}>Submit Request</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                  <AlertDialogHeader>
+                      <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          Please review the entered details. This request will be sent directly to the manager for approval and cannot be reversed.
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                      <AlertDialogCancel>Back to Review</AlertDialogCancel>
+                      <AlertDialogAction onClick={form.handleSubmit(onSubmit)}>OK, Proceed</AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
     </>
