@@ -28,6 +28,7 @@ import {
   Briefcase,
   ShoppingCart,
   ArrowRightLeft,
+  HelpCircle,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -60,6 +61,7 @@ export function AppSidebar() {
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount, show: true },
+    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
   ];
 
   return (
