@@ -196,7 +196,7 @@ export default function ManpowerListPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Manpower List</h1>
                     <p className="text-muted-foreground">Manage manpower profiles and documentation.</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>

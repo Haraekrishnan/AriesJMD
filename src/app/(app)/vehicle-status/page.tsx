@@ -153,19 +153,17 @@ export default function VehicleStatusPage() {
 
                 <TabsContent value="vehicles" className="mt-4">
                     <Card>
-                        <CardHeader>
-                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                <div>
-                                    <CardTitle>Vehicle Fleet</CardTitle>
-                                    <CardDescription>A list of all vehicles in the system.</CardDescription>
-                                </div>
-                                {can.manage_vehicles && (
-                                    <Button onClick={handleAddVehicle}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Vehicle
-                                    </Button>
-                                )}
+                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div>
+                                <CardTitle>Vehicle Fleet</CardTitle>
+                                <CardDescription>A list of all vehicles in the system.</CardDescription>
                             </div>
+                            {can.manage_vehicles && (
+                                <Button onClick={handleAddVehicle} className="w-full sm:w-auto">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Vehicle
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
                             <VehicleTable onEdit={handleEditVehicle} onLogManager={handleLogManager} />
@@ -175,19 +173,17 @@ export default function VehicleStatusPage() {
 
                 <TabsContent value="drivers" className="mt-4">
                     <Card>
-                        <CardHeader>
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                <div>
-                                    <CardTitle>Driver List</CardTitle>
-                                    <CardDescription>A list of all driver profiles in the system.</CardDescription>
-                                </div>
-                                {can.manage_vehicles && (
-                                    <Button onClick={handleAddDriver}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Driver
-                                    </Button>
-                                )}
+                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div>
+                                <CardTitle>Driver List</CardTitle>
+                                <CardDescription>A list of all driver profiles in the system.</CardDescription>
                             </div>
+                            {can.manage_vehicles && (
+                                <Button onClick={handleAddDriver} className="w-full sm:w-auto">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Driver
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
                             <DriverListTable onEdit={handleEditDriver} />

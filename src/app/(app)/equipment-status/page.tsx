@@ -382,7 +382,7 @@ export default function EquipmentStatusPage() {
                     <TabsTrigger value="other-equipments">Other Equipments</TabsTrigger>
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
-                    <div className="flex justify-end">
+                    <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddUT}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -403,7 +403,7 @@ export default function EquipmentStatusPage() {
                                     const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
 
                                     return (
-                                        <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
+                                        <div key={req.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                             <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
                                             <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
                                         </div>
@@ -471,7 +471,7 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="dft-machines" className="mt-4 space-y-4">
-                     <div className="flex justify-end">
+                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddDft}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -485,7 +485,7 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="digital-camera" className="mt-4 space-y-4">
-                     <div className="flex justify-end">
+                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddDigitalCamera}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -499,7 +499,7 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="anemometer" className="mt-4 space-y-4">
-                     <div className="flex justify-end">
+                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddAnemometer}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -513,7 +513,7 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="mobile-sim" className="mt-4 space-y-4">
-                     <div className="flex justify-end">
+                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddMobileSim}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -527,7 +527,7 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                  <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
-                     <div className="flex justify-end">
+                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddLaptopDesktop}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -541,7 +541,7 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                  <TabsContent value="other-equipments" className="mt-4 space-y-4">
-                     <div className="flex justify-end">
+                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
                         {can.manage_equipment_status && (
                             <Button onClick={handleAddOtherEquipment}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
