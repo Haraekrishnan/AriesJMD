@@ -10,6 +10,7 @@ export async function sendPpeRequestEmail(
   employee: ManpowerProfile
 ) {
   const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
+
   if (!GMAIL_USER || !GMAIL_APP_PASS) {
     console.error('Missing Gmail user or app password in .env file.');
     return { success: false, error: 'Server configuration error.' };
@@ -105,7 +106,7 @@ export async function sendPpeRequestEmail(
 
   const mailOptions = {
     from: `"Aries PPE Request" <${GMAIL_USER}>`,
-    to: "harikrishnan.bornagain@gmail.com",
+    to: "ariesmarineandeneg@gmail.com",
     subject: subject,
     html: htmlBody,
   };
