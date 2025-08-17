@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppContext } from '@/contexts/app-provider';
@@ -17,7 +17,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
-const MobileSidebar = () => {
+const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount } = useAppContext();
     const pathname = usePathname();
     
@@ -53,6 +53,7 @@ const MobileSidebar = () => {
                     asChild
                     variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
                     className="w-full justify-start"
+                    onClick={onLinkClick}
                   >
                     <Link href={item.href} className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-3">
@@ -79,7 +80,7 @@ const MobileSidebar = () => {
               <p className="text-sm font-semibold truncate">{user?.name}</p>
               <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={logout} title="Log Out">
+            <Button variant="ghost" size="icon" onClick={() => { logout(); onLinkClick(); }} title="Log Out">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
@@ -92,6 +93,7 @@ const MobileSidebar = () => {
 export default function Header() {
   const { user, roles, appName, appLogo } = useAppContext();
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const getPageTitle = () => {
     if (pathname.startsWith('/schedule')) return 'Planner';
@@ -103,7 +105,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
       <div className="flex items-center gap-4">
-        <Sheet>
+        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="md:hidden">
               <Menu className="h-5 w-5" />
@@ -113,7 +115,7 @@ export default function Header() {
           <SheetContent side="left" className="flex flex-col p-0 bg-card text-card-foreground w-64 border-r">
              <SheetHeader className="p-4 border-b">
                 <SheetTitle>
-                    <Link href="/dashboard" className="flex items-center gap-3">
+                    <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
                         <div className="flex items-center justify-center h-8 w-8">
                             {appLogo ? (
                                 <img src={appLogo} alt={appName} className="h-full w-full object-contain" />
@@ -125,7 +127,7 @@ export default function Header() {
                     </Link>
                 </SheetTitle>
              </SheetHeader>
-             <MobileSidebar />
+             <MobileSidebar onLinkClick={() => setIsMobileMenuOpen(false)} />
           </SheetContent>
         </Sheet>
         <h1 className="text-xl md:text-2xl font-bold text-foreground hidden md:block">{getPageTitle()}</h1>
