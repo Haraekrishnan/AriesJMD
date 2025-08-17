@@ -1,5 +1,6 @@
 
 
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -336,11 +337,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl h-full max-h-[95vh] flex flex-col">
         <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[70vh] p-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 pr-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full pr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                     
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
@@ -617,5 +618,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
 

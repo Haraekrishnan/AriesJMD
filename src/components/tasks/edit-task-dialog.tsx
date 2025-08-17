@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -217,10 +218,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         }
     }
     return null;
-  }
+  };
 
   const Wrapper = isOpen ? DialogContent : 'div';
-  const wrapperProps = isOpen ? { className: "sm:max-w-4xl grid-rows-[auto,1fr,auto]" } : {};
+  const wrapperProps = isOpen ? { className: "sm:max-w-4xl flex flex-col max-h-[95vh]" } : {};
   
   const commentsArray = Array.isArray(taskToDisplay.comments) 
     ? taskToDisplay.comments 
@@ -262,8 +263,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             </Alert>
           )}
         </DialogHeader>
-        <div className="grid md:grid-cols-2 gap-8 py-4 overflow-y-auto max-h-[70vh]">
-            <div className="space-y-4 pr-4 border-r">
+        <div className="grid md:grid-cols-2 gap-8 flex-1 overflow-hidden">
+            <ScrollArea className="h-full pr-4">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div>
                   <Label>Title</Label>
@@ -377,7 +378,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 
                 { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
               </form>
-            </div>
+            </ScrollArea>
 
             <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Comments & Activity</h3>
@@ -432,7 +433,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 {renderActionButtons()}
             </div>
         </div>
-        <DialogFooter className="justify-between">
+        <DialogFooter className="justify-between pt-4 mt-auto">
             <div>
               {isAdmin && (
                 <AlertDialog>

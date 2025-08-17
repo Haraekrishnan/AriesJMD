@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -14,6 +15,7 @@ import { Label } from '../ui/label';
 import type { ManpowerProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface RejoinDialogProps {
   isOpen: boolean;
@@ -61,12 +63,12 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md h-full max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Update Rejoin Status</DialogTitle>
           <DialogDescription>Select an employee who has returned from leave to update their status.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 flex-1 overflow-auto">
             <div className="space-y-2">
                 <Label>Employee on Leave</Label>
                  <Popover>
@@ -76,7 +78,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                       <CommandInput placeholder="Search employee..." />
                       <CommandList>
@@ -114,7 +116,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                 </div>
             )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="mt-auto">
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
           <Button onClick={handleRejoin} disabled={!selectedProfile || !rejoinDate}>Update Status</Button>
         </DialogFooter>

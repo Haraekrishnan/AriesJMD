@@ -179,135 +179,135 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   return (
     <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>New PPE Request</DialogTitle>
           <DialogDescription>Request a coverall or safety shoes for an employee.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }}>
-          <ScrollArea className="max-h-[70vh] p-1">
-          <div className="space-y-4 p-4">
-            <div className="space-y-2">
-              <Label>Employee</Label>
-              <Controller
-                name="manpowerId"
-                control={form.control}
-                render={({ field }) => (
-                  <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" role="combobox" className="w-full justify-between">
-                        {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Search manpower..." />
-                        <CommandList>
-                          <CommandEmpty>No one found.</CommandEmpty>
-                          <CommandGroup>
-                            {manpowerProfiles.map(mp => (
-                              <CommandItem
-                                key={mp.id}
-                                value={mp.name}
-                                onSelect={() => {
-                                  form.setValue("manpowerId", mp.id);
-                                  setIsManpowerPopoverOpen(false);
-                                }}
-                              >
-                                {mp.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              />
-              {form.formState.errors.manpowerId && <p className="text-xs text-destructive">{form.formState.errors.manpowerId.message}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }} className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full p-4 pr-6">
+            <div className="space-y-4">
               <div className="space-y-2">
-                  <Label>PPE Type</Label>
-                  <Controller name="ppeType" control={form.control} render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
-                          <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
-                      </Select>
-                  )}/>
-                  {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
-              </div>
-               <div className="space-y-2">
-                  <Label>Size</Label>
-                  <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
-                  {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
-              </div>
-            </div>
-            {ppeType === 'Coverall' && (
-              <div className="space-y-2">
-                <Label>Quantity</Label>
-                <Input type="number" {...form.register('quantity')} />
-              </div>
-            )}
-             <div className="space-y-2">
-                  <Label>Request Type</Label>
-                  <Controller name="requestType" control={form.control} render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger><SelectValue/></SelectTrigger>
-                          <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
-                      </Select>
-                  )}/>
-              </div>
-              
-              {eligibility && (
-                  <Alert variant={eligibility.eligible ? "default" : "destructive"}>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
-                      <AlertDescription>{eligibility.reason}</AlertDescription>
-                  </Alert>
-              )}
-
-              {showJustificationField && (
-                  <div className="space-y-2">
-                      <Label htmlFor="newRequestJustification">Justification for Request</Label>
-                      <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed." />
-                      {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
-                  </div>
-              )}
-
-              {requestType === 'Replacement' && (
-                <div className="space-y-2">
-                  <Label>Attach Photo of Damaged Item</Label>
-                  {form.getValues('attachmentUrl') || attachmentFile ? (
-                     <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                        <div className="flex items-center gap-2 truncate">
-                          <Paperclip className="h-4 w-4"/>
-                          <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
-                          <X className="h-4 w-4"/>
+                <Label>Employee</Label>
+                <Controller
+                  name="manpowerId"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                          {field.value ? manpowerProfiles.find(mp => mp.id === field.value)?.name : "Select person..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
-                     </div>
-                  ) : (
-                    <div className="relative">
-                      <Button asChild variant="outline" size="sm">
-                        <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
-                      </Button>
-                      <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
-                    </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search manpower..." />
+                          <CommandList>
+                            <CommandEmpty>No one found.</CommandEmpty>
+                            <CommandGroup>
+                              {manpowerProfiles.map(mp => (
+                                <CommandItem
+                                  key={mp.id}
+                                  value={mp.name}
+                                  onSelect={() => {
+                                    form.setValue("manpowerId", mp.id);
+                                    setIsManpowerPopoverOpen(false);
+                                  }}
+                                >
+                                  {mp.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   )}
+                />
+                {form.formState.errors.manpowerId && <p className="text-xs text-destructive">{form.formState.errors.manpowerId.message}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>PPE Type</Label>
+                    <Controller name="ppeType" control={form.control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
+                            <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
+                        </Select>
+                    )}/>
+                    {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
+                </div>
+                 <div className="space-y-2">
+                    <Label>Size</Label>
+                    <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+                    {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
+                </div>
+              </div>
+              {ppeType === 'Coverall' && (
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input type="number" {...form.register('quantity')} />
                 </div>
               )}
-              
-              <div className="space-y-2">
-                <Label>Remarks</Label>
-                <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
+               <div className="space-y-2">
+                    <Label>Request Type</Label>
+                    <Controller name="requestType" control={form.control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
+                        </Select>
+                    )}/>
+                </div>
+                
+                {eligibility && (
+                    <Alert variant={eligibility.eligible ? "default" : "destructive"}>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>{eligibility.eligible ? "Eligible" : "Not Eligible"}</AlertTitle>
+                        <AlertDescription>{eligibility.reason}</AlertDescription>
+                    </Alert>
+                )}
+
+                {showJustificationField && (
+                    <div className="space-y-2">
+                        <Label htmlFor="newRequestJustification">Justification for Request</Label>
+                        <Textarea id="newRequestJustification" {...form.register('newRequestJustification')} placeholder="Explain why this item is needed." />
+                        {form.formState.errors.newRequestJustification && <p className="text-xs text-destructive">{form.formState.errors.newRequestJustification.message}</p>}
+                    </div>
+                )}
+
+                {requestType === 'Replacement' && (
+                  <div className="space-y-2">
+                    <Label>Attach Photo of Damaged Item</Label>
+                    {form.getValues('attachmentUrl') || attachmentFile ? (
+                       <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                          <div className="flex items-center gap-2 truncate">
+                            <Paperclip className="h-4 w-4"/>
+                            <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
+                            <X className="h-4 w-4"/>
+                          </Button>
+                       </div>
+                    ) : (
+                      <div className="relative">
+                        <Button asChild variant="outline" size="sm">
+                          <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
+                        </Button>
+                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
+                </div>
               </div>
-            </div>
           </ScrollArea>
-            <DialogFooter>
+            <DialogFooter className="mt-4 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
               <AlertDialog>
                   <AlertDialogTrigger asChild>
