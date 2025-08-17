@@ -23,6 +23,7 @@ export default function FeedbackManagement() {
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
 
     const filteredFeedback = useMemo(() => {
+        if (!feedback) return [];
         const sorted = [...feedback].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         if (filter === 'all') {
             return sorted;
