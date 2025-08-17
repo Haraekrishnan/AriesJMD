@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -186,8 +187,8 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
           <DialogTitle>New PPE Request</DialogTitle>
           <DialogDescription>Request a coverall or safety shoes for an employee.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }} className="flex-1 overflow-y-auto">
-            <div className="space-y-4 px-4">
+        <div className="flex-1 overflow-y-auto pr-2">
+            <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(onSubmit)(); }} className="space-y-4 px-1">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Controller
@@ -306,9 +307,9 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                   <Label>Remarks</Label>
                   <Textarea {...form.register('remarks')} rows={3} placeholder="Add any extra notes here..."/>
                 </div>
-              </div>
-        </form>
-        <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6">
+            </form>
+        </div>
+        <DialogFooter className="mt-auto pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
           <AlertDialog>
               <AlertDialogTrigger asChild>

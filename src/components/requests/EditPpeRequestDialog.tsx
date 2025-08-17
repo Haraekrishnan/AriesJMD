@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -134,8 +135,8 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
           <DialogTitle>Edit PPE Request</DialogTitle>
           <DialogDescription>Update the details for this PPE request.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
-          <div className="space-y-4 px-4">
+        <div className="flex-1 overflow-y-auto pr-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-1">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Controller
@@ -215,9 +216,9 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
                 <Label>Remarks</Label>
                 <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
               </div>
-            </div>
-        </form>
-        <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6">
+            </form>
+        </div>
+        <DialogFooter className="mt-auto pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isUploading} onClick={form.handleSubmit(onSubmit)}>Save Changes</Button>
         </DialogFooter>

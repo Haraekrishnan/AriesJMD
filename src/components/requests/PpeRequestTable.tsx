@@ -20,6 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 interface PpeRequestTableProps {
@@ -129,6 +131,82 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
             markPpeRequestAsViewed(req.id);
         }
     };
+    
+    const isMobile = useIsMobile();
+    
+    if (isMobile) {
+        return (
+            <Card className={cn("relative", hasUpdate && "border-blue-500")}>
+                 {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
+                <CardContent className="p-4 space-y-3">
+                   <div className="flex justify-between items-start">
+                     <div>
+                        <p className="font-semibold">{manpower?.name}</p>
+                        <p className="text-sm text-muted-foreground">{getProjectName(manpower?.eic)}</p>
+                     </div>
+                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                   </div>
+                   
+                   <div>
+                        <p className="font-medium text-sm">{req.requestType} {req.ppeType}</p>
+                        <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}{req.quantity && `, Qty: ${req.quantity}`}</p>
+                   </div>
+                   
+                   {lastIssue && (
+                       <div className="text-xs text-muted-foreground">
+                            Last Issue: {format(parseISO(lastIssue.issueDate), 'dd-MM-yy')}
+                       </div>
+                   )}
+
+                    <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
+                        <AccordionItem value={req.id} className="border-none">
+                            <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Details & Comments</AccordionTrigger>
+                            <AccordionContent className="pt-2 text-muted-foreground">
+                                {req.attachmentUrl && (
+                                    <Button variant="link" size="sm" className="p-0 h-auto mb-2" onClick={() => setViewingAttachmentUrl(req.attachmentUrl!)}>
+                                        <Paperclip className="mr-1 h-3 w-3" />View Attachment
+                                    </Button>
+                                )}
+                                <h4 className="font-semibold text-xs mb-2">Comment History</h4>
+                                <div className="space-y-2">
+                                  {commentsArray.length > 0 ? commentsArray.map((c,i) => {
+                                      const commentUser = users.find(u => u.id === c.userId);
+                                      return (
+                                          <div key={i} className="flex items-start gap-2">
+                                              <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                              <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                  <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                  <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                              </div>
+                                          </div>
+                                      )
+                                  }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </CardContent>
+                <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
+                    {canApprove && (
+                        <>
+                            <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                        </>
+                    )}
+                    {canMarkAsIssued && (
+                        <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
+                    )}
+                </CardFooter>
+                 {editingRequest && (
+                    <EditPpeRequestDialog 
+                        isOpen={!!editingRequest}
+                        setIsOpen={() => setEditingRequest(null)}
+                        request={editingRequest}
+                    />
+                )}
+            </Card>
+        )
+    }
 
     return (
         <>
@@ -312,6 +390,7 @@ const RequestRow = ({ req }: { req: PpeRequest }) => {
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     const { user, markPpeRequestAsViewed } = useAppContext();
     const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+    const isMobile = useIsMobile();
 
     const { activeRequests, completedRequests } = useMemo(() => {
         const active: PpeRequest[] = [];
@@ -339,6 +418,27 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
 
     if (requests.length === 0) {
         return <p className="text-center py-10 text-muted-foreground">No PPE requests found.</p>;
+    }
+
+    if (isMobile) {
+        return (
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <h3 className="font-semibold">Active Requests</h3>
+                    {activeRequests.length > 0 ? (
+                        activeRequests.map(req => <RequestRow key={req.id} req={req} />)
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center p-4">No active requests.</p>
+                    )}
+                </div>
+                 {completedRequests.length > 0 && (
+                    <div className="space-y-2">
+                        <h3 className="font-semibold">Completed Requests</h3>
+                         {completedRequests.map(req => <RequestRow key={req.id} req={req} />)}
+                    </div>
+                 )}
+            </div>
+        )
     }
 
     return (
@@ -397,5 +497,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </div>
     );
 }
-
-    
