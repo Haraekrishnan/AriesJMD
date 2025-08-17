@@ -1,10 +1,8 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Trash2 } from 'lucide-react';
@@ -22,7 +20,7 @@ import { z } from 'zod';
 import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 
 
 interface InternalRequestTableProps {
@@ -47,224 +45,207 @@ const editRequestSchema = z.object({
 });
 type EditRequestFormValues = z.infer<typeof editRequestSchema>;
 
+
+const RequestCard = ({ req }: { req: InternalRequest }) => {
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
+    const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [action, setAction] = useState<InternalRequestStatus | null>(null);
+    const [comment, setComment] = useState('');
+    const { toast } = useToast();
+    
+    const form = useForm<EditRequestFormValues>({ resolver: zodResolver(editRequestSchema) });
+    const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
+
+    const canApprove = useMemo(() => {
+        if (!user) return false;
+        const userRole = roles.find(r => r.name === user.role);
+        return userRole?.permissions.includes('approve_store_requests');
+    }, [user, roles]);
+
+    const handleActionClick = (req: InternalRequest, newStatus: InternalRequestStatus) => {
+        setAction(newStatus);
+        setSelectedRequest(req);
+    };
+    
+    const handleEditClick = (req: InternalRequest) => {
+        setSelectedRequest(req);
+        form.reset({ items: req.items });
+        setIsEditing(true);
+    };
+    
+    const onEditSubmit = (data: EditRequestFormValues) => {
+        if (!selectedRequest) return;
+        updateInternalRequestItems(selectedRequest.id, data.items);
+        toast({ title: 'Request Updated', description: 'The item list has been updated and the requester notified.'});
+        setIsEditing(false);
+    }
+
+    const handleConfirmAction = () => {
+        if (!selectedRequest || !action) return;
+        if (!comment.trim()) {
+            toast({ title: 'Comment required', variant: 'destructive'});
+            return;
+        }
+        updateInternalRequestStatus(selectedRequest.id, action, comment);
+        toast({ title: `Request ${action}` });
+        setSelectedRequest(null);
+        setAction(null);
+    };
+
+    const handleDelete = (requestId: string) => {
+        deleteInternalRequest(requestId);
+        toast({ variant: 'destructive', title: 'Request Deleted' });
+    };
+
+    const handleAccordionToggle = (openValue: string) => {
+        if (openValue === req.id && user?.id === req.requesterId && !req.viewedByRequester) {
+            markInternalRequestAsViewed(req.id);
+        }
+    };
+    
+    const requester = users.find(u => u.id === req.requesterId);
+    const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
+    const canEditRequest = user?.role === 'Admin' || req.status === 'Pending';
+    const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
+    const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
+
+    return (
+        <Card className={cn("relative", hasUpdate && "border-blue-500")}>
+            {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
+            <CardHeader className="p-4">
+                <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
+                      <p className="text-sm text-muted-foreground">ID: {req.id.slice(-6)} &middot; {format(new Date(req.date), 'dd MMM yyyy')}</p>
+                    </div>
+                    {needsAcknowledgement ? (
+                       <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
+                    ) : (
+                       <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
+                    <AccordionItem value={req.id} className="border-none">
+                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Items & History</AccordionTrigger>
+                        <AccordionContent className="pt-2 text-muted-foreground">
+                        <ul className="list-disc pl-4 text-sm mb-4">
+                            {req.items.map((item, index) => (
+                            <li key={index}>
+                                {item.quantity} {item.unit} {item.description}
+                                {item.remarks && <span className="text-muted-foreground text-xs"> ({item.remarks})</span>}
+                            </li>
+                            ))}
+                        </ul>
+                        <h4 className="font-semibold text-xs mb-2">Comment History</h4>
+                        <div className="space-y-2">
+                            {commentsArray.length > 0 ? commentsArray.map((c,i) => {
+                                const commentUser = users.find(u => u.id === c.userId);
+                                return (
+                                    <div key={i} className="flex items-start gap-2">
+                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="text-xs bg-background p-2 rounded-md w-full">
+                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                        </div>
+                                    </div>
+                                )
+                            }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                        </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </CardContent>
+            <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
+                {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
+                    <>
+                        <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                        <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                        <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                    </>
+                )}
+                {user?.role === 'Admin' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                            <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </CardFooter>
+
+            {selectedRequest && action && (
+                <AlertDialog open={!!(selectedRequest && action)} onOpenChange={() => setSelectedRequest(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{action} Request?</AlertDialogTitle>
+                            <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div>
+                            <Label htmlFor="comment">Comment (Required)</Label>
+                            <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
+            {selectedRequest && isEditing && (
+                <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                    <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
+                        <form onSubmit={form.handleSubmit(onEditSubmit)}>
+                            <div className="space-y-4 p-4 max-h-[60vh] overflow-y-auto">
+                                <div className="grid grid-cols-12 gap-2 items-center px-2">
+                                    <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
+                                    <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
+                                    <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
+                                    <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
+                                    <div className="col-span-1"></div>
+                                </div>
+                                {fields.map((field, index) => (
+                                <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                                    <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
+                                    <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
+                                    <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
+                                    <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
+                                    <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
+                                </div>
+                                ))}
+                            </div>
+                            <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                            <Button type="submit">Save Changes</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            )}
+        </Card>
+    )
+}
+
 export default function InternalRequestTable({ requests }: InternalRequestTableProps) {
-  const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
-  const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
-  const [action, setAction] = useState<InternalRequestStatus | null>(null);
-  const [comment, setComment] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const { toast } = useToast();
-  
-  const form = useForm<EditRequestFormValues>({ resolver: zodResolver(editRequestSchema) });
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
-
-  const canApprove = useMemo(() => {
-    if (!user) return false;
-    const userRole = roles.find(r => r.name === user.role);
-    return userRole?.permissions.includes('approve_store_requests');
-  }, [user, roles]);
-
-  const handleActionClick = (req: InternalRequest, newStatus: InternalRequestStatus) => {
-    setAction(newStatus);
-    setSelectedRequest(req);
-  };
-  
-  const handleEditClick = (req: InternalRequest) => {
-    setSelectedRequest(req);
-    form.reset({ items: req.items });
-    setIsEditing(true);
-  };
-  
-  const onEditSubmit = (data: EditRequestFormValues) => {
-    if (!selectedRequest) return;
-    updateInternalRequestItems(selectedRequest.id, data.items);
-    toast({ title: 'Request Updated', description: 'The item list has been updated and the requester notified.'});
-    setIsEditing(false);
-  }
-
-  const handleConfirmAction = () => {
-    if (!selectedRequest || !action) return;
-     if (!comment.trim()) {
-        toast({ title: 'Comment required', variant: 'destructive'});
-        return;
-    }
-    updateInternalRequestStatus(selectedRequest.id, action, comment);
-    toast({ title: `Request ${action}` });
-    setSelectedRequest(null);
-    setAction(null);
-  };
-
-  const handleDelete = (requestId: string) => {
-    deleteInternalRequest(requestId);
-    toast({ variant: 'destructive', title: 'Request Deleted' });
-  };
-  
-  const getRequesterName = (id: string) => users.find(u => u.id === id)?.name || 'Unknown';
-  
-  const handleAccordionToggle = (req: InternalRequest) => {
-    if (user?.id === req.requesterId && !req.viewedByRequester) {
-        markInternalRequestAsViewed(req.id);
-    }
-  };
-
   if (requests.length === 0) {
     return <p className="text-center py-10 text-muted-foreground">No requests found.</p>;
   }
 
   return (
-    <>
-    <div className="border rounded-md">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead></TableHead>
-            <TableHead>Request ID</TableHead>
-            <TableHead>Requester</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Items & History</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {requests.map(req => {
-            const isRequester = req.requesterId === user?.id;
-            const hasUpdate = isRequester && !req.viewedByRequester;
-            const canEditRequest = user?.role === 'Admin' || req.status === 'Pending';
-            const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
-            const needsAcknowledgement = isRequester && req.status === 'Issued' && !req.acknowledgedByRequester;
-            
-            return (
-              <TableRow key={req.id} className={cn(hasUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
-                <TableCell className="w-8">
-                   {hasUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
-                </TableCell>
-                <TableCell className="font-mono text-xs">{req.id}</TableCell>
-                <TableCell>{getRequesterName(req.requesterId)}</TableCell>
-                <TableCell>{format(new Date(req.date), 'dd MMM yyyy')}</TableCell>
-                <TableCell className="max-w-md">
-                  <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req)}>
-                      <AccordionItem value={req.id} className="border-none">
-                          <AccordionTrigger className="p-0 hover:no-underline font-normal text-left">{req.items.length} item(s)</AccordionTrigger>
-                          <AccordionContent className="pt-2 text-muted-foreground">
-                            <ul className="list-disc pl-4 text-sm mb-4">
-                              {req.items.map((item, index) => (
-                                <li key={index}>
-                                  {item.quantity} {item.unit} {item.description}
-                                  {item.remarks && <span className="text-muted-foreground text-xs"> ({item.remarks})</span>}
-                                </li>
-                              ))}
-                            </ul>
-                            <h4 className="font-semibold text-xs mb-2">Comment History</h4>
-                            <div className="space-y-2">
-                              {commentsArray.length > 0 ? commentsArray.map((c,i) => {
-                                  const commentUser = users.find(u => u.id === c.userId);
-                                  return (
-                                      <div key={i} className="flex items-start gap-2">
-                                          <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                          <div className="text-xs bg-background p-2 rounded-md w-full">
-                                              <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                              <p className="text-foreground/80 mt-1">{c.text}</p>
-                                          </div>
-                                      </div>
-                                  )
-                              }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                            </div>
-                          </AccordionContent>
-                      </AccordionItem>
-                  </Accordion>
-                </TableCell>
-                <TableCell>
-                  {needsAcknowledgement ? (
-                    <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge Receipt</Button>
-                  ) : (
-                    <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                        {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
-                              <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
-                              <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
-                            </>
-                        )}
-                        {user?.role === 'Admin' && (
-                           <AlertDialog>
-                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                                 <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                           </AlertDialog>
-                        )}
-                    </div>
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {requests.map(req => <RequestCard key={req.id} req={req} />)}
     </div>
-
-    {selectedRequest && action && (
-        <AlertDialog open={!!(selectedRequest && action)} onOpenChange={() => setSelectedRequest(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{action} Request?</AlertDialogTitle>
-                    <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <div>
-                    <Label htmlFor="comment">Comment (Required)</Label>
-                    <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
-                </div>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    )}
-
-    {selectedRequest && isEditing && (
-        <Dialog open={isEditing} onOpenChange={setIsEditing}>
-            <DialogContent className="sm:max-w-2xl">
-                <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
-                <form onSubmit={form.handleSubmit(onEditSubmit)}>
-                    <div className="space-y-4 p-4 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-12 gap-2 items-center px-2">
-                            <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
-                            <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
-                            <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
-                            <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
-                            <div className="col-span-1"></div>
-                        </div>
-                        {fields.map((field, index) => (
-                           <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                             <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
-                             <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
-                             <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
-                             <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
-                             <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
-                           </div>
-                        ))}
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
-                      <Button type="submit">Save Changes</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    )}
-    </>
   );
 }
