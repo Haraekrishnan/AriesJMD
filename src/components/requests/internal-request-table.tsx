@@ -158,30 +158,32 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     </AccordionItem>
                 </Accordion>
             </CardContent>
-            <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
-                {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
-                    <>
-                        <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
-                        <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
-                        <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
-                    </>
-                )}
-                {user?.role === 'Admin' && (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                            <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
+            <CardFooter className="p-2 bg-muted/50">
+                 <div className="flex flex-wrap justify-end gap-2 w-full">
+                     {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
+                        <>
+                            <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                            <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                            <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                        </>
+                     )}
+                     {user?.role === 'Admin' && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                                <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                     )}
+                 </div>
             </CardFooter>
 
             {selectedRequest && action && (
