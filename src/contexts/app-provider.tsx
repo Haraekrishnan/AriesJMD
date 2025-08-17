@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1823,7 +1822,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(item) addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
   }, [user, inventoryItems, addActivityLog]);
   
-  const addMultipleInventoryItems = useCallback((itemsToImport: any[]): number => {
+  const addMultipleInventoryItems = useCallback((itemsToImport: any[]) => {
     if (!user) return 0;
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
@@ -2601,6 +2600,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
