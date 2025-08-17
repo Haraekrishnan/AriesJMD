@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import type { Feedback, FeedbackStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Label } from '@/components/ui/label';
 
 const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'> = {
     'New': 'default',
@@ -23,7 +24,7 @@ export default function FeedbackManagement() {
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
 
     const filteredFeedback = useMemo(() => {
-        if (!feedback) return [];
+        if (!feedback || feedback.length === 0) return [];
         const sorted = [...feedback].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         if (filter === 'all') {
             return sorted;
