@@ -3,27 +3,62 @@
 import 'dotenv/config';
 import nodemailer from 'nodemailer';
 import type { ManpowerProfile, PpeRequest, User } from '@/lib/types';
+import { google } from 'googleapis';
+
+const {
+  GMAIL_USER,
+  OAUTH_CLIENT_ID,
+  OAUTH_CLIENT_SECRET,
+  OAUTH_REDIRECT_URI,
+  OAUTH_REFRESH_TOKEN,
+} = process.env;
+
+if (!GMAIL_USER || !OAUTH_CLIENT_ID || !OAUTH_CLIENT_SECRET || !OAUTH_REDIRECT_URI || !OAUTH_REFRESH_TOKEN) {
+  console.error('Missing required OAuth2 environment variables for sending email.');
+}
+
+const OAuth2 = google.auth.OAuth2;
+
+const createTransporter = async () => {
+  const oauth2Client = new OAuth2(
+    OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
+    OAUTH_REDIRECT_URI
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: OAUTH_REFRESH_TOKEN,
+  });
+
+  const accessToken = await new Promise<string>((resolve, reject) => {
+    oauth2Client.getAccessToken((err, token) => {
+      if (err) {
+        reject('Failed to create access token :( ' + err);
+      }
+      resolve(token as string);
+    });
+  });
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user: GMAIL_USER,
+      accessToken,
+      clientId: OAUTH_CLIENT_ID,
+      clientSecret: OAUTH_CLIENT_SECRET,
+      refreshToken: OAUTH_REFRESH_TOKEN,
+    },
+  });
+
+  return transporter;
+};
 
 export async function sendPpeRequestEmail(
   ppeData: PpeRequest,
   requester: User,
   employee: ManpowerProfile
 ) {
-  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
-
-  if (!GMAIL_USER || !GMAIL_APP_PASS) {
-    console.error('Missing Gmail user or app password in .env file.');
-    return { success: false, error: 'Server configuration error.' };
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: GMAIL_USER,
-      pass: GMAIL_APP_PASS,
-    },
-  });
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const approvalLink = `${appUrl}/my-requests`;
 
@@ -106,13 +141,14 @@ export async function sendPpeRequestEmail(
 
   const mailOptions = {
     from: `"Aries PPE Request" <${GMAIL_USER}>`,
-    to: "ariesmarineandeneg@gmail.com",
+    to: "ariesmarineandeng@gmail.com",
     subject: subject,
     html: htmlBody,
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    const emailTransporter = await createTransporter();
+    await emailTransporter.sendMail(mailOptions);
     console.log('PPE request notification sent successfully.');
     return { success: true };
   } catch (error) {
