@@ -105,7 +105,7 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
                                       <AlertDialog>
                                           <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
                                           <AlertDialogContent>
-                                              <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the machine record.</AlertDialogDescription></AlertDialogHeader>
+                                              <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the machine record.</AlertDialogDescription></AlertDialogHeader>
                                               <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(machine.id)}>Delete</AlertDialogAction></AlertDialogFooter>
                                           </AlertDialogContent>
                                       </AlertDialog>

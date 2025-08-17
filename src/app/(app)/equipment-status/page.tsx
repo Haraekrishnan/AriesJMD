@@ -295,16 +295,16 @@ export default function EquipmentStatusPage() {
                     <CardTitle>Usage Report</CardTitle>
                     <CardDescription>Count active usage days for machines within a date range.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row gap-4 items-center flex-wrap">
+                <CardContent className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-wrap">
                     <DateRangePicker date={activeDaysDateRange} onDateChange={setActiveDaysDateRange} />
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-[260px] justify-between">
+                            <Button variant="outline" className="w-full sm:w-auto flex-1 justify-between">
                                 {selectedMachineIds.length > 0 ? `${selectedMachineIds.length} machine(s) selected` : "Select machines..."}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[260px] p-0">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
                                 <CommandInput placeholder="Search machines..." />
                                 <CommandEmpty>No machines found.</CommandEmpty>
@@ -333,7 +333,7 @@ export default function EquipmentStatusPage() {
                             </Command>
                         </PopoverContent>
                     </Popover>
-                    <Button onClick={handleExportActiveDays} disabled={!activeDaysDateRange?.from || activeDaysSummary.length === 0}>
+                    <Button onClick={handleExportActiveDays} disabled={!activeDaysDateRange?.from || activeDaysSummary.length === 0} className="w-full sm:w-auto">
                         <FileDown className="mr-2 h-4 w-4" /> Export Excel
                     </Button>
                 </CardContent>
@@ -372,7 +372,7 @@ export default function EquipmentStatusPage() {
             </Card>
 
             <Tabs defaultValue="ut-machines" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+                <TabsList className="h-auto flex-wrap justify-start">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
                     <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
