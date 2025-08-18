@@ -9,9 +9,9 @@ interface MailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: MailOptions) {
-  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
+  const { GMAIL_USER, GMAIL_PASS } = process.env;
 
-  if (!GMAIL_USER || !GMAIL_APP_PASS) {
+  if (!GMAIL_USER || !GMAIL_PASS) {
     console.error('Missing Gmail credentials in .env file.');
     return { success: false, error: 'Server configuration error.' };
   }
@@ -20,7 +20,7 @@ export async function sendEmail({ to, subject, html }: MailOptions) {
     service: 'gmail',
     auth: {
       user: GMAIL_USER,
-      pass: GMAIL_APP_PASS,
+      pass: GMAIL_PASS,
     },
   });
 
