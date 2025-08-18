@@ -1,7 +1,6 @@
 
 'use server';
 
-import 'dotenv/config';
 import { Resend } from 'resend';
 import PpeRequestEmail from '@/emails/ppe-request-email';
 import type { ManpowerProfile, PpeRequest, User } from '@/lib/types';
@@ -16,7 +15,7 @@ export async function sendPpeRequestEmail(
   try {
     const { data, error } = await resend.emails.send({
       from: 'Aries PPE Request <onboarding@resend.dev>',
-      to: ['harikrishnan.bornagain@gmail.com'],
+      to: ['ariesmarineandeng@gmail.com'],
       subject: `PPE Request from ${requester.name} for ${employee.name} — ${ppeData.ppeType}`,
       react: PpeRequestEmail({ ppeData, requester, employee }),
     });
