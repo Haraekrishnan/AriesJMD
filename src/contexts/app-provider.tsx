@@ -1728,61 +1728,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ? `Size ${requestData.size}: ${stockItem?.sizes?.[requestData.size] || 0}`
           : `Total: ${stockItem?.quantity || 0}`;
       
-      const subject = `PPE Request from ${user.name} for ${manpowerProfile.name} — ${requestData.ppeType}`;
-      const eligibilityHtml = requestData.eligibility ? `
-        <p style="margin-top: 20px; padding: 10px; border-left: 4px solid ${requestData.eligibility.eligible ? '#28a745' : '#dc3545'}; background-color: #f8f9fa;">
-          <strong style="color: ${requestData.eligibility.eligible ? '#28a745' : '#dc3545'};">Eligibility Status: ${requestData.eligibility.eligible ? 'Eligible' : 'Not Eligible'}</strong><br>
-          ${requestData.eligibility.reason}
-        </p>
-      ` : '';
-      
-      const justificationHtml = requestData.newRequestJustification ? `
-        <p style="margin-top: 20px; padding: 10px; border-left: 4px solid #ffc107; background-color: #fff3cd;">
-          <strong style="color: #856404;">Justification for 'New' Request:</strong><br>
-          ${requestData.newRequestJustification}
-        </p>
-      ` : '';
-
       const lastIssueRecord = manpowerProfile.ppeHistory?.filter(h => h.ppeType === requestData.ppeType).sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
       const lastIssueDate = lastIssueRecord ? format(new Date(lastIssueRecord.issueDate), 'dd MMM, yyyy') : 'N/A';
       
-      const htmlBody = `
-        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
-          <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
-          
-          <p><strong>Employee:</strong> ${manpowerProfile.name}</p>
-          <p><strong>Type:</strong> ${requestData.ppeType} &middot; <strong>Size:</strong> ${requestData.size} &middot; <strong>Qty:</strong> ${requestData.quantity || 1}</p>
-          <p><strong>Request Type:</strong> ${requestData.requestType}</p>
-          
-           ${justificationHtml}
+      const emailData = {
+        requesterName: user.name,
+        employeeName: manpowerProfile.name,
+        ppeType: requestData.ppeType,
+        size: requestData.size,
+        quantity: requestData.quantity,
+        requestType: requestData.requestType,
+        remarks: requestData.remarks,
+        attachmentUrl: requestData.attachmentUrl,
+        joiningDate: manpowerProfile.joiningDate ? format(new Date(manpowerProfile.joiningDate), 'dd MMM, yyyy') : 'N/A',
+        rejoiningDate: manpowerProfile.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(new Date(manpowerProfile.leaveHistory.find(l=>l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
+        lastIssueDate,
+        stockInfo,
+        eligibility: requestData.eligibility,
+        newRequestJustification: requestData.newRequestJustification,
+      };
 
-      <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-        <strong>Joining Date:</strong> ${manpowerProfile.joiningDate ? format(new Date(manpowerProfile.joiningDate), 'dd MMM, yyyy') : 'N/A'}<br>
-        <strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}<br>
-        <strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span>
-      </p>
-
-      ${eligibilityHtml}
-
-      <p><strong>Remarks:</strong> ${requestData.remarks || 'None'}</p>
-      
-      ${requestData.attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${requestData.attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
-      
-      <p><strong>Requested By:</strong> ${user.name}</p>
-
-      <p style="margin-top: 25px;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; border-top: 12px solid #007bff; border-bottom: 12px solid #007bff; border-right: 18px solid #007bff; border-left: 18px solid #007bff; display: inline-block;">
-            Review Request
-        </a>
-      </p>
-    </div>
-  `;
-
-      await sendEmail({
-          to: 'harikrishnan.bornagain@gmail.com',
-          subject,
-          html: htmlBody,
-      });
+      await sendEmail(emailData);
     }
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
@@ -2587,18 +2553,6 @@ export const useAppContext = (): AppContextType => {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-    
 
 
 
