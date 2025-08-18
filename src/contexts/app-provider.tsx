@@ -1622,27 +1622,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await update(ref(rtdb), updates);
     
     if (manpowerProfile) {
+      const subject = `PPE Request from ${user.name} for ${manpowerProfile.name} — ${requestData.ppeType}`;
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const approvalLink = `${appUrl}/my-requests`;
-      const lastIssue = (manpowerProfile.ppeHistory || [])
-          .filter(h => h.ppeType === newRequestData.ppeType)
-          .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
-
-      const emailHtml = `
+      
+      const htmlBody = `
         <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
           <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
           <p><strong>Employee:</strong> ${manpowerProfile.name}</p>
-          <p><strong>Type:</strong> ${newRequestData.ppeType} &middot; <strong>Size:</strong> ${newRequestData.size} &middot; <strong>Qty:</strong> ${newRequestData.quantity}</p>
-          <p><strong>Request Type:</strong> ${newRequestData.requestType}</p>
+          <p><strong>Type:</strong> ${requestData.ppeType} &middot; <strong>Size:</strong> ${requestData.size} &middot; <strong>Qty:</strong> ${requestData.quantity || 1}</p>
+          <p><strong>Request Type:</strong> ${requestData.requestType}</p>
           <p><strong>Requested By:</strong> ${user.name}</p>
-          <a href="${approvalLink}">Review Request</a>
+          <p><strong>Remarks:</strong> ${requestData.remarks || 'None'}</p>
+          <p style="margin-top: 25px;">
+            <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; padding: 12px 18px; display: inline-block;">
+                Review Request
+            </a>
+          </p>
         </div>
       `;
-      
+
       await sendEmail({
           to: 'harikrishnan.bornagain@gmail.com',
-          subject: `PPE Request from ${user.name} for ${manpowerProfile.name}`,
-          html: emailHtml,
+          subject: subject,
+          html: htmlBody,
       });
     }
 
@@ -2621,6 +2624,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
