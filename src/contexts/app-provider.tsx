@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -179,6 +178,7 @@ type AppContextType = {
   deletePpeAttachment: (requestId: string) => void;
   markPpeRequestAsViewed: (requestId: string) => void;
   updatePpeStock: (stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => void;
+  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
@@ -238,7 +238,6 @@ type AppContextType = {
   addPurchaseRegister: (purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => void;
   updatePurchaseRegisterPoNumber: (purchaseRegisterId: string, poNumber: string) => void;
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => void;
-  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addFeedback: (subject: string, message: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
   markFeedbackAsViewed: () => void;
@@ -1638,6 +1637,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `ppeStock/${stockId}`), { ...updates, lastUpdated: new Date().toISOString() });
     addActivityLog(user.id, 'PPE Stock Updated', `Updated ${stockId}`);
   }, [user, addActivityLog]);
+  
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    if (!user) return { importedCount: 0, notFoundCount: 0 };
+    
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    for (const row of data) {
+        const employeeName = row['Employee Name']?.trim();
+        const size = row['Size']?.toString().trim();
+        const issueDateRaw = row['Date'];
+
+        if (!employeeName || !size || !issueDateRaw) {
+            console.warn('Skipping row due to missing data:', row);
+            continue;
+        }
+
+        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
+
+        if (!profile) {
+            console.warn(`Employee not found: ${employeeName}`);
+            notFoundCount++;
+            continue;
+        }
+
+        let issueDate: Date;
+        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
+            issueDate = issueDateRaw;
+        } else {
+            const parsed = parseISO(issueDateRaw)
+            if (isValid(parsed)) {
+                issueDate = parsed;
+            } else {
+                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
+                continue;
+            }
+        }
+
+        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
+            ppeType: 'Coverall',
+            size: size,
+            issueDate: issueDate.toISOString(),
+            requestType: 'New', // Default for bulk import
+            issuedById: user.id,
+            remarks: 'Bulk imported from Excel.'
+        };
+
+        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
+        importedCount++;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
+    }
+    
+    return { importedCount, notFoundCount };
+  }, [user, manpowerProfiles, addActivityLog]);
 
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if(!user) return;
@@ -2163,67 +2222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRef, newRecord);
   }, [user]);
-
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-
-    for (const row of data) {
-        const employeeName = row['Employee Name']?.trim();
-        const size = row['Size']?.toString().trim();
-        const issueDateRaw = row['Date'];
-
-        if (!employeeName || !size || !issueDateRaw) {
-            console.warn('Skipping row due to missing data:', row);
-            continue;
-        }
-
-        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
-
-        if (!profile) {
-            console.warn(`Employee not found: ${employeeName}`);
-            notFoundCount++;
-            continue;
-        }
-
-        let issueDate: Date;
-        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
-            issueDate = issueDateRaw;
-        } else {
-            const parsed = parseISO(issueDateRaw)
-            if (isValid(parsed)) {
-                issueDate = parsed;
-            } else {
-                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
-                continue;
-            }
-        }
-
-        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
-            ppeType: 'Coverall',
-            size: size,
-            issueDate: issueDate.toISOString(),
-            requestType: 'New', // Default for bulk import
-            issuedById: user.id,
-            remarks: 'Bulk imported from Excel.'
-        };
-
-        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
-        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
-        importedCount++;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
-    }
-    
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, addActivityLog]);
-
+  
   const addFeedback = useCallback((subject: string, message: string) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'feedback'));
@@ -2355,3 +2354,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
