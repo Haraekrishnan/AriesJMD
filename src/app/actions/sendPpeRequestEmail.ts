@@ -7,11 +7,11 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
   const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
 
   if (!GMAIL_USER || !GMAIL_APP_PASS) {
-    console.error('❌ Missing Gmail credentials in .env file. Check variable names (GMAIL_USER, GMAIL_APP_PASS).');
-    return { success: false, error: 'Server configuration error: Missing credentials.' };
+    console.error('Missing Gmail credentials in .env file.');
+    return { success: false, error: 'Server configuration error.' };
   }
   
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const approvalLink = `${appUrl}/my-requests`;
 
   const transporter = nodemailer.createTransport({
@@ -48,7 +48,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
   
   const justificationHtml = newRequestJustification ? `
     <p style="margin-top: 20px; padding: 10px; border-left: 4px solid #ffc107; background-color: #fff3cd;">
-      <strong style="color: #856404;">Justification for Request:</strong><br>
+      <strong style="color: #856404;">Justification for 'New' Request:</strong><br>
       ${newRequestJustification}
     </p>
   ` : '';
@@ -86,20 +86,18 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       </p>
     </div>
   `;
-  
-  const mailOptions = {
-    from: `"Aries PPE Request" <${GMAIL_USER}>`,
-    to: 'harikrishnan.bornagain@gmail.com',
-    subject: subject,
-    html: htmlBody,
-  };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log('✅ PPE request notification sent successfully.');
+    await transporter.sendMail({
+      from: `"Aries PPE Request" <${GMAIL_USER}>`,
+      to: 'harikrishnan.bornagain@gmail.com',
+      subject: subject,
+      html: htmlBody,
+    });
+    console.log('PPE request notification sent successfully.');
     return { success: true };
   } catch (error) {
-    console.error('❌ Failed to send email:', error);
+    console.error('Failed to send email:', error);
     return { success: false, error: (error as Error).message };
   }
 }
