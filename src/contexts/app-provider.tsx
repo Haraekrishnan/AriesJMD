@@ -171,7 +171,7 @@ type AppContextType = {
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (request: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
+  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
@@ -1527,27 +1527,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const person = manpowerProfiles.find(p => p.id === requestData.manpowerId)?.name || 'a person';
     addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${person}`);
 
-    // Find manager and send email
-    const managers = users.filter(u => u.role === 'Manager' || u.role === 'Admin');
-    if (managers.length > 0) {
-        const managerEmails = managers.map(m => m.email);
-        const subject = `New PPE Request for ${person}`;
-        const html = `
-            <h3>New PPE Request</h3>
-            <p>A new PPE request has been submitted by ${user.name} and requires your approval.</p>
-            <ul>
-                <li><strong>Employee:</strong> ${person}</li>
-                <li><strong>Item:</strong> ${requestData.ppeType} (Size: ${requestData.size}, Qty: ${requestData.quantity || 1})</li>
-                <li><strong>Type:</strong> ${requestData.requestType}</li>
-                <li><strong>Remarks:</strong> ${requestData.remarks || 'N/A'}</li>
-            </ul>
-            <p>Please log in to the portal to review and approve this request.</p>
-        `;
-        managerEmails.forEach(email => {
-            sendEmail({ to: email, subject, html });
-        });
-    }
-  }, [user, manpowerProfiles, users, addActivityLog]);
+    const subject = `New PPE Request for ${person}`;
+    const html = `
+        <h3>New PPE Request</h3>
+        <p>A new PPE request has been submitted by ${user.name} and requires your approval.</p>
+        <ul>
+            <li><strong>Employee:</strong> ${person}</li>
+            <li><strong>Item:</strong> ${requestData.ppeType} (Size: ${requestData.size}, Qty: ${requestData.quantity || 1})</li>
+            <li><strong>Type:</strong> ${requestData.requestType}</li>
+            <li><strong>Remarks:</strong> ${requestData.remarks || 'N/A'}</li>
+        </ul>
+        <p>Please log in to the portal to review and approve this request.</p>
+    `;
+    sendEmail({ to: 'harikrishnan.bornagain@gmail.com', subject, html });
+  }, [user, manpowerProfiles, addActivityLog]);
   
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if (!user) return;

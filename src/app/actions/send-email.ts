@@ -13,6 +13,7 @@ export async function sendEmail({ to, subject, html }: MailOptions) {
 
   if (!GMAIL_USER || !GMAIL_PASS) {
     console.error('Missing Gmail credentials in .env file.');
+    // In a real app, you'd want more robust error handling
     return { success: false, error: 'Server configuration error.' };
   }
 
