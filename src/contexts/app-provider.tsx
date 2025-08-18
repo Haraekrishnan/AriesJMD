@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { sendPpeRequestEmail } from '@/app/actions/send-email';
+import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1598,7 +1598,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
       updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
 
-      const stockRefPath = request.ppeType === 'Coverall' ? 'ppeStock/coveralls' : 'ppeStock/safetyShoes';
+      const stockRefPath = request.ppeType === 'Coverall' ? 'ppeStock/coveralls' : 'safetyShoes';
       const stockItems = ppeStock.find(s => s.id === (request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
       if(stockItems) {
         if(request.ppeType === 'Coverall' && stockItems.sizes) {
@@ -2355,3 +2355,6 @@ export const useAppContext = (): AppContextType => {
 
     
 
+
+
+    
