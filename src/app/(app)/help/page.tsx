@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Faq from '@/components/help/faq';
 import { HelpCircle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { useState } from 'react';
@@ -68,16 +67,6 @@ export default function HelpPage() {
             <p className="text-muted-foreground">Find answers to common questions or send us your feedback.</p>
         </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Frequently Asked Questions (FAQ)</CardTitle>
-          <CardDescription>Get quick answers to common questions about using the Aries Portal.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Faq />
-        </CardContent>
-      </Card>
       
       <Card>
         <CardHeader>
