@@ -1571,48 +1571,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request) return;
-  
+
     const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
     const commentText = `Status changed to ${status}. ${comment}`;
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-  
+
     const updates: { [key: string]: any } = {};
     updates[`ppeRequests/${requestId}/status`] = status;
-    updates[`ppeRequests/${requestId}/approverId`] = user.id;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
     updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
-    if (status === 'Issued') {
-      const ppeHistoryRecord: Omit<PpeHistoryRecord, 'id'> = {
-          ppeType: request.ppeType,
-          size: request.size,
-          quantity: request.quantity,
-          issueDate: new Date().toISOString(),
-          requestType: request.requestType,
-          remarks: request.remarks,
-          storeComment: comment,
-          requestId: request.id,
-          issuedById: user.id,
-          approverId: request.approverId,
-      };
-      const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
-      updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
+    if (status === 'Approved') {
+        updates[`ppeRequests/${requestId}/approverId`] = user.id;
+    } else if (status === 'Issued') {
+        const ppeHistoryRecord: Omit<PpeHistoryRecord, 'id'> = {
+            ppeType: request.ppeType,
+            size: request.size,
+            quantity: request.quantity,
+            issueDate: new Date().toISOString(),
+            requestType: request.requestType,
+            remarks: request.remarks,
+            storeComment: comment,
+            requestId: request.id,
+            issuedById: user.id,
+            approverId: request.approverId,
+        };
+        const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
+        updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
 
-      const stockRefPath = request.ppeType === 'Coverall' ? 'ppeStock/coveralls' : 'safetyShoes';
-      const stockItems = ppeStock.find(s => s.id === (request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
-      if(stockItems) {
-        if(request.ppeType === 'Coverall' && stockItems.sizes) {
-          const currentSizeStock = stockItems.sizes[request.size] || 0;
-          updates[`${stockRefPath}/sizes/${request.size}`] = Math.max(0, currentSizeStock - (request.quantity || 1));
-        } else if (request.ppeType === 'Safety Shoes' && typeof stockItems.quantity === 'number') {
-          updates[`${stockRefPath}/quantity`] = Math.max(0, stockItems.quantity - 1);
+        const stockRefPath = request.ppeType === 'Coverall' ? 'ppeStock/coveralls' : 'ppeStock/safetyShoes';
+        const stockItems = ppeStock.find(s => s.id === (request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
+        if (stockItems) {
+            if (request.ppeType === 'Coverall' && stockItems.sizes) {
+                const currentSizeStock = stockItems.sizes[request.size] || 0;
+                updates[`${stockRefPath}/sizes/${request.size}`] = Math.max(0, currentSizeStock - (request.quantity || 1));
+            } else if (request.ppeType === 'Safety Shoes' && typeof stockItems.quantity === 'number') {
+                updates[`${stockRefPath}/quantity`] = Math.max(0, stockItems.quantity - 1);
+            }
         }
-      }
+    } else if (status === 'Rejected') {
+        updates[`ppeRequests/${requestId}/approverId`] = user.id;
     }
-  
+
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'PPE Request Status Updated', `Request ID: ${requestId} to ${status}`);
-  }, [user, ppeRequests, ppeStock, addActivityLog]);
+}, [user, ppeRequests, ppeStock, addActivityLog]);
   
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
