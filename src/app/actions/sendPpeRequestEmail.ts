@@ -1,4 +1,3 @@
-
 'use server';
 
 import * as nodemailer from 'nodemailer';
@@ -90,7 +89,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
   try {
     await transporter.sendMail({
       from: `"Aries PPE Request" <${GMAIL_USER}>`,
-      to: 'harikrishnan.bornagain@gmail.com',
+      to: 'ariesmarineandeng@gmail.com',
       subject: subject,
       html: htmlBody,
     });
