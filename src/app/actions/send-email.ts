@@ -1,4 +1,3 @@
-
 'use server';
 
 import * as nodemailer from 'nodemailer';
@@ -32,10 +31,10 @@ export async function sendEmail({ to, subject, html }: MailOptions) {
       subject: subject,
       html: html,
     });
-    console.log('Email sent successfully.');
+    console.log('✅ Email sent successfully to:', to);
     return { success: true };
   } catch (error) {
-    console.error('Failed to send email:', error);
+    console.error('❌ Email failed:', error);
     return { success: false, error: (error as Error).message };
   }
 }
