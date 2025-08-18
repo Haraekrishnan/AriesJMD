@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { sendEmail } from '@/app/actions/send-email';
+import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1190,7 +1190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Manpower Profile Added', profile.name);
   }, [user, addActivityLog]);
   
-  const addMultipleManpowerProfiles = useCallback((profilesToImport: any[]): number => {
+  const addMultipleManpowerProfiles = useCallback((profilesToImport: any[]) => {
     if (!user) return 0;
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
@@ -1622,31 +1622,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await update(ref(rtdb), updates);
     
     if (manpowerProfile) {
-      const subject = `PPE Request from ${user.name} for ${manpowerProfile.name} — ${requestData.ppeType}`;
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const approvalLink = `${appUrl}/my-requests`;
-      
-      const htmlBody = `
-        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
-          <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
-          <p><strong>Employee:</strong> ${manpowerProfile.name}</p>
-          <p><strong>Type:</strong> ${requestData.ppeType} &middot; <strong>Size:</strong> ${requestData.size} &middot; <strong>Qty:</strong> ${requestData.quantity || 1}</p>
-          <p><strong>Request Type:</strong> ${requestData.requestType}</p>
-          <p><strong>Requested By:</strong> ${user.name}</p>
-          <p><strong>Remarks:</strong> ${requestData.remarks || 'None'}</p>
-          <p style="margin-top: 25px;">
-            <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; padding: 12px 18px; display: inline-block;">
-                Review Request
-            </a>
-          </p>
-        </div>
-      `;
-
-      await sendEmail({
-          to: 'harikrishnan.bornagain@gmail.com',
-          subject: subject,
-          html: htmlBody,
-      });
+      const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
+      const stockInfo = requestData.ppeType === 'Coverall' 
+          ? `Size ${requestData.size}: ${stockItem?.sizes?.[requestData.size] || 0}`
+          : `Total: ${stockItem?.quantity || 0}`;
+      await sendPpeRequestEmail(newRequestData, user, manpowerProfile, stockInfo);
     }
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
@@ -2008,7 +1988,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `mobileSims/${id}`), data);
     addActivityLog(user.id, 'Mobile/SIM Updated', `Updated ${item.number}`);
   }, [user, addActivityLog]);
-  
+
   const deleteMobileSim = useCallback((itemId: string) => {
     if (!user) return;
     const item = mobileSims.find(i => i.id === itemId);
@@ -2624,6 +2604,8 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+
 
 
 
