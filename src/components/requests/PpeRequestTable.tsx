@@ -88,7 +88,13 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
     const canApprove = isManager && req.status === 'Pending';
     const canMarkAsIssued = canIssue && req.status === 'Approved';
-    const lastIssue = manpower?.ppeHistory?.sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+    const lastIssue = useMemo(() => {
+      if (!manpower?.ppeHistory) return null;
+      const historyArray = Array.isArray(manpower.ppeHistory) ? manpower.ppeHistory : Object.values(manpower.ppeHistory);
+      return historyArray
+        .sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+    }, [manpower]);
+
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     
     const handleAccordionToggle = (openValue: string) => {
@@ -149,15 +155,15 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                 </Accordion>
             </CardContent>
             <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
-                {canApprove && (
+                 {isManager && req.status === 'Pending' && (
                     <>
                         <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
                     </>
-                )}
-                {canMarkAsIssued && (
+                 )}
+                 {canIssue && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
-                )}
+                 )}
                  {user?.role === 'Admin' && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
