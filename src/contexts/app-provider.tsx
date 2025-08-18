@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -9,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
+import { sendEmail } from '@/app/actions/send-email';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1622,7 +1621,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await update(ref(rtdb), updates);
     
     if (manpowerProfile) {
-      sendPpeRequestEmail(newRequestData as PpeRequest, user, manpowerProfile);
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const approvalLink = `${appUrl}/my-requests`;
+      const lastIssue = (manpowerProfile.ppeHistory || [])
+          .filter(h => h.ppeType === newRequestData.ppeType)
+          .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+          <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
+          <p><strong>Employee:</strong> ${manpowerProfile.name}</p>
+          <p><strong>Type:</strong> ${newRequestData.ppeType} &middot; <strong>Size:</strong> ${newRequestData.size} &middot; <strong>Qty:</strong> ${newRequestData.quantity}</p>
+          <p><strong>Request Type:</strong> ${newRequestData.requestType}</p>
+          <p><strong>Requested By:</strong> ${user.name}</p>
+          <a href="${approvalLink}">Review Request</a>
+        </div>
+      `;
+      
+      await sendEmail({
+          to: 'harikrishnan.bornagain@gmail.com',
+          subject: `PPE Request from ${user.name} for ${manpowerProfile.name}`,
+          html: emailHtml,
+      });
     }
 
   }, [user, users, addActivityLog, manpowerProfiles, ppeStock]);
@@ -2600,6 +2620,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
