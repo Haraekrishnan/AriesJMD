@@ -1,6 +1,7 @@
 
 'use server';
 
+import 'dotenv/config';
 import { Resend } from 'resend';
 import PpeRequestEmail from '@/emails/ppe-request-email';
 import type { ManpowerProfile, PpeRequest, User } from '@/lib/types';
