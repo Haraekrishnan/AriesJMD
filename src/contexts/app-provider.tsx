@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
-import { sendEmail } from '@/app/actions/send-email';
+import { sendPpeRequestEmail } from '@/app/actions/send-email';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1525,23 +1525,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
         viewedByRequester: true,
     };
     set(newRequestRef, newRequest);
-    const person = manpowerProfiles.find(p => p.id === requestData.manpowerId)?.name || 'a person';
-    addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${person}`);
+    
+    const employee = manpowerProfiles.find(p => p.id === requestData.manpowerId);
+    const employeeName = employee?.name || 'Unknown Employee';
+    
+    addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${employeeName}`);
+    
+    const lastIssue = employee?.ppeHistory
+      ?.filter(h => h.ppeType === requestData.ppeType)
+      .sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
 
-    const subject = `New PPE Request for ${person}`;
-    const html = `
-        <h3>New PPE Request</h3>
-        <p>A new PPE request has been submitted by ${user.name} and requires your approval.</p>
-        <ul>
-            <li><strong>Employee:</strong> ${person}</li>
-            <li><strong>Item:</strong> ${requestData.ppeType} (Size: ${requestData.size}, Qty: ${requestData.quantity || 1})</li>
-            <li><strong>Type:</strong> ${requestData.requestType}</li>
-            <li><strong>Remarks:</strong> ${requestData.remarks || 'N/A'}</li>
-        </ul>
-        <p>Please log in to the portal to review and approve this request.</p>
-    `;
-    sendEmail({ to: 'harikrishnan.bornagain@gmail.com', subject, html });
-  }, [user, manpowerProfiles, addActivityLog]);
+    const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
+    const stockInfo = requestData.ppeType === 'Coverall'
+      ? `${stockItem?.sizes?.[requestData.size] || 0} in stock`
+      : `${stockItem?.quantity || 0} in stock`;
+
+    const emailData = {
+        requesterName: user.name,
+        employeeName,
+        ppeType: requestData.ppeType,
+        size: requestData.size,
+        quantity: requestData.quantity || 1,
+        requestType: requestData.requestType,
+        remarks: requestData.remarks,
+        attachmentUrl: requestData.attachmentUrl,
+        joiningDate: employee?.joiningDate ? format(parseISO(employee.joiningDate), 'dd MMM, yyyy') : 'N/A',
+        rejoiningDate: employee?.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(employee.leaveHistory.find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
+        lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
+        stockInfo,
+        eligibility: requestData.eligibility,
+        newRequestJustification: requestData.newRequestJustification,
+    };
+
+    sendPpeRequestEmail(emailData);
+
+  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
   
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if (!user) return;
