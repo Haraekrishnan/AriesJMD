@@ -1,83 +1,99 @@
+
 'use server';
 
-import nodemailer from 'nodemailer';
-import type { ManpowerProfile, PpeRequest, User } from '@/lib/types';
-import 'dotenv/config';
+import * as nodemailer from 'nodemailer';
 
-export async function sendPpeRequestEmail(
-  ppeData: PpeRequest,
-  requester: User,
-  employee: ManpowerProfile
-) {
+export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
+  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
 
-  const lastIssue = (employee.ppeHistory || [])
-      .filter(h => h.ppeType === ppeData.ppeType)
-      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
-  const lastIssueDate = lastIssue ? new Date(lastIssue.issueDate).toLocaleDateString() : 'N/A';
-  const joiningDate = employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : 'N/A';
+  if (!GMAIL_USER || !GMAIL_APP_PASS) {
+    console.error('Missing Gmail credentials in .env file.');
+    return { success: false, error: 'Server configuration error.' };
+  }
   
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const approvalLink = `${appUrl}/my-requests`;
+
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASS,
+      user: GMAIL_USER,
+      pass: GMAIL_APP_PASS,
     },
   });
 
-  const mailOptions = {
-    from: process.env.GMAIL_USER,
-    to: 'harikrishnan.bornagain@gmail.com',
-    subject: `PPE Request from ${requester.name} for ${employee.name} — ${ppeData.ppeType}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-        <h2>New PPE Request for Approval</h2>
-        <p>A new Personal Protective Equipment (PPE) request has been submitted and requires your approval.</p>
-        
-        <h3>Request Details</h3>
-        <ul>
-          <li><strong>Employee:</strong> ${employee.name}</li>
-          <li><strong>PPE Type:</strong> ${ppeData.ppeType}</li>
-          <li><strong>Size:</strong> ${ppeData.size}</li>
-          ${ppeData.quantity ? `<li><strong>Quantity:</strong> ${ppeData.quantity}</li>` : ''}
-          <li><strong>Request Type:</strong> ${ppeData.requestType}</li>
-          <li><strong>Requested By:</strong> ${requester.name}</li>
-        </ul>
+  const {
+    requesterName,
+    employeeName,
+    ppeType,
+    size,
+    quantity,
+    requestType,
+    remarks,
+    attachmentUrl,
+    joiningDate,
+    rejoiningDate,
+    lastIssueDate,
+    stockInfo,
+    eligibility,
+    newRequestJustification,
+  } = ppeData;
 
-        ${ppeData.newRequestJustification ? `
-        <h3>Justification</h3>
-        <p style="background-color: #fffbe6; border: 1px solid #fde047; padding: 10px; border-radius: 5px;">
-          ${ppeData.newRequestJustification}
-        </p>
-        ` : ''}
+  const eligibilityHtml = eligibility ? `
+    <p style="margin-top: 20px; padding: 10px; border-left: 4px solid ${eligibility.eligible ? '#28a745' : '#dc3545'}; background-color: #f8f9fa;">
+      <strong style="color: ${eligibility.eligible ? '#28a745' : '#dc3545'};">Eligibility Status: ${eligibility.eligible ? 'Eligible' : 'Not Eligible'}</strong><br>
+      ${eligibility.reason}
+    </p>
+  ` : '';
+  
+  const justificationHtml = newRequestJustification ? `
+    <p style="margin-top: 20px; padding: 10px; border-left: 4px solid #ffc107; background-color: #fff3cd;">
+      <strong style="color: #856404;">Justification for 'New' Request:</strong><br>
+      ${newRequestJustification}
+    </p>
+  ` : '';
 
-        ${ppeData.eligibility ? `
-        <div style="background-color: ${ppeData.eligibility.eligible ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${ppeData.eligibility.eligible ? '#4ade80' : '#f87171'}; padding: 10px; border-radius: 5px;">
-          <h4 style="margin: 0 0 5px 0; color: ${ppeData.eligibility.eligible ? '#166534' : '#991b1b'};">Eligibility: ${ppeData.eligibility.eligible ? 'Eligible' : 'Not Eligible'}</h4>
-          <p style="margin: 0; color: ${ppeData.eligibility.eligible ? '#15803d' : '#b91c1c'};">${ppeData.eligibility.reason}</p>
-        </div>
-        ` : ''}
+  const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
+      <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
+      
+      <p><strong>Employee:</strong> ${employeeName}</p>
+      <p><strong>Type:</strong> ${ppeType} &middot; <strong>Size:</strong> ${size} &middot; <strong>Qty:</strong> ${quantity}</p>
+      <p><strong>Request Type:</strong> ${requestType}</p>
+      
+       ${justificationHtml}
 
-        <h3>Additional Info</h3>
-        <ul>
-            <li><strong>Joining Date:</strong> ${joiningDate}</li>
-            <li><strong>Last Issue Date (${ppeData.ppeType}):</strong> ${lastIssueDate}</li>
-        </ul>
+      <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+        <strong>Joining Date:</strong> ${joiningDate || 'N/A'}<br>
+        <strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}<br>
+        <strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}<br>
+        <strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span>
+      </p>
 
-        <p><strong>Remarks:</strong> ${ppeData.remarks || 'None'}</p>
+      ${eligibilityHtml}
 
-        ${ppeData.attachmentUrl ? `
-          <p><strong>Attachment:</strong> <a href="${ppeData.attachmentUrl}">View Attached Image</a></p>
-        ` : ''}
-        
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 5px;">Review Request</a>
-      </div>
-    `,
-  };
+      <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
+      
+      ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
+      
+      <p><strong>Requested By:</strong> ${requesterName}</p>
+
+      <p style="margin-top: 25px;">
+        <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; border-top: 12px solid #007bff; border-bottom: 12px solid #007bff; border-right: 18px solid #007bff; border-left: 18px solid #007bff; display: inline-block;">
+            Review Request
+        </a>
+      </p>
+    </div>
+  `;
 
   try {
-    await transporter.sendMail(mailOptions);
+    await transporter.sendMail({
+      from: `"Aries PPE Request" <${GMAIL_USER}>`,
+      to: 'harikrishnan.bornagain@gmail.com',
+      subject: subject,
+      html: htmlBody,
+    });
     console.log('PPE request notification sent successfully.');
     return { success: true };
   } catch (error) {
