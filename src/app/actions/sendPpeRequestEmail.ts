@@ -1,25 +1,18 @@
 'use server';
 
 import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
-  const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
+  const { GMAIL_USER, GMAIL_APP_PASS, RESEND_API_KEY } = process.env;
 
-  if (!GMAIL_USER || !GMAIL_APP_PASS) {
-    console.error('Missing Gmail credentials in .env file.');
+  if (!GMAIL_USER || !GMAIL_APP_PASS || !RESEND_API_KEY) {
+    console.error('Missing email credentials in .env file.');
     return { success: false, error: 'Server configuration error.' };
   }
-  
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const approvalLink = `${appUrl}/my-requests`;
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: GMAIL_USER,
-      pass: GMAIL_APP_PASS,
-    },
-  });
 
   const {
     requesterName,
@@ -86,17 +79,45 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     </div>
   `;
 
+  // Attempt to send with Nodemailer (Gmail) first
   try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASS,
+      },
+      logger: true,
+      debug: true,
+    });
+
     await transporter.sendMail({
       from: `"Aries PPE Request" <${GMAIL_USER}>`,
       to: 'ariesmarineandeng@gmail.com',
       subject: subject,
       html: htmlBody,
     });
-    console.log('PPE request notification sent successfully.');
+    
+    console.log('PPE request notification sent successfully via Gmail.');
     return { success: true };
-  } catch (error) {
-    console.error('Failed to send email:', error);
-    return { success: false, error: (error as Error).message };
+  } catch (gmailError) {
+    console.error('Failed to send email via Gmail:', gmailError);
+    
+    // Fallback to Resend API
+    console.log('Attempting to send email via Resend as a fallback...');
+    const resend = new Resend(RESEND_API_KEY);
+    try {
+      await resend.emails.send({
+        from: `Aries PPE Request <${GMAIL_USER}>`,
+        to: 'ariesmarineandeng@gmail.com',
+        subject: subject,
+        html: htmlBody,
+      });
+      console.log('PPE request notification sent successfully via Resend.');
+      return { success: true };
+    } catch (resendError) {
+      console.error('Failed to send email via Resend as well:', resendError);
+      return { success: false, error: (resendError as Error).message };
+    }
   }
 }
