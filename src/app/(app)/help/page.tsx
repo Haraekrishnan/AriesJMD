@@ -12,6 +12,12 @@ import { z } from 'zod';
 import { HelpCircle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { useState } from 'react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 const feedbackSchema = z.object({
   subject: z.string().min(5, 'Subject must be at least 5 characters long.'),
@@ -19,6 +25,29 @@ const feedbackSchema = z.object({
 });
 
 type FeedbackFormValues = z.infer<typeof feedbackSchema>;
+
+const faqs = [
+    {
+      question: "How do I create a new task?",
+      answer: "Navigate to the 'Manage Tasks' page. Click the 'New Task' button, fill in the details like title, description, assignee, priority, and due date, then click 'Create Task'."
+    },
+    {
+      question: "How does task approval work?",
+      answer: "When an assignee marks a task as 'Completed', it is sent to the task creator for approval. The creator can then approve it to finalize it or return it with comments if changes are needed. You can find tasks awaiting your approval in the 'Pending Approvals' dialog on the task board."
+    },
+    {
+      question: "How do I request an item from the store?",
+      answer: "Go to the 'My Requests' page and select the 'Internal Store Requests' tab. Click 'New Store Request', fill out the items you need, and submit. The request will be sent to the store in-charge for approval."
+    },
+    {
+      question: "What is the difference between Job Schedule and the Planner?",
+      answer: "'Job Schedule' is for planning daily work for specific projects, including assigning manpower and vehicles. The 'Planner' is a monthly calendar for organizing personal or team events, meetings, and daily notes."
+    },
+    {
+        question: "How do I update my profile information?",
+        answer: "Go to the 'Account' page. You can edit your name, email, and upload a new profile picture. You can also change your password here."
+    }
+];
 
 export default function HelpPage() {
   const { toast } = useToast();
@@ -68,6 +97,24 @@ export default function HelpPage() {
         </div>
       </div>
       
+      <Card>
+        <CardHeader>
+            <CardTitle>Frequently Asked Questions</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+                {faqs.map((faq, index) => (
+                    <AccordionItem key={index} value={`item-${index}`}>
+                        <AccordionTrigger>{faq.question}</AccordionTrigger>
+                        <AccordionContent>
+                            {faq.answer}
+                        </AccordionContent>
+                    </AccordionItem>
+                ))}
+            </Accordion>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Submit Feedback or a Complaint</CardTitle>
