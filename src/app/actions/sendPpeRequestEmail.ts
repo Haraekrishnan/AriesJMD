@@ -93,7 +93,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
 
     await transporter.sendMail({
       from: `"Aries PPE Request" <${GMAIL_USER}>`,
-      to: 'ariesmarineandeng@gmail.com',
+      to: 'harikrishnan.bornagain@gmail.com',
       subject: subject,
       html: htmlBody,
     });
