@@ -109,7 +109,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     try {
       await resend.emails.send({
         from: `Aries PPE Request <${GMAIL_USER}>`,
-        to: 'ariesmarineandeng@gmail.com',
+        to: 'vijay.sai@ariesmar.com',
         subject: subject,
         html: htmlBody,
       });
