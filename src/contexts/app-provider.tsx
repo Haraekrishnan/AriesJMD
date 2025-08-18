@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1860,94 +1859,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, ppeRequests, manpowerProfiles, ppeStock]);
 
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-    const findProfile = (name: string) => {
-        const normalizedName = normalize(name);
-        return manpowerProfiles.find(p => normalize(p.name) === normalizedName);
-    };
-
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-    const coverallsStockUpdates: { [size: string]: number } = {};
-    
-    for (const row of data) {
-      const employeeName = row['Employee Name'];
-      const size = row['Size']?.toString().toUpperCase();
-      const dateValue = row['Date'];
-      
-      if (!employeeName || !size || !dateValue) continue;
-
-      const profile = findProfile(employeeName);
-      
-      if (profile) {
-        let parsedDate: Date | null = null;
-        if (dateValue instanceof Date && isValid(dateValue)) {
-            parsedDate = dateValue;
-        } else if (typeof dateValue === 'string') {
-            const trimmedDate = dateValue.trim();
-            // Try parsing various common formats
-            const formatsToTry = ['dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'yyyy/MM/dd', 'dd/MM/yy', 'd/M/yy'];
-            for (const fmt of formatsToTry) {
-                parsedDate = parse(trimmedDate, fmt, new Date());
-                if (isValid(parsedDate)) break;
-            }
-            if (!isValid(parsedDate)) parsedDate = parseISO(trimmedDate);
-        } else if (typeof dateValue === 'number') { // Handle Excel date serial numbers
-            const excelEpoch = new Date(1899, 11, 30);
-            parsedDate = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        }
-
-        if (!parsedDate || !isValid(parsedDate)) {
-            console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
-            notFoundCount++;
-            continue;
-        }
-
-        const issueDate = parsedDate.toISOString();
-
-        const newHistoryItem: PpeHistoryRecord = {
-          id: `ppe-hist-import-${Date.now()}-${importedCount}`,
-          ppeType: 'Coverall',
-          size,
-          quantity: 1,
-          issueDate,
-          requestType: 'New', // Default for imported records
-          issuedById: user.id,
-        };
-
-        const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : [];
-        updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newHistoryItem];
-        
-        coverallsStockUpdates[size] = (coverallsStockUpdates[size] || 0) + 1;
-        
-        importedCount++;
-      } else {
-        notFoundCount++;
-      }
-    }
-    
-    const coverallsStock = ppeStock.find(s => s.id === 'coveralls');
-    if (coverallsStock) {
-        const currentSizes = coverallsStock.sizes || {};
-        for (const size in coverallsStockUpdates) {
-            currentSizes[size] = (currentSizes[size] || 0) - coverallsStockUpdates[size];
-            if (currentSizes[size] < 0) currentSizes[size] = 0;
-        }
-        updates['/ppeStock/coveralls/sizes'] = currentSizes;
-    }
-    
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} records. ${notFoundCount} names not found.`);
-    }
-
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
-
   const markPpeRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
@@ -1955,138 +1866,168 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
     }
   }, [user, ppeRequests]);
-
+  
   const updatePpeStock = useCallback((stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => {
-    if (!user) return;
-    const stockRef = ref(rtdb, `ppeStock/${stockId}`);
-    let updateData: Partial<PpeStock> = { lastUpdated: new Date().toISOString() };
-    if (stockId === 'coveralls') {
-        updateData.sizes = data as { [key: string]: number };
-    } else {
-        updateData.quantity = data as number;
-    }
-    update(stockRef, updateData);
-    addActivityLog(user.id, 'PPE Stock Updated', `Updated stock for ${stockId}`);
-  }, [user, addActivityLog]);
+    if (!user || !can.manage_ppe_stock) return;
+    const updatePath = stockId === 'coveralls' ? `ppeStock/${stockId}/sizes` : `ppeStock/${stockId}/quantity`;
+    const updates = { [updatePath]: data, [`ppeStock/${stockId}/lastUpdated`]: new Date().toISOString() };
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'PPE Stock Updated', `Updated ${stockId}`);
+  }, [user, can.manage_ppe_stock, addActivityLog]);
   
-  const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    if (!user) return;
-    const newItemRef = push(ref(rtdb, 'inventoryItems'));
-    set(newItemRef, { ...itemData, lastUpdated: new Date().toISOString() });
-    addActivityLog(user.id, 'Inventory Item Added', `Added ${itemData.name} (SN: ${itemData.serialNumber})`);
-  }, [user, addActivityLog]);
-  
-  const deleteInventoryItem = useCallback((itemId: string) => {
-    if (!user) return;
-    const item = inventoryItems.find(i => i.id === itemId);
-    remove(ref(rtdb, `inventoryItems/${itemId}`));
-    if(item) addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
-  }, [user, inventoryItems, addActivityLog]);
+  const addInventoryItem = useCallback((item: Omit<InventoryItem, 'id'|'lastUpdated'>) => {
+    if(!user || !can.manage_inventory) return;
+    const newRef = push(ref(rtdb, 'inventoryItems'));
+    set(newRef, {...item, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Inventory Item Added', item.name);
+  }, [user, can.manage_inventory, addActivityLog]);
   
   const addMultipleInventoryItems = useCallback((itemsToImport: any[]) => {
-    if (!user) return 0;
+    if (!user || !can.manage_inventory) return 0;
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
+
     itemsToImport.forEach(item => {
         try {
             const serialNumber = item['SERIAL NUMBER']?.toString();
-            if (!serialNumber) return;
+            if (!serialNumber) return; // Skip if no serial number
+
             const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
-            const project = projects.find(p => p.name.toLowerCase() === item['PROJECT']?.toLowerCase());
-            if (!project) return;
-            const newItemData = { name: item['ITEM NAME'], serialNumber, chestCrollNo: item['CHEST CROLL NO']?.toString(), ariesId: item['ARIES ID']?.toString(), inspectionDate: new Date(item['INSPECTION DATE']).toISOString(), inspectionDueDate: new Date(item['INSPECTION DUE DATE']).toISOString(), tpInspectionDueDate: new Date(item['TP INSPECTION DUE DATE']).toISOString(), status: item['STATUS'] as InventoryItemStatus || 'In Store', projectId: project.id, lastUpdated: new Date().toISOString() };
             
+            const parseDate = (dateInput: string | number | undefined): string | undefined => {
+                if (!dateInput) return undefined;
+                if (dateInput instanceof Date && isValid(dateInput)) {
+                    return dateInput.toISOString();
+                }
+                if (typeof dateInput === 'string') {
+                    // Try parsing various common formats
+                    let parsedDate = parse(dateInput, 'dd-MM-yyyy', new Date());
+                    if (!isValid(parsedDate)) parsedDate = parse(dateInput, 'yyyy-MM-dd', new Date());
+                    if (!isValid(parsedDate)) parsedDate = parseISO(dateInput);
+                    if (isValid(parsedDate)) return parsedDate.toISOString();
+                }
+                if(typeof dateInput === 'number') { // Excel date serial number
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const date = new Date(excelEpoch.getTime() + dateInput * 24 * 60 * 60 * 1000);
+                    return isValid(date) ? date.toISOString() : undefined;
+                }
+                return undefined;
+            };
+
+            const projectName = item['PROJECT'];
+            const project = projects.find(p => p.name.toLowerCase() === projectName?.toLowerCase());
+
+            const itemData: Partial<InventoryItem> = {
+                name: item['ITEM NAME'],
+                serialNumber: serialNumber,
+                chestCrollNo: item['CHEST CROLL NO']?.toString(),
+                ariesId: item['ARIES ID']?.toString(),
+                inspectionDate: parseDate(item['INSPECTION DATE']),
+                inspectionDueDate: parseDate(item['INSPECTION DUE DATE']),
+                tpInspectionDueDate: parseDate(item['TP INSPECTION DUE DATE']),
+                status: item['STATUS'] as InventoryItemStatus,
+                projectId: project?.id,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            // Clean up undefined properties
+            const cleanItemData = Object.fromEntries(Object.entries(itemData).filter(([_, v]) => v != null));
+
             const key = existingItem ? existingItem.id : push(ref(rtdb, 'inventoryItems')).key;
             if (key) {
-              updates[`/inventoryItems/${key}`] = existingItem ? { ...existingItem, ...newItemData } : { ...newItemData, id: key };
+              updates[`/inventoryItems/${key}`] = existingItem 
+                ? { ...existingItem, ...cleanItemData } 
+                : cleanItemData;
               importedCount++;
             }
-        } catch(e) { console.error("Skipping invalid row:", item, e); }
+        } catch(e) { console.error("Skipping invalid inventory row:", item, e) }
     });
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Bulk Inventory Import', `Imported ${importedCount} items.`);
-    return importedCount;
-  }, [user, inventoryItems, projects, addActivityLog]);
-  
-  const updateInventoryItem = useCallback((item: InventoryItem) => {
-    if (!user) return;
-    const { id, ...data } = item;
-    update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
-    addActivityLog(user.id, 'Inventory Item Updated', `Updated ${item.name} (SN: ${item.serialNumber})`);
-  }, [user, addActivityLog]);
-  
-  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
-    if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'certificateRequests'));
 
-    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+    
+    addActivityLog(user.id, 'Bulk Inventory Import', `Imported/updated ${importedCount} items.`);
+    return importedCount;
+  }, [user, can.manage_inventory, addActivityLog, inventoryItems, projects]);
+
+  const updateInventoryItem = useCallback((item: InventoryItem) => {
+    if(!user || !can.manage_inventory) return;
+    const { id, ...data } = item;
+    update(ref(rtdb, `inventoryItems/${id}`), {...data, lastUpdated: new Date().toISOString()});
+    addActivityLog(user.id, 'Inventory Item Updated', item.name);
+  }, [user, can.manage_inventory, addActivityLog]);
+
+  const deleteInventoryItem = useCallback((itemId: string) => {
+    if(!user || !can.manage_inventory) return;
+    const item = inventoryItems.find(i => i.id === itemId);
+    remove(ref(rtdb, `inventoryItems/${itemId}`));
+    if(item) addActivityLog(user.id, 'Inventory Item Deleted', item.name);
+  }, [user, can.manage_inventory, addActivityLog, inventoryItems]);
+
+  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate'|'comments'|'viewedByRequester'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'certificateRequests'));
+    const initialComment: Comment = {
+      id: `comm-${Date.now()}`,
+      userId: user.id,
+      text: requestData.remarks || 'Request created',
+      date: new Date().toISOString()
+    }
+    const newRequest: Omit<CertificateRequest, 'id'> = {
+      ...requestData,
       requesterId: user.id,
-      requestType: requestData.requestType,
       status: 'Pending',
       requestDate: new Date().toISOString(),
-      viewedByRequester: true
+      comments: [initialComment]
     };
-    
-    const initialComment = requestData.remarks 
-      ? { id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() } 
-      : { id: `crc-${Date.now()}`, userId: user.id, text: 'Request created.', date: new Date().toISOString() };
-
-    newRequest.comments = [initialComment];
-
-    if (requestData.itemId) newRequest.itemId = requestData.itemId;
-    if (requestData.utMachineId) newRequest.utMachineId = requestData.utMachineId;
-    if (requestData.dftMachineId) newRequest.dftMachineId = requestData.dftMachineId;
-
-    set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
-    addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
-  }, [user, addActivityLog]);
-  
-  const addCertificateRequestComment = useCallback(async (requestId: string, comment: string) => {
-    if (!user) return;
-    const requestRef = ref(rtdb, `certificateRequests/${requestId}`);
-    const snapshot = await get(requestRef);
-    if (!snapshot.exists()) return;
-  
-    const request = snapshot.val();
-    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
-    
-    const newCommentId = push(ref(rtdb, `certificateRequests/${requestId}/comments`)).key;
-    if (!newCommentId) return;
-
-    const newComment: Comment = { id: newCommentId, userId: user.id, text: comment, date: new Date().toISOString() };
-    const updatedComments = [...existingComments, newComment];
-  
-    update(requestRef, { 
-      comments: updatedComments,
-      lastUpdated: new Date().toISOString(), 
-      viewedByRequester: false 
-    });
+    set(newRef, newRequest);
   }, [user]);
 
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
-    addCertificateRequestComment(requestId, comment);
-    update(ref(rtdb, `certificateRequests/${requestId}`), { 
-      status: 'Completed', 
-      completionDate: new Date().toISOString(),
-      viewedByRequester: false 
-    });
-    addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
-  }, [user, addActivityLog, addCertificateRequestComment]);
+    const request = certificateRequests.find(r => r.id === requestId);
+    if (!request) return;
 
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+
+    const updates: Partial<CertificateRequest> = {
+      status: 'Completed',
+      completionDate: new Date().toISOString(),
+      comments: [...existingComments, newComment],
+      viewedByRequester: false
+    };
+    update(ref(rtdb, `certificateRequests/${requestId}`), updates);
+  }, [user, certificateRequests]);
+  
+  const addCertificateRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = certificateRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: commentText, date: new Date().toISOString() };
+    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
+
+    update(ref(rtdb, `certificateRequests/${requestId}`), {
+      comments: [...existingComments, newComment]
+    });
+  }, [user, certificateRequests]);
+  
   const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
     if (!user) return;
-    const updates: { [key: string]: any } = {};
+    const updates: { [key: string]: boolean } = {};
     certificateRequests.forEach(req => {
-      const isStoreReq = !!req.itemId;
-      const isEquipmentReq = !!req.utMachineId || !!req.dftMachineId;
+      const isStore = !!req.itemId;
+      const isEquipment = !!req.utMachineId || !!req.dftMachineId;
+      
+      const isMatch = (requestType === 'store' && isStore) || (requestType === 'equipment' && isEquipment);
 
-      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) {
-        if ((requestType === 'store' && isStoreReq) || (requestType === 'equipment' && isEquipmentReq)) {
-            updates[`/certificateRequests/${req.id}/viewedByRequester`] = true;
-        }
+      if (isMatch && req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) {
+        updates[`/certificateRequests/${req.id}/viewedByRequester`] = true;
       }
     });
+
     if (Object.keys(updates).length > 0) {
       update(ref(rtdb), updates);
     }
@@ -2095,171 +2036,170 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
     remove(ref(rtdb, `certificateRequests/${requestId}`));
   }, []);
-
+  
   const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'utMachines'));
     set(newRef, machine);
     addActivityLog(user.id, 'UT Machine Added', machine.machineName);
-  }, [user, addActivityLog]);
-  
+  }, [user, can.manage_equipment_status, addActivityLog]);
+
   const updateUTMachine = useCallback((machine: UTMachine) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = machine;
     update(ref(rtdb, `utMachines/${id}`), data);
     addActivityLog(user.id, 'UT Machine Updated', machine.machineName);
-  }, [user, addActivityLog]);
-  
+  }, [user, can.manage_equipment_status, addActivityLog]);
+
   const deleteUTMachine = useCallback((machineId: string) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const machine = utMachines.find(m => m.id === machineId);
     remove(ref(rtdb, `utMachines/${machineId}`));
     if(machine) addActivityLog(user.id, 'UT Machine Deleted', machine.machineName);
-  }, [user, utMachines, addActivityLog]);
+  }, [user, can.manage_equipment_status, utMachines, addActivityLog]);
 
   const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'dftMachines'));
     set(newRef, machine);
     addActivityLog(user.id, 'DFT Machine Added', machine.machineName);
-  }, [user, addActivityLog]);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const updateDftMachine = useCallback((machine: DftMachine) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = machine;
     update(ref(rtdb, `dftMachines/${id}`), data);
     addActivityLog(user.id, 'DFT Machine Updated', machine.machineName);
-  }, [user, addActivityLog]);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const deleteDftMachine = useCallback((machineId: string) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const machine = dftMachines.find(m => m.id === machineId);
     remove(ref(rtdb, `dftMachines/${machineId}`));
     if(machine) addActivityLog(user.id, 'DFT Machine Deleted', machine.machineName);
-  }, [user, dftMachines, addActivityLog]);
-  
+  }, [user, can.manage_equipment_status, dftMachines, addActivityLog]);
+
   const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'mobileSims'));
     set(newRef, item);
-    addActivityLog(user.id, 'Mobile/SIM Added', item.number);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Mobile/SIM Added', `${item.type}: ${item.number}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
   
   const updateMobileSim = useCallback((item: MobileSim) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = item;
     update(ref(rtdb, `mobileSims/${id}`), data);
-    addActivityLog(user.id, 'Mobile/SIM Updated', item.number);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Mobile/SIM Updated', `${item.type}: ${item.number}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const deleteMobileSim = useCallback((itemId: string) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const item = mobileSims.find(i => i.id === itemId);
     remove(ref(rtdb, `mobileSims/${itemId}`));
-    if(item) addActivityLog(user.id, 'Mobile/SIM Deleted', item.number);
-  }, [user, mobileSims, addActivityLog]);
-  
+    if (item) addActivityLog(user.id, 'Mobile/SIM Deleted', `${item.type}: ${item.number}`);
+  }, [user, can.manage_equipment_status, mobileSims, addActivityLog]);
+
   const addLaptopDesktop = useCallback((item: Omit<LaptopDesktop, 'id'>) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'laptopsDesktops'));
     set(newRef, item);
-    addActivityLog(user.id, 'Laptop/Desktop Added', item.serialNumber);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Laptop/Desktop Added', `${item.make} ${item.model}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = item;
     update(ref(rtdb, `laptopsDesktops/${id}`), data);
-    addActivityLog(user.id, 'Laptop/Desktop Updated', item.serialNumber);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Laptop/Desktop Updated', `${item.make} ${item.model}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const deleteLaptopDesktop = useCallback((itemId: string) => {
-    if(!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const item = laptopsDesktops.find(i => i.id === itemId);
     remove(ref(rtdb, `laptopsDesktops/${itemId}`));
-    if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', item.serialNumber);
-  }, [user, laptopsDesktops, addActivityLog]);
-  
+    if (item) addActivityLog(user.id, 'Laptop/Desktop Deleted', `${item.make} ${item.model}`);
+  }, [user, can.manage_equipment_status, laptopsDesktops, addActivityLog]);
+
   const addDigitalCamera = useCallback((camera: Omit<DigitalCamera, 'id'>) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'digitalCameras'));
     set(newRef, camera);
-    addActivityLog(user.id, 'Digital Camera Added', camera.serialNumber);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Digital Camera Added', `${camera.make} ${camera.model}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = camera;
     update(ref(rtdb, `digitalCameras/${id}`), data);
-    addActivityLog(user.id, 'Digital Camera Updated', camera.serialNumber);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Digital Camera Updated', `${camera.make} ${camera.model}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const deleteDigitalCamera = useCallback((cameraId: string) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const camera = digitalCameras.find(c => c.id === cameraId);
     remove(ref(rtdb, `digitalCameras/${cameraId}`));
-    if (camera) addActivityLog(user.id, 'Digital Camera Deleted', camera.serialNumber);
-  }, [user, digitalCameras, addActivityLog]);
+    if (camera) addActivityLog(user.id, 'Digital Camera Deleted', `${camera.make} ${camera.model}`);
+  }, [user, can.manage_equipment_status, digitalCameras, addActivityLog]);
 
   const addAnemometer = useCallback((anemometer: Omit<Anemometer, 'id'>) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'anemometers'));
     set(newRef, anemometer);
-    addActivityLog(user.id, 'Anemometer Added', anemometer.serialNumber);
-  }, [user, addActivityLog]);
-
+    addActivityLog(user.id, 'Anemometer Added', `${anemometer.make} ${anemometer.model}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
+  
   const updateAnemometer = useCallback((anemometer: Anemometer) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = anemometer;
     update(ref(rtdb, `anemometers/${id}`), data);
-    addActivityLog(user.id, 'Anemometer Updated', anemometer.serialNumber);
-  }, [user, addActivityLog]);
-  
+    addActivityLog(user.id, 'Anemometer Updated', `${anemometer.make} ${anemometer.model}`);
+  }, [user, can.manage_equipment_status, addActivityLog]);
+
   const deleteAnemometer = useCallback((anemometerId: string) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const anemometer = anemometers.find(a => a.id === anemometerId);
     remove(ref(rtdb, `anemometers/${anemometerId}`));
-    if (anemometer) addActivityLog(user.id, 'Anemometer Deleted', anemometer.serialNumber);
-  }, [user, anemometers, addActivityLog]);
+    if (anemometer) addActivityLog(user.id, 'Anemometer Deleted', `${anemometer.make} ${anemometer.model}`);
+  }, [user, can.manage_equipment_status, anemometers, addActivityLog]);
 
   const addOtherEquipment = useCallback((equipment: Omit<OtherEquipment, 'id'>) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const newRef = push(ref(rtdb, 'otherEquipments'));
     set(newRef, equipment);
-    addActivityLog(user.id, 'Other Equipment Added', equipment.serialNumber);
-  }, [user, addActivityLog]);
-
+    addActivityLog(user.id, 'Other Equipment Added', equipment.equipmentName);
+  }, [user, can.manage_equipment_status, addActivityLog]);
+  
   const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const { id, ...data } = equipment;
     update(ref(rtdb, `otherEquipments/${id}`), data);
-    addActivityLog(user.id, 'Other Equipment Updated', equipment.serialNumber);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Other Equipment Updated', equipment.equipmentName);
+  }, [user, can.manage_equipment_status, addActivityLog]);
 
   const deleteOtherEquipment = useCallback((equipmentId: string) => {
-    if (!user) return;
+    if (!user || !can.manage_equipment_status) return;
     const equipment = otherEquipments.find(e => e.id === equipmentId);
     remove(ref(rtdb, `otherEquipments/${equipmentId}`));
-    if (equipment) addActivityLog(user.id, 'Other Equipment Deleted', equipment.serialNumber);
-  }, [user, otherEquipments, addActivityLog]);
+    if (equipment) addActivityLog(user.id, 'Other Equipment Deleted', equipment.equipmentName);
+  }, [user, can.manage_equipment_status, otherEquipments, addActivityLog]);
 
-  const addMachineLog = useCallback((logData: Omit<MachineLog, 'id' | 'machineId' | 'loggedByUserId'>, machineId: string) => {
-    if (!user) return;
-    const newLogRef = push(ref(rtdb, 'machineLogs'));
-    set(newLogRef, { ...logData, machineId, loggedByUserId: user.id });
-    addActivityLog(user.id, 'Machine Log Added', `For machine ID: ${machineId}`);
+  const addMachineLog = useCallback((logData: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'machineLogs'));
+    set(newRef, { ...logData, machineId: machineId, loggedByUserId: user.id });
+    addActivityLog(user.id, 'Machine Log Added', `For machine ID ${machineId}`);
   }, [user, addActivityLog]);
   
+  const deleteMachineLog = useCallback((logId: string) => {
+    if(!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `machineLogs/${logId}`));
+  }, [user]);
+
   const getMachineLogs = useCallback((machineId: string) => {
     return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [machineLogs]);
-
-  const deleteMachineLog = useCallback((logId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `machineLogs/${logId}`));
-    addActivityLog(user.id, 'Machine Log Deleted', `Log ID: ${logId}`);
-  }, [user, addActivityLog]);
-
+  
   const updateBranding = useCallback((name: string, logo: string | null) => {
     if (!user || !can.manage_branding) return;
     update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
@@ -2509,744 +2449,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newRecord);
     addActivityLog(user.id, 'IGP/OGP Record Added', `MRN: ${record.mrnNumber}`);
   }, [user, addActivityLog]);
-
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+  
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]) => {
     if (!user) return { importedCount: 0, notFoundCount: 0 };
     
-    const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-    const findProfile = (name: string) => {
-        const normalizedName = normalize(name);
-        return manpowerProfiles.find(p => normalize(p.name) === normalizedName);
-    };
-
+    const updates: { [key: string]: any } = {};
     let importedCount = 0;
     let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-    const coverallsStockUpdates: { [size: string]: number } = {};
     
     for (const row of data) {
-      const employeeName = row['Employee Name'];
-      const size = row['Size']?.toString().toUpperCase();
-      const dateValue = row['Date'];
-      
-      if (!employeeName || !size || !dateValue) continue;
+        const employeeName = row['Employee Name'];
+        if (!employeeName) continue;
 
-      const profile = findProfile(employeeName);
-      
-      if (profile) {
-        let parsedDate: Date | null = null;
-        if (dateValue instanceof Date && isValid(dateValue)) {
-            parsedDate = dateValue;
-        } else if (typeof dateValue === 'string') {
-            const trimmedDate = dateValue.trim();
-            // Try parsing various common formats
-            const formatsToTry = ['dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'yyyy/MM/dd', 'dd/MM/yy', 'd/M/yy'];
-            for (const fmt of formatsToTry) {
-                parsedDate = parse(trimmedDate, fmt, new Date());
-                if (isValid(parsedDate)) break;
-            }
-            if (!isValid(parsedDate)) parsedDate = parseISO(trimmedDate);
-        } else if (typeof dateValue === 'number') { // Handle Excel date serial numbers
-            const excelEpoch = new Date(1899, 11, 30);
-            parsedDate = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        }
+        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
 
-        if (!parsedDate || !isValid(parsedDate)) {
-            console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
+        if (!profile) {
             notFoundCount++;
             continue;
         }
 
-        const issueDate = parsedDate.toISOString();
+        let issueDate: Date | null = null;
+        if (row['Date'] instanceof Date) {
+            issueDate = row['Date'];
+        } else if (typeof row['Date'] === 'string') {
+            issueDate = parseISO(row['Date']);
+            if (!isValid(issueDate)) {
+              issueDate = parse(row['Date'], 'dd-MM-yyyy', new Date());
+            }
+        }
+        if (!issueDate || !isValid(issueDate)) continue;
 
-        const newHistoryItem: PpeHistoryRecord = {
-          id: `ppe-hist-import-${Date.now()}-${importedCount}`,
-          ppeType: 'Coverall',
-          size,
-          quantity: 1,
-          issueDate,
-          requestType: 'New', // Default for imported records
-          issuedById: user.id,
+        const newRecord: PpeHistoryRecord = {
+            id: `ppe-hist-${Date.now()}-${importedCount}`,
+            ppeType: 'Coverall',
+            size: row['Size'] || 'N/A',
+            quantity: 1,
+            issueDate: issueDate.toISOString(),
+            requestType: 'New',
+            issuedById: user.id
         };
 
         const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : [];
-        updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newHistoryItem];
-        
-        coverallsStockUpdates[size] = (coverallsStockUpdates[size] || 0) + 1;
-        
+        updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newRecord];
         importedCount++;
-      } else {
-        notFoundCount++;
-      }
-    }
-    
-    const coverallsStock = ppeStock.find(s => s.id === 'coveralls');
-    if (coverallsStock) {
-        const currentSizes = coverallsStock.sizes || {};
-        for (const size in coverallsStockUpdates) {
-            currentSizes[size] = (currentSizes[size] || 0) - coverallsStockUpdates[size];
-            if (currentSizes[size] < 0) currentSizes[size] = 0;
-        }
-        updates['/ppeStock/coveralls/sizes'] = currentSizes;
     }
     
     if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} records. ${notFoundCount} names not found.`);
+        await update(ref(rtdb), updates);
     }
-
+    
+    addActivityLog(user.id, 'Bulk PPE History Import', `Imported ${importedCount} records.`);
     return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
-
-  const markPpeRequestAsViewed = useCallback((requestId: string) => {
-    if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (request && request.requesterId === user.id && !request.viewedByRequester) {
-      update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
-    }
-  }, [user, ppeRequests]);
-
-  const updatePpeStock = useCallback((stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => {
-    if (!user) return;
-    const stockRef = ref(rtdb, `ppeStock/${stockId}`);
-    let updateData: Partial<PpeStock> = { lastUpdated: new Date().toISOString() };
-    if (stockId === 'coveralls') {
-        updateData.sizes = data as { [key: string]: number };
-    } else {
-        updateData.quantity = data as number;
-    }
-    update(stockRef, updateData);
-    addActivityLog(user.id, 'PPE Stock Updated', `Updated stock for ${stockId}`);
-  }, [user, addActivityLog]);
-  
-  const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    if (!user) return;
-    const newItemRef = push(ref(rtdb, 'inventoryItems'));
-    set(newItemRef, { ...itemData, lastUpdated: new Date().toISOString() });
-    addActivityLog(user.id, 'Inventory Item Added', `Added ${itemData.name} (SN: ${itemData.serialNumber})`);
-  }, [user, addActivityLog]);
-  
-  const deleteInventoryItem = useCallback((itemId: string) => {
-    if (!user) return;
-    const item = inventoryItems.find(i => i.id === itemId);
-    remove(ref(rtdb, `inventoryItems/${itemId}`));
-    if(item) addActivityLog(user.id, 'Inventory Item Deleted', `Deleted ${item?.name} (SN: ${item?.serialNumber})`);
-  }, [user, inventoryItems, addActivityLog]);
-  
-  const addMultipleInventoryItems = useCallback((itemsToImport: any[]) => {
-    if (!user) return 0;
-    let importedCount = 0;
-    const updates: { [key: string]: any } = {};
-    itemsToImport.forEach(item => {
-        try {
-            const serialNumber = item['SERIAL NUMBER']?.toString();
-            if (!serialNumber) return;
-            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
-            const project = projects.find(p => p.name.toLowerCase() === item['PROJECT']?.toLowerCase());
-            if (!project) return;
-            const newItemData = { name: item['ITEM NAME'], serialNumber, chestCrollNo: item['CHEST CROLL NO']?.toString(), ariesId: item['ARIES ID']?.toString(), inspectionDate: new Date(item['INSPECTION DATE']).toISOString(), inspectionDueDate: new Date(item['INSPECTION DUE DATE']).toISOString(), tpInspectionDueDate: new Date(item['TP INSPECTION DUE DATE']).toISOString(), status: item['STATUS'] as InventoryItemStatus || 'In Store', projectId: project.id, lastUpdated: new Date().toISOString() };
-            
-            const key = existingItem ? existingItem.id : push(ref(rtdb, 'inventoryItems')).key;
-            if (key) {
-              updates[`/inventoryItems/${key}`] = existingItem ? { ...existingItem, ...newItemData } : { ...newItemData, id: key };
-              importedCount++;
-            }
-        } catch(e) { console.error("Skipping invalid row:", item, e); }
-    });
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Bulk Inventory Import', `Imported ${importedCount} items.`);
-    return importedCount;
-  }, [user, inventoryItems, projects, addActivityLog]);
-  
-  const updateInventoryItem = useCallback((item: InventoryItem) => {
-    if (!user) return;
-    const { id, ...data } = item;
-    update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
-    addActivityLog(user.id, 'Inventory Item Updated', `Updated ${item.name} (SN: ${item.serialNumber})`);
-  }, [user, addActivityLog]);
-  
-  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
-    if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'certificateRequests'));
-
-    const newRequest: Partial<Omit<CertificateRequest, 'id'>> = {
-      requesterId: user.id,
-      requestType: requestData.requestType,
-      status: 'Pending',
-      requestDate: new Date().toISOString(),
-      viewedByRequester: true
-    };
-    
-    const initialComment = requestData.remarks 
-      ? { id: `crc-${Date.now()}`, userId: user.id, text: requestData.remarks, date: new Date().toISOString() } 
-      : { id: `crc-${Date.now()}`, userId: user.id, text: 'Request created.', date: new Date().toISOString() };
-
-    newRequest.comments = [initialComment];
-
-    if (requestData.itemId) newRequest.itemId = requestData.itemId;
-    if (requestData.utMachineId) newRequest.utMachineId = requestData.utMachineId;
-    if (requestData.dftMachineId) newRequest.dftMachineId = requestData.dftMachineId;
-
-    set(newRequestRef, newRequest as Omit<CertificateRequest, 'id'>);
-    addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
-  }, [user, addActivityLog]);
-  
-  const addCertificateRequestComment = useCallback(async (requestId: string, comment: string) => {
-    if (!user) return;
-    const requestRef = ref(rtdb, `certificateRequests/${requestId}`);
-    const snapshot = await get(requestRef);
-    if (!snapshot.exists()) return;
-  
-    const request = snapshot.val();
-    const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
-    
-    const newCommentId = push(ref(rtdb, `certificateRequests/${requestId}/comments`)).key;
-    if (!newCommentId) return;
-
-    const newComment: Comment = { id: newCommentId, userId: user.id, text: comment, date: new Date().toISOString() };
-    const updatedComments = [...existingComments, newComment];
-  
-    update(requestRef, { 
-      comments: updatedComments,
-      lastUpdated: new Date().toISOString(), 
-      viewedByRequester: false 
-    });
-  }, [user]);
-
-  const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    addCertificateRequestComment(requestId, comment);
-    update(ref(rtdb, `certificateRequests/${requestId}`), { 
-      status: 'Completed', 
-      completionDate: new Date().toISOString(),
-      viewedByRequester: false 
-    });
-    addActivityLog(user.id, 'Certificate Request Fulfilled', `Request ID: ${requestId}`);
-  }, [user, addActivityLog, addCertificateRequestComment]);
-
-  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
-    if (!user) return;
-    const updates: { [key: string]: any } = {};
-    certificateRequests.forEach(req => {
-      const isStoreReq = !!req.itemId;
-      const isEquipmentReq = !!req.utMachineId || !!req.dftMachineId;
-
-      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester) {
-        if ((requestType === 'store' && isStoreReq) || (requestType === 'equipment' && isEquipmentReq)) {
-            updates[`/certificateRequests/${req.id}/viewedByRequester`] = true;
-        }
-      }
-    });
-    if (Object.keys(updates).length > 0) {
-      update(ref(rtdb), updates);
-    }
-  }, [user, certificateRequests]);
-  
-  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
-    remove(ref(rtdb, `certificateRequests/${requestId}`));
-  }, []);
-
-  const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'utMachines'));
-    set(newRef, machine);
-    addActivityLog(user.id, 'UT Machine Added', machine.machineName);
-  }, [user, addActivityLog]);
-  
-  const updateUTMachine = useCallback((machine: UTMachine) => {
-    if(!user) return;
-    const { id, ...data } = machine;
-    update(ref(rtdb, `utMachines/${id}`), data);
-    addActivityLog(user.id, 'UT Machine Updated', machine.machineName);
-  }, [user, addActivityLog]);
-  
-  const deleteUTMachine = useCallback((machineId: string) => {
-    if(!user) return;
-    const machine = utMachines.find(m => m.id === machineId);
-    remove(ref(rtdb, `utMachines/${machineId}`));
-    if(machine) addActivityLog(user.id, 'UT Machine Deleted', machine.machineName);
-  }, [user, utMachines, addActivityLog]);
-
-  const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'dftMachines'));
-    set(newRef, machine);
-    addActivityLog(user.id, 'DFT Machine Added', machine.machineName);
-  }, [user, addActivityLog]);
-
-  const updateDftMachine = useCallback((machine: DftMachine) => {
-    if(!user) return;
-    const { id, ...data } = machine;
-    update(ref(rtdb, `dftMachines/${id}`), data);
-    addActivityLog(user.id, 'DFT Machine Updated', machine.machineName);
-  }, [user, addActivityLog]);
-
-  const deleteDftMachine = useCallback((machineId: string) => {
-    if(!user) return;
-    const machine = dftMachines.find(m => m.id === machineId);
-    remove(ref(rtdb, `dftMachines/${machineId}`));
-    if(machine) addActivityLog(user.id, 'DFT Machine Deleted', machine.machineName);
-  }, [user, dftMachines, addActivityLog]);
-  
-  const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'mobileSims'));
-    set(newRef, item);
-    addActivityLog(user.id, 'Mobile/SIM Added', item.number);
-  }, [user, addActivityLog]);
-  
-  const updateMobileSim = useCallback((item: MobileSim) => {
-    if(!user) return;
-    const { id, ...data } = item;
-    update(ref(rtdb, `mobileSims/${id}`), data);
-    addActivityLog(user.id, 'Mobile/SIM Updated', item.number);
-  }, [user, addActivityLog]);
-
-  const deleteMobileSim = useCallback((itemId: string) => {
-    if(!user) return;
-    const item = mobileSims.find(i => i.id === itemId);
-    remove(ref(rtdb, `mobileSims/${itemId}`));
-    if(item) addActivityLog(user.id, 'Mobile/SIM Deleted', item.number);
-  }, [user, mobileSims, addActivityLog]);
-  
-  const addLaptopDesktop = useCallback((item: Omit<LaptopDesktop, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'laptopsDesktops'));
-    set(newRef, item);
-    addActivityLog(user.id, 'Laptop/Desktop Added', item.serialNumber);
-  }, [user, addActivityLog]);
-
-  const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
-    if(!user) return;
-    const { id, ...data } = item;
-    update(ref(rtdb, `laptopsDesktops/${id}`), data);
-    addActivityLog(user.id, 'Laptop/Desktop Updated', item.serialNumber);
-  }, [user, addActivityLog]);
-
-  const deleteLaptopDesktop = useCallback((itemId: string) => {
-    if(!user) return;
-    const item = laptopsDesktops.find(i => i.id === itemId);
-    remove(ref(rtdb, `laptopsDesktops/${itemId}`));
-    if(item) addActivityLog(user.id, 'Laptop/Desktop Deleted', item.serialNumber);
-  }, [user, laptopsDesktops, addActivityLog]);
-  
-  const addDigitalCamera = useCallback((camera: Omit<DigitalCamera, 'id'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'digitalCameras'));
-    set(newRef, camera);
-    addActivityLog(user.id, 'Digital Camera Added', camera.serialNumber);
-  }, [user, addActivityLog]);
-
-  const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
-    if (!user) return;
-    const { id, ...data } = camera;
-    update(ref(rtdb, `digitalCameras/${id}`), data);
-    addActivityLog(user.id, 'Digital Camera Updated', camera.serialNumber);
-  }, [user, addActivityLog]);
-
-  const deleteDigitalCamera = useCallback((cameraId: string) => {
-    if (!user) return;
-    const camera = digitalCameras.find(c => c.id === cameraId);
-    remove(ref(rtdb, `digitalCameras/${cameraId}`));
-    if (camera) addActivityLog(user.id, 'Digital Camera Deleted', camera.serialNumber);
-  }, [user, digitalCameras, addActivityLog]);
-
-  const addAnemometer = useCallback((anemometer: Omit<Anemometer, 'id'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'anemometers'));
-    set(newRef, anemometer);
-    addActivityLog(user.id, 'Anemometer Added', anemometer.serialNumber);
-  }, [user, addActivityLog]);
-
-  const updateAnemometer = useCallback((anemometer: Anemometer) => {
-    if (!user) return;
-    const { id, ...data } = anemometer;
-    update(ref(rtdb, `anemometers/${id}`), data);
-    addActivityLog(user.id, 'Anemometer Updated', anemometer.serialNumber);
-  }, [user, addActivityLog]);
-  
-  const deleteAnemometer = useCallback((anemometerId: string) => {
-    if (!user) return;
-    const anemometer = anemometers.find(a => a.id === anemometerId);
-    remove(ref(rtdb, `anemometers/${anemometerId}`));
-    if (anemometer) addActivityLog(user.id, 'Anemometer Deleted', anemometer.serialNumber);
-  }, [user, anemometers, addActivityLog]);
-
-  const addOtherEquipment = useCallback((equipment: Omit<OtherEquipment, 'id'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'otherEquipments'));
-    set(newRef, equipment);
-    addActivityLog(user.id, 'Other Equipment Added', equipment.serialNumber);
-  }, [user, addActivityLog]);
-
-  const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
-    if (!user) return;
-    const { id, ...data } = equipment;
-    update(ref(rtdb, `otherEquipments/${id}`), data);
-    addActivityLog(user.id, 'Other Equipment Updated', equipment.serialNumber);
-  }, [user, addActivityLog]);
-
-  const deleteOtherEquipment = useCallback((equipmentId: string) => {
-    if (!user) return;
-    const equipment = otherEquipments.find(e => e.id === equipmentId);
-    remove(ref(rtdb, `otherEquipments/${equipmentId}`));
-    if (equipment) addActivityLog(user.id, 'Other Equipment Deleted', equipment.serialNumber);
-  }, [user, otherEquipments, addActivityLog]);
-
-  const addMachineLog = useCallback((logData: Omit<MachineLog, 'id' | 'machineId' | 'loggedByUserId'>, machineId: string) => {
-    if (!user) return;
-    const newLogRef = push(ref(rtdb, 'machineLogs'));
-    set(newLogRef, { ...logData, machineId, loggedByUserId: user.id });
-    addActivityLog(user.id, 'Machine Log Added', `For machine ID: ${machineId}`);
-  }, [user, addActivityLog]);
-  
-  const getMachineLogs = useCallback((machineId: string) => {
-    return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [machineLogs]);
-
-  const deleteMachineLog = useCallback((logId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `machineLogs/${logId}`));
-    addActivityLog(user.id, 'Machine Log Deleted', `Log ID: ${logId}`);
-  }, [user, addActivityLog]);
-
-  const updateBranding = useCallback((name: string, logo: string | null) => {
-    if (!user || !can.manage_branding) return;
-    update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
-    addActivityLog(user.id, 'Branding Updated');
-  }, [user, can.manage_branding, addActivityLog]);
-  
-  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'announcements'));
-    
-    const supervisor = users.find(u => u.id === user.supervisorId);
-    const approverId = supervisor ? supervisor.id : users.find(u => u.role === 'Project Coordinator' || u.role === 'Admin')?.id;
-    
-    const newAnnouncement: Omit<Announcement, 'id'> = {
-      ...data,
-      creatorId: user.id,
-      approverId: approverId!,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      comments: [{ userId: user.id, text: 'Announcement created', date: new Date().toISOString() }],
-      dismissedBy: [],
-    };
-    set(newRef, newAnnouncement);
-    addActivityLog(user.id, 'Announcement Submitted', data.title);
-  }, [user, users, addActivityLog]);
-
-  const updateAnnouncement = useCallback((announcement: Announcement) => {
-    if (!user || !can.manage_announcements) return;
-    const { id, ...data } = announcement;
-    update(ref(rtdb, `announcements/${id}`), data);
-    addActivityLog(user.id, 'Announcement Updated', announcement.title);
-  }, [user, can.manage_announcements, addActivityLog]);
-
-  const approveAnnouncement = useCallback((announcementId: string) => {
-    if (!user || !can.manage_announcements) return;
-    update(ref(rtdb, `announcements/${announcementId}`), { status: 'approved' });
-  }, [user, can.manage_announcements]);
-
-  const rejectAnnouncement = useCallback((announcementId: string) => {
-    if (!user || !can.manage_announcements) return;
-    update(ref(rtdb, `announcements/${announcementId}`), { status: 'rejected' });
-  }, [user, can.manage_announcements]);
-
-  const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
-    if (!user || !can.manage_announcements) return;
-    const announcement = announcements.find(a => a.id === announcementId);
-    if(!announcement) return;
-
-    const newComment = { userId: user.id, text: comment, date: new Date().toISOString() };
-    const existingComments = Array.isArray(announcement.comments) ? announcement.comments : (announcement.comments ? Object.values(announcement.comments) : []);
-    
-    update(ref(rtdb, `announcements/${announcementId}`), { 
-      status: 'returned',
-      comments: [...existingComments, newComment]
-    });
-  }, [user, can.manage_announcements, announcements]);
-
-  const deleteAnnouncement = useCallback((announcementId: string) => {
-    if (!user || !can.manage_announcements) return;
-    remove(ref(rtdb, `announcements/${announcementId}`));
-  }, [user, can.manage_announcements]);
-  
-  const dismissAnnouncement = useCallback((announcementId: string) => {
-    if (!user) return;
-    const announcement = announcements.find(a => a.id === announcementId);
-    if (!announcement) return;
-    const dismissedBy = [...(announcement.dismissedBy || []), user.id];
-    update(ref(rtdb, `announcements/${announcementId}`), { dismissedBy });
-  }, [user, announcements]);
-  
-  const addBuilding = useCallback((buildingNumber: string) => {
-    if (!user || !can.manage_accommodation) return;
-    const newBuildingRef = push(ref(rtdb, 'buildings'));
-    set(newBuildingRef, { buildingNumber, rooms: [] });
-    addActivityLog(user.id, 'Building Added', buildingNumber);
-  }, [user, can.manage_accommodation, addActivityLog]);
-
-  const updateBuilding = useCallback((building: Building) => {
-    if (!user || !can.manage_accommodation) return;
-    const { id, ...data } = building;
-    update(ref(rtdb, `buildings/${id}`), data);
-    addActivityLog(user.id, 'Building Updated', building.buildingNumber);
-  }, [user, can.manage_accommodation, addActivityLog]);
-  
-  const deleteBuilding = useCallback((buildingId: string) => {
-    if (!user || !can.manage_accommodation) return;
-    remove(ref(rtdb, `buildings/${buildingId}`));
-    addActivityLog(user.id, 'Building Deleted', `ID: ${buildingId}`);
-  }, [user, can.manage_accommodation, addActivityLog]);
-  
-  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
-    if (!user || !can.manage_accommodation) return;
-    const newRoomRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
-    const newBeds: Bed[] = Array.from({ length: roomData.numberOfBeds }, (_, i) => ({
-      id: `bed-${Date.now()}-${i}`,
-      bedNumber: (i+1).toString(),
-      bedType: 'Bunk',
-    }));
-    set(newRoomRef, { roomNumber: roomData.roomNumber, beds: newBeds });
-    addActivityLog(user.id, 'Room Added', `Room ${roomData.roomNumber} to building ${buildingId}`);
-  }, [user, can.manage_accommodation, addActivityLog]);
-
-  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
-    if (!user || !can.manage_accommodation) return;
-    remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}`));
-    addActivityLog(user.id, 'Room Deleted', `Room ID: ${roomId}`);
-  }, [user, can.manage_accommodation, addActivityLog]);
-
-  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    if (!user || !can.manage_accommodation) return;
-    const building = buildings.find(b => b.id === buildingId);
-    if (!building) return;
-    const room = building.rooms.find(r => r.id === roomId);
-    if (!room) return;
-    const bedIndex = room.beds.findIndex(b => b.id === bedId);
-    if (bedIndex === -1) return;
-    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedIndex}`), { occupantId });
-  }, [user, can.manage_accommodation, buildings]);
-
-  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    if (!user || !can.manage_accommodation) return;
-    const building = buildings.find(b => b.id === buildingId);
-    if (!building) return;
-    const room = building.rooms.find(r => r.id === roomId);
-    if (!room) return;
-    const bedIndex = room.beds.findIndex(b => b.id === bedId);
-    if (bedIndex === -1) return;
-    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedIndex}`), { occupantId: null });
-  }, [user, can.manage_accommodation, buildings]);
-  
-  const saveJobSchedule = useCallback((schedule: JobSchedule) => {
-    if (!user) return;
-    update(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
-    addActivityLog(user.id, 'Job Schedule Updated', `Schedule for ${schedule.date} at project ${schedule.projectId}`);
-  }, [user, addActivityLog]);
-  
-  const addVendor = useCallback((vendor: Omit<Vendor, 'id'>) => {
-    if (!user || !can.manage_vendors) return;
-    const newRef = push(ref(rtdb, 'vendors'));
-    set(newRef, vendor);
-    addActivityLog(user.id, 'Vendor Added', vendor.name);
-  }, [user, can.manage_vendors, addActivityLog]);
-  
-  const updateVendor = useCallback((vendor: Vendor) => {
-    if (!user || !can.manage_vendors) return;
-    const { id, ...data } = vendor;
-    update(ref(rtdb, `vendors/${id}`), data);
-    addActivityLog(user.id, 'Vendor Updated', vendor.name);
-  }, [user, can.manage_vendors, addActivityLog]);
-  
-  const deleteVendor = useCallback((vendorId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    const vendor = vendors.find(v => v.id === vendorId);
-    remove(ref(rtdb, `vendors/${vendorId}`));
-    if(vendor) addActivityLog(user.id, 'Vendor Deleted', vendor.name);
-  }, [user, vendors, addActivityLog]);
-  
-  const addPayment = useCallback((payment: Omit<Payment, 'id' | 'requesterId' | 'status' | 'approverId'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'payments'));
-    const approverId = users.find(u => u.role === 'Manager')?.id || users.find(u => u.role === 'Admin')?.id;
-    const newPayment: Partial<Payment> = {
-      ...payment,
-      requesterId: user.id,
-      status: 'Pending',
-      approverId: approverId
-    };
-    set(newRef, newPayment);
-    addActivityLog(user.id, 'Payment Logged', `Amount: ${payment.amount}`);
-  }, [user, users, addActivityLog]);
-
-  const updatePayment = useCallback((payment: Payment) => {
-    if (!user) return;
-    const { id, ...data } = payment;
-    update(ref(rtdb, `payments/${id}`), data);
-    addActivityLog(user.id, 'Payment Updated', `Payment ID: ${id}`);
-  }, [user, addActivityLog]);
-
-  const updatePaymentStatus = useCallback((paymentId: string, status: PaymentStatus, comment: string) => {
-    if (!user) return;
-    const payment = payments.find(p => p.id === paymentId);
-    if (!payment) return;
-    
-    const updates: { [key: string]: any } = {};
-    updates[`/payments/${paymentId}/status`] = status;
-    updates[`/payments/${paymentId}/approverId`] = user.id;
-
-    const newComment: Comment = { id: `comm-${Date.now()}`, userId: user.id, text: comment, date: new Date().toISOString() };
-    const existingComments = Array.isArray(payment.comments) ? payment.comments : (payment.comments ? Object.values(payment.comments) : []);
-    updates[`/payments/${paymentId}/comments`] = [...existingComments, newComment];
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, `Payment ${status}`, `Payment ID: ${paymentId}`);
-  }, [user, payments, addActivityLog]);
-  
-  const deletePayment = useCallback((paymentId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `payments/${paymentId}`));
-    addActivityLog(user.id, 'Payment Deleted', `Payment ID: ${paymentId}`);
-  }, [user, addActivityLog]);
-
-  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'purchaseRegisters'));
-    const paymentRef = push(ref(rtdb, 'payments'));
-    const paymentId = paymentRef.key!;
-    const purchaseId = newRef.key!;
-
-    const newPurchase: Partial<PurchaseRegister> = {
-      ...purchase,
-      creatorId: user.id,
-      date: new Date().toISOString(),
-    };
-    
-    const newPayment: Partial<Payment> = {
-      requesterId: user.id,
-      vendorId: purchase.vendorId,
-      amount: purchase.grandTotal,
-      date: new Date().toISOString(),
-      durationFrom: purchase.durationFrom,
-      durationTo: purchase.durationTo,
-      emailSentDate: purchase.emailSentDate,
-      status: 'Pending',
-      purchaseRegisterId: purchaseId,
-      comments: [{ id: 'comm-init', userId: user.id, text: 'Payment created from purchase register.', date: new Date().toISOString() }]
-    }
-    
-    const updates: {[key: string]: any} = {};
-    updates[`/purchaseRegisters/${purchaseId}`] = newPurchase;
-    updates[`/payments/${paymentId}`] = newPayment;
-    
-    update(ref(rtdb), updates);
-
-    addActivityLog(user.id, 'Purchase Registered', `Total: ${purchase.grandTotal}`);
-  }, [user, addActivityLog]);
-  
-  const updatePurchaseRegisterPoNumber = useCallback((purchaseRegisterId: string, poNumber: string) => {
-    if(!user) return;
-    update(ref(rtdb, `purchaseRegisters/${purchaseRegisterId}`), { poNumber });
-    addActivityLog(user.id, 'PO Number Added', `For PR ID: ${purchaseRegisterId}`);
-  }, [user, addActivityLog]);
-
-  const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'igpOgpRecords'));
-    const newRecord = { ...record, creatorId: user.id, date: record.date.toISOString() };
-    set(newRef, newRecord);
-    addActivityLog(user.id, 'IGP/OGP Record Added', `MRN: ${record.mrnNumber}`);
-  }, [user, addActivityLog]);
-
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-    const findProfile = (name: string) => {
-        const normalizedName = normalize(name);
-        return manpowerProfiles.find(p => normalize(p.name) === normalizedName);
-    };
-
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-    const coverallsStockUpdates: { [size: string]: number } = {};
-    
-    for (const row of data) {
-      const employeeName = row['Employee Name'];
-      const size = row['Size']?.toString().toUpperCase();
-      const dateValue = row['Date'];
-      
-      if (!employeeName || !size || !dateValue) continue;
-
-      const profile = findProfile(employeeName);
-      
-      if (profile) {
-        let parsedDate: Date | null = null;
-        if (dateValue instanceof Date && isValid(dateValue)) {
-            parsedDate = dateValue;
-        } else if (typeof dateValue === 'string') {
-            const trimmedDate = dateValue.trim();
-            // Try parsing various common formats
-            const formatsToTry = ['dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'yyyy/MM/dd', 'dd/MM/yy', 'd/M/yy'];
-            for (const fmt of formatsToTry) {
-                parsedDate = parse(trimmedDate, fmt, new Date());
-                if (isValid(parsedDate)) break;
-            }
-            if (!isValid(parsedDate)) parsedDate = parseISO(trimmedDate);
-        } else if (typeof dateValue === 'number') { // Handle Excel date serial numbers
-            const excelEpoch = new Date(1899, 11, 30);
-            parsedDate = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        }
-
-        if (!parsedDate || !isValid(parsedDate)) {
-            console.warn(`Skipping row due to invalid date for ${employeeName}:`, dateValue);
-            notFoundCount++;
-            continue;
-        }
-
-        const issueDate = parsedDate.toISOString();
-
-        const newHistoryItem: PpeHistoryRecord = {
-          id: `ppe-hist-import-${Date.now()}-${importedCount}`,
-          ppeType: 'Coverall',
-          size,
-          quantity: 1,
-          issueDate,
-          requestType: 'New', // Default for imported records
-          issuedById: user.id,
-        };
-
-        const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : [];
-        updates[`/manpowerProfiles/${profile.id}/ppeHistory`] = [...existingHistory, newHistoryItem];
-        
-        coverallsStockUpdates[size] = (coverallsStockUpdates[size] || 0) + 1;
-        
-        importedCount++;
-      } else {
-        notFoundCount++;
-      }
-    }
-    
-    const coverallsStock = ppeStock.find(s => s.id === 'coveralls');
-    if (coverallsStock) {
-        const currentSizes = coverallsStock.sizes || {};
-        for (const size in coverallsStockUpdates) {
-            currentSizes[size] = (currentSizes[size] || 0) - coverallsStockUpdates[size];
-            if (currentSizes[size] < 0) currentSizes[size] = 0;
-        }
-        updates['/ppeStock/coveralls/sizes'] = currentSizes;
-    }
-    
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} records. ${notFoundCount} names not found.`);
-    }
-
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
+  }, [user, addActivityLog, manpowerProfiles]);
 
   const addFeedback = useCallback((subject: string, message: string) => {
     if (!user) return;
@@ -3301,7 +2555,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const isManager = user.role === 'Manager' || user.role === 'Admin';
     const pendingManagementRequestCount = managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length;
     const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester && r.status !== 'Pending').length;
-    const incidentNotificationCount = incidentReports.filter(i => i.reportedToUserIds.includes(user.id) && !i.viewedBy.includes(user.id)).length;
+    const incidentNotificationCount = incidentReports.filter(i => (i.reportedToUserIds || []).includes(user.id) && !(i.viewedBy || []).includes(user.id)).length;
     const pendingPpeRequestCount = isManager ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
     const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && !r.viewedByRequester && r.status !== 'Pending').length;
     const pendingPaymentApprovalCount = isManager ? payments.filter(p => p.status === 'Pending').length : 0;
@@ -3352,3 +2606,8 @@ export const useAppContext = (): AppContextType => {
 
 
 
+
+
+
+
+    
