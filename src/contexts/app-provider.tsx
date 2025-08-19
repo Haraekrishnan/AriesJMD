@@ -1617,7 +1617,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             storeComment: comment,
             requestId: request.id,
             issuedById: user.id,
-            approverId: request.approverId,
+            approverId: request.approverId, // Keep original approver
         };
         const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
         updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
@@ -2127,12 +2127,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
     const building = buildings.find(b => b.id === buildingId);
-    const room = building?.rooms ? Object.values(building.rooms).find((r: Room) => r.id === roomId) : undefined;
-    const bedIndex = room?.beds ? Object.values(room.beds).findIndex((b: Bed) => b.id === bedId) : -1;
+    if (!building || !building.rooms) return;
 
-    if (bedIndex !== -1) {
-        const bedKey = Object.keys(room!.beds)[bedIndex];
-        update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedKey}`), { occupantId: occupantId });
+    let roomKey: string | undefined;
+    let bedKey: string | undefined;
+
+    // Firebase returns rooms as an object, not an array, so we need to find the key
+    for (const rKey in building.rooms) {
+      if (building.rooms[rKey].id === roomId) {
+        roomKey = rKey;
+        const currentRoom = building.rooms[rKey];
+        if (currentRoom.beds) {
+           for (const bKey in currentRoom.beds) {
+               if (currentRoom.beds[bKey].id === bedId) {
+                   bedKey = bKey;
+                   break;
+               }
+           }
+        }
+        break;
+      }
+    }
+
+    if (roomKey && bedKey) {
+        update(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}`), { occupantId: occupantId });
     }
   }, [buildings]);
 
@@ -2362,3 +2380,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
