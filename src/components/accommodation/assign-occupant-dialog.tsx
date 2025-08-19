@@ -1,5 +1,6 @@
+
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,6 +28,7 @@ interface AssignOccupantDialogProps {
 export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: AssignOccupantDialogProps) {
   const { assignOccupant, manpowerProfiles, buildings } = useAppContext();
   const { toast } = useToast();
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const assignedManpowerIds = useMemo(() => {
     const ids = new Set<string>();
@@ -71,7 +73,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
               name="occupantId"
               control={form.control}
               render={({ field }) => (
-                <Popover>
+                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
                       {field.value ? availableManpower.find(mp => mp.id === field.value)?.name : "Select person..."}
@@ -90,6 +92,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
                               value={mp.name}
                               onSelect={() => {
                                 form.setValue("occupantId", mp.id);
+                                setIsPopoverOpen(false);
                               }}
                             >
                               {mp.name}
