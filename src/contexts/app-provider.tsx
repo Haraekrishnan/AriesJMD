@@ -2138,12 +2138,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
     const building = buildings.find(b => b.id === buildingId);
-    const room = building?.rooms ? Object.values(building.rooms).find((r: Room) => r.id === roomId) : undefined;
-    const bedIndex = room?.beds ? Object.values(room.beds).findIndex((b: Bed) => b.id === bedId) : -1;
+    if (!building || !building.rooms) return;
 
-     if (bedIndex !== -1) {
-        const bedKey = Object.keys(room!.beds)[bedIndex];
-        update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedKey}`), { occupantId: null });
+    let roomKey: string | undefined;
+    let bedKey: string | undefined;
+
+    for (const rKey in building.rooms) {
+      if (building.rooms[rKey].id === roomId) {
+        roomKey = rKey;
+        const currentRoom = building.rooms[rKey];
+        if (currentRoom.beds) {
+          for (const bKey in currentRoom.beds) {
+            if (currentRoom.beds[bKey].id === bedId) {
+              bedKey = bKey;
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    if (roomKey && bedKey) {
+      const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`);
+      set(bedRef, null);
     }
   }, [buildings]);
 
