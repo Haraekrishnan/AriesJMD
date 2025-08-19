@@ -61,7 +61,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         <>
         <Accordion type="multiple" className="w-full space-y-4">
             {sortedBuildings.map(building => {
-                const roomsArray: Room[] = building.rooms ? (Array.isArray(building.rooms) ? Object.values(building.rooms) : []) : [];
+                const roomsArray: Room[] = building.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
                 return (
                     <AccordionItem key={building.id} value={building.id} className="border rounded-lg">
                         <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
@@ -72,7 +72,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                         <AccordionContent className="p-4 pt-0">
                             <div className="space-y-4">
                                 {roomsArray.filter(room => room && room.roomNumber).sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => {
-                                    const bedsArray = room.beds ? (Array.isArray(room.beds) ? Object.values(room.beds) : []) : [];
+                                    const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
                                     return (
                                         <div key={room.id} className="p-4 border rounded-md bg-muted/50">
                                             <h4 className="font-semibold flex items-center justify-between">
