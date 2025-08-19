@@ -106,34 +106,41 @@ export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pendi
 export type Priority = 'Low' | 'Medium' | 'High';
 export type ApprovalState = 'none' | 'pending' | 'approved' | 'returned';
 
+export type Subtask = {
+    userId: string;
+    status: TaskStatus;
+    updatedAt: string; // ISO String
+};
+
 export type Task = {
   id: string;
   title: string;
   description: string;
   status: TaskStatus;
-  assigneeId: string; // Keep single for now for simplicity in UI
-  assigneeIds: string[]; // For potential future multiple assignees
+  assigneeId: string; // DEPRECATED in favor of assigneeIds
+  assigneeIds: string[];
+  subtasks?: { [userId: string]: Subtask };
   creatorId: string;
   dueDate: string; // ISO String
   priority: Priority;
   comments: Comment[];
-  participants?: string[]; // Creator, assignee, and all commenters
-  lastUpdated?: string; // ISO String of last comment or status change
-  viewedBy?: string[]; // Array of user IDs who have seen the latest update
+  participants?: string[];
+  lastUpdated?: string;
+  viewedBy?: string[];
   requiresAttachmentForCompletion?: boolean;
   attachment?: {
     name: string;
     url: string; 
   };
   approvalState: ApprovalState;
-  approverId?: string; // New field
+  approverId?: string;
   pendingStatus?: TaskStatus | null;
   previousStatus?: TaskStatus | null;
-  completionDate?: string; // ISO String
+  completionDate?: string;
   pendingAssigneeId?: string | null;
-  viewedByApprover?: boolean; // DEPRECATED, use viewedBy
-  isViewedByAssignee?: boolean; // DEPRECATED, use viewedBy
-  viewedByRequester?: boolean; // DEPRECATED, use viewedBy
+  viewedByApprover?: boolean;
+  isViewedByAssignee?: boolean;
+  viewedByRequester?: boolean;
 };
 
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
@@ -458,6 +465,7 @@ export type PpeRequest = {
   date: string; // ISO
   status: PpeRequestStatus;
   approverId?: string;
+  issuedById?: string;
   comments: Comment[];
   viewedByRequester: boolean;
   attachmentUrl?: string;

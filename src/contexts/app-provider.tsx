@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -592,12 +593,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const tasksRef = ref(rtdb, 'tasks');
     const newTaskRef = push(tasksRef);
     const now = new Date().toISOString();
+    
+    const subtasks: { [userId: string]: Subtask } = {};
+    assigneeIds.forEach(userId => {
+        subtasks[userId] = {
+            userId,
+            status: 'To Do',
+            updatedAt: now,
+        };
+    });
+
     const newTask: Omit<Task, 'id'> = {
         ...rest,
         creatorId: user.id,
         status: 'To Do',
-        assigneeId: assigneeIds[0], // Keep first for backwards compatibility for now
+        assigneeId: assigneeIds[0],
         assigneeIds: assigneeIds,
+        subtasks,
         comments: [],
         participants: [user.id, ...assigneeIds],
         lastUpdated: now,
@@ -656,22 +668,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addComment(taskId, comment);
 
     const approverId = task.creatorId;
+    const now = new Date().toISOString();
 
-    const updates: Partial<Task> = { 
-        status: 'Pending Approval', 
-        approvalState: 'pending', 
-        previousStatus: task.status, 
-        pendingStatus: newStatus,
-        approverId: approverId,
-        viewedBy: [user.id],
-        lastUpdated: new Date().toISOString(),
-    };
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/subtasks/${user.id}`] = { userId: user.id, status: newStatus, updatedAt: now };
+
+    const allSubtasksDone = Object.values(task.subtasks || {}).every(st => st.status === 'Done' || st.userId === user.id && newStatus === 'Done');
+    
+    if (newStatus === 'Done' && allSubtasksDone) {
+        updates[`tasks/${taskId}/status`] = 'Pending Approval';
+        updates[`tasks/${taskId}/approvalState`] = 'pending';
+        updates[`tasks/${taskId}/approverId`] = approverId;
+        addActivityLog(user.id, 'Task Completion Requested', `Task "${task.title}"`);
+    } else if(newStatus === 'In Progress' && task.status === 'To Do') {
+        updates[`tasks/${taskId}/status`] = 'In Progress';
+    }
 
     if (attachment) {
-      updates.attachment = attachment;
+      updates[`tasks/${taskId}/attachment`] = attachment;
     }
-    update(ref(rtdb, `tasks/${taskId}`), updates);
-    addActivityLog(user.id, 'Task Status Change Requested', `Task "${task.title}" to ${newStatus}`);
+    
+    updates[`tasks/${taskId}/lastUpdated`] = now;
+    updates[`tasks/${taskId}/viewedBy`] = [user.id];
+
+    update(ref(rtdb), updates);
   }, [user, tasks, addActivityLog, addComment]);
 
   const approveTaskStatusChange = useCallback((taskId: string, commentText: string) => {
@@ -681,30 +701,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     addComment(taskId, commentText);
 
-    const updates: Partial<Task> = {
-        approvalState: 'approved',
-        pendingStatus: null,
-        previousStatus: null,
-        viewedBy: [user.id],
-        lastUpdated: new Date().toISOString(),
-    };
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/approvalState`] = 'approved';
+    updates[`tasks/${taskId}/viewedBy`] = [user.id];
+    updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
 
-    if (task.pendingAssigneeId) { // Reassignment
-      updates.assigneeId = task.pendingAssigneeId;
-      updates.assigneeIds = [task.pendingAssigneeId];
-      updates.pendingAssigneeId = null;
-      updates.status = 'To Do';
-      updates.approvalState = 'none';
-      updates.participants = Array.from(new Set([...(task.participants || []), task.pendingAssigneeId]));
+    if (task.pendingAssigneeId) {
+      updates[`tasks/${taskId}/assigneeIds`] = [task.pendingAssigneeId];
+      updates[`tasks/${taskId}/subtasks`] = {
+          [task.pendingAssigneeId]: { userId: task.pendingAssigneeId, status: 'To Do', updatedAt: new Date().toISOString() }
+      };
+      updates[`tasks/${taskId}/pendingAssigneeId`] = null;
+      updates[`tasks/${taskId}/status`] = 'To Do';
       addActivityLog(user.id, 'Task Reassignment Approved', `Task "${task.title}" to ${users.find(u => u.id === task.pendingAssigneeId)?.name}`);
-    } else { // Status change
-      updates.status = task.pendingStatus === 'Completed' ? 'Done' : (task.pendingStatus || task.status);
-      if (task.pendingStatus === 'Completed') updates.completionDate = new Date().toISOString();
-      updates.approvalState = 'approved';
-      addActivityLog(user.id, 'Task Status Change Approved', `Task "${updates.status}"`);
+    } else {
+      updates[`tasks/${taskId}/status`] = 'Done';
+      updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
+      addActivityLog(user.id, 'Task Completion Approved', `Task "${task.title}"`);
     }
 
-    update(ref(rtdb, `tasks/${taskId}`), updates);
+    update(ref(rtdb), updates);
   }, [user, tasks, users, addActivityLog, addComment]);
 
   const returnTaskStatusChange = useCallback((taskId: string, commentText: string) => {
@@ -714,17 +730,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     addComment(taskId, commentText);
     
-    const updates: Partial<Task> = { 
-      status: task.previousStatus || 'To Do', 
-      pendingStatus: null, 
-      previousStatus: null, 
-      pendingAssigneeId: null, 
-      approvalState: 'returned',
-      viewedBy: [user.id],
-      lastUpdated: new Date().toISOString(),
-    };
-    update(ref(rtdb, `tasks/${taskId}`), updates);
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/status`] = 'In Progress'; // Revert main task status
+    updates[`tasks/${taskId}/approvalState`] = 'returned';
+    updates[`tasks/${taskId}/viewedBy`] = [user.id];
+    updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+
+    // Revert subtask statuses
+    const newSubtasks = { ...task.subtasks };
+    for (const subtask of Object.values(newSubtasks)) {
+        if (subtask.status === 'Done') {
+            subtask.status = 'In Progress';
+        }
+    }
+    updates[`tasks/${taskId}/subtasks`] = newSubtasks;
+
     addActivityLog(user.id, 'Task Request Returned', `Task: "${task.title}"`);
+    update(ref(rtdb), updates);
   }, [user, tasks, addActivityLog, addComment]);
   
   const requestTaskReassignment = useCallback((taskId: string, newAssigneeId: string, commentText: string) => {
@@ -1584,6 +1606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (status === 'Approved') {
         updates[`ppeRequests/${requestId}/approverId`] = user.id;
     } else if (status === 'Issued') {
+        updates[`ppeRequests/${requestId}/issuedById`] = user.id;
         const ppeHistoryRecord: Omit<PpeHistoryRecord, 'id'> = {
             ppeType: request.ppeType,
             size: request.size,

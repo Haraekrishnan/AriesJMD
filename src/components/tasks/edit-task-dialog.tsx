@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
 import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown } from 'lucide-react';
-import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState } from '@/lib/types';
+import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
@@ -126,7 +126,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     } else {
         requestTaskStatusChange(taskToDisplay.id, newStatus, newComment);
         setNewComment('');
-        if (setIsOpen) setIsOpen(false);
     }
     toast({ title: 'Status Change Requested', description: 'Your request has been sent for approval.' });
   };
@@ -196,6 +195,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
 
   const isAssignee = useMemo(() => user?.id && taskToDisplay.assigneeIds?.includes(user.id), [user, taskToDisplay]);
+  const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
 
   const renderActionButtons = () => {
     if (taskToDisplay.status === 'Pending Approval') {
@@ -209,12 +209,12 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         }
         return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.approverId)?.name || 'manager'}</p>
     }
-    if (isAssignee && !isCompleted) {
-        if (taskToDisplay.status === 'To Do') {
+    if (isAssignee && !isCompleted && mySubtask) {
+        if (mySubtask.status === 'To Do') {
             return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Start Progress</Button>
         }
-        if (taskToDisplay.status === 'In Progress') {
-            return <Button onClick={() => handleRequestStatusChange('Completed')} className="w-full">Request Completion</Button>
+        if (mySubtask.status === 'In Progress') {
+            return <Button onClick={() => handleRequestStatusChange('Done')} className="w-full">Mark as Completed</Button>
         }
     }
     return null;
@@ -235,12 +235,12 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           <DialogDescription>
             Assigned by <span className='font-semibold'>{creator?.name}</span> to <span className='font-semibold'>{assignees.map(a => a.name).join(', ')}</span>.
           </DialogDescription>
-          {taskToDisplay.status === 'Pending Approval' && taskToDisplay.pendingStatus && (
+          {taskToDisplay.status === 'Pending Approval' && (
              <Alert variant="default" className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700">
                 <BellRing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <AlertTitle className="text-blue-800 dark:text-blue-300">Status Change Request</AlertTitle>
+                <AlertTitle className="text-blue-800 dark:text-blue-300">Approval Pending</AlertTitle>
                 <AlertDescription className="text-blue-700 dark:text-blue-400">
-                    {assignees.map(a => a.name).join(', ')} requests to change status from <Badge variant="secondary">{taskToDisplay.previousStatus}</Badge> <ArrowRight className="inline-block h-4 w-4 mx-1" /> <Badge variant="secondary">{taskToDisplay.pendingStatus}</Badge>. Please review comments.
+                    This task is awaiting final approval from the creator.
                 </AlertDescription>
             </Alert>
           )}
@@ -330,6 +330,23 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     />
                      {form.formState.errors.assigneeIds && <p className="text-xs text-destructive">{form.formState.errors.assigneeIds.message}</p>}
                 </div>
+                 <div className="space-y-2">
+                    <Label>Assignee Status</Label>
+                    <div className="space-y-2 rounded-md border p-2">
+                      {assignees.map(assignee => {
+                        const subtask = taskToDisplay.subtasks?.[assignee.id];
+                        return (
+                          <div key={assignee.id} className="flex justify-between items-center text-sm p-1">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>
+                              <span>{assignee.name}</span>
+                            </div>
+                            <Badge variant={subtask?.status === 'Done' ? 'success' : 'secondary'}>{subtask?.status || 'To Do'}</Badge>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
