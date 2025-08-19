@@ -27,9 +27,10 @@ export default function AccommodationPage() {
             const roomsArray: Room[] = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
             if (roomsArray.length > 0) {
                 roomsArray.forEach(r => {
+                    if (!r) return;
                     const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
                     totalBeds += bedsArray.length;
-                    occupiedBeds += bedsArray.filter(bed => bed.occupantId).length;
+                    occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
                 });
             }
         });

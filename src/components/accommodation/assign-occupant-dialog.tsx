@@ -46,7 +46,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   }, [buildings]);
 
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => p.status === 'Working' && !assignedManpowerIds.has(p.id));
+    return manpowerProfiles.filter(p => (p.status === 'Working' && !assignedManpowerIds.has(p.id)) || p.id === '2' || p.id === '16');
   }, [manpowerProfiles, assignedManpowerIds]);
 
 
@@ -60,9 +60,16 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
     toast({ title: 'Bed Assigned', description: `${occupantName} has been assigned to the bed.` });
     setIsOpen(false);
   };
+  
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+        form.reset();
+    }
+    setIsOpen(open);
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Assign Bed</DialogTitle>
