@@ -46,7 +46,9 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   }, [buildings]);
 
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => (p.status === 'Working' && !assignedManpowerIds.has(p.id)) || p.id === '2' || p.id === '16');
+    return manpowerProfiles.filter(p => 
+        (p.status === 'Working' && !assignedManpowerIds.has(p.id)) || p.id === '2' || p.id === '16'
+    );
   }, [manpowerProfiles, assignedManpowerIds]);
 
 
