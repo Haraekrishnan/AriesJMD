@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -9,7 +10,7 @@ import { BedDouble, BedSingle, Building } from 'lucide-react';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
-import type { Building as BuildingType } from '@/lib/types';
+import type { Building as BuildingType, Room } from '@/lib/types';
 import EditBuildingDialog from '@/components/accommodation/edit-building-dialog';
 
 export default function AccommodationPage() {
@@ -23,10 +24,12 @@ export default function AccommodationPage() {
         let totalBeds = 0;
         let occupiedBeds = 0;
         buildings.forEach(b => {
-            if (b.rooms) {
-                b.rooms.forEach(r => {
-                    totalBeds += r.beds.length;
-                    occupiedBeds += r.beds.filter(bed => bed.occupantId).length;
+            const roomsArray: Room[] = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
+            if (roomsArray.length > 0) {
+                roomsArray.forEach(r => {
+                    const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
+                    totalBeds += bedsArray.length;
+                    occupiedBeds += bedsArray.filter(bed => bed.occupantId).length;
                 });
             }
         });
@@ -117,7 +120,3 @@ export default function AccommodationPage() {
                     setIsOpen={setIsEditBuildingOpen}
                     building={selectedBuilding}
                 />
-            )}
-        </div>
-    );
-}

@@ -2097,7 +2097,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addBuilding = useCallback((buildingNumber: string) => {
     const newRef = push(ref(rtdb, 'buildings'));
-    const newBuilding: Omit<Building, 'id'> = { buildingNumber, rooms: [] };
+    const newBuilding: Omit<Building, 'id' | 'rooms'> = { buildingNumber };
     set(newRef, newBuilding);
   }, []);
   
@@ -2117,7 +2117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       bedNumber: (i + 1).toString(),
       bedType: 'Bunk',
     }));
-    const newRoom: Omit<Room, 'id'> = { roomNumber: roomData.roomNumber, beds };
+    const newRoom: Room = { id: newRoomRef.key!, roomNumber: roomData.roomNumber, beds };
     set(newRoomRef, newRoom);
   }, []);
 
@@ -2126,31 +2126,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    const bed = buildings.find(b => b.id === buildingId)?.rooms.find(r => r.id === roomId)?.beds.find(b => b.id === bedId);
-    if(bed) {
-      update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bed.id}`), { occupantId: occupantId });
-    } else {
-        // This is a bit of a hack to find the index of the bed since we don't store bed IDs at the top level
-        const building = buildings.find(b => b.id === buildingId);
-        const room = building?.rooms.find(r => r.id === roomId);
-        const bedIndex = room?.beds.findIndex(b => b.bedNumber === bedId); // Assuming bedId is bedNumber here from old code
-        if (bedIndex !== undefined && bedIndex > -1) {
-            update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedIndex}`), { occupantId: occupantId });
-        }
+    const building = buildings.find(b => b.id === buildingId);
+    const room = building?.rooms ? Object.values(building.rooms).find((r: Room) => r.id === roomId) : undefined;
+    const bedIndex = room?.beds ? Object.values(room.beds).findIndex((b: Bed) => b.id === bedId) : -1;
+
+    if (bedIndex !== -1) {
+        const bedKey = Object.keys(room!.beds)[bedIndex];
+        update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedKey}`), { occupantId: occupantId });
     }
   }, [buildings]);
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    const bed = buildings.find(b => b.id === buildingId)?.rooms.find(r => r.id === roomId)?.beds.find(b => b.id === bedId);
-    if(bed) {
-      update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bed.id}`), { occupantId: null });
-    } else {
-        const building = buildings.find(b => b.id === buildingId);
-        const room = building?.rooms.find(r => r.id === roomId);
-        const bedIndex = room?.beds.findIndex(b => b.bedNumber === bedId);
-         if (bedIndex !== undefined && bedIndex > -1) {
-            update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedIndex}`), { occupantId: null });
-        }
+    const building = buildings.find(b => b.id === buildingId);
+    const room = building?.rooms ? Object.values(building.rooms).find((r: Room) => r.id === roomId) : undefined;
+    const bedIndex = room?.beds ? Object.values(room.beds).findIndex((b: Bed) => b.id === bedId) : -1;
+
+     if (bedIndex !== -1) {
+        const bedKey = Object.keys(room!.beds)[bedIndex];
+        update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedKey}`), { occupantId: null });
     }
   }, [buildings]);
 
@@ -2210,7 +2203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `payments/${paymentId}`));
   }, [user]);
 
-  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id'|'creatorId'|'date'>) => {
+  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'purchaseRegisters'));
     const newPurchase: Omit<PurchaseRegister, 'id'> = {
@@ -2351,32 +2344,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-    
-
-
-
-    

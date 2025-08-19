@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -31,9 +30,15 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
 
   const assignedManpowerIds = useMemo(() => {
     const ids = new Set<string>();
-    buildings.forEach(b => (b.rooms || []).forEach(r => r.beds.forEach(bed => {
-      if (bed.occupantId) ids.add(bed.occupantId);
-    })));
+    buildings.forEach(b => {
+        const roomsArray = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
+        roomsArray.forEach(r => {
+            const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
+            bedsArray.forEach(bed => {
+                if (bed.occupantId) ids.add(bed.occupantId);
+            });
+        });
+    });
     return ids;
   }, [buildings]);
 
@@ -73,7 +78,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                       <CommandInput placeholder="Search manpower..." />
                       <CommandList>
