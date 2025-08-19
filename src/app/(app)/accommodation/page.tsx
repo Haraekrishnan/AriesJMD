@@ -120,3 +120,7 @@ export default function AccommodationPage() {
                     setIsOpen={setIsEditBuildingOpen}
                     building={selectedBuilding}
                 />
+            )}
+        </div>
+    );
+}
