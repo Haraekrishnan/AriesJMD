@@ -2161,25 +2161,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let roomKey: string | undefined;
     let bedKey: string | undefined;
 
-    for (const rKey in building.rooms) {
-      if (building.rooms[rKey].id === roomId) {
-        roomKey = rKey;
-        const currentRoom = building.rooms[rKey];
-        if (currentRoom.beds) {
-          for (const bKey in currentRoom.beds) {
-            if (currentRoom.beds[bKey].id === bedId) {
-              bedKey = bKey;
-              break;
-            }
-          }
+    const roomsArray = Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms);
+    const roomIndex = roomsArray.findIndex(r => r.id === roomId);
+
+    if (roomIndex !== -1) {
+        roomKey = Object.keys(building.rooms)[roomIndex];
+        const bedsArray = Array.isArray(roomsArray[roomIndex].beds) ? roomsArray[roomIndex].beds : Object.values(roomsArray[roomIndex].beds);
+        const bedIndex = bedsArray.findIndex(b => b.id === bedId);
+        
+        if (bedIndex !== -1) {
+            bedKey = Object.keys(roomsArray[roomIndex].beds)[bedIndex];
         }
-        break;
-      }
     }
+
 
     if (roomKey && bedKey) {
       const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`);
-      set(bedRef, null);
+      remove(bedRef);
+    } else {
+        console.error("Could not find room or bed key to unassign occupant.");
     }
   }, [buildings]);
 
