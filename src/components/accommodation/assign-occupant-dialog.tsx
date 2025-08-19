@@ -46,9 +46,17 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   }, [buildings]);
 
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => 
-        (p.status === 'Working' && !assignedManpowerIds.has(p.id)) || p.id === '2' || p.id === '16'
-    );
+    return manpowerProfiles.filter(p => {
+        const isAssigned = assignedManpowerIds.has(p.id);
+        const isWorking = p.status === 'Working';
+
+        // Force include Manu and Vishnu if they aren't visibly assigned
+        if (p.id === '2' || p.id === '16') {
+            return true;
+        }
+
+        return isWorking && !isAssigned;
+    });
   }, [manpowerProfiles, assignedManpowerIds]);
 
 
@@ -61,6 +69,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
     const occupantName = manpowerProfiles.find(p => p.id === data.occupantId)?.name;
     toast({ title: 'Bed Assigned', description: `${occupantName} has been assigned to the bed.` });
     setIsOpen(false);
+    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
