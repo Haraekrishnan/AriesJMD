@@ -35,9 +35,10 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
     buildings.forEach(b => {
         const roomsArray = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
         roomsArray.forEach(r => {
+            if (!r) return;
             const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
             bedsArray.forEach(bed => {
-                if (bed.occupantId) ids.add(bed.occupantId);
+                if (bed && bed.occupantId) ids.add(bed.occupantId);
             });
         });
     });
@@ -45,8 +46,9 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   }, [buildings]);
 
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => !assignedManpowerIds.has(p.id) && p.status === 'Working');
+    return manpowerProfiles.filter(p => p.status === 'Working' && !assignedManpowerIds.has(p.id));
   }, [manpowerProfiles, assignedManpowerIds]);
+
 
   const form = useForm<AssignmentFormValues>({
     resolver: zodResolver(assignmentSchema),
