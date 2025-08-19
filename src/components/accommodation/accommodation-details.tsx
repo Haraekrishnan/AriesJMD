@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useMemo, useState } from 'react';
@@ -69,7 +70,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                         </AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
                             <div className="space-y-4">
-                                {roomsArray.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => {
+                                {roomsArray.filter(room => room && room.roomNumber).sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => {
                                     const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
                                     return (
                                         <div key={room.id} className="p-4 border rounded-md bg-muted/50">
