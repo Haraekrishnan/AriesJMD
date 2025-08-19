@@ -25,14 +25,12 @@ export default function AccommodationPage() {
         let occupiedBeds = 0;
         buildings.forEach(b => {
             const roomsArray: Room[] = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
-            if (roomsArray.length > 0) {
-                roomsArray.forEach(r => {
-                    if (!r) return;
-                    const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
-                    totalBeds += bedsArray.length;
-                    occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
-                });
-            }
+            roomsArray.forEach(r => {
+                if (!r) return;
+                const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
+                totalBeds += bedsArray.length;
+                occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
+            });
         });
         return { totalBeds, occupiedBeds, availableBeds: totalBeds - occupiedBeds };
     }, [buildings]);

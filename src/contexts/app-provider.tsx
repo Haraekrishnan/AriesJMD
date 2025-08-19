@@ -2136,13 +2136,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building || !building.rooms) return;
 
-    // Firebase stores array-like objects. Find the key associated with the roomId.
-    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any].id === roomId);
-    
+    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any]?.id === roomId);
     if (roomKey) {
         const room = building.rooms[roomKey as any];
         if (room.beds) {
-           const bedKey = Object.keys(room.beds).find(key => room.beds[key as any].id === bedId);
+           const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
             if(bedKey) {
                 update(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}`), { occupantId: occupantId });
             }
@@ -2154,12 +2152,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building || !building.rooms) return;
 
-    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any].id === roomId);
+    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any]?.id === roomId);
     
     if (roomKey) {
         const room = building.rooms[roomKey as any];
         if (room.beds) {
-           const bedKey = Object.keys(room.beds).find(key => room.beds[key as any].id === bedId);
+           const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
                 remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }

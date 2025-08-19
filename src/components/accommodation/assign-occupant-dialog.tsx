@@ -33,10 +33,10 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const assignedManpowerIds = useMemo(() => {
     const ids = new Set<string>();
     buildings.forEach(b => {
-        const roomsArray = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
+        const roomsArray = b.rooms ? Object.values(b.rooms) : [];
         roomsArray.forEach(r => {
             if (!r) return;
-            const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
+            const bedsArray = r.beds ? Object.values(r.beds) : [];
             bedsArray.forEach(bed => {
                 if (bed && bed.occupantId) ids.add(bed.occupantId);
             });
@@ -49,12 +49,6 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
     return manpowerProfiles.filter(p => {
         const isAssigned = assignedManpowerIds.has(p.id);
         const isWorking = p.status === 'Working';
-
-        // Force include Manu and Vishnu if they aren't visibly assigned
-        if (p.id === '2' || p.id === '16') {
-            return true;
-        }
-
         return isWorking && !isAssigned;
     });
   }, [manpowerProfiles, assignedManpowerIds]);
