@@ -48,7 +48,7 @@ export default function ManpowerListPage() {
         return manpowerProfiles.flatMap(p => {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
-                .filter(l => p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
+                .filter(l => l && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
                 .map(l => ({ profile: p, leave: l }));
         });
     }, [manpowerProfiles]);
@@ -62,7 +62,7 @@ export default function ManpowerListPage() {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
                 .filter(l => {
-                    if(!l.leaveStartDate) return false;
+                    if(!l || !l.leaveStartDate) return false;
                     const leaveStartDate = parseISO(l.leaveStartDate);
                     return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
                 })
@@ -76,7 +76,7 @@ export default function ManpowerListPage() {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
                 .filter(l => {
-                    if (p.status !== 'On Leave' || l.rejoinedDate || !l.plannedEndDate) {
+                    if (!l || p.status !== 'On Leave' || l.rejoinedDate || !l.plannedEndDate) {
                         return false;
                     }
                     return isPast(parseISO(l.plannedEndDate));
@@ -107,7 +107,7 @@ export default function ManpowerListPage() {
 
             if (returnDateRange?.from) {
                 const historyArray = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : Object.values(profile.leaveHistory || {});
-                const returnDate = historyArray.find(l => l.rejoinedDate)?.rejoinedDate;
+                const returnDate = historyArray.find(l => l?.rejoinedDate)?.rejoinedDate;
                 if (!returnDate) return false;
                 
                 const from = returnDateRange.from;
