@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -91,7 +90,8 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile) return null;
 
-    const lastIssue = (profile.ppeHistory || [])
+    const historyArray = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
+    const lastIssue = historyArray
       .filter(h => h.ppeType === ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
     
