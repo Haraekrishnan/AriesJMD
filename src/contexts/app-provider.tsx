@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
@@ -1552,9 +1551,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${employeeName}`);
     
-    const lastIssue = employee?.ppeHistory
-      ?.filter(h => h.ppeType === requestData.ppeType)
-      .sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+    const ppeHistoryArray = Array.isArray(employee?.ppeHistory) ? employee?.ppeHistory : Object.values(employee?.ppeHistory || {});
+    const lastIssue = ppeHistoryArray
+      .filter(h => h && h.ppeType === requestData.ppeType)
+      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
 
     const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
     const stockInfo = requestData.ppeType === 'Coverall'
@@ -2159,7 +2159,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
@@ -2362,3 +2362,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+ 
