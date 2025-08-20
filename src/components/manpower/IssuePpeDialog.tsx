@@ -92,10 +92,11 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
     const missingShoes: ManpowerProfile[] = [];
     
     manpowerProfiles.forEach(p => {
-        if (!p.ppeHistory?.some(h => h.ppeType === 'Coverall')) {
+        const historyArray = Array.isArray(p.ppeHistory) ? p.ppeHistory : Object.values(p.ppeHistory || {});
+        if (!historyArray.some(h => h.ppeType === 'Coverall')) {
             missingCoverall.push(p);
         }
-        if (!p.ppeHistory?.some(h => h.ppeType === 'Safety Shoes')) {
+        if (!historyArray.some(h => h.ppeType === 'Safety Shoes')) {
             missingShoes.push(p);
         }
     });
