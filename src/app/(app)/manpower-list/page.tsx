@@ -45,11 +45,12 @@ export default function ManpowerListPage() {
     });
     
     const leavesStartingToday = useMemo(() => {
-        return manpowerProfiles.flatMap(p => 
-            (p.leaveHistory || [])
+        return manpowerProfiles.flatMap(p => {
+            const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
+            return historyArray
                 .filter(l => p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
-                .map(l => ({ profile: p, leave: l }))
-        );
+                .map(l => ({ profile: p, leave: l }));
+        });
     }, [manpowerProfiles]);
 
     const upcomingLeaves = useMemo(() => {
@@ -57,21 +58,23 @@ export default function ManpowerListPage() {
         const now = new Date();
         const thirtyDaysFromNow = addDays(now, 30);
         
-        return manpowerProfiles.flatMap(p => 
-            (p.leaveHistory || [])
+        return manpowerProfiles.flatMap(p => {
+            const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
+            return historyArray
                 .filter(l => {
                     if(!l.leaveStartDate) return false;
                     const leaveStartDate = parseISO(l.leaveStartDate);
                     return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
                 })
                 .map(l => ({ profile: p, leave: l }))
-        );
+        });
     }, [manpowerProfiles, can.manage_manpower_list]);
 
     const overdueLeaves = useMemo(() => {
         if (!can.manage_manpower_list) return [];
-        return manpowerProfiles.flatMap(p =>
-            (p.leaveHistory || [])
+        return manpowerProfiles.flatMap(p => {
+            const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
+            return historyArray
                 .filter(l => {
                     if (p.status !== 'On Leave' || l.rejoinedDate || !l.plannedEndDate) {
                         return false;
@@ -79,7 +82,7 @@ export default function ManpowerListPage() {
                     return isPast(parseISO(l.plannedEndDate));
                 })
                 .map(l => ({ profile: p, leave: l }))
-        );
+        });
     }, [manpowerProfiles, can.manage_manpower_list]);
     
     const profilesWithDbIndex = useMemo(() =>
@@ -103,7 +106,8 @@ export default function ManpowerListPage() {
             if(projectId !== 'all' && profile.eic !== projectId) return false;
 
             if (returnDateRange?.from) {
-                const returnDate = profile.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate;
+                const historyArray = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : Object.values(profile.leaveHistory || {});
+                const returnDate = historyArray.find(l => l.rejoinedDate)?.rejoinedDate;
                 if (!returnDate) return false;
                 
                 const from = returnDateRange.from;
@@ -149,8 +153,9 @@ export default function ManpowerListPage() {
     };
     
     const handleDownloadLeaveReport = () => {
-        const leaveData = manpowerProfiles.flatMap(profile => 
-            (profile.leaveHistory || []).map(leave => ({
+        const leaveData = manpowerProfiles.flatMap(profile => {
+            const historyArray = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : Object.values(profile.leaveHistory || {});
+            return historyArray.map(leave => ({
                 'Employee Name': profile.name,
                 'Trade': profile.trade,
                 'Leave Type': leave.leaveType || 'N/A',
@@ -159,7 +164,7 @@ export default function ManpowerListPage() {
                 'Actual End Date': leave.leaveEndDate ? format(new Date(leave.leaveEndDate), 'dd-MM-yyyy') : '',
                 'Rejoined Date': leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : '',
             }))
-        );
+        });
 
         if (leaveData.length === 0) {
             alert('No leave data to export.');
@@ -173,10 +178,11 @@ export default function ManpowerListPage() {
     };
 
     const handleMarkAsLeft = (profile: ManpowerProfile, leave: LeaveRecord) => {
+        const historyArray = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : Object.values(profile.leaveHistory || {});
         const updatedProfile = { 
             ...profile, 
             status: 'Left the Project' as const,
-            leaveHistory: (profile.leaveHistory || []).map(l => 
+            leaveHistory: historyArray.map(l => 
                 l.id === leave.id ? { ...l, leaveEndDate: new Date().toISOString() } : l
             )
         };
