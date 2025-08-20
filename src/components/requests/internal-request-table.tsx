@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -241,13 +242,49 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 }
 
 export default function InternalRequestTable({ requests }: InternalRequestTableProps) {
+  const { activeRequests, completedRequests } = useMemo(() => {
+    const active: InternalRequest[] = [];
+    const completed: InternalRequest[] = [];
+    requests.forEach(req => {
+      if (req.status === 'Issued' || req.status === 'Rejected') {
+        completed.push(req);
+      } else {
+        active.push(req);
+      }
+    });
+    return { activeRequests: active, completedRequests: completed };
+  }, [requests]);
+
   if (requests.length === 0) {
     return <p className="text-center py-10 text-muted-foreground">No requests found.</p>;
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {requests.map(req => <RequestCard key={req.id} req={req} />)}
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
+        {activeRequests.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
+        )}
+      </div>
+      {completedRequests.length > 0 && (
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="completed-requests" className="border rounded-md">
+            <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
+              Completed & Rejected Requests ({completedRequests.length})
+            </AccordionTrigger>
+            <AccordionContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {completedRequests.map(req => <RequestCard key={req.id} req={req} />)}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
     </div>
   );
 }
