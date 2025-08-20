@@ -29,7 +29,11 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
   const [rejoinDate, setRejoinDate] = useState<Date | undefined>(new Date());
   
   const onLeaveProfiles = useMemo(() => {
-    return manpowerProfiles.filter(p => p.status === 'On Leave' && p.leaveHistory && p.leaveHistory.some(l => !l.rejoinedDate));
+    return manpowerProfiles.filter(p => {
+        if (p.status !== 'On Leave' || !p.leaveHistory) return false;
+        const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory);
+        return historyArray.some(l => l && !l.rejoinedDate);
+    });
   }, [manpowerProfiles]);
 
   const selectedProfile = useMemo(() => {
@@ -37,8 +41,9 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
   }, [selectedProfileId, onLeaveProfiles]);
 
   const activeLeaveRecord = useMemo(() => {
-    if (!selectedProfile) return null;
-    return (selectedProfile.leaveHistory || []).find(l => !l.rejoinedDate);
+    if (!selectedProfile || !selectedProfile.leaveHistory) return null;
+    const historyArray = Array.isArray(selectedProfile.leaveHistory) ? selectedProfile.leaveHistory : Object.values(selectedProfile.leaveHistory);
+    return historyArray.find(l => l && !l.rejoinedDate);
   }, [selectedProfile]);
 
   const handleRejoin = () => {
