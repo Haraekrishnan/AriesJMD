@@ -338,8 +338,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl h-full max-h-[95vh] flex flex-col">
         <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full pr-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1 pr-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                     
                     <div className="space-y-4">
