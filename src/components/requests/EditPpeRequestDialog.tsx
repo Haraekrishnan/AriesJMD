@@ -172,12 +172,10 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
                     {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
                 </div>
               </div>
-              {ppeType === 'Coverall' && (
-                <div className="space-y-2">
-                  <Label>Quantity</Label>
-                  <Input type="number" {...form.register('quantity')} />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input type="number" {...form.register('quantity')} />
+              </div>
                <div className="space-y-2">
                     <Label>Request Type</Label>
                     <Controller name="requestType" control={form.control} render={({ field }) => (
