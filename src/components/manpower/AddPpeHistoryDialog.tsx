@@ -51,9 +51,6 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
     if (ppeType) {
         const size = ppeType === 'Coverall' ? profile.coverallSize : profile.shoeSize;
         form.setValue('size', size || '');
-        if (ppeType === 'Safety Shoes') {
-            form.setValue('quantity', 1);
-        }
     }
   }, [ppeType, profile, form]);
 
