@@ -100,7 +100,7 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
           </div>
           <div className="space-y-2">
             <Label>Quantity</Label>
-            <Input type="number" {...form.register('quantity')} disabled={ppeType === 'Safety Shoes'} />
+            <Input type="number" {...form.register('quantity')} />
             {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
           </div>
            <div className="grid grid-cols-2 gap-4">
