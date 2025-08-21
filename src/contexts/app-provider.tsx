@@ -173,7 +173,7 @@ type AppContextType = {
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'|'attachmentUrl'>) => void;
+  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
@@ -214,7 +214,7 @@ type AppContextType = {
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
-  updateBranding: (name: string, logo: string | null, logoFile: File | null) => void;
+  updateBranding: (name: string, logo: string | null) => void;
   addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => void;
   updateAnnouncement: (announcement: Announcement) => void;
   approveAnnouncement: (announcementId: string) => void;
@@ -1473,23 +1473,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
-    const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
-    const newRecord = { ...record, id: newRef.key };
-    set(newRef, newRecord);
-
+    if (!user) return;
+    const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
+    const newRecordWithId = { ...record, id: newRecordRef.key };
+    set(newRecordRef, newRecordWithId);
+    
+    // Manually update local state to trigger UI refresh
     setManpowerProfilesById(prev => {
         const updatedProfiles = { ...prev };
-        const profile = updatedProfiles[manpowerId];
-        if (profile) {
-            const history = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
-            updatedProfiles[manpowerId] = {
-                ...profile,
-                ppeHistory: [...history, newRecord],
-            };
+        const profileToUpdate = { ...updatedProfiles[manpowerId] };
+        
+        if (profileToUpdate) {
+            const currentHistory = Array.isArray(profileToUpdate.ppeHistory) 
+                ? profileToUpdate.ppeHistory 
+                : (profileToUpdate.ppeHistory ? Object.values(profileToUpdate.ppeHistory) : []);
+            
+            profileToUpdate.ppeHistory = [...currentHistory, newRecordWithId];
+            updatedProfiles[manpowerId] = profileToUpdate;
         }
+        
         return updatedProfiles;
     });
-}, []);
+
+}, [user]);
 
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
@@ -2110,20 +2116,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [machineLogs]);
 
-  const updateBranding = useCallback(async (name: string, logo: string | null, logoFile: File | null) => {
+  const updateBranding = useCallback(async (name: string, logo: string | null) => {
     if(!user || user.role !== 'Admin') return;
-    let logoUrl = logo;
-    if (logoFile) {
-        try {
-            logoUrl = await uploadFile(logoFile, `branding/${logoFile.name}`);
-        } catch(e) {
-            toast({ variant: 'destructive', title: 'Logo Upload Failed'});
-            return;
-        }
-    }
-    update(ref(rtdb, 'branding'), { appName: name, appLogo: logoUrl });
+    update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
     addActivityLog(user.id, 'Branding Updated');
-  }, [user, addActivityLog, toast]);
+  }, [user, addActivityLog]);
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
     if (!user || !user.supervisorId) {
@@ -2249,7 +2246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
