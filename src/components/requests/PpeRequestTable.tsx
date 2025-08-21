@@ -127,6 +127,12 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     </p>
                 )}
                 
+                {req.attachmentUrl && (
+                    <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setViewingAttachmentUrl(req.attachmentUrl!)}>
+                        <Paperclip className="mr-1 h-3 w-3" />View Attachment
+                    </Button>
+                )}
+                
                 {lastIssue && (
                     <div className="text-xs text-muted-foreground">
                         Last Issue: {format(parseISO(lastIssue.issueDate), 'dd-MM-yy')}
@@ -135,13 +141,8 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
 
                 <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
                     <AccordionItem value={req.id} className="border-none">
-                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Details & Comments</AccordionTrigger>
+                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
-                            {req.attachmentUrl && (
-                                <Button variant="link" size="sm" className="p-0 h-auto mb-2" onClick={() => setViewingAttachmentUrl(req.attachmentUrl!)}>
-                                    <Paperclip className="mr-1 h-3 w-3" />View Attachment
-                                </Button>
-                            )}
                             <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                             <div className="space-y-2">
                                 {commentsArray.length > 0 ? commentsArray.map((c,i) => {
@@ -210,7 +211,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                )}
+                 )}
             </CardFooter>
 
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
