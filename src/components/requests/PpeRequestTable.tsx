@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -119,6 +120,8 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     <p className="font-medium text-sm">{req.requestType} {req.ppeType}</p>
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}{req.quantity && `, Qty: ${req.quantity}`}</p>
                 </div>
+                
+                {req.remarks && <p className="text-xs italic text-muted-foreground bg-muted p-2 rounded-md">"{req.remarks}"</p>}
                 
                 {lastIssue && (
                     <div className="text-xs text-muted-foreground">

@@ -91,12 +91,11 @@ const RequestCard = ({ req }: { req: ManagementRequest }) => {
                 </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
+                 <p className="text-sm mb-4 p-2 bg-muted rounded-md">{req.body}</p>
                  <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
                     <AccordionItem value={req.id} className="border-none">
-                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Details & Comments</AccordionTrigger>
+                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
-                            <p className="text-sm mb-4 p-2 bg-muted rounded-md">{req.body}</p>
-                            <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                             <div className="space-y-2">
                                 {commentsArray.length > 0 ? commentsArray.map((c,i) => {
                                     const commentUser = users.find(u => u.id === c.userId);
