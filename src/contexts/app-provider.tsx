@@ -10,7 +10,6 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
-import { uploadFile } from '@/lib/storage';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -60,7 +59,7 @@ type AppContextType = {
   // Auth
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
+  updateProfile: (name: string, email: string, avatar: string, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   generateResetCode: (requestId: string) => void;
   resolveResetRequest: (requestId: string) => void;
@@ -172,7 +171,7 @@ type AppContextType = {
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>, attachmentFile?: File | null) => void;
+  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'|'attachmentUrl'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
@@ -506,24 +505,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, addActivityLog, setStoredUser]);
 
-  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
+  const updateProfile = useCallback((name: string, email: string, avatar: string, password?: string) => {
     if (user) {
-        let avatarUrl = user.avatar;
-        if (avatarFile) {
-            try {
-                toast({ title: 'Uploading profile picture...' });
-                avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload profile picture.' });
-                return;
-            }
-        }
-
-        const updatedUser: User = { ...user, name, email, avatar: avatarUrl };
+        const updatedUser: User = { ...user, name, email, avatar };
         if (password) updatedUser.password = password;
         updateUser(updatedUser);
     }
-  }, [user, updateUser, toast]);
+  }, [user, updateUser]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -1598,24 +1586,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
   }, [user]);
 
-  const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>, attachmentFile?: File | null) => {
+  const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
-    
-    let attachmentUrl: string | undefined = undefined;
-    if (attachmentFile) {
-        try {
-            toast({ title: 'Uploading attachment...' });
-            attachmentUrl = await uploadFile(attachmentFile, `ppe-requests/${push(ref(rtdb)).key}/${attachmentFile.name}`);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload attachment file.' });
-            return;
-        }
-    }
 
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     const newRequest: Omit<PpeRequest, 'id'> = {
         ...requestData,
-        attachmentUrl,
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
@@ -1629,7 +1605,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${employeeName}`);
     
-    const ppeHistoryArray = Array.isArray(employee?.ppeHistory) ? employee?.ppeHistory : Object.values(employee?.ppeHistory || {});
+    const ppeHistoryArray = Array.isArray(employee?.ppeHistory) ? employee.ppeHistory : Object.values(employee?.ppeHistory || {});
     const lastIssue = ppeHistoryArray
       .filter(h => h && h.ppeType === requestData.ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
@@ -1647,7 +1623,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         quantity: requestData.quantity || 1,
         requestType: requestData.requestType,
         remarks: requestData.remarks,
-        attachmentUrl: attachmentUrl,
+        attachmentUrl: requestData.attachmentUrl,
         joiningDate: employee?.joiningDate ? format(parseISO(employee.joiningDate), 'dd MMM, yyyy') : 'N/A',
         rejoiningDate: employee?.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(employee.leaveHistory.find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
@@ -2237,7 +2213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }

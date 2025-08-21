@@ -47,7 +47,6 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const { addPpeRequest, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -92,7 +91,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
     const historyArray = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
     const lastIssue = historyArray
-      .filter(h => h.ppeType === ppeType)
+      .filter(h => h && h.ppeType === ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
     
     // Prioritize last issue date. If no issue history, fall back to joining date.
@@ -122,10 +121,35 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   }, [eligibility, isNewEmployee, requestType]);
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setAttachmentFile(file);
+    if (!file) return;
+
+    setIsUploading(true);
+    toast({ title: 'Uploading...', description: 'Please wait while the image is uploaded.' });
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "my_unsigned_upload"); 
+
+    try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await res.json();
+        setIsUploading(false);
+
+        if (data.secure_url) {
+            form.setValue('attachmentUrl', data.secure_url);
+            toast({ title: 'Upload Successful', description: 'Image has been attached.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image.' });
+        }
+    } catch (error) {
+        setIsUploading(false);
+        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
     }
   };
 
@@ -135,7 +159,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
         return;
     }
 
-    addPpeRequest({ ...data, eligibility }, attachmentFile);
+    addPpeRequest({ ...data, eligibility });
     
     setIsOpen(false);
   };
@@ -143,7 +167,6 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({ requestType: 'New', quantity: 1 });
-      setAttachmentFile(null);
     }
     setIsOpen(open);
   };
@@ -251,22 +274,22 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 {requestType === 'Replacement' && (
                   <div className="space-y-2">
                     <Label>Attach Photo of Damaged Item</Label>
-                    {attachmentFile ? (
+                    {form.getValues('attachmentUrl') ? (
                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                          <div className="flex items-center gap-2 truncate">
+                          <a href={form.getValues('attachmentUrl')!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
                             <Paperclip className="h-4 w-4"/>
-                            <span className="truncate">{attachmentFile.name}</span>
-                          </div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachmentFile(null)}>
+                            <span className="truncate">Attached Image</span>
+                          </a>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', undefined)}>
                             <X className="h-4 w-4"/>
                           </Button>
                        </div>
                     ) : (
                       <div className="relative">
                         <Button asChild variant="outline" size="sm">
-                          <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/>Upload Image</Label>
+                          <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
                         </Button>
-                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
                       </div>
                     )}
                   </div>
