@@ -78,7 +78,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const handleDeleteRequest = (reqId: string) => {
         deletePpeRequest(reqId);
         toast({ variant: 'destructive', title: 'Request Deleted' });
-    }
+    };
 
     const handleDeleteAttachment = (reqId: string) => {
         deletePpeAttachment(reqId);
@@ -121,7 +121,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     <p className="text-sm text-muted-foreground">Size: {req.size || 'N/A'}{req.quantity && `, Qty: ${req.quantity}`}</p>
                 </div>
                 
-                {req.remarks && <p className="text-xs italic text-muted-foreground bg-muted p-2 rounded-md">"{req.remarks}"</p>}
+                {(req.remarks || req.newRequestJustification) && (
+                    <p className="text-xs italic text-muted-foreground bg-muted p-2 rounded-md">
+                        {req.newRequestJustification ? `Justification: ${req.newRequestJustification}` : `Remarks: ${req.remarks}`}
+                    </p>
+                )}
                 
                 {lastIssue && (
                     <div className="text-xs text-muted-foreground">
@@ -160,14 +164,14 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
                  {isManager && req.status === 'Pending' && (
                     <>
-                        <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
                     </>
                  )}
                  {canIssue && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
-                 {user?.role === 'Admin' && (
+                 {(user?.role === 'Admin' || (user?.id === req.requesterId && req.status === 'Pending')) && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
