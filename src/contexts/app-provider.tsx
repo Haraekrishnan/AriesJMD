@@ -837,7 +837,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     const currentViewedBy = task.viewedBy || {};
     if (!currentViewedBy[user.id]) {
-      update(ref(rtdb, `tasks/${taskId}/viewedBy`), { [user.id]: true });
+      update(ref(rtdb, `tasks/${taskId}/viewedBy`), { ...currentViewedBy, [user.id]: true });
     }
   }, [user, tasks]);
   
@@ -1472,8 +1472,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
     if (!user) return;
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
-    const newRecordWithId = { ...record, id: newRecordRef.key };
+    const newRecordWithId = { ...record, id: newRecordRef.key! };
+    
+    // Use set to ensure the whole object is written, including the new ID
     set(newRecordRef, newRecordWithId);
+    
+    setManpowerProfilesById(prev => {
+        const profile = prev[manpowerId];
+        if (profile) {
+            const ppeHistory = Array.isArray(profile.ppeHistory) 
+                ? [...profile.ppeHistory, newRecordWithId] 
+                : [newRecordWithId];
+            return {
+                ...prev,
+                [manpowerId]: {
+                    ...profile,
+                    ppeHistory
+                }
+            };
+        }
+        return prev;
+    });
+
   }, [user]);
 
 
