@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -10,6 +11,7 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
+import { uploadFile } from '@/lib/storage';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -59,7 +61,7 @@ type AppContextType = {
   // Auth
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatar: string, password?: string) => void;
+  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   generateResetCode: (requestId: string) => void;
   resolveResetRequest: (requestId: string) => void;
@@ -212,7 +214,7 @@ type AppContextType = {
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
-  updateBranding: (name: string, logo: string | null) => void;
+  updateBranding: (name: string, logo: string | null, logoFile: File | null) => void;
   addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => void;
   updateAnnouncement: (announcement: Announcement) => void;
   approveAnnouncement: (announcementId: string) => void;
@@ -505,13 +507,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, addActivityLog, setStoredUser]);
 
-  const updateProfile = useCallback((name: string, email: string, avatar: string, password?: string) => {
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
     if (user) {
-        const updatedUser: User = { ...user, name, email, avatar };
+        const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
+
+        if (avatarFile) {
+            try {
+                const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
+                updatedUser.avatar = avatarUrl;
+            } catch (error) {
+                console.error("Avatar upload failed:", error);
+                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
+            }
+        }
         updateUser(updatedUser);
     }
-  }, [user, updateUser]);
+  }, [user, updateUser, toast]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -1462,8 +1474,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
     const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
-    set(newRef, { ...record, id: newRef.key });
-  }, []);
+    const newRecord = { ...record, id: newRef.key };
+    set(newRef, newRecord);
+
+    setManpowerProfilesById(prev => {
+        const updatedProfiles = { ...prev };
+        const profile = updatedProfiles[manpowerId];
+        if (profile) {
+            const history = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
+            updatedProfiles[manpowerId] = {
+                ...profile,
+                ppeHistory: [...history, newRecord],
+            };
+        }
+        return updatedProfiles;
+    });
+}, []);
+
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
@@ -2083,11 +2110,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [machineLogs]);
 
-  const updateBranding = useCallback((name: string, logo: string | null) => {
+  const updateBranding = useCallback(async (name: string, logo: string | null, logoFile: File | null) => {
     if(!user || user.role !== 'Admin') return;
-    update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
+    let logoUrl = logo;
+    if (logoFile) {
+        try {
+            logoUrl = await uploadFile(logoFile, `branding/${logoFile.name}`);
+        } catch(e) {
+            toast({ variant: 'destructive', title: 'Logo Upload Failed'});
+            return;
+        }
+    }
+    update(ref(rtdb, 'branding'), { appName: name, appLogo: logoUrl });
     addActivityLog(user.id, 'Branding Updated');
-  }, [user, addActivityLog]);
+  }, [user, addActivityLog, toast]);
 
   const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
     if (!user || !user.supervisorId) {
@@ -2213,7 +2249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
