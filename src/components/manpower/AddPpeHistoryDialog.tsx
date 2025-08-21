@@ -18,7 +18,7 @@ import { useEffect } from 'react';
 const ppeHistorySchema = z.object({
   ppeType: z.enum(['Coverall', 'Safety Shoes']),
   size: z.string().min(1, 'Size is required'),
-  quantity: z.coerce.number().optional(),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   issueDate: z.date({ required_error: 'Issue date is required' }),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
@@ -51,6 +51,9 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
     if (ppeType) {
         const size = ppeType === 'Coverall' ? profile.coverallSize : profile.shoeSize;
         form.setValue('size', size || '');
+        if (ppeType === 'Safety Shoes') {
+            form.setValue('quantity', 1);
+        }
     }
   }, [ppeType, profile, form]);
 
@@ -95,12 +98,11 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
                 {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
             </div>
           </div>
-          {ppeType === 'Coverall' && (
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input type="number" {...form.register('quantity')} />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Quantity</Label>
+            <Input type="number" {...form.register('quantity')} disabled={ppeType === 'Safety Shoes'} />
+            {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
+          </div>
            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                     <Label>Request Type</Label>
