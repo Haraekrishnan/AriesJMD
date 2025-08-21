@@ -376,8 +376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
       clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById);
       clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById);
-      clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById);
-      clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById);
+      clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById);
       return;
     }
   
@@ -1477,25 +1476,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
     const newRecordWithId = { ...record, id: newRecordRef.key };
     set(newRecordRef, newRecordWithId);
-    
-    // Manually update local state to trigger UI refresh
-    setManpowerProfilesById(prev => {
-        const updatedProfiles = { ...prev };
-        const profileToUpdate = { ...updatedProfiles[manpowerId] };
-        
-        if (profileToUpdate) {
-            const currentHistory = Array.isArray(profileToUpdate.ppeHistory) 
-                ? profileToUpdate.ppeHistory 
-                : (profileToUpdate.ppeHistory ? Object.values(profileToUpdate.ppeHistory) : []);
-            
-            profileToUpdate.ppeHistory = [...currentHistory, newRecordWithId];
-            updatedProfiles[manpowerId] = profileToUpdate;
-        }
-        
-        return updatedProfiles;
-    });
-
-}, [user]);
+  }, [user]);
 
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
