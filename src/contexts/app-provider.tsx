@@ -1473,27 +1473,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
     const newRecordWithId = { ...record, id: newRecordRef.key! };
-    
-    // Use set to ensure the whole object is written, including the new ID
     set(newRecordRef, newRecordWithId);
-    
-    setManpowerProfilesById(prev => {
-        const profile = prev[manpowerId];
-        if (profile) {
-            const ppeHistory = Array.isArray(profile.ppeHistory) 
-                ? [...profile.ppeHistory, newRecordWithId] 
-                : [newRecordWithId];
-            return {
-                ...prev,
-                [manpowerId]: {
-                    ...profile,
-                    ppeHistory
-                }
-            };
-        }
-        return prev;
-    });
-
   }, [user]);
 
 

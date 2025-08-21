@@ -18,7 +18,7 @@ import { useEffect } from 'react';
 const ppeHistorySchema = z.object({
   ppeType: z.enum(['Coverall', 'Safety Shoes']),
   size: z.string().min(1, 'Size is required'),
-  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1').default(1),
   issueDate: z.date({ required_error: 'Issue date is required' }),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
@@ -66,7 +66,13 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
   };
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) form.reset();
+    if (!open) {
+      form.reset({
+        requestType: 'New',
+        quantity: 1,
+        issueDate: new Date(),
+      });
+    }
     setIsOpen(open);
   };
 
