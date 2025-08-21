@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -32,7 +33,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
     }
   };
 
-  const hasUnreadUpdate = user && task.participants?.includes(user.id) && !(task.viewedBy || []).includes(user.id);
+  const hasUnreadUpdate = user && task.participants?.includes(user.id) && !task.viewedBy?.[user.id];
 
   const cardContent = (
      <div className="space-y-4">
