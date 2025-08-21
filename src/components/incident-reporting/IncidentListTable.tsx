@@ -59,7 +59,7 @@ export default function IncidentListTable({ incidents }: IncidentListTableProps)
                 <TableBody>
                 {incidents.map(incident => {
                     const reporter = users.find(u => u.id === incident.reporterId);
-                    const hasUnreadUpdate = user && !incident.viewedBy.includes(user.id);
+                    const hasUnreadUpdate = user && !incident.viewedBy[user.id];
                     
                     return (
                         <TableRow key={incident.id} className={cn(incident.status === 'New' && 'font-bold bg-destructive/5', hasUnreadUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>

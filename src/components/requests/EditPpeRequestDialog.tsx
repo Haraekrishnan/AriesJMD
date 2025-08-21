@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +17,7 @@ import { Input } from '../ui/input';
 import { useEffect, useState } from 'react';
 import type { PpeRequest } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
+import { uploadFile } from '@/lib/storage';
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
@@ -84,31 +84,15 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
     setAttachmentFile(file);
     setIsUploading(true);
     toast({ title: 'Uploading...', description: 'Please wait while the image is uploaded.' });
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "my_unsigned_upload"); 
-
     try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
-            method: "POST",
-            body: formData,
-        });
-
-        const data = await res.json();
-        setIsUploading(false);
-
-        if (data.secure_url) {
-            form.setValue('attachmentUrl', data.secure_url);
-            toast({ title: 'Upload Successful', description: 'Image has been attached.' });
-        } else {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image.' });
-            setAttachmentFile(null);
-        }
+        const downloadURL = await uploadFile(file, `ppe-requests/${request.id}/${file.name}`);
+        form.setValue('attachmentUrl', downloadURL);
+        toast({ title: 'Upload Successful', description: 'Image has been attached.' });
     } catch (error) {
-        setIsUploading(false);
-        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image.' });
         setAttachmentFile(null);
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -191,10 +175,10 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
                   <Label>Attach Photo of Damaged Item</Label>
                   {form.getValues('attachmentUrl') || attachmentFile ? (
                      <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                        <div className="flex items-center gap-2 truncate">
+                        <a href={form.getValues('attachmentUrl')!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
                           <Paperclip className="h-4 w-4"/>
                           <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
-                        </div>
+                        </a>
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
                           <X className="h-4 w-4"/>
                         </Button>

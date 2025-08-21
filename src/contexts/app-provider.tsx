@@ -1,15 +1,16 @@
 
 'use client';
 
-import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
+import { uploadFile } from '@/lib/storage';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -59,7 +60,7 @@ type AppContextType = {
   // Auth
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatar: string, password?: string) => void;
+  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   generateResetCode: (requestId: string) => void;
   resolveResetRequest: (requestId: string) => void;
@@ -171,7 +172,7 @@ type AppContextType = {
   updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
   deleteManagementRequest: (requestId: string) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
+  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>, attachmentFile?: File | null) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
@@ -246,58 +247,110 @@ type AppContextType = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Generic listener function
-const createDataListener = <T extends {}>(path: string, setData: React.Dispatch<React.SetStateAction<T[]>>) => {
-  const dbRef = ref(rtdb, path);
-  return onValue(dbRef, (snapshot) => {
-    const data = snapshot.val();
-    const value = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
-    setData(value);
-  }, (error) => {
-    console.error(`Error fetching ${path}:`, error);
-    setData([]);
-  });
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: Dispatch<SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+
+    const listeners = [
+        onChildAdded(dbRef, (snapshot) => {
+            setData(prev => ({ ...prev, [snapshot.key as string]: { id: snapshot.key, ...snapshot.val() } }));
+        }),
+        onChildChanged(dbRef, (snapshot) => {
+            setData(prev => ({ ...prev, [snapshot.key as string]: { id: snapshot.key, ...snapshot.val() } }));
+        }),
+        onChildRemoved(dbRef, (snapshot) => {
+            setData(prev => {
+                const newState = { ...prev };
+                delete newState[snapshot.key as string];
+                return newState;
+            });
+        })
+    ];
+
+    return () => listeners.forEach(listener => listener());
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<RoleDefinition[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [plannerEvents, setPlannerEvents] = useState<PlannerEvent[]>([]);
-  const [dailyPlannerComments, setDailyPlannerComments] = useState<DailyPlannerComment[]>([]);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [incidentReports, setIncidentReports] = useState<IncidentReport[]>([]);
-  const [manpowerLogs, setManpowerLogs] = useState<ManpowerLog[]>([]);
-  const [manpowerProfiles, setManpowerProfiles] = useState<ManpowerProfile[]>([]);
-  const [internalRequests, setInternalRequests] = useState<InternalRequest[]>([]);
-  const [managementRequests, setManagementRequests] = useState<ManagementRequest[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [utMachines, setUtMachines] = useState<UTMachine[]>([]);
-  const [dftMachines, setDftMachines] = useState<DftMachine[]>([]);
-  const [mobileSims, setMobileSims] = useState<MobileSim[]>([]);
-  const [laptopsDesktops, setLaptopsDesktops] = useState<LaptopDesktop[]>([]);
-  const [digitalCameras, setDigitalCameras] = useState<DigitalCamera[]>([]);
-  const [anemometers, setAnemometers] = useState<Anemometer[]>([]);
-  const [otherEquipments, setOtherEquipments] = useState<OtherEquipment[]>([]);
-  const [machineLogs, setMachineLogs] = useState<MachineLog[]>([]);
-  const [certificateRequests, setCertificateRequests] = useState<CertificateRequest[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [jobSchedules, setJobSchedules] = useState<JobSchedule[]>([]);
-  const [ppeRequests, setPpeRequests] = useState<PpeRequest[]>([]);
-  const [ppeStock, setPpeStock] = useState<PpeStock[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [purchaseRegisters, setPurchaseRegisters] = useState<PurchaseRegister[]>([]);
-  const [passwordResetRequests, setPasswordResetRequests] = useState<PasswordResetRequest[]>([]);
-  const [igpOgpRecords, setIgpOgpRecords] = useState<IgpOgpRecord[]>([]);
-  const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [usersById, setUsersById] = useState<Record<string, User>>({});
+  const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
+  const [tasksById, setTasksById] = useState<Record<string, Task>>({});
+  const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
+  const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
+  const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
+  const [achievementsById, setAchievementsById] = useState<Record<string, Achievement>>({});
+  const [activityLogsById, setActivityLogsById] = useState<Record<string, ActivityLog>>({});
+  const [vehiclesById, setVehiclesById] = useState<Record<string, Vehicle>>({});
+  const [driversById, setDriversById] = useState<Record<string, Driver>>({});
+  const [incidentReportsById, setIncidentReportsById] = useState<Record<string, IncidentReport>>({});
+  const [manpowerLogsById, setManpowerLogsById] = useState<Record<string, ManpowerLog>>({});
+  const [manpowerProfilesById, setManpowerProfilesById] = useState<Record<string, ManpowerProfile>>({});
+  const [internalRequestsById, setInternalRequestsById] = useState<Record<string, InternalRequest>>({});
+  const [managementRequestsById, setManagementRequestsById] = useState<Record<string, ManagementRequest>>({});
+  const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
+  const [utMachinesById, setUtMachinesById] = useState<Record<string, UTMachine>>({});
+  const [dftMachinesById, setDftMachinesById] = useState<Record<string, DftMachine>>({});
+  const [mobileSimsById, setMobileSimsById] = useState<Record<string, MobileSim>>({});
+  const [laptopsDesktopsById, setLaptopsDesktopsById] = useState<Record<string, LaptopDesktop>>({});
+  const [digitalCamerasById, setDigitalCamerasById] = useState<Record<string, DigitalCamera>>({});
+  const [anemometersById, setAnemometersById] = useState<Record<string, Anemometer>>({});
+  const [otherEquipmentsById, setOtherEquipmentsById] = useState<Record<string, OtherEquipment>>({});
+  const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
+  const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
+  const [announcementsById, setAnnouncementsById] = useState<Record<string, Announcement>>({});
+  const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
+  const [jobSchedulesById, setJobSchedulesById] = useState<Record<string, JobSchedule>>({});
+  const [ppeRequestsById, setPpeRequestsById] = useState<Record<string, PpeRequest>>({});
+  const [ppeStockById, setPpeStockById] = useState<Record<string, PpeStock>>({});
+  const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
+  const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
+  const [purchaseRegistersById, setPurchaseRegistersById] = useState<Record<string, PurchaseRegister>>({});
+  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
+  const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
+  const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
+
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
+  
+  // Memoize arrays from objects
+  const users = useMemo(() => Object.values(usersById), [usersById]);
+  const roles = useMemo(() => Object.values(rolesById), [rolesById]);
+  const tasks = useMemo(() => Object.values(tasksById), [tasksById]);
+  const projects = useMemo(() => Object.values(projectsById), [projectsById]);
+  const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
+  const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
+  const achievements = useMemo(() => Object.values(achievementsById), [achievementsById]);
+  const activityLogs = useMemo(() => Object.values(activityLogsById), [activityLogsById]);
+  const vehicles = useMemo(() => Object.values(vehiclesById), [vehiclesById]);
+  const drivers = useMemo(() => Object.values(driversById), [driversById]);
+  const incidentReports = useMemo(() => Object.values(incidentReportsById), [incidentReportsById]);
+  const manpowerLogs = useMemo(() => Object.values(manpowerLogsById), [manpowerLogsById]);
+  const manpowerProfiles = useMemo(() => Object.values(manpowerProfilesById), [manpowerProfilesById]);
+  const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
+  const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
+  const inventoryItems = useMemo(() => Object.values(inventoryItemsById), [inventoryItemsById]);
+  const utMachines = useMemo(() => Object.values(utMachinesById), [utMachinesById]);
+  const dftMachines = useMemo(() => Object.values(dftMachinesById), [dftMachinesById]);
+  const mobileSims = useMemo(() => Object.values(mobileSimsById), [mobileSimsById]);
+  const laptopsDesktops = useMemo(() => Object.values(laptopsDesktopsById), [laptopsDesktopsById]);
+  const digitalCameras = useMemo(() => Object.values(digitalCamerasById), [digitalCamerasById]);
+  const anemometers = useMemo(() => Object.values(anemometersById), [anemometersById]);
+  const otherEquipments = useMemo(() => Object.values(otherEquipmentsById), [otherEquipmentsById]);
+  const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
+  const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
+  const announcements = useMemo(() => Object.values(announcementsById), [announcementsById]);
+  const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
+  const jobSchedules = useMemo(() => Object.values(jobSchedulesById), [jobSchedulesById]);
+  const ppeRequests = useMemo(() => Object.values(ppeRequestsById), [ppeRequestsById]);
+  const ppeStock = useMemo(() => Object.values(ppeStockById), [ppeStockById]);
+  const payments = useMemo(() => Object.values(paymentsById), [paymentsById]);
+  const vendors = useMemo(() => Object.values(vendorsById), [vendorsById]);
+  const purchaseRegisters = useMemo(() => Object.values(purchaseRegistersById), [purchaseRegistersById]);
+  const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
+  const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
+  const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
 
   const [storedUser, setStoredUser] = useLocalStorage<User | null>('aries-user-v8', null);
   const user = storedUser;
@@ -315,54 +368,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setLoading(false);
       // Clear all state when user logs out
-      setUsers([]); setRoles([]); setTasks([]); setProjects([]); setPlannerEvents([]);
-      setDailyPlannerComments([]); setAchievements([]); setActivityLogs([]);
-      setVehicles([]); setDrivers([]); setIncidentReports([]); setManpowerLogs([]);
-      setManpowerProfiles([]); setInternalRequests([]); setManagementRequests([]);
-      setInventoryItems([]); setUtMachines([]); setDftMachines([]); setMobileSims([]);
-      setLaptopsDesktops([]); setDigitalCameras([]); setAnemometers([]); setOtherEquipments([]); setMachineLogs([]); setCertificateRequests([]);
-      setAnnouncements([]); setBuildings([]); setJobSchedules([]); setPpeRequests([]); setPpeStock([]); setPayments([]);
-      setVendors([]); setPurchaseRegisters([]); setPasswordResetRequests([]); setIgpOgpRecords([]); setFeedback([]);
+      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
+      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setPlannerEventsById);
+      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
+      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById);
+      clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
+      clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById);
+      clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById);
+      clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById);
+      clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById);
       return;
     }
   
     const listeners = [
-      createDataListener('users', setUsers),
-      createDataListener('roles', setRoles),
-      createDataListener('tasks', setTasks),
-      createDataListener('projects', setProjects),
-      createDataListener('plannerEvents', setPlannerEvents),
-      createDataListener('dailyPlannerComments', setDailyPlannerComments),
-      createDataListener('achievements', setAchievements),
-      createDataListener('activityLogs', setActivityLogs),
-      createDataListener('vehicles', setVehicles),
-      createDataListener('drivers', setDrivers),
-      createDataListener('incidentReports', setIncidentReports),
-      createDataListener('manpowerLogs', setManpowerLogs),
-      createDataListener('manpowerProfiles', setManpowerProfiles),
-      createDataListener('internalRequests', setInternalRequests),
-      createDataListener('managementRequests', setManagementRequests),
-      createDataListener('inventoryItems', setInventoryItems),
-      createDataListener('utMachines', setUtMachines),
-      createDataListener('dftMachines', setDftMachines),
-      createDataListener('mobileSims', setMobileSims),
-      createDataListener('laptopsDesktops', setLaptopsDesktops),
-      createDataListener('digitalCameras', setDigitalCameras),
-      createDataListener('anemometers', setAnemometers),
-      createDataListener('otherEquipments', setOtherEquipments),
-      createDataListener('machineLogs', setMachineLogs),
-      createDataListener('certificateRequests', setCertificateRequests),
-      createDataListener('announcements', setAnnouncements),
-      createDataListener('buildings', setBuildings),
-      createDataListener('jobSchedules', setJobSchedules),
-      createDataListener('ppeRequests', setPpeRequests),
-      createDataListener('ppeStock', setPpeStock),
-      createDataListener('payments', setPayments),
-      createDataListener('vendors', setVendors),
-      createDataListener('purchaseRegisters', setPurchaseRegisters),
-      createDataListener('passwordResetRequests', setPasswordResetRequests),
-      createDataListener('igpOgpRecords', setIgpOgpRecords),
-      createDataListener('feedback', setFeedback),
+      createDataListener('users', setUsersById),
+      createDataListener('roles', setRolesById),
+      createDataListener('tasks', setTasksById),
+      createDataListener('projects', setProjectsById),
+      createDataListener('plannerEvents', setPlannerEventsById),
+      createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
+      createDataListener('achievements', setAchievementsById),
+      createDataListener('activityLogs', setActivityLogsById),
+      createDataListener('vehicles', setVehiclesById),
+      createDataListener('drivers', setDriversById),
+      createDataListener('incidentReports', setIncidentReportsById),
+      createDataListener('manpowerLogs', setManpowerLogsById),
+      createDataListener('manpowerProfiles', setManpowerProfilesById),
+      createDataListener('internalRequests', setInternalRequestsById),
+      createDataListener('managementRequests', setManagementRequestsById),
+      createDataListener('inventoryItems', setInventoryItemsById),
+      createDataListener('utMachines', setUtMachinesById),
+      createDataListener('dftMachines', setDftMachinesById),
+      createDataListener('mobileSims', setMobileSimsById),
+      createDataListener('laptopsDesktops', setLaptopsDesktopsById),
+      createDataListener('digitalCameras', setDigitalCamerasById),
+      createDataListener('anemometers', setAnemometersById),
+      createDataListener('otherEquipments', setOtherEquipmentsById),
+      createDataListener('machineLogs', setMachineLogsById),
+      createDataListener('certificateRequests', setCertificateRequestsById),
+      createDataListener('announcements', setAnnouncementsById),
+      createDataListener('buildings', setBuildingsById),
+      createDataListener('jobSchedules', setJobSchedulesById),
+      createDataListener('ppeRequests', setPpeRequestsById),
+      createDataListener('ppeStock', setPpeStockById),
+      createDataListener('payments', setPaymentsById),
+      createDataListener('vendors', setVendorsById),
+      createDataListener('purchaseRegisters', setPurchaseRegistersById),
+      createDataListener('passwordResetRequests', setPasswordResetRequestsById),
+      createDataListener('igpOgpRecords', setIgpOgpRecordsById),
+      createDataListener('feedback', setFeedbackById),
     ];
   
     const brandingRef = ref(rtdb, 'branding');
@@ -452,13 +506,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, addActivityLog, setStoredUser]);
 
-  const updateProfile = useCallback((name: string, email: string, avatar: string, password?: string) => {
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
     if (user) {
-      const updatedUser: User = { ...user, name, email, avatar };
-      if (password) updatedUser.password = password;
-      updateUser(updatedUser);
+        let avatarUrl = user.avatar;
+        if (avatarFile) {
+            try {
+                toast({ title: 'Uploading profile picture...' });
+                avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload profile picture.' });
+                return;
+            }
+        }
+
+        const updatedUser: User = { ...user, name, email, avatar: avatarUrl };
+        if (password) updatedUser.password = password;
+        updateUser(updatedUser);
     }
-  }, [user, updateUser]);
+  }, [user, updateUser, toast]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -612,7 +677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         comments: [],
         participants: [user.id, ...assigneeIds],
         lastUpdated: now,
-        viewedBy: [user.id],
+        viewedBy: { [user.id]: true },
         approvalState: 'none',
         viewedByApprover: true,
         viewedByRequester: false,
@@ -651,7 +716,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updatedParticipants = Array.from(new Set([...(task.participants || [task.creatorId, ...task.assigneeIds]), user.id]));
     const updates: Partial<Task> = {
       participants: updatedParticipants,
-      viewedBy: [user.id],
+      viewedBy: { [user.id]: true },
       lastUpdated: new Date().toISOString(),
     };
 
@@ -688,7 +753,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     
     updates[`tasks/${taskId}/lastUpdated`] = now;
-    updates[`tasks/${taskId}/viewedBy`] = [user.id];
+    updates[`tasks/${taskId}/viewedBy`] = { [user.id]: true };
 
     update(ref(rtdb), updates);
   }, [user, tasks, addActivityLog, addComment]);
@@ -702,7 +767,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/approvalState`] = 'approved';
-    updates[`tasks/${taskId}/viewedBy`] = [user.id];
+    updates[`tasks/${taskId}/viewedBy`] = { [user.id]: true };
     updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
 
     if (task.pendingAssigneeId) {
@@ -732,7 +797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/status`] = 'In Progress'; // Revert main task status
     updates[`tasks/${taskId}/approvalState`] = 'returned';
-    updates[`tasks/${taskId}/viewedBy`] = [user.id];
+    updates[`tasks/${taskId}/viewedBy`] = { [user.id]: true };
     updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
 
     // Revert subtask statuses
@@ -761,7 +826,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       previousStatus: task.status,
       pendingAssigneeId: newAssigneeId,
       approverId: task.creatorId,
-      viewedBy: [user.id],
+      viewedBy: { [user.id]: true },
       lastUpdated: new Date().toISOString(),
     };
     update(ref(rtdb, `tasks/${taskId}`), updates);
@@ -773,9 +838,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
   
-    const currentViewedBy = task.viewedBy || [];
-    if (!currentViewedBy.includes(user.id)) {
-      update(ref(rtdb, `tasks/${taskId}`), { viewedBy: [...currentViewedBy, user.id] });
+    const currentViewedBy = task.viewedBy || {};
+    if (!currentViewedBy[user.id]) {
+      update(ref(rtdb, `tasks/${taskId}/viewedBy`), { [user.id]: true });
     }
   }, [user, tasks]);
   
@@ -903,7 +968,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`${basePath}/comments/${commentId}`] = newComment;
     updates[`${basePath}/lastUpdated`] = new Date().toISOString();
     
-    updates[`${basePath}/viewedBy`] = [user.id];
+    updates[`${basePath}/viewedBy`] = { [user.id]: true };
   
     const existingEntry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
     if (!existingEntry) {
@@ -919,9 +984,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const dayKey = `${format(day, 'yyyy-MM-dd')}_${plannerUserId}`;
     const dayRef = ref(rtdb, `dailyPlannerComments/${dayKey}`);
-    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === dayKey)?.viewedBy || [];
-    if (!currentViewedBy.includes(user.id)) {
-      update(dayRef, { viewedBy: [...currentViewedBy, user.id] });
+    const currentViewedBy = dailyPlannerComments.find(dpc => dpc.id === dayKey)?.viewedBy || {};
+    if (!currentViewedBy[user.id]) {
+      update(dayRef, { viewedBy: { ...currentViewedBy, [user.id]: true } });
     }
   }, [user, dailyPlannerComments]);
 
@@ -1116,7 +1181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         reportedToUserIds,
         comments: [],
         lastUpdated: new Date().toISOString(),
-        viewedBy: [user.id]
+        viewedBy: { [user.id]: true }
     };
     set(newRef, newIncident);
     addActivityLog(user.id, 'Incident Reported', `Incident in ${incidentData.unitArea}`);
@@ -1132,7 +1197,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     updates.comments = [...existingComments, newComment];
     updates.lastUpdated = new Date().toISOString();
-    updates.viewedBy = [user.id];
+    updates.viewedBy = { [user.id]: true };
 
     update(ref(rtdb, `incidentReports/${id}`), updates);
     addActivityLog(user.id, 'Incident Updated', `Updated incident: ${id}`);
@@ -1149,7 +1214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: Partial<IncidentReport> = {
         comments: [...existingComments, newComment],
         lastUpdated: new Date().toISOString(),
-        viewedBy: [user.id],
+        viewedBy: { [user.id]: true },
     };
     
     update(ref(rtdb, `incidentReports/${incidentId}`), updates);
@@ -1181,9 +1246,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const incident = incidentReports.find(i => i.id === incidentId);
     if (!incident) return;
 
-    const currentViewedBy = incident.viewedBy || [];
-    if (!currentViewedBy.includes(user.id)) {
-      update(ref(rtdb, `incidentReports/${incidentId}`), { viewedBy: [...currentViewedBy, user.id] });
+    const currentViewedBy = incident.viewedBy || {};
+    if (!currentViewedBy[user.id]) {
+      update(ref(rtdb, `incidentReports/${incidentId}/viewedBy`), { [user.id]: true });
     }
   }, [user, incidentReports]);
   
@@ -1533,11 +1598,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
   }, [user]);
 
-  const addPpeRequest = useCallback((requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+  const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>, attachmentFile?: File | null) => {
     if (!user) return;
+    
+    let attachmentUrl: string | undefined = undefined;
+    if (attachmentFile) {
+        try {
+            toast({ title: 'Uploading attachment...' });
+            attachmentUrl = await uploadFile(attachmentFile, `ppe-requests/${push(ref(rtdb)).key}/${attachmentFile.name}`);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload attachment file.' });
+            return;
+        }
+    }
+
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     const newRequest: Omit<PpeRequest, 'id'> = {
         ...requestData,
+        attachmentUrl,
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
@@ -1569,7 +1647,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         quantity: requestData.quantity || 1,
         requestType: requestData.requestType,
         remarks: requestData.remarks,
-        attachmentUrl: requestData.attachmentUrl,
+        attachmentUrl: attachmentUrl,
         joiningDate: employee?.joiningDate ? format(parseISO(employee.joiningDate), 'dd MMM, yyyy') : 'N/A',
         rejoiningDate: employee?.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(employee.leaveHistory.find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
@@ -1580,7 +1658,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     sendPpeRequestEmail(emailData);
 
-  }, [user, manpowerProfiles, ppeStock, addActivityLog]);
+  }, [user, manpowerProfiles, ppeStock, addActivityLog, toast]);
   
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if (!user) return;
@@ -2269,7 +2347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         message,
         date: new Date().toISOString(),
         status: 'New',
-        viewedBy: [user.id]
+        viewedBy: { [user.id]: true }
     };
     set(newRef, newFeedback);
   }, [user]);
@@ -2282,8 +2360,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user || !can.manage_feedback) return;
     const updates: { [key: string]: any } = {};
     feedback.forEach(f => {
-      if (!f.viewedBy?.includes(user.id)) {
-        updates[`feedback/${f.id}/viewedBy`] = [...(f.viewedBy || []), user.id];
+      if (!f.viewedBy?.[user.id]) {
+        updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
       }
     });
     if (Object.keys(updates).length > 0) {
@@ -2297,7 +2375,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     
     const pendingTaskApprovalCount = tasks.filter(t => t.status === 'Pending Approval' && t.approverId === user.id).length;
-    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !(t.viewedBy || []).includes(user.id)).length;
+    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
     const myPendingTaskRequestCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && t.approvalState === 'returned').length;
 
     const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
@@ -2308,7 +2386,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
     const unreadPlannerCommentDays = dailyPlannerComments
-      .filter(dpc => dpc.plannerUserId === user.id && !(dpc.viewedBy || []).includes(user.id))
+      .filter(dpc => dpc.plannerUserId === user.id && !dpc.viewedBy?.[user.id])
       .map(dpc => dpc.day);
     const plannerNotificationCount = unreadPlannerCommentDays.length;
 
@@ -2321,7 +2399,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const incidentNotificationCount = incidentReports.filter(i => {
       const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
-      const isUnread = !(i.viewedBy || []).includes(user.id);
+      const isUnread = !i.viewedBy?.[user.id];
       return isParticipant && isUnread;
     }).length;
     
@@ -2333,7 +2411,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
     const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.includes(user.id)).length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
 
     const { workingManpowerCount, onLeaveManpowerCount } = manpowerProfiles.reduce((acc, profile) => {
         if(profile.status === 'Working') acc.workingManpowerCount++;
@@ -2362,4 +2440,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
- 

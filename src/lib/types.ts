@@ -1,5 +1,6 @@
 
 
+
 export type IgpOgpItem = {
   id: string;
   itemName: string;
@@ -126,7 +127,7 @@ export type Task = {
   comments: Comment[];
   participants?: string[];
   lastUpdated?: string;
-  viewedBy?: string[];
+  viewedBy?: { [key: string]: boolean };
   requiresAttachmentForCompletion?: boolean;
   attachment?: {
     name: string;
@@ -280,7 +281,7 @@ export type IncidentReport = {
     isPublished: boolean;
     comments: Comment[];
     lastUpdated: string; // ISO string
-    viewedBy: string[]; // Array of user IDs
+    viewedBy: { [key: string]: boolean }; // Object of user IDs
 };
 
 
@@ -633,7 +634,7 @@ export type DailyPlannerComment = {
   day: string; // YYYY-MM-DD
   comments: Comment[];
   lastUpdated: string;
-  viewedBy: string[];
+  viewedBy: { [key: string]: boolean };
 };
 
 export type Bed = {
@@ -695,5 +696,5 @@ export type Feedback = {
   message: string;
   date: string; // ISO String
   status: FeedbackStatus;
-  viewedBy?: string[];
+  viewedBy?: { [key: string]: boolean };
 };

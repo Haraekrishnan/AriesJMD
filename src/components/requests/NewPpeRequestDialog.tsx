@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -123,38 +122,10 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   }, [eligibility, isNewEmployee, requestType]);
 
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    setAttachmentFile(file);
-    setIsUploading(true);
-    toast({ title: 'Uploading...', description: 'Please wait while the image is uploaded.' });
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "my_unsigned_upload"); 
-
-    try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
-            method: "POST",
-            body: formData,
-        });
-
-        const data = await res.json();
-        setIsUploading(false);
-
-        if (data.secure_url) {
-            form.setValue('attachmentUrl', data.secure_url);
-            toast({ title: 'Upload Successful', description: 'Image has been attached.' });
-        } else {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload image.' });
-            setAttachmentFile(null);
-        }
-    } catch (error) {
-        setIsUploading(false);
-        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
-        setAttachmentFile(null);
+    if (file) {
+      setAttachmentFile(file);
     }
   };
 
@@ -164,11 +135,8 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
         return;
     }
 
-    addPpeRequest({ ...data, eligibility });
-    toast({
-      title: 'PPE Request Submitted',
-      description: 'Your request has been submitted to the manager for approval.',
-    });
+    addPpeRequest({ ...data, eligibility }, attachmentFile);
+    
     setIsOpen(false);
   };
   
@@ -283,22 +251,22 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 {requestType === 'Replacement' && (
                   <div className="space-y-2">
                     <Label>Attach Photo of Damaged Item</Label>
-                    {form.getValues('attachmentUrl') || attachmentFile ? (
+                    {attachmentFile ? (
                        <div className="flex items-center justify-between p-2 rounded-md border text-sm">
                           <div className="flex items-center gap-2 truncate">
                             <Paperclip className="h-4 w-4"/>
-                            <span className="truncate">{attachmentFile?.name || 'Attached Image'}</span>
+                            <span className="truncate">{attachmentFile.name}</span>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setAttachmentFile(null); form.setValue('attachmentUrl', undefined); }}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachmentFile(null)}>
                             <X className="h-4 w-4"/>
                           </Button>
                        </div>
                     ) : (
                       <div className="relative">
                         <Button asChild variant="outline" size="sm">
-                          <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
+                          <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/>Upload Image</Label>
                         </Button>
-                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                       </div>
                     )}
                   </div>
@@ -314,7 +282,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
           <AlertDialog>
               <AlertDialogTrigger asChild>
-                  <Button type="button" disabled={isUploading}>Submit Request</Button>
+                  <Button type="button">Submit Request</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                   <AlertDialogHeader>
