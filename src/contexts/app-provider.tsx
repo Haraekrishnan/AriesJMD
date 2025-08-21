@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -375,8 +374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById);
       clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
       clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById);
-      clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById);
-      clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById);
+      clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById);
       return;
     }
   
@@ -1697,7 +1695,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const currentSizeStock = stockItems.sizes[request.size] || 0;
                 updates[`${stockRefPath}/sizes/${request.size}`] = Math.max(0, currentSizeStock - (request.quantity || 1));
             } else if (request.ppeType === 'Safety Shoes' && typeof stockItems.quantity === 'number') {
-                updates[`${stockRefPath}/quantity`] = Math.max(0, stockItems.quantity - 1);
+                updates[`${stockRefPath}/quantity`] = Math.max(0, stockItems.quantity - (request.quantity || 1));
             }
         }
     } else if (status === 'Rejected') {
