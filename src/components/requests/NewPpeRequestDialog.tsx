@@ -24,9 +24,9 @@ import { ScrollArea } from '../ui/scroll-area';
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
-  ppeType: z.enum(['Coverall', 'Safety Shoes']),
+  ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required." }),
   size: z.string().min(1, 'Size is required'),
-  quantity: z.coerce.number().optional(),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
   attachmentUrl: z.string().optional(),
@@ -243,6 +243,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input type="number" {...form.register('quantity')} />
+                {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
               </div>
 
                <div className="space-y-2">
