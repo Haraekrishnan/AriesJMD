@@ -68,11 +68,11 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({
-        ppeType: undefined,
-        size: '',
         requestType: 'New',
         quantity: 1,
         issueDate: new Date(),
+        ppeType: undefined,
+        size: '',
         remarks: '',
       });
     }
