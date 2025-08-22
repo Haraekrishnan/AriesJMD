@@ -583,7 +583,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                 <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Issue Date</TableHead><TableHead>Request Type</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {ppeHistoryArray.map((item, index) => (
-                                        <TableRow key={item.id || `ppe-${index}`}>
+                                        <TableRow key={`${item.id}-${index}`}>
                                             <TableCell>{item.ppeType}</TableCell>
                                             <TableCell>{item.size}</TableCell>
                                             <TableCell>{format(new Date(item.issueDate), 'dd-MM-yyyy')}</TableCell>
