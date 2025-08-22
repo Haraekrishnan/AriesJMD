@@ -44,13 +44,13 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
       issueDate: new Date(),
     },
   });
-  
+
   const ppeType = form.watch('ppeType');
 
   useEffect(() => {
-    if (ppeType) {
-        const size = ppeType === 'Coverall' ? profile.coverallSize : profile.shoeSize;
-        form.setValue('size', size || '');
+    if (ppeType && profile) {
+      const size = ppeType === 'Coverall' ? profile.coverallSize : profile.shoeSize;
+      form.setValue('size', size || '');
     }
   }, [ppeType, profile, form]);
 
@@ -68,9 +68,12 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({
+        ppeType: undefined,
+        size: '',
         requestType: 'New',
         quantity: 1,
         issueDate: new Date(),
+        remarks: '',
       });
     }
     setIsOpen(open);
@@ -84,48 +87,64 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
           <DialogDescription>Manually log a PPE item issued to {profile.name}.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-           <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-                <Label>PPE Type</Label>
-                <Controller name="ppeType" control={form.control} render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger>
-                        <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
-                    </Select>
-                )}/>
-                {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
+              <Label>PPE Type</Label>
+              <Controller
+                name="ppeType"
+                control={form.control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Coverall">Coverall</SelectItem>
+                      <SelectItem value="Safety Shoes">Safety Shoes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
             </div>
-             <div className="space-y-2">
-                <Label>Size</Label>
-                <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
-                {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
+            <div className="space-y-2">
+              <Label>Size</Label>
+              <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+              {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
             </div>
           </div>
+
           <div className="space-y-2">
             <Label>Quantity</Label>
             <Input type="number" {...form.register('quantity')} />
             {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
           </div>
-           <div className="grid grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-                    <Label>Request Type</Label>
-                    <Controller name="requestType" control={form.control} render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger><SelectValue/></SelectTrigger>
-                            <SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent>
-                        </Select>
-                    )}/>
+              <Label>Request Type</Label>
+              <Controller
+                name="requestType"
+                control={form.control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="New">New</SelectItem>
+                      <SelectItem value="Replacement">Replacement</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div className="space-y-2">
-                <Label>Issue Date</Label>
-                <Controller name="issueDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                {form.formState.errors.issueDate && <p className="text-xs text-destructive">{form.formState.errors.issueDate.message}</p>}
+              <Label>Issue Date</Label>
+              <Controller name="issueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+              {form.formState.errors.issueDate && <p className="text-xs text-destructive">{form.formState.errors.issueDate.message}</p>}
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <Label>Remarks</Label>
-            <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
+            <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc." />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
