@@ -201,6 +201,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     return profile ? manpowerProfiles.find(p => p.id === profile.id) || profile : null;
   }, [manpowerProfiles, profile]);
 
+  const ppeHistoryArray = useMemo(() => {
+    if (!liveProfile?.ppeHistory) return [];
+    return Array.isArray(liveProfile.ppeHistory) ? liveProfile.ppeHistory : Object.values(liveProfile.ppeHistory);
+  }, [liveProfile]);
 
   useEffect(() => {
     if (isOpen) {
@@ -565,7 +569,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             </Table>
                         </div>
                     )}
-                     {(liveProfile?.ppeHistory || []).length > 0 && (
+                     {ppeHistoryArray.length > 0 && (
                         <div className="space-y-4 md:col-span-3">
                             <div className="flex justify-between items-center border-b pb-2">
                                 <h3 className="text-lg font-semibold">PPE Issue History</h3>
@@ -578,7 +582,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                              <Table>
                                 <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Issue Date</TableHead><TableHead>Request Type</TableHead></TableRow></TableHeader>
                                 <TableBody>
-                                    {liveProfile?.ppeHistory?.map((item, index) => (
+                                    {ppeHistoryArray.map((item, index) => (
                                         <TableRow key={item.id || `ppe-${index}`}>
                                             <TableCell>{item.ppeType}</TableCell>
                                             <TableCell>{item.size}</TableCell>
