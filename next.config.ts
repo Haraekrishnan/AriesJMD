@@ -1,3 +1,4 @@
+
 require('dotenv').config({ path: './.env' });
 
 const nextConfig = {
@@ -11,6 +12,18 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };
