@@ -1474,6 +1474,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
     const newRecordWithId = { ...record, id: newRecordRef.key! };
     set(newRecordRef, newRecordWithId);
+    // This is the manual state update that was missing.
+    setManpowerProfilesById(prev => {
+        const updatedProfiles = { ...prev };
+        const profile = updatedProfiles[manpowerId];
+        if (profile) {
+            const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
+            updatedProfiles[manpowerId] = {
+                ...profile,
+                ppeHistory: [...existingHistory, newRecordWithId],
+            };
+        }
+        return updatedProfiles;
+    });
   }, [user]);
 
 
@@ -2225,7 +2238,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
@@ -2428,3 +2441,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    
