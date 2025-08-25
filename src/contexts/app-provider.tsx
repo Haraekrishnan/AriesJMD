@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1157,15 +1158,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, drivers, addActivityLog]);
 
   const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
-    if(!user) return;
-    const supervisor = users.find(u => u.id === user.supervisorId);
-    const hse = users.find(u => u.role === 'HSE');
-    const projectCoordinator = users.find(u => u.role === 'Project Coordinator');
+    if (!user) return;
+    
+    // Find all users with roles that should be notified
+    const rolesToNotify: Role[] = ['Admin', 'HSE', 'Project Coordinator', 'Manager'];
+    const hseAndAdminIds = users
+        .filter(u => rolesToNotify.includes(u.role))
+        .map(u => u.id);
+
+    const supervisorId = user.supervisorId;
 
     const reportedToUserIds = Array.from(new Set([
-        user.supervisorId,
-        hse?.id,
-        projectCoordinator?.id
+        ...hseAndAdminIds,
+        supervisorId,
     ].filter(Boolean) as string[]));
 
     const newRef = push(ref(rtdb, 'incidentReports'));
@@ -1182,7 +1187,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRef, newIncident);
     addActivityLog(user.id, 'Incident Reported', `Incident in ${incidentData.unitArea}`);
-  }, [user, users, addActivityLog]);
+}, [user, users, addActivityLog]);
 
   const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
     if(!user) return;
@@ -1245,7 +1250,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const currentViewedBy = incident.viewedBy || {};
     if (!currentViewedBy[user.id]) {
-      update(ref(rtdb, `incidentReports/${incidentId}/viewedBy`), { [user.id]: true });
+      update(ref(rtdb, `incidentReports/${incidentId}/viewedBy`), { ...currentViewedBy, [user.id]: true });
     }
   }, [user, incidentReports]);
   
@@ -1474,21 +1479,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
     const newRecordWithId = { ...record, id: newRecordRef.key! };
     set(newRecordRef, newRecordWithId);
-    // This is the manual state update that was missing.
-    setManpowerProfilesById(prev => {
-        const updatedProfiles = { ...prev };
-        const profile = updatedProfiles[manpowerId];
-        if (profile) {
-            const existingHistory = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
-            updatedProfiles[manpowerId] = {
-                ...profile,
-                ppeHistory: [...existingHistory, newRecordWithId],
-            };
-        }
-        return updatedProfiles;
-    });
   }, [user]);
-
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
@@ -2444,3 +2435,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
