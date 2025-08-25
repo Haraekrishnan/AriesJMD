@@ -210,7 +210,7 @@ export default function ManpowerListPage() {
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
                          <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCog className="mr-2 h-4 w-4" /> Update Rejoin</Button>
                          <Button onClick={() => setIsMemoDialogOpen(true)}><FileWarning className="mr-2 h-4 w-4" /> Issue Memo</Button>
-                         <Button variant="outline" onClick={() => setIsPpeDialogOpen(true)}><Shirt className="mr-2 h-4 w-4"/> Issue PPE</Button>
+                         <Button variant="outline" onClick={() => setIsPpeDialogOpen(true)}><Shirt className="mr-2 h-4 w-4"/> PPE Status</Button>
                          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
                          <Button onClick={handleAdd}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -380,4 +380,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
