@@ -16,9 +16,9 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { useEffect } from 'react';
 
 const ppeHistorySchema = z.object({
-  ppeType: z.enum(['Coverall', 'Safety Shoes']),
+  ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required."}),
   size: z.string().min(1, 'Size is required'),
-  quantity: z.coerce.number().min(1, 'Quantity must be at least 1').default(1),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   issueDate: z.date({ required_error: 'Issue date is required' }),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
@@ -40,7 +40,6 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
     resolver: zodResolver(ppeHistorySchema),
     defaultValues: {
       requestType: 'New',
-      quantity: 1,
       issueDate: new Date(),
     },
   });
@@ -69,11 +68,8 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
     if (!open) {
       form.reset({
         requestType: 'New',
-        quantity: 1,
         issueDate: new Date(),
-        ppeType: undefined,
-        size: '',
-        remarks: '',
+        quantity: 1,
       });
     }
     setIsOpen(open);
@@ -87,7 +83,6 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
           <DialogDescription>Manually log a PPE item issued to {profile.name}.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>PPE Type</Label>
               <Controller
@@ -105,18 +100,19 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
               />
               {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
             </div>
-            <div className="space-y-2">
-              <Label>Size</Label>
-              <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
-              {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Quantity</Label>
-            <Input type="number" {...form.register('quantity')} />
-            {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label>Size</Label>
+                    <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+                    {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
+                </div>
+                <div className="space-y-2">
+                    <Label>Quantity</Label>
+                    <Input type="number" {...form.register('quantity')} />
+                    {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
+                </div>
+            </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
