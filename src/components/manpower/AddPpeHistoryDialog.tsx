@@ -18,7 +18,7 @@ import { useEffect } from 'react';
 const ppeHistorySchema = z.object({
   ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required."}),
   size: z.string().min(1, 'Size is required'),
-  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1').default(1),
   issueDate: z.date({ required_error: 'Issue date is required' }),
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
@@ -41,6 +41,7 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
     defaultValues: {
       requestType: 'New',
       issueDate: new Date(),
+      quantity: 1,
     },
   });
 
@@ -52,6 +53,20 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
       form.setValue('size', size || '');
     }
   }, [ppeType, profile, form]);
+  
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      form.reset({
+        requestType: 'New',
+        issueDate: new Date(),
+        quantity: 1,
+        size: '',
+        ppeType: undefined,
+        remarks: ''
+      });
+    }
+    setIsOpen(open);
+  };
 
   const onSubmit = (data: PpeHistoryFormValues) => {
     if (!user) return;
@@ -61,18 +76,7 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
       issuedById: user.id,
     });
     toast({ title: 'PPE Record Added', description: 'The PPE issue history has been updated.' });
-    setIsOpen(false);
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      form.reset({
-        requestType: 'New',
-        issueDate: new Date(),
-        quantity: 1,
-      });
-    }
-    setIsOpen(open);
+    handleOpenChange(false);
   };
 
   return (
@@ -143,7 +147,7 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
             <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc." />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
             <Button type="submit">Add Record</Button>
           </DialogFooter>
         </form>
