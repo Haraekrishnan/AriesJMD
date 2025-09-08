@@ -29,14 +29,15 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     }
     const { from, to = from } = dateRange;
 
-    const issuedItems = manpowerProfiles.flatMap(profile => 
-        (profile.ppeHistory || [])
+    const issuedItems = manpowerProfiles.flatMap(profile => {
+        const historyArray = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
+        return historyArray
             .filter(item => {
                 const issueDate = parseISO(item.issueDate);
                 return isWithinInterval(issueDate, { start: startOfDay(from), end: endOfDay(to) });
             })
             .map(item => ({ ...item, employee: profile }))
-    );
+    });
 
 
     if (issuedItems.length === 0) {
