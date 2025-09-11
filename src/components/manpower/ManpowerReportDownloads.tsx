@@ -43,13 +43,13 @@ export default function ManpowerReportDownloads({ profiles }: ManpowerReportDown
           'Document Folder URL': p.documentFolderUrl || '',
         };
 
-        const docsData = p.documents.reduce((acc, doc) => {
+        const docsData = (p.documents || []).reduce((acc, doc) => {
             acc[`Doc: ${doc.name} (Status)`] = doc.status;
             acc[`Doc: ${doc.name} (Details)`] = doc.details || '';
             return acc;
         }, {} as {[key: string]: any});
         
-        const skillsData = p.skills?.reduce((acc, skill, index) => {
+        const skillsData = (p.skills || []).reduce((acc, skill, index) => {
             acc[`Skill ${index+1} Name`] = skill.name;
             acc[`Skill ${index+1} Details`] = skill.details;
             acc[`Skill ${index+1} Link`] = skill.link || '';
