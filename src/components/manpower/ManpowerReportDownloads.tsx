@@ -56,11 +56,15 @@ export default function ManpowerReportDownloads({ profiles }: ManpowerReportDown
             return acc;
         }, {} as {[key: string]: any});
 
-        if (!p.leaveHistory || p.leaveHistory.length === 0) {
+        const leaveHistoryArray = Array.isArray(p.leaveHistory)
+          ? p.leaveHistory
+          : p.leaveHistory ? Object.values(p.leaveHistory) : [];
+
+        if (leaveHistoryArray.length === 0) {
             return { ...baseData, ...docsData, ...skillsData };
         }
 
-        return p.leaveHistory.map(leave => ({
+        return leaveHistoryArray.map(leave => ({
             ...baseData,
             ...docsData,
             ...skillsData,
