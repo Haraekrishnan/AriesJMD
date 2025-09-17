@@ -48,7 +48,7 @@ export default function ManpowerListPage() {
         return manpowerProfiles.flatMap(p => {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
-                .filter(l => l && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
+                .filter(l => l && l.leaveStartDate && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
                 .map(l => ({ profile: p, leave: l }));
         });
     }, [manpowerProfiles]);
@@ -380,3 +380,5 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
+    
