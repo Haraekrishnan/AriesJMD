@@ -18,7 +18,7 @@ import PpeRequestTable from '@/components/requests/PpeRequestTable';
 import { Role } from '@/lib/types';
 
 export default function MyRequestsPage() {
-    const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount } = useAppContext();
+    const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount, can } = useAppContext();
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
     const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
@@ -56,10 +56,13 @@ export default function MyRequestsPage() {
     
     const visiblePpeRequests = useMemo(() => {
         if (!user || !ppeRequests) return [];
+        if (can.view_ppe_requests) {
+            return ppeRequests.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
         return ppeRequests
-            .filter(req => req.requesterId === user.id || isManager || canIssuePpe)
+            .filter(req => req.requesterId === user.id)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [ppeRequests, user, isManager, canIssuePpe]);
+    }, [ppeRequests, user, can.view_ppe_requests]);
 
     const internalNotifCount = pendingInternalRequestCount + updatedInternalRequestCount;
     const mgmtNotifCount = pendingManagementRequestCount + updatedManagementRequestCount;

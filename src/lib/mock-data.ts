@@ -20,7 +20,7 @@ export const ROLES: RoleDefinition[] = [
       'approve_store_requests', 'manage_inventory',
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
-      'log_manpower', 'manage_job_schedule', 'manage_vendors', 'manage_payments'
+      'log_manpower', 'manage_job_schedule', 'manage_vendors', 'manage_payments', 'view_ppe_requests'
     ],
     isEditable: false,
   },
@@ -74,7 +74,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'view_performance_reports',
       'manage_vehicles',
-      'manage_igp_ogp',
+      'manage_igp_ogp', 'view_ppe_requests'
     ],
     isEditable: false,
   },

@@ -1,6 +1,4 @@
 
-
-
 export type IgpOgpItem = {
   id: string;
   itemName: string;
@@ -195,6 +193,7 @@ export const ALL_PERMISSIONS = [
   'log_manpower',
   'manage_job_schedule',
   'manage_ppe_stock',
+  'view_ppe_requests',
   'manage_vendors',
   'manage_payments',
   'manage_purchase_register',
