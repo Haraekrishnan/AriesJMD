@@ -43,9 +43,9 @@ export default function MyRequestsPage() {
     const visibleInternalRequests = useMemo(() => {
         if (!user) return [];
         return internalRequests
-            .filter(req => req.requesterId === user.id || isStoreApprover)
+            .filter(req => req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [internalRequests, user, isStoreApprover]);
+    }, [internalRequests, user, can.view_internal_store_request, can.manage_store_requests]);
     
     const visibleManagementRequests = useMemo(() => {
         if (!user) return [];
@@ -56,13 +56,13 @@ export default function MyRequestsPage() {
     
     const visiblePpeRequests = useMemo(() => {
         if (!user || !ppeRequests) return [];
-        if (can.view_ppe_requests) {
+        if (can.view_ppe_requests || can.manage_ppe_request) {
             return ppeRequests.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
         return ppeRequests
             .filter(req => req.requesterId === user.id)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [ppeRequests, user, can.view_ppe_requests]);
+    }, [ppeRequests, user, can.view_ppe_requests, can.manage_ppe_request]);
 
     const internalNotifCount = pendingInternalRequestCount + updatedInternalRequestCount;
     const mgmtNotifCount = pendingManagementRequestCount + updatedManagementRequestCount;
