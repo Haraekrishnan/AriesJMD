@@ -11,24 +11,24 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { appName, appLogo, loading: contextLoading } = useAppContext();
   const router = useRouter();
   const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
         if (user.status === 'locked' || user.status === 'deactivated') {
             router.replace('/status');
         } else {
             router.replace('/dashboard');
         }
-    } else {
+    } else if (!authLoading && !user) {
         setInitialLoad(false);
     }
-  }, [user, router]);
+  }, [user, authLoading, router]);
   
-  const isLoading = contextLoading || initialLoad;
+  const isLoading = authLoading || contextLoading || initialLoad;
   
   if (isLoading) {
     return (

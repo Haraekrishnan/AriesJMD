@@ -14,22 +14,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
+    if (loading) {
+      return;
     }
 
-    if (!loading && user) {
-        if (user.status === 'locked' || user.status === 'deactivated') {
-            if (pathname !== '/status') {
-                router.replace('/status');
-            }
-        } else if (pathname === '/status') {
-            router.replace('/dashboard');
-        }
+    if (!user) {
+      if (pathname !== '/login') {
+        router.replace('/login');
+      }
+      return;
+    }
+
+    const isLockedOrDeactivated = user.status === 'locked' || user.status === 'deactivated';
+
+    if (isLockedOrDeactivated) {
+      if (pathname !== '/status') {
+        router.replace('/status');
+      }
+    } else { // user is active
+      if (pathname === '/status') {
+        router.replace('/dashboard');
+      }
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || (!user && pathname !== '/status')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -43,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (user.status === 'locked' || user.status === 'deactivated') {
+  if (user && (user.status === 'locked' || user.status === 'deactivated')) {
     // Render children directly for the status page without the main layout
     if (pathname === '/status') {
       return <main>{children}</main>;
