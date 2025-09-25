@@ -1,4 +1,3 @@
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, ShieldPlus, KeyRound } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -21,9 +20,11 @@ import ProjectManagementTable from '@/components/account/project-management-tabl
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordResetRequests from '@/components/account/password-reset-requests';
 import FeedbackManagement from '@/components/account/FeedbackManagement';
+import { Badge } from '@/components/ui/badge';
+import UnlockRequests from '@/components/account/UnlockRequests';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
+  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser, deactivateUser, reactivateUser } = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -128,6 +129,20 @@ export default function AccountPage() {
     });
   };
 
+  const handleStatusChange = (userId: string, action: 'lock' | 'unlock' | 'deactivate' | 'reactivate') => {
+    const actionMap = {
+        lock: lockUser,
+        unlock: unlockUser,
+        deactivate: deactivateUser,
+        reactivate: reactivateUser
+    };
+    actionMap[action](userId);
+    toast({
+        title: 'User Status Updated',
+        description: `The user account has been ${action}ed.`,
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -146,9 +161,8 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground">{user.role}</p>
             </CardHeader>
           </Card>
-           {can.manage_password_resets && (
-              <PasswordResetRequests />
-            )}
+           {can.manage_password_resets && <PasswordResetRequests />}
+           {can.manage_user_lock_status && <UnlockRequests />}
         </div>
         <div className="md:col-span-2">
           <form onSubmit={handleProfileSave}>
@@ -287,9 +301,14 @@ export default function AccountPage() {
                                             <AvatarImage src={report.avatar} alt={report.name} />
                                             <AvatarFallback>{report.name.charAt(0)}</AvatarFallback>
                                         </Avatar>
-                                        <div className="font-medium">
+                                        <div>
+                                          <div className="font-medium flex items-center gap-2">
                                             <p>{report.name}</p>
-                                            <p className="text-xs text-muted-foreground">{report.email}</p>
+                                            <Badge variant={report.status === 'locked' ? 'destructive' : (report.status === 'deactivated' ? 'outline' : 'secondary')}>
+                                              {report.status || 'active'}
+                                            </Badge>
+                                          </div>
+                                          <p className="text-xs text-muted-foreground">{report.email}</p>
                                         </div>
                                     </div>
                                 </TableCell>
@@ -306,22 +325,20 @@ export default function AccountPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleEditClick(report)}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleEditClick(report)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                    {report.status !== 'locked' && can.manage_user_lock_status && <DropdownMenuItem onSelect={() => handleStatusChange(report.id, 'lock')}><Lock className="mr-2 h-4 w-4" /> Lock</DropdownMenuItem>}
+                                                    {report.status === 'locked' && can.manage_user_lock_status && <DropdownMenuItem onSelect={() => handleStatusChange(report.id, 'unlock')}><Unlock className="mr-2 h-4 w-4" /> Unlock</DropdownMenuItem>}
+                                                    {report.status !== 'deactivated' && can.manage_user_lock_status && <DropdownMenuItem onSelect={() => handleStatusChange(report.id, 'deactivate')}><UserX className="mr-2 h-4 w-4" /> Deactivate</DropdownMenuItem>}
+                                                    {report.status === 'deactivated' && can.manage_user_lock_status && <DropdownMenuItem onSelect={() => handleStatusChange(report.id, 'reactivate')}><UserX className="mr-2 h-4 w-4" /> Reactivate</DropdownMenuItem>}
                                                     <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                                                     </AlertDialogTrigger>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete the user account.
-                                                    </AlertDialogDescription>
+                                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete the user account.</AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
