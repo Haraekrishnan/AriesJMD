@@ -1,4 +1,12 @@
 
+export type PpeInwardRecord = {
+  id: string;
+  date: string; // ISO string
+  ppeType: 'Coverall' | 'Safety Shoes';
+  sizes?: { [size: string]: number };
+  quantity?: number;
+  addedByUserId: string;
+};
 
 export type IgpOgpItem = {
   id: string;

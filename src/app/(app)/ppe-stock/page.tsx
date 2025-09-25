@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, HardHat, Shirt, Upload, Inbox } from 'lucide-react';
+import { AlertTriangle, HardHat, Shirt, Upload, Inbox, Edit, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PpeReportDownloads from '@/components/requests/PpeReportDownloads';
 import type { DateRange } from 'react-day-picker';
@@ -19,6 +19,11 @@ import { z } from 'zod';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import EditPpeInwardDialog from '@/components/ppe-stock/EditPpeInwardDialog';
+import type { PpeInwardRecord } from '@/lib/types';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
@@ -41,13 +46,11 @@ type InwardFormValues = z.infer<typeof inwardSchema>;
 
 
 export default function PpeStockPage() {
-    const { can, ppeStock, updatePpeStock, loading } = useAppContext();
+    const { user, can, ppeStock, addPpeInwardRecord, ppeInwardHistory, deletePpeInwardRecord, loading } = useAppContext();
     const { toast } = useToast();
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [isImportOpen, setIsImportOpen] = useState(false);
-
-    const canEditStock = useMemo(() => can.manage_ppe_stock, [can]);
-    const canDoInward = useMemo(() => can.manage_ppe_stock || can.manage_inventory, [can]);
+    const [editingRecord, setEditingRecord] = useState<PpeInwardRecord | null>(null);
 
     const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
     const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
@@ -60,25 +63,14 @@ export default function PpeStockPage() {
     const watchPpeType = form.watch('ppeType');
 
     const handleInwardSubmit = (data: InwardFormValues) => {
-        const stockToUpdate = data.ppeType === 'Coverall' ? coverallStock : shoeStock;
-        if (!stockToUpdate) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Stock data not found.' });
-            return;
-        }
-
-        if (data.ppeType === 'Coverall' && stockToUpdate.sizes) {
-            const newSizes = { ...stockToUpdate.sizes };
-            for (const size in data.sizes) {
-                newSizes[size] = (newSizes[size] || 0) + (data.sizes[size] || 0);
-            }
-            updatePpeStock('coveralls', newSizes);
-        } else if (data.ppeType === 'Safety Shoes' && typeof stockToUpdate.quantity === 'number') {
-            const newQuantity = (stockToUpdate.quantity || 0) + (data.quantity || 0);
-            updatePpeStock('safetyShoes', newQuantity);
-        }
-        
-        toast({ title: 'Stock Updated', description: 'Inward stock has been added.' });
+        addPpeInwardRecord(data);
+        toast({ title: 'Stock Added', description: 'Inward stock has been added to the history.' });
         form.reset({ ppeType: data.ppeType, date: new Date(), sizes: {}, quantity: 0 });
+    };
+
+    const handleDeleteRecord = (recordId: string) => {
+        deletePpeInwardRecord(recordId);
+        toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed.' });
     };
 
     if (loading) {
@@ -117,7 +109,7 @@ export default function PpeStockPage() {
               <Button onClick={() => setIsImportOpen(true)}><Upload className="mr-2 h-4 w-4"/> Import Distribution</Button>
             </div>
 
-             {canDoInward && (
+             {can.manage_ppe_stock && (
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="inward-register">
                         <Card className="border-0">
@@ -190,11 +182,6 @@ export default function PpeStockPage() {
                             </div>
                         ))}
                     </CardContent>
-                    {canEditStock && (
-                        <CardFooter>
-                            <p className="text-xs text-muted-foreground">Admin can edit values directly if needed.</p>
-                        </CardFooter>
-                    )}
                 </Card>
 
                 <Card>
@@ -213,13 +200,62 @@ export default function PpeStockPage() {
                             />
                         </div>
                     </CardContent>
-                     {canEditStock && (
-                        <CardFooter>
-                           <p className="text-xs text-muted-foreground">Admin can edit values directly if needed.</p>
-                        </CardFooter>
-                    )}
                 </Card>
             </div>
+            
+             <Card>
+                <CardHeader>
+                    <CardTitle>Inward Stock History</CardTitle>
+                    <CardDescription>A log of all received PPE stock.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Details</TableHead>
+                                {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {ppeInwardHistory.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                                <TableRow key={record.id}>
+                                    <TableCell>{format(new Date(record.date), 'dd MMM, yyyy')}</TableCell>
+                                    <TableCell>{record.ppeType}</TableCell>
+                                    <TableCell>
+                                        {record.ppeType === 'Coverall' 
+                                            ? Object.entries(record.sizes || {}).map(([size, qty]) => `${size}: ${qty}`).join(', ')
+                                            : `Qty: ${record.quantity}`
+                                        }
+                                    </TableCell>
+                                    {user?.role === 'Admin' && (
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}><Edit className="h-4 w-4"/></Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete Record?</AlertDialogTitle>
+                                                        <AlertDialogDescription>This will permanently delete this inward record and update the stock levels. This action cannot be undone.</AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteRecord(record.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </TableCell>
+                                    )}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    {ppeInwardHistory.length === 0 && <p className="text-center text-muted-foreground py-4">No inward history found.</p>}
+                </CardContent>
+            </Card>
             
              <Card>
                 <CardHeader>
@@ -233,6 +269,7 @@ export default function PpeStockPage() {
             </Card>
 
             <ImportPpeDistributionDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
+            {editingRecord && <EditPpeInwardDialog isOpen={!!editingRecord} setIsOpen={() => setEditingRecord(null)} record={editingRecord} />}
         </div>
     );
 }
