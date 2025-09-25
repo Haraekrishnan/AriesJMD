@@ -384,11 +384,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let issuedShoes = 0;
 
     manpowerProfiles.forEach(profile => {
-      const history = Array.isArray(profile.ppeHistory)
-        ? profile.ppeHistory
-        : Object.values(profile.ppeHistory || {});
-      
-      history.forEach(item => {
+      const historyArray = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
+      historyArray.forEach(item => {
         if (item.ppeType === 'Coverall') {
           issuedCoveralls[item.size] = (issuedCoveralls[item.size] || 0) + (item.quantity || 1);
         } else if (item.ppeType === 'Safety Shoes') {
@@ -409,7 +406,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       { id: 'coveralls', name: 'Coveralls', sizes: finalCoverallSizes, lastUpdated: new Date().toISOString() },
       { id: 'safetyShoes', name: 'Safety Shoes', quantity: finalShoeQuantity, lastUpdated: new Date().toISOString() }
     ];
-  }, [ppeInwardHistory, manpowerProfiles]);
+}, [ppeInwardHistory, manpowerProfiles]);
 
 
   const [storedUser, setStoredUser] = useLocalStorage<User | null>('aries-user-v8', null);
@@ -428,11 +425,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const fullUser = { id: user.id, ...updatedUser };
                 setStoredUser(fullUser);
 
-                if (fullUser.status !== 'active' && router) {
+                if (fullUser.status !== 'active') {
                     router.replace('/status');
                 }
             } else {
-                // User was deleted
                 logout();
             }
         });
@@ -1923,8 +1919,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
 
   const deletePpeInwardRecord = useCallback((recordId: string) => {
+    if(!user) return;
     remove(ref(rtdb, `ppeInwardHistory/${recordId}`));
-    if(user) addActivityLog(user.id, 'PPE Inward Deleted', `Record ID: ${recordId}`);
+    addActivityLog(user.id, 'PPE Inward Deleted', `Record ID: ${recordId}`);
   }, [user, addActivityLog]);
   
   const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
