@@ -61,7 +61,7 @@ export default function PpeStockPage() {
         defaultValues: { ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0 }
     });
     
-    const [coverallSizes, setCoverallSizes] = useState(coverallStock?.sizes || {});
+    const [coverallSizes, setCoverallSizes] = useState<{[key: string]: number}>(coverallStock?.sizes || {});
     const [shoeQuantity, setShoeQuantity] = useState(shoeStock?.quantity || 0);
 
     useEffect(() => {
@@ -202,7 +202,7 @@ export default function PpeStockPage() {
                                 <Input 
                                     id={`coverall-${size}`} 
                                     type="number" 
-                                    defaultValue={coverallSizes[size] || 0}
+                                    value={coverallSizes[size] || 0}
                                     readOnly={!canEdit}
                                     onChange={(e) => canEdit && handleCoverallChange(size, e.target.value)}
                                 />
@@ -227,7 +227,7 @@ export default function PpeStockPage() {
                             <Input 
                                 id="safety-shoes" 
                                 type="number"
-                                defaultValue={shoeQuantity || 0}
+                                value={shoeQuantity || 0}
                                 readOnly={!canEdit}
                                 onChange={(e) => canEdit && setShoeQuantity(Number(e.target.value))}
                             />
