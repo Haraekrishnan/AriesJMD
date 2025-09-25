@@ -114,8 +114,8 @@
       ".write": true
     },
     "ppeInwardHistory": {
-        ".read": true,
-        ".write": true
+      ".read": true,
+      ".write": true
     },
     "vehicles": {
       ".read": true,
@@ -166,3 +166,6 @@
 
 
 
+
+
+    

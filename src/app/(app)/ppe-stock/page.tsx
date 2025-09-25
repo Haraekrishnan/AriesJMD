@@ -219,7 +219,7 @@ export default function PpeStockPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {ppeInwardHistory.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                            {(ppeInwardHistory || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
                                 <TableRow key={record.id}>
                                     <TableCell>{format(new Date(record.date), 'dd MMM, yyyy')}</TableCell>
                                     <TableCell>{record.ppeType}</TableCell>
@@ -253,7 +253,7 @@ export default function PpeStockPage() {
                             ))}
                         </TableBody>
                     </Table>
-                    {ppeInwardHistory.length === 0 && <p className="text-center text-muted-foreground py-4">No inward history found.</p>}
+                    {(ppeInwardHistory || []).length === 0 && <p className="text-center text-muted-foreground py-4">No inward history found.</p>}
                 </CardContent>
             </Card>
             
@@ -273,3 +273,5 @@ export default function PpeStockPage() {
         </div>
     );
 }
+
+    
