@@ -59,7 +59,7 @@ type AppContextType = {
   appLogo: string | null;
 
   // Auth
-  login: (email: string, pass: string) => Promise<{ success: boolean; status?: User['status'] }>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; status?: User['status']; user?: User }>;
   logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
@@ -93,6 +93,7 @@ type AppContextType = {
   pendingPaymentApprovalCount: number;
   pendingPasswordResetRequestCount: number;
   pendingFeedbackCount: number;
+  pendingUnlockRequestCount: number;
 
   // Functions
   getVisibleUsers: () => User[];
@@ -366,6 +367,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const { toast } = useToast();
   const router = useRouter();
+
+  // Listen for status changes on the current user
+  useEffect(() => {
+    if (user && user.id) {
+        const userRef = ref(rtdb, `users/${user.id}`);
+        const unsubscribe = onValue(userRef, (snapshot) => {
+            const updatedUser = snapshot.val();
+            if (updatedUser && (updatedUser.status === 'locked' || updatedUser.status === 'deactivated')) {
+                // If the status is locked or deactivated, log the user out.
+                // The layout will handle redirecting to the status page upon next login.
+                logout();
+            }
+        });
+
+        return () => unsubscribe();
+    }
+  }, [user]);
   
   useEffect(() => {
     if (!rtdb) {
@@ -474,7 +492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(logRef, newLog);
   }, []);
 
-  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status'] }> => {
+  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
     setLoading(true);
     const usersRef = ref(rtdb, 'users');
     const snapshot = await get(usersRef);
@@ -482,19 +500,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const usersArray: User[] = dbUsers ? Object.keys(dbUsers).map(k => ({ id: k, ...dbUsers[k] })) : [];
 
     const foundUser = usersArray.find(u => u.email === email && u.password === pass);
+    
+    setLoading(false);
     if (foundUser) {
         setStoredUser(foundUser);
-        if (foundUser.status !== 'active' && foundUser.status) {
-            setLoading(false);
-            return { success: true, status: foundUser.status };
+        if (foundUser.status !== 'active') {
+            return { success: true, status: foundUser.status, user: foundUser };
         }
         addActivityLog(foundUser.id, 'User Logged In');
-        setLoading(false);
-        return { success: true, status: 'active' };
+        return { success: true, status: 'active', user: foundUser };
     }
-    setLoading(false);
     return { success: false };
-  }, [addActivityLog, setStoredUser, toast]);
+  }, [addActivityLog, setStoredUser]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -707,7 +724,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const computedValue = useMemo(() => {
     if (!user) return {
-      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0
+      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0,
     };
     
     const pendingTaskApprovalCount = tasks.filter(t => t.status === 'Pending Approval' && t.approverId === user.id).length;
@@ -748,6 +765,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
     const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
     const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
+    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
 
     const { workingManpowerCount, onLeaveManpowerCount } = manpowerProfiles.reduce((acc, profile) => {
         if(profile.status === 'Working') acc.workingManpowerCount++;
@@ -756,9 +774,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
 
     return {
-      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount
+      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
     };
-  }, [can.approve_store_requests, can.manage_feedback, can.manage_password_resets, certificateRequests, dailyPlannerComments, feedback, incidentReports, internalRequests, managementRequests, manpowerProfiles, passwordResetRequests, payments, ppeRequests, tasks, user]);
+  }, [can, certificateRequests, dailyPlannerComments, feedback, incidentReports, internalRequests, managementRequests, manpowerProfiles, passwordResetRequests, payments, ppeRequests, tasks, user, unlockRequests]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;

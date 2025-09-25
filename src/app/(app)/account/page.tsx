@@ -1,3 +1,4 @@
+
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -34,6 +35,7 @@ export default function AccountPage() {
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [newAppName, setNewAppName] = useState(appName);
   const [newAppLogo, setNewAppLogo] = useState<string | null>(appLogo);
@@ -76,22 +78,20 @@ export default function AccountPage() {
   
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(name, email, avatar, password);
+    updateProfile(name, email, avatarFile, password);
     toast({
       title: 'Profile Updated',
       description: 'Your profile information has been saved.',
     });
     setPassword('');
+    setAvatarFile(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setAvatarFile(file);
+      setAvatar(URL.createObjectURL(file));
     }
   };
 

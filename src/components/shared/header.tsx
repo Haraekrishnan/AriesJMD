@@ -19,7 +19,7 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
-    const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount } = useAppContext();
+    const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount } = useAppContext();
     const pathname = usePathname();
     
     const navItems = [
@@ -40,7 +40,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: pendingPaymentApprovalCount, show: can.manage_vendors },
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
-      { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount, show: true },
+      { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
       { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
     ];
   
