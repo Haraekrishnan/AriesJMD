@@ -18,6 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
@@ -117,49 +118,57 @@ export default function PpeStockPage() {
             </div>
 
              {canDoInward && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Inbox/> Inward Register</CardTitle>
-                        <CardDescription>Add newly purchased stock to the inventory.</CardDescription>
-                    </CardHeader>
-                    <form onSubmit={form.handleSubmit(handleInwardSubmit)}>
-                        <CardContent className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="space-y-2">
-                                    <Label>PPE Type</Label>
-                                    <Controller name="ppeType" control={form.control} render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                                            <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
-                                        </Select>
-                                    )} />
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="inward-register">
+                        <Card className="border-0">
+                            <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline rounded-t-lg">
+                                <div className="flex items-center gap-2 text-lg font-semibold">
+                                    <Inbox/> Inward Register
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Date of Inward/Purchase</Label>
-                                    <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                                </div>
-                            </div>
-                            {watchPpeType === 'Coverall' ? (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {coverallSizeOptions.map(size => (
-                                        <div key={size} className="space-y-2">
-                                            <Label htmlFor={`inward-coverall-${size}`}>{size}</Label>
-                                            <Input id={`inward-coverall-${size}`} type="number" {...form.register(`sizes.${size}`)} placeholder="0"/>
+                            </AccordionTrigger>
+                            <AccordionContent className="p-4 rounded-b-lg border border-t-0">
+                                <p className="text-sm text-muted-foreground mb-4">Add newly purchased stock to the inventory.</p>
+                                <form onSubmit={form.handleSubmit(handleInwardSubmit)}>
+                                    <div className="space-y-4">
+                                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>PPE Type</Label>
+                                                <Controller name="ppeType" control={form.control} render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                                        <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
+                                                    </Select>
+                                                )} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Date of Inward/Purchase</Label>
+                                                <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="space-y-2 max-w-xs">
-                                    <Label htmlFor="inward-shoe-quantity">Quantity</Label>
-                                    <Input id="inward-shoe-quantity" type="number" {...form.register('quantity')} placeholder="0"/>
-                                </div>
-                            )}
-                            {form.formState.errors.sizes && <p className="text-xs text-destructive">{form.formState.errors.sizes.message}</p>}
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit">Add to Stock</Button>
-                        </CardFooter>
-                    </form>
-                </Card>
+                                        {watchPpeType === 'Coverall' ? (
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                {coverallSizeOptions.map(size => (
+                                                    <div key={size} className="space-y-2">
+                                                        <Label htmlFor={`inward-coverall-${size}`}>{size}</Label>
+                                                        <Input id={`inward-coverall-${size}`} type="number" {...form.register(`sizes.${size}`)} placeholder="0"/>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2 max-w-xs">
+                                                <Label htmlFor="inward-shoe-quantity">Quantity</Label>
+                                                <Input id="inward-shoe-quantity" type="number" {...form.register('quantity')} placeholder="0"/>
+                                            </div>
+                                        )}
+                                        {form.formState.errors.sizes && <p className="text-xs text-destructive">{form.formState.errors.sizes.message}</p>}
+                                    </div>
+                                    <CardFooter className="p-0 pt-4">
+                                        <Button type="submit">Add to Stock</Button>
+                                    </CardFooter>
+                                </form>
+                            </AccordionContent>
+                        </Card>
+                    </AccordionItem>
+                </Accordion>
             )}
 
             <div className="grid md:grid-cols-2 gap-8">
