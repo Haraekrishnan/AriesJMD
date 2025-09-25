@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -60,13 +59,14 @@ type AppContextType = {
   appLogo: string | null;
 
   // Auth
-  login: (email: string, pass: string) => Promise<boolean>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; status?: User['status'] }>;
   logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   generateResetCode: (requestId: string) => void;
   resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
+  requestUnlock: (userId: string, userName: string) => void;
 
   // Permissions
   can: PermissionsObject;
@@ -382,8 +382,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
       clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById);
       clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
-      clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById);
-      clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
+      clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
       return;
     }
   
@@ -475,7 +474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(logRef, newLog);
   }, []);
 
-  const login = useCallback(async (email: string, pass: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status'] }> => {
     setLoading(true);
     const usersRef = ref(rtdb, 'users');
     const snapshot = await get(usersRef);
@@ -484,32 +483,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const foundUser = usersArray.find(u => u.email === email && u.password === pass);
     if (foundUser) {
-      if (foundUser.status === 'locked') {
-        toast({
-          variant: 'destructive',
-          title: 'Account Locked',
-          description: 'Your account is locked. Please request an unlock from your administrator.',
-        });
+        setStoredUser(foundUser);
+        if (foundUser.status !== 'active' && foundUser.status) {
+            setLoading(false);
+            return { success: true, status: foundUser.status };
+        }
+        addActivityLog(foundUser.id, 'User Logged In');
         setLoading(false);
-        return false;
-      }
-      if (foundUser.status === 'deactivated') {
-        toast({
-          variant: 'destructive',
-          title: 'Account Deactivated',
-          description: 'Your account has been deactivated. Please contact your administrator.',
-        });
-        setLoading(false);
-        return false;
-      }
-
-      setStoredUser(foundUser);
-      addActivityLog(foundUser.id, 'User Logged In');
-      setLoading(false);
-      return true;
+        return { success: true, status: 'active' };
     }
     setLoading(false);
-    return false;
+    return { success: false };
   }, [addActivityLog, setStoredUser, toast]);
 
   const logout = useCallback(() => {
@@ -633,6 +617,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `users/${userId}`), { status: 'active' });
     addActivityLog(user.id, 'User Reactivated', `Reactivated account for user ID: ${userId}`);
   }, [user, addActivityLog]);
+  
+  const requestUnlock = useCallback((userId: string, userName: string) => {
+    const newRequestRef = push(ref(rtdb, 'unlockRequests'));
+    const newRequest: Omit<UnlockRequest, 'id'> = {
+        userId,
+        userName,
+        date: new Date().toISOString(),
+        status: 'pending',
+    };
+    set(newRequestRef, newRequest);
+  }, []);
 
   const resolveUnlockRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -763,7 +758,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount
     };
-  }, [user, tasks, certificateRequests, can, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, manpowerProfiles, feedback]);
+  }, [can.approve_store_requests, can.manage_feedback, can.manage_password_resets, certificateRequests, dailyPlannerComments, feedback, incidentReports, internalRequests, managementRequests, manpowerProfiles, passwordResetRequests, payments, ppeRequests, tasks, user]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
@@ -2479,7 +2474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeHistoryFromExcel, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeHistoryFromExcel, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
     ...computedValue,
   };
 
@@ -2493,9 +2488,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    
-
-
-
