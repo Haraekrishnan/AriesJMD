@@ -29,7 +29,7 @@ export default function TasksPage() {
     priority: 'all',
     assigneeId: 'all',
     dateRange: undefined,
-    month: (new Date().getMonth() + 1).toString(), // Default to current month
+    month: 'all', // Default to all months
     showMyTasksOnly: user?.role !== 'Manager',
   });
 

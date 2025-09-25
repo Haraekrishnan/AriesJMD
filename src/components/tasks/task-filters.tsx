@@ -64,7 +64,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
         assigneeId: 'all',
         dateRange: undefined,
         showMyTasksOnly: user?.role !== 'Manager',
-        month: (new Date().getMonth() + 1).toString(),
+        month: 'all',
     } as const;
     setFilters(clearedFilters);
   }
