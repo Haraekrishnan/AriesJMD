@@ -149,9 +149,14 @@
     "feedback": {
       ".read": true,
       ".write": true
+    },
+    "unlockRequests": {
+      ".read": true,
+      ".write": true
     }
   }
 }
+
 
 
 

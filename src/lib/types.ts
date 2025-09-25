@@ -1,4 +1,5 @@
 
+
 export type IgpOgpItem = {
   id: string;
   itemName: string;
@@ -86,6 +87,7 @@ export type User = {
   email: string;
   avatar: string;
   role: Role;
+  status?: 'active' | 'locked' | 'deactivated';
   password?: string;
   supervisorId?: string;
   projectId?: string;
@@ -99,6 +101,14 @@ export type PasswordResetRequest = {
   date: string; // ISO String
   status: 'pending' | 'handled';
   resetCode?: string;
+};
+
+export type UnlockRequest = {
+  id: string;
+  userId: string;
+  userName: string;
+  date: string; // ISO String
+  status: 'pending' | 'resolved';
 };
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pending Approval' | 'Overdue' | 'Completed';
@@ -203,6 +213,7 @@ export const ALL_PERMISSIONS = [
   'manage_password_resets',
   'manage_igp_ogp',
   'manage_feedback',
+  'manage_user_lock_status',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
