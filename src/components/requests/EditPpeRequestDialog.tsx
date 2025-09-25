@@ -18,6 +18,8 @@ import { useEffect, useState } from 'react';
 import type { PpeRequest } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 
+const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
   ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required." }),
@@ -161,7 +163,18 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
                 </div>
                  <div className="space-y-2">
                     <Label>Size</Label>
-                    <Input {...form.register('size')} placeholder="e.g., 42 or XL" />
+                     {ppeType === 'Coverall' ? (
+                         <Controller name="size" control={form.control} render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select size..."/></SelectTrigger>
+                                <SelectContent>
+                                    {coverallSizeOptions.map(size => <SelectItem key={size} value={size}>{size}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}/>
+                    ) : (
+                        <Input {...form.register('size')} placeholder="e.g., 42" />
+                    )}
                     {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
                 </div>
               </div>
