@@ -6,6 +6,6 @@ import { useAppContext } from '@/contexts/app-provider';
  * This provides a focused API for components that only need auth functions.
  */
 export const useAuth = () => {
-  const { user, login, logout, loading, updateProfile } = useAppContext();
-  return { user, login, logout, loading, updateProfile };
+  const { user, login, logout, loading, updateProfile, requestUnlock } = useAppContext();
+  return { user, login, logout, loading, updateProfile, requestUnlock };
 };

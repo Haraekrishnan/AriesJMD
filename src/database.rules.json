@@ -147,15 +147,16 @@
       ".indexOn": "email"
     },
     "feedback": {
-      ".read": true,
-      ".write": true
+        ".read": true,
+        ".write": "auth != null"
     },
     "unlockRequests": {
-      ".read": true,
-      ".write": true
+        ".read": "auth != null",
+        ".write": true
     }
   }
 }
+
 
 
 

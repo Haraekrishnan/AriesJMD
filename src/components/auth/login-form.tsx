@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/contexts/app-provider';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -34,11 +35,13 @@ const resetPasswordSchema = z.object({
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export function LoginForm() {
-  const { login } = useAuth();
+  const { login, requestUnlock } = useAuth();
   const { requestPasswordReset, resetPassword } = useAppContext();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isLockedDialogOpen, setIsLockedDialogOpen] = useState(false);
+  const [lockedUser, setLockedUser] = useState<{ userId: string; userName: string } | null>(null);
   const [activeTab, setActiveTab] = useState('request');
 
   const loginForm = useForm<LoginFormValues>({
@@ -58,16 +61,31 @@ export function LoginForm() {
 
   const handleLogin = async (data: LoginFormValues) => {
     setIsLoading(true);
-    const success = await login(data.email, data.password);
+    const result = await login(data.email, data.password);
     
-    if (!success) {
+    if (result.success) {
+        // Successful login, navigation will be handled by the layout
+    } else if (result.status === 'locked' && result.user) {
+        setLockedUser(result.user);
+        setIsLockedDialogOpen(true);
+    } else {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
         description: 'Invalid email or password. Please try again.',
       });
-      setIsLoading(false);
     }
+    setIsLoading(false);
+  };
+
+  const handleUnlockRequest = async () => {
+    if (!lockedUser) return;
+    await requestUnlock(lockedUser.userId, lockedUser.userName);
+    toast({
+        title: 'Unlock Request Sent',
+        description: 'Your request has been sent to the administrator.',
+    });
+    setIsLockedDialogOpen(false);
   };
   
   const handleResetRequest = async (data: ResetRequestFormValues) => {
@@ -130,6 +148,21 @@ export function LoginForm() {
         </CardFooter>
       </Card>
     </form>
+
+    <AlertDialog open={isLockedDialogOpen} onOpenChange={setIsLockedDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Account Locked</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Your account is currently locked. You can send a request to your administrator to unlock it.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleUnlockRequest}>Send Unlock Request</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
 
     <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
       <DialogContent>
