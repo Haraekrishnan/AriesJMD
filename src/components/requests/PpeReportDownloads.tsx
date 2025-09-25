@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isBefore } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface PpeReportDownloadsProps {
@@ -85,27 +85,20 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
       
       const ppeType = transactions[0].ppeType;
       const size = transactions[0].size;
-      
       const isCoverall = ppeType === 'Coverall';
 
-      // Calculate initial stock at the beginning of the date range
-      const initialInward = ppeInwardHistory
-          .filter(t => {
-              if (isBefore(parseISO(t.date), startOfDay(from))) {
-                  if (isCoverall) {
-                      return t.ppeType === ppeType && t.sizes?.[size!];
-                  }
-                  return t.ppeType === ppeType;
-              }
-              return false;
-          })
-          .reduce((sum, t) => sum + (isCoverall ? (t.sizes?.[size!] || 0) : (t.quantity || 0)), 0);
-          
-      const initialIssued = manpowerProfiles.flatMap(p => Array.isArray(p.ppeHistory) ? p.ppeHistory : Object.values(p.ppeHistory || {}))
-          .filter(t => t && t.issueDate && t.ppeType === ppeType && (isCoverall ? t.size === size : true) && isBefore(parseISO(t.issueDate), startOfDay(from)))
-          .reduce((sum, t) => sum + (t.quantity || 1), 0);
-      
-      let runningStock = initialInward - initialIssued;
+      // ** FIX: Get opening balance from current ppeStock **
+      const coverallStockData = ppeStock.find(s => s.id === 'coveralls');
+      const shoeStockData = ppeStock.find(s => s.id === 'safetyShoes');
+
+      let openingStock = 0;
+      if (isCoverall && size && coverallStockData?.sizes) {
+          openingStock = coverallStockData.sizes[size] || 0;
+      } else if (!isCoverall && shoeStockData) {
+          openingStock = shoeStockData.quantity || 0;
+      }
+
+      let runningStock = openingStock;
 
       const sheetData = transactions.map(t => {
         const stockBefore = runningStock;
@@ -152,7 +145,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         'Employee Name': '', 'Trade': '', 'Project': '',
         'Quantity In': '', 'Quantity Out': '',
         'Stock Before Transaction': '',
-        'Stock After Transaction': initialInward - initialIssued,
+        'Stock After Transaction': openingStock,
         'Justification': '', 'Remarks': ''
       });
 
