@@ -374,16 +374,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userRef = ref(rtdb, `users/${user.id}`);
         const unsubscribe = onValue(userRef, (snapshot) => {
             const updatedUser = snapshot.val();
-            if (updatedUser && (updatedUser.status === 'locked' || updatedUser.status === 'deactivated')) {
-                // If the status is locked or deactivated, log the user out.
-                // The layout will handle redirecting to the status page upon next login.
-                logout();
+            if (updatedUser) {
+                setStoredUser(prevUser => ({...prevUser, ...updatedUser, id: user.id }));
             }
         });
 
         return () => unsubscribe();
     }
-  }, [user]);
+  }, [user?.id, setStoredUser]);
   
   useEffect(() => {
     if (!rtdb) {
@@ -2506,3 +2504,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
