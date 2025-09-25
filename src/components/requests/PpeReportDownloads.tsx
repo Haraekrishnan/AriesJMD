@@ -67,6 +67,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         'Approver': approver?.name || 'N/A',
         'Issued By': users.find(u=>u.id === item.issuedById)?.name || 'N/A',
         'Requester Remarks': item.remarks || '',
+        'Justification': request?.newRequestJustification || '',
         'Store Remarks': item.storeComment || '',
       };
     });
