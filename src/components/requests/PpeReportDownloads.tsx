@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isAfter } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface PpeReportDownloadsProps {
@@ -30,7 +30,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     const { from, to = from } = dateRange;
 
     // 1. Get all transactions within the date range
-    const issuedItems: (PpeHistoryRecord & { employee: any, type: 'issue' })[] = manpowerProfiles.flatMap(profile => {
+    const issuedItemsInRange: (PpeHistoryRecord & { employee: any, type: 'issue' })[] = manpowerProfiles.flatMap(profile => {
         const historyArray: PpeHistoryRecord[] = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
         return historyArray
             .filter(item => {
@@ -41,16 +41,16 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
             .map(item => ({ ...item, employee: profile, type: 'issue' as const }))
     });
     
-    const inwardItems: (PpeInwardRecord & { type: 'inward' })[] = ppeInwardHistory.filter(item => {
+    const inwardItemsInRange: (PpeInwardRecord & { type: 'inward' })[] = ppeInwardHistory.filter(item => {
         if (!item.date) return false;
         const inwardDate = parseISO(item.date);
         return isWithinInterval(inwardDate, { start: startOfDay(from), end: endOfDay(to) });
     }).map(item => ({ ...item, type: 'inward' as const }));
 
     // 2. Group transactions by item key (e.g., "Coverall-S", "Safety Shoes")
-    const groupedTransactions: { [key: string]: (typeof issuedItems[0] | typeof inwardItems[0])[] } = {};
+    const groupedTransactions: { [key: string]: (typeof issuedItemsInRange[0] | typeof inwardItemsInRange[0])[] } = {};
 
-    [...issuedItems, ...inwardItems].forEach(transaction => {
+    [...issuedItemsInRange, ...inwardItemsInRange].forEach(transaction => {
       let key: string;
       if (transaction.ppeType === 'Coverall') {
         key = `${transaction.ppeType}-${transaction.size}`;
@@ -87,21 +87,47 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
       const size = transactions[0].size;
       const isCoverall = ppeType === 'Coverall';
 
-      // ** FIX: Get opening balance from current ppeStock **
       const coverallStockData = ppeStock.find(s => s.id === 'coveralls');
       const shoeStockData = ppeStock.find(s => s.id === 'safetyShoes');
 
-      let openingStock = 0;
+      let currentStock = 0;
       if (isCoverall && size && coverallStockData?.sizes) {
-          openingStock = coverallStockData.sizes[size] || 0;
+          currentStock = coverallStockData.sizes[size] || 0;
       } else if (!isCoverall && shoeStockData) {
-          openingStock = shoeStockData.quantity || 0;
+          currentStock = shoeStockData.quantity || 0;
       }
 
-      let runningStock = openingStock;
+      // "Rewind" to find the opening stock at the start of the date range
+      const rewindPeriod = { start: startOfDay(from), end: new Date() };
 
-      const sheetData = transactions.map(t => {
-        const stockBefore = runningStock;
+      const issuedSinceFrom = manpowerProfiles.flatMap(p => Array.isArray(p.ppeHistory) ? p.ppeHistory : Object.values(p.ppeHistory || {}))
+          .filter(t => t.ppeType === ppeType && (!isCoverall || t.size === size) && isAfter(parseISO(t.issueDate), rewindPeriod.start))
+          .reduce((sum, t) => sum + (t.quantity || 1), 0);
+
+      const inwardSinceFrom = ppeInwardHistory
+          .filter(t => t.ppeType === ppeType && isAfter(parseISO(t.date), rewindPeriod.start))
+          .reduce((sum, t) => {
+            if (isCoverall && t.sizes) return sum + (t.sizes[size!] || 0);
+            if (!isCoverall) return sum + (t.quantity || 0);
+            return sum;
+          }, 0);
+
+      const openingStock = currentStock + issuedSinceFrom - inwardSinceFrom;
+
+      let runningStock = openingStock;
+      const sheetData: any[] = [];
+
+      // Add opening balance row
+      sheetData.push({
+        'Date': format(from, 'dd-MM-yyyy'),
+        'Transaction Type': 'Opening Stock',
+        'Employee Name': '', 'Trade': '', 'Project': '',
+        'Quantity In': '', 'Quantity Out': '',
+        'Stock After Transaction': openingStock,
+        'Justification': '', 'Remarks': ''
+      });
+
+      transactions.forEach(t => {
         let qtyIn = 0;
         let qtyOut = 0;
         
@@ -132,25 +158,13 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         
         row['Quantity In'] = qtyIn;
         row['Quantity Out'] = qtyOut;
-        row['Stock Before Transaction'] = stockBefore;
         row['Stock After Transaction'] = runningStock;
 
-        return row;
+        sheetData.push(row);
       });
       
-      // Add opening balance row
-      sheetData.unshift({
-        'Date': format(from, 'dd-MM-yyyy'),
-        'Transaction Type': 'Opening Stock',
-        'Employee Name': '', 'Trade': '', 'Project': '',
-        'Quantity In': '', 'Quantity Out': '',
-        'Stock Before Transaction': '',
-        'Stock After Transaction': openingStock,
-        'Justification': '', 'Remarks': ''
-      });
 
       const worksheet = XLSX.utils.json_to_sheet(sheetData);
-      // Sheet names can't contain certain characters, so we sanitize it.
       const sheetName = key.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 31);
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     }
