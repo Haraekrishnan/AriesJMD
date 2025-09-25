@@ -51,6 +51,7 @@ export default function PpeStockPage() {
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [editingRecord, setEditingRecord] = useState<PpeInwardRecord | null>(null);
+    const [formKey, setFormKey] = useState(Date.now());
 
     const coverallStock = useMemo(() => ppeStock?.find(s => s.id === 'coveralls'), [ppeStock]);
     const shoeStock = useMemo(() => ppeStock?.find(s => s.id === 'safetyShoes'), [ppeStock]);
@@ -76,6 +77,7 @@ export default function PpeStockPage() {
         addPpeInwardRecord(data);
         toast({ title: 'Stock Added', description: 'Inward stock has been added to the history and stock levels updated.' });
         form.reset({ ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0 });
+        setFormKey(Date.now()); // Force re-render of the form
     };
 
     const handleDeleteRecord = (record: PpeInwardRecord) => {
@@ -144,7 +146,7 @@ export default function PpeStockPage() {
                             </AccordionTrigger>
                             <AccordionContent className="p-4 rounded-b-lg border border-t-0">
                                 <p className="text-sm text-muted-foreground mb-4">Add newly purchased stock to the inventory.</p>
-                                <form onSubmit={form.handleSubmit(handleInwardSubmit)}>
+                                <form key={formKey} onSubmit={form.handleSubmit(handleInwardSubmit)}>
                                     <div className="space-y-4">
                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div className="space-y-2">
@@ -200,9 +202,9 @@ export default function PpeStockPage() {
                                 <Input 
                                     id={`coverall-${size}`} 
                                     type="number" 
-                                    value={coverallSizes[size] || ''}
-                                    onChange={(e) => handleCoverallChange(size, e.target.value)}
+                                    defaultValue={coverallSizes[size] || 0}
                                     readOnly={!canEdit}
+                                    onChange={(e) => canEdit && handleCoverallChange(size, e.target.value)}
                                 />
                             </div>
                         ))}
@@ -225,9 +227,9 @@ export default function PpeStockPage() {
                             <Input 
                                 id="safety-shoes" 
                                 type="number"
-                                value={shoeQuantity}
-                                onChange={(e) => setShoeQuantity(Number(e.target.value))}
+                                defaultValue={shoeQuantity || 0}
                                 readOnly={!canEdit}
+                                onChange={(e) => canEdit && setShoeQuantity(Number(e.target.value))}
                             />
                         </div>
                     </CardContent>
