@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAppContext } from "@/contexts/app-provider";
@@ -17,7 +18,7 @@ export default function UnlockRequests() {
         toast({ title: "Account Unlocked", description: "The user's account has been unlocked." });
     };
 
-    const pendingRequests = unlockRequests.filter(r => r.status === 'pending');
+    const pendingRequests = (unlockRequests || []).filter(r => r.status === 'pending');
     
     return (
         <Card>
