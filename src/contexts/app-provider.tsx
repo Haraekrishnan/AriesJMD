@@ -384,7 +384,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            setStoredUser(updatedUser);
+            // Update local storage without triggering a re-render for the same object
+            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+              setStoredUser(updatedUser);
+            }
             
             if (updatedUser.status && updatedUser.status !== 'active') {
                 router.replace('/status');
@@ -392,7 +395,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         return () => unsubscribe();
     }
-  }, [user?.id, setStoredUser, router]);
+  }, [user, setStoredUser, router]);
   
   useEffect(() => {
     if (!rtdb) {
@@ -515,7 +518,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoading(false);
     if (foundUser) {
         setStoredUser(foundUser);
-        if (foundUser.status !== 'active') {
+        if (foundUser.status && foundUser.status !== 'active') {
             return { success: true, status: foundUser.status, user: foundUser };
         }
         addActivityLog(foundUser.id, 'User Logged In');
@@ -1817,6 +1820,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updates[`ppeRequests/${requestId}/approverId`] = user.id;
     } else if (status === 'Issued') {
         updates[`ppeRequests/${requestId}/issuedById`] = user.id;
+        
+        // Add to PPE History
         const ppeHistoryRecord: Omit<PpeHistoryRecord, 'id'> = {
             ppeType: request.ppeType,
             size: request.size,
@@ -1827,10 +1832,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
             storeComment: comment,
             requestId: request.id,
             issuedById: user.id,
-            approverId: request.approverId, // Keep original approver
+            approverId: request.approverId,
         };
         const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
         updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
+        
+        // Deduct from stock
+        if (request.ppeType === 'Coverall') {
+            const stock = ppeStock.find(s => s.id === 'coveralls');
+            if (stock && stock.sizes) {
+                const currentSizeQty = stock.sizes[request.size] || 0;
+                updates[`ppeStock/coveralls/sizes/${request.size}`] = Math.max(0, currentSizeQty - (request.quantity || 1));
+            }
+        } else { // Safety Shoes
+            const stock = ppeStock.find(s => s.id === 'safetyShoes');
+            if (stock) {
+                const currentQty = stock.quantity || 0;
+                updates[`ppeStock/safetyShoes/quantity`] = Math.max(0, currentQty - (request.quantity || 1));
+            }
+        }
 
     } else if (status === 'Rejected') {
         updates[`ppeRequests/${requestId}/approverId`] = user.id;
@@ -1838,7 +1858,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'PPE Request Status Updated', `Request ID: ${requestId} to ${status}`);
-  }, [user, ppeRequests, addActivityLog]);
+  }, [user, ppeRequests, ppeStock, addActivityLog]);
   
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
@@ -1893,12 +1913,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, ppeStock, addActivityLog]);
 
   const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
-    // This function will need to calculate the difference and update the main stock
-    // For simplicity, we just update the history for now. A more robust solution is needed.
-    const { id, ...data } = record;
-    update(ref(rtdb, `ppeInwardHistory/${id}`), data);
-    if(user) addActivityLog(user.id, 'PPE Inward Updated', `Record ID: ${id}`);
-  }, [user, addActivityLog]);
+    if(!user || user.role !== 'Admin') return;
+    const originalRecord = ppeInwardHistory.find(r => r.id === record.id);
+    if (!originalRecord) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`ppeInwardHistory/${record.id}`] = record;
+    
+    // Calculate difference and update stock
+    if (record.ppeType === 'Coverall') {
+        const stockPath = 'ppeStock/coveralls/sizes';
+        const currentSizes = ppeStock.find(s => s.id === 'coveralls')?.sizes || {};
+        const newSizes = {...currentSizes};
+
+        const allSizes = new Set([...Object.keys(originalRecord.sizes || {}), ...Object.keys(record.sizes || {})]);
+        allSizes.forEach(size => {
+            const originalQty = originalRecord.sizes?.[size] || 0;
+            const newQty = record.sizes?.[size] || 0;
+            const diff = newQty - originalQty;
+            newSizes[size] = (newSizes[size] || 0) + diff;
+        });
+        updates[stockPath] = newSizes;
+
+    } else if (record.ppeType === 'Safety Shoes') {
+        const stockPath = 'ppeStock/safetyShoes/quantity';
+        const currentQty = ppeStock.find(s => s.id === 'safetyShoes')?.quantity || 0;
+        const diff = (record.quantity || 0) - (originalRecord.quantity || 0);
+        updates[stockPath] = currentQty + diff;
+    }
+    
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'PPE Inward Updated', `Record ID: ${record.id}`);
+  }, [user, ppeStock, ppeInwardHistory, addActivityLog]);
 
   const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
     if (!user || user.role !== 'Admin') return;
