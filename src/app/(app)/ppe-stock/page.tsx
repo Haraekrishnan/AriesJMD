@@ -57,7 +57,7 @@ export default function PpeStockPage() {
     
     const form = useForm<InwardFormValues>({
         resolver: zodResolver(inwardSchema),
-        defaultValues: { ppeType: 'Coverall', date: new Date() }
+        defaultValues: { ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0 }
     });
     
     const [coverallSizes, setCoverallSizes] = useState(coverallStock?.sizes || {});
@@ -75,7 +75,7 @@ export default function PpeStockPage() {
     const handleInwardSubmit = (data: InwardFormValues) => {
         addPpeInwardRecord(data);
         toast({ title: 'Stock Added', description: 'Inward stock has been added to the history and stock levels updated.' });
-        form.reset({ ppeType: data.ppeType, date: new Date(), sizes: {}, quantity: 0 });
+        form.reset({ ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0 });
     };
 
     const handleDeleteRecord = (record: PpeInwardRecord) => {
@@ -202,7 +202,7 @@ export default function PpeStockPage() {
                                     type="number" 
                                     value={coverallSizes[size] || ''}
                                     onChange={(e) => handleCoverallChange(size, e.target.value)}
-                                    disabled={!canEdit}
+                                    readOnly={!canEdit}
                                 />
                             </div>
                         ))}
@@ -227,7 +227,7 @@ export default function PpeStockPage() {
                                 type="number"
                                 value={shoeQuantity}
                                 onChange={(e) => setShoeQuantity(Number(e.target.value))}
-                                disabled={!canEdit}
+                                readOnly={!canEdit}
                             />
                         </div>
                     </CardContent>
