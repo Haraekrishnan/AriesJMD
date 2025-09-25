@@ -304,7 +304,7 @@ export default function AccountPage() {
                                         <div>
                                           <div className="font-medium flex items-center gap-2">
                                             <p>{report.name}</p>
-                                            <Badge variant={report.status === 'locked' ? 'destructive' : (report.status === 'deactivated' ? 'outline' : 'secondary')}>
+                                            <Badge variant={report.status === 'locked' || report.status === 'deactivated' ? 'destructive' : 'secondary'}>
                                               {report.status || 'active'}
                                             </Badge>
                                           </div>
