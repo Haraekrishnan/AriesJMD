@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isBefore } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface PpeReportDownloadsProps {
