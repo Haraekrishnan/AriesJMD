@@ -29,42 +29,27 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     }
     const { from, to = from } = dateRange;
 
-    // 1. Get all transactions within the date range
-    const issuedItemsInRange: (PpeHistoryRecord & { employee: any, type: 'issue' })[] = manpowerProfiles.flatMap(profile => {
+    // 1. Get all unique item keys (e.g., "Coverall-S", "Safety Shoes")
+    const allItems = new Set<string>();
+    ppeInwardHistory.forEach(item => {
+        if(item.ppeType === 'Coverall' && item.sizes) {
+            Object.keys(item.sizes).forEach(size => allItems.add(`Coverall-${size}`));
+        } else if (item.ppeType === 'Safety Shoes') {
+            allItems.add('Safety Shoes');
+        }
+    });
+    manpowerProfiles.forEach(profile => {
         const historyArray: PpeHistoryRecord[] = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
-        return historyArray
-            .filter(item => {
-                if (!item.issueDate) return false;
-                const issueDate = parseISO(item.issueDate);
-                return isWithinInterval(issueDate, { start: startOfDay(from), end: endOfDay(to) });
-            })
-            .map(item => ({ ...item, employee: profile, type: 'issue' as const }))
-    });
-    
-    const inwardItemsInRange: (PpeInwardRecord & { type: 'inward' })[] = ppeInwardHistory.filter(item => {
-        if (!item.date) return false;
-        const inwardDate = parseISO(item.date);
-        return isWithinInterval(inwardDate, { start: startOfDay(from), end: endOfDay(to) });
-    }).map(item => ({ ...item, type: 'inward' as const }));
-
-    // 2. Group transactions by item key (e.g., "Coverall-S", "Safety Shoes")
-    const groupedTransactions: { [key: string]: (typeof issuedItemsInRange[0] | typeof inwardItemsInRange[0])[] } = {};
-
-    [...issuedItemsInRange, ...inwardItemsInRange].forEach(transaction => {
-      let key: string;
-      if (transaction.ppeType === 'Coverall') {
-        key = `${transaction.ppeType}-${transaction.size}`;
-      } else { // Safety Shoes
-        key = transaction.ppeType;
-      }
-
-      if (!groupedTransactions[key]) {
-        groupedTransactions[key] = [];
-      }
-      groupedTransactions[key].push(transaction);
+        historyArray.forEach(item => {
+            if(item.ppeType === 'Coverall' && item.size) {
+                allItems.add(`Coverall-${item.size}`);
+            } else if (item.ppeType === 'Safety Shoes') {
+                allItems.add('Safety Shoes');
+            }
+        });
     });
 
-    if (Object.keys(groupedTransactions).length === 0) {
+    if (allItems.size === 0) {
       toast({
         variant: 'destructive',
         title: 'No Data Found',
@@ -75,99 +60,98 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
 
     const workbook = XLSX.utils.book_new();
 
-    // 3. For each group, create a sheet
-    for (const key in groupedTransactions) {
-      const transactions = groupedTransactions[key].sort((a,b) => {
-        const dateA = 'issueDate' in a ? a.issueDate : a.date;
-        const dateB = 'issueDate' in b ? b.issueDate : b.date;
-        return compareAsc(parseISO(dateA), parseISO(dateB));
-      });
-      
-      const ppeType = transactions[0].ppeType;
-      const size = transactions[0].size;
-      const isCoverall = ppeType === 'Coverall';
+    // 2. For each unique item, create a sheet
+    allItems.forEach(itemKey => {
+      const [ppeType, size] = itemKey.split('-') as ['Coverall' | 'Safety Shoes', string | undefined];
 
+      // 3. Calculate Opening Stock by "rewinding" from current stock
       const coverallStockData = ppeStock.find(s => s.id === 'coveralls');
       const shoeStockData = ppeStock.find(s => s.id === 'safetyShoes');
-
+      
       let currentStock = 0;
-      if (isCoverall && size && coverallStockData?.sizes) {
+      if (ppeType === 'Coverall' && size && coverallStockData?.sizes) {
           currentStock = coverallStockData.sizes[size] || 0;
-      } else if (!isCoverall && shoeStockData) {
+      } else if (ppeType === 'Safety Shoes' && shoeStockData) {
           currentStock = shoeStockData.quantity || 0;
       }
-
-      // "Rewind" to find the opening stock at the start of the date range
-      const rewindPeriod = { start: startOfDay(from), end: new Date() };
-
+      
       const issuedSinceFrom = manpowerProfiles.flatMap(p => Array.isArray(p.ppeHistory) ? p.ppeHistory : Object.values(p.ppeHistory || {}))
-          .filter(t => t.ppeType === ppeType && (!isCoverall || t.size === size) && isAfter(parseISO(t.issueDate), rewindPeriod.start))
+          .filter(t => t && t.ppeType === ppeType && (!size || t.size === size) && isAfter(parseISO(t.issueDate), startOfDay(from)))
           .reduce((sum, t) => sum + (t.quantity || 1), 0);
 
       const inwardSinceFrom = ppeInwardHistory
-          .filter(t => t.ppeType === ppeType && isAfter(parseISO(t.date), rewindPeriod.start))
+          .filter(t => t.ppeType === ppeType && isAfter(parseISO(t.date), startOfDay(from)))
           .reduce((sum, t) => {
-            if (isCoverall && t.sizes) return sum + (t.sizes[size!] || 0);
-            if (!isCoverall) return sum + (t.quantity || 0);
+            if (ppeType === 'Coverall' && t.sizes && size) return sum + (t.sizes[size] || 0);
+            if (ppeType === 'Safety Shoes') return sum + (t.quantity || 0);
             return sum;
           }, 0);
-
+          
       const openingStock = currentStock + issuedSinceFrom - inwardSinceFrom;
 
+      // 4. Gather all transactions for the item within the date range
+      const issuedItemsInRange = manpowerProfiles.flatMap(profile => 
+        (Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {}))
+        .filter(item => 
+          item &&
+          item.ppeType === ppeType && 
+          (!size || item.size === size) &&
+          isWithinInterval(parseISO(item.issueDate), { start: startOfDay(from), end: endOfDay(to) })
+        )
+        .map(item => ({ ...item, employee: profile, transactionType: 'issue' as const, transactionDate: item.issueDate }))
+      );
+
+      const inwardItemsInRange = ppeInwardHistory
+        .filter(item => item.ppeType === ppeType && isWithinInterval(parseISO(item.date), { start: startOfDay(from), end: endOfDay(to) }))
+        .map(item => ({ ...item, transactionType: 'inward' as const, transactionDate: item.date }));
+
+      const allTransactions = [...issuedItemsInRange, ...inwardItemsInRange].sort((a,b) => 
+        compareAsc(parseISO(a.transactionDate), parseISO(b.transactionDate))
+      );
+
+      // 5. Build sheet data with running balance
       let runningStock = openingStock;
       const sheetData: any[] = [];
+      sheetData.push({ 'Date': format(from, 'dd-MM-yyyy'), 'Transaction Type': 'Opening Stock', 'Stock After Transaction': openingStock });
 
-      // Add opening balance row
-      sheetData.push({
-        'Date': format(from, 'dd-MM-yyyy'),
-        'Transaction Type': 'Opening Stock',
-        'Employee Name': '', 'Trade': '', 'Project': '',
-        'Quantity In': '', 'Quantity Out': '',
-        'Stock After Transaction': openingStock,
-        'Justification': '', 'Remarks': ''
-      });
-
-      transactions.forEach(t => {
+      allTransactions.forEach(t => {
         let qtyIn = 0;
         let qtyOut = 0;
         
         const row: any = {
-          'Date': format(parseISO('issueDate' in t ? t.issueDate : t.date), 'dd-MM-yyyy'),
-          'Transaction Type': t.type === 'issue' ? 'Issued' : 'Inward',
-          'Employee Name': 'N/A',
-          'Trade': 'N/A',
-          'Project': 'N/A',
+          'Date': format(parseISO(t.transactionDate), 'dd-MM-yyyy'),
+          'Employee Name': 'N/A', 'Trade': 'N/A', 'Project': 'N/A',
+          'Justification': 'N/A', 'Remarks': 'N/A',
         };
         
-        if (t.type === 'issue') {
+        if (t.transactionType === 'issue') {
             const request = ppeRequests.find(r => r.id === t.requestId);
             qtyOut = t.quantity || 1;
-            runningStock -= qtyOut;
-
+            row['Transaction Type'] = `Issued (${t.requestType})`;
             row['Employee Name'] = t.employee.name;
             row['Trade'] = t.employee.trade;
             row['Project'] = t.employee.eic ? projects.find(p => p.id === t.employee.eic)?.name : 'N/A';
             row['Justification'] = request?.newRequestJustification || 'N/A';
             row['Remarks'] = t.remarks || request?.remarks || '';
         } else { // Inward
-            qtyIn = isCoverall ? (t.sizes?.[size!] || 0) : (t.quantity || 0);
-            runningStock += qtyIn;
-
-            row['Employee Name'] = `Inward by ${users.find(u => u.id === t.addedByUserId)?.name || 'Unknown'}`;
+            qtyIn = (ppeType === 'Coverall' && t.sizes && size) ? (t.sizes[size] || 0) : (t.quantity || 0);
+            row['Transaction Type'] = 'Inward Stock';
+            row['Employee Name'] = `Added by ${users.find(u => u.id === t.addedByUserId)?.name || 'Unknown'}`;
         }
         
-        row['Quantity In'] = qtyIn;
-        row['Quantity Out'] = qtyOut;
+        runningStock = runningStock + qtyIn - qtyOut;
+        row['Quantity In'] = qtyIn || '';
+        row['Quantity Out'] = qtyOut || '';
         row['Stock After Transaction'] = runningStock;
 
         sheetData.push(row);
       });
       
-
       const worksheet = XLSX.utils.json_to_sheet(sheetData);
-      const sheetName = key.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 31);
+      // Clean up sheet name for Excel
+      const sheetName = itemKey.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 31);
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    }
+    });
 
     XLSX.writeFile(workbook, `PPE_Report_${format(from, 'yyyy-MM-dd')}_to_${format(to, 'yyyy-MM-dd')}.xlsx`);
   };
