@@ -47,14 +47,14 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         return isWithinInterval(inwardDate, { start: startOfDay(from), end: endOfDay(to) });
     }).map(item => ({ ...item, type: 'inward' as const }));
 
-    // 2. Group transactions by item key (e.g., "Coverall-S", "Safety Shoes-42")
+    // 2. Group transactions by item key (e.g., "Coverall-S", "Safety Shoes")
     const groupedTransactions: { [key: string]: (typeof issuedItems[0] | typeof inwardItems[0])[] } = {};
 
     [...issuedItems, ...inwardItems].forEach(transaction => {
       let key: string;
       if (transaction.ppeType === 'Coverall') {
         key = `${transaction.ppeType}-${transaction.size}`;
-      } else { // Safety Shoes might not have a size in old records, group them together
+      } else { // Safety Shoes
         key = transaction.ppeType;
       }
 
@@ -82,53 +82,78 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         const dateB = 'issueDate' in b ? b.issueDate : b.date;
         return compareAsc(parseISO(dateA), parseISO(dateB));
       });
-
-      // Calculate initial stock at the beginning of the date range
+      
       const ppeType = transactions[0].ppeType;
       const size = transactions[0].size;
+      
+      const isCoverall = ppeType === 'Coverall';
+
+      // Calculate initial stock at the beginning of the date range
       const initialInward = ppeInwardHistory
-          .filter(t => t.ppeType === ppeType && (ppeType === 'Coverall' ? t.sizes?.[size!] : true) && isBefore(parseISO(t.date), startOfDay(from)))
-          .reduce((sum, t) => sum + (ppeType === 'Coverall' ? t.sizes?.[size!] || 0 : t.quantity || 0), 0);
+          .filter(t => {
+              if (isBefore(parseISO(t.date), startOfDay(from))) {
+                  if (isCoverall) {
+                      return t.ppeType === ppeType && t.sizes?.[size!];
+                  }
+                  return t.ppeType === ppeType;
+              }
+              return false;
+          })
+          .reduce((sum, t) => sum + (isCoverall ? (t.sizes?.[size!] || 0) : (t.quantity || 0)), 0);
           
       const initialIssued = manpowerProfiles.flatMap(p => Array.isArray(p.ppeHistory) ? p.ppeHistory : Object.values(p.ppeHistory || {}))
-          .filter(t => t.ppeType === ppeType && t.size === size && isBefore(parseISO(t.issueDate), startOfDay(from)))
+          .filter(t => t && t.issueDate && t.ppeType === ppeType && (isCoverall ? t.size === size : true) && isBefore(parseISO(t.issueDate), startOfDay(from)))
           .reduce((sum, t) => sum + (t.quantity || 1), 0);
       
       let runningStock = initialInward - initialIssued;
 
       const sheetData = transactions.map(t => {
+        const stockBefore = runningStock;
+        let qtyIn = 0;
+        let qtyOut = 0;
+        
         const row: any = {
           'Date': format(parseISO('issueDate' in t ? t.issueDate : t.date), 'dd-MM-yyyy'),
           'Transaction Type': t.type === 'issue' ? 'Issued' : 'Inward',
           'Employee Name': 'N/A',
           'Trade': 'N/A',
           'Project': 'N/A',
-          'Quantity In': 0,
-          'Quantity Out': 0,
-          'Stock Before Transaction': runningStock,
-          'Stock After Transaction': runningStock,
-          'Justification': 'N/A',
-          'Remarks': 'N/A',
         };
         
         if (t.type === 'issue') {
             const request = ppeRequests.find(r => r.id === t.requestId);
+            qtyOut = t.quantity || 1;
+            runningStock -= qtyOut;
+
             row['Employee Name'] = t.employee.name;
             row['Trade'] = t.employee.trade;
             row['Project'] = t.employee.eic ? projects.find(p => p.id === t.employee.eic)?.name : 'N/A';
-            row['Quantity Out'] = t.quantity || 1;
             row['Justification'] = request?.newRequestJustification || 'N/A';
             row['Remarks'] = t.remarks || request?.remarks || '';
-            runningStock -= (t.quantity || 1);
         } else { // Inward
-            row['Quantity In'] = ppeType === 'Coverall' ? t.sizes?.[size!] || 0 : t.quantity || 0;
+            qtyIn = isCoverall ? (t.sizes?.[size!] || 0) : (t.quantity || 0);
+            runningStock += qtyIn;
+
             row['Employee Name'] = `Inward by ${users.find(u => u.id === t.addedByUserId)?.name || 'Unknown'}`;
-            runningStock += (ppeType === 'Coverall' ? t.sizes?.[size!] || 0 : t.quantity || 0);
         }
         
+        row['Quantity In'] = qtyIn;
+        row['Quantity Out'] = qtyOut;
+        row['Stock Before Transaction'] = stockBefore;
         row['Stock After Transaction'] = runningStock;
 
         return row;
+      });
+      
+      // Add opening balance row
+      sheetData.unshift({
+        'Date': format(from, 'dd-MM-yyyy'),
+        'Transaction Type': 'Opening Stock',
+        'Employee Name': '', 'Trade': '', 'Project': '',
+        'Quantity In': '', 'Quantity Out': '',
+        'Stock Before Transaction': '',
+        'Stock After Transaction': initialInward - initialIssued,
+        'Justification': '', 'Remarks': ''
       });
 
       const worksheet = XLSX.utils.json_to_sheet(sheetData);
