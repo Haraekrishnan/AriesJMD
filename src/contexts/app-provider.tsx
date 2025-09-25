@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +55,7 @@ type AppContextType = {
   passwordResetRequests: PasswordResetRequest[];
   igpOgpRecords: IgpOgpRecord[];
   feedback: Feedback[];
+  unlockRequests: UnlockRequest[];
   appName: string;
   appLogo: string | null;
 
@@ -127,6 +128,11 @@ type AppContextType = {
   updateUser: (user: User) => void;
   updateUserPlanningScore: (userId: string, score: number) => void;
   deleteUser: (userId: string) => void;
+  lockUser: (userId: string) => void;
+  unlockUser: (userId: string) => void;
+  deactivateUser: (userId: string) => void;
+  reactivateUser: (userId: string) => void;
+  resolveUnlockRequest: (requestId: string) => void;
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
@@ -311,6 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
   const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
+  const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
 
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
@@ -352,6 +359,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
+  const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
 
   const [storedUser, setStoredUser] = useLocalStorage<User | null>('aries-user-v8', null);
   const user = storedUser;
@@ -375,7 +383,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById);
       clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
       clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById);
-      clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById);
+      clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPpeStockById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
       return;
     }
   
@@ -416,6 +424,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createDataListener('passwordResetRequests', setPasswordResetRequestsById),
       createDataListener('igpOgpRecords', setIgpOgpRecordsById),
       createDataListener('feedback', setFeedbackById),
+      createDataListener('unlockRequests', setUnlockRequestsById),
     ];
   
     const brandingRef = ref(rtdb, 'branding');
@@ -475,6 +484,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const foundUser = usersArray.find(u => u.email === email && u.password === pass);
     if (foundUser) {
+      if (foundUser.status === 'locked') {
+        toast({
+          variant: 'destructive',
+          title: 'Account Locked',
+          description: 'Your account is locked. Please request an unlock from your administrator.',
+        });
+        setLoading(false);
+        return false;
+      }
+      if (foundUser.status === 'deactivated') {
+        toast({
+          variant: 'destructive',
+          title: 'Account Deactivated',
+          description: 'Your account has been deactivated. Please contact your administrator.',
+        });
+        setLoading(false);
+        return false;
+      }
+
       setStoredUser(foundUser);
       addActivityLog(foundUser.id, 'User Logged In');
       setLoading(false);
@@ -482,7 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return false;
-  }, [addActivityLog, setStoredUser]);
+  }, [addActivityLog, setStoredUser, toast]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -582,6 +610,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [addActivityLog]);
 
+  const lockUser = useCallback((userId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `users/${userId}`), { status: 'locked' });
+    addActivityLog(user.id, 'User Locked', `Locked account for user ID: ${userId}`);
+  }, [user, addActivityLog]);
+
+  const unlockUser = useCallback((userId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `users/${userId}`), { status: 'active' });
+    addActivityLog(user.id, 'User Unlocked', `Unlocked account for user ID: ${userId}`);
+  }, [user, addActivityLog]);
+  
+  const deactivateUser = useCallback((userId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `users/${userId}`), { status: 'deactivated' });
+    addActivityLog(user.id, 'User Deactivated', `Deactivated account for user ID: ${userId}`);
+  }, [user, addActivityLog]);
+  
+  const reactivateUser = useCallback((userId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `users/${userId}`), { status: 'active' });
+    addActivityLog(user.id, 'User Reactivated', `Reactivated account for user ID: ${userId}`);
+  }, [user, addActivityLog]);
+
+  const resolveUnlockRequest = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = unlockRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    unlockUser(request.userId);
+    update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
+  }, [user, unlockRequests, unlockUser]);
+
   const can = useMemo(() => {
     const permissions = new Set<Permission>();
     if (user && !loading && roles.length > 0) {
@@ -649,6 +710,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, users, getSubordinateChain]);
 
+  const computedValue = useMemo(() => {
+    if (!user) return {
+      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0
+    };
+    
+    const pendingTaskApprovalCount = tasks.filter(t => t.status === 'Pending Approval' && t.approverId === user.id).length;
+    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
+    const myPendingTaskRequestCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && t.approvalState === 'returned').length;
+
+    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
+
+    const isStoreManager = can.approve_store_requests;
+    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    
+    const unreadPlannerCommentDays = dailyPlannerComments
+      .filter(dpc => dpc.plannerUserId === user.id && !dpc.viewedBy?.[user.id])
+      .map(dpc => dpc.day);
+    const plannerNotificationCount = unreadPlannerCommentDays.length;
+
+    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending').length : 0;
+    const updatedInternalRequestCount = internalRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected') && !r.viewedByRequester).length;
+    
+    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
+    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
+    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
+
+    const incidentNotificationCount = incidentReports.filter(i => {
+      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
+      const isUnread = !i.viewedBy?.[user.id];
+      return isParticipant && isUnread;
+    }).length;
+    
+    const isPpeManager = user.role === 'Manager' || user.role === 'Admin';
+    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge'].includes(user.role);
+    const pendingPpeRequestCount = isPpeManager ? ppeRequests.filter(r => r.status === 'Pending').length : (canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0);
+    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected') && !r.viewedByRequester).length;
+    
+    const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
+    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
+    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
+
+    const { workingManpowerCount, onLeaveManpowerCount } = manpowerProfiles.reduce((acc, profile) => {
+        if(profile.status === 'Working') acc.workingManpowerCount++;
+        if(profile.status === 'On Leave') acc.onLeaveManpowerCount++;
+        return acc;
+    }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
+
+    return {
+      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount
+    };
+  }, [user, tasks, certificateRequests, can, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, manpowerProfiles, feedback]);
+  
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
     const { assigneeIds, ...rest } = taskData;
@@ -1478,7 +1594,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
     const newRecordWithId = { ...record, id: newRecordRef.key! };
-    set(newRecordRef, newRecordWithId);
+    update(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${newRecordWithId.id}`), newRecordWithId);
   }, [user]);
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
@@ -1627,9 +1743,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
 
     const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
-    const stockInfo = requestData.ppeType === 'Coverall'
-      ? `${stockItem?.sizes?.[requestData.size] || 0} in stock`
-      : `${stockItem?.quantity || 0} in stock`;
+    const stockInfo = requestData.ppeType === 'Coverall' && stockItem && 'sizes' in stockItem && stockItem.sizes
+      ? `${stockItem.sizes[requestData.size] || 0} in stock`
+      : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
 
     const emailData = {
         requesterName: user.name,
@@ -2229,7 +2345,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
@@ -2361,64 +2477,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, feedback, can.manage_feedback]);
 
-  const computedValue = useMemo(() => {
-    if (!user) return {
-      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0
-    };
-    
-    const pendingTaskApprovalCount = tasks.filter(t => t.status === 'Pending Approval' && t.approverId === user.id).length;
-    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
-    const myPendingTaskRequestCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && t.approvalState === 'returned').length;
-
-    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
-    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
-
-    const isStoreManager = can.approve_store_requests;
-    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
-    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
-    
-    const unreadPlannerCommentDays = dailyPlannerComments
-      .filter(dpc => dpc.plannerUserId === user.id && !dpc.viewedBy?.[user.id])
-      .map(dpc => dpc.day);
-    const plannerNotificationCount = unreadPlannerCommentDays.length;
-
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending').length : 0;
-    const updatedInternalRequestCount = internalRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected') && !r.viewedByRequester).length;
-    
-    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
-    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
-    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
-
-    const incidentNotificationCount = incidentReports.filter(i => {
-      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
-      const isUnread = !i.viewedBy?.[user.id];
-      return isParticipant && isUnread;
-    }).length;
-    
-    const isPpeManager = user.role === 'Manager' || user.role === 'Admin';
-    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge'].includes(user.role);
-    const pendingPpeRequestCount = isPpeManager ? ppeRequests.filter(r => r.status === 'Pending').length : (canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0);
-    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected') && !r.viewedByRequester).length;
-    
-    const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
-    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
-    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
-
-    const { workingManpowerCount, onLeaveManpowerCount } = manpowerProfiles.reduce((acc, profile) => {
-        if(profile.status === 'Working') acc.workingManpowerCount++;
-        if(profile.status === 'On Leave') acc.onLeaveManpowerCount++;
-        return acc;
-    }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
-
-    return {
-      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount
-    };
-  }, [user, tasks, certificateRequests, can, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, manpowerProfiles, feedback]);
-  
   const contextValue: AppContextType = {
-    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addPpeHistoryFromExcel, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeHistoryFromExcel, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
     ...computedValue,
   };
 
@@ -2435,4 +2496,6 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+
 
