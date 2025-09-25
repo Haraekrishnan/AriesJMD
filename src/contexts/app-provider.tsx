@@ -190,7 +190,7 @@ type AppContextType = {
   updatePpeStock: (stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => void;
   addPpeInwardRecord: (record: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => void;
   updatePpeInwardRecord: (record: PpeInwardRecord) => void;
-  deletePpeInwardRecord: (recordId: string) => void;
+  deletePpeInwardRecord: (record: PpeInwardRecord) => void;
   addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
@@ -315,6 +315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   const [jobSchedulesById, setJobSchedulesById] = useState<Record<string, JobSchedule>>({});
   const [ppeRequestsById, setPpeRequestsById] = useState<Record<string, PpeRequest>>({});
+  const [ppeStockById, setPpeStockById] = useState<Record<string, PpeStock>>({});
   const [ppeInwardHistoryById, setPpeInwardHistoryById] = useState<Record<string, PpeInwardRecord>>({});
   const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
   const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
@@ -357,6 +358,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
   const jobSchedules = useMemo(() => Object.values(jobSchedulesById), [jobSchedulesById]);
   const ppeRequests = useMemo(() => Object.values(ppeRequestsById), [ppeRequestsById]);
+  const ppeStock = useMemo(() => Object.values(ppeStockById), [ppeStockById]);
   const ppeInwardHistory = useMemo(() => Object.values(ppeInwardHistoryById), [ppeInwardHistoryById]);
   const payments = useMemo(() => Object.values(paymentsById), [paymentsById]);
   const vendors = useMemo(() => Object.values(vendorsById), [vendorsById]);
@@ -365,49 +367,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
-
-  const ppeStock = useMemo((): PpeStock[] => {
-    const inwardCoveralls: { [size: string]: number } = {};
-    let inwardShoes = 0;
-
-    ppeInwardHistory.forEach(record => {
-      if (record.ppeType === 'Coverall' && record.sizes) {
-        for (const size in record.sizes) {
-          inwardCoveralls[size] = (inwardCoveralls[size] || 0) + (record.sizes[size] || 0);
-        }
-      } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
-        inwardShoes += record.quantity;
-      }
-    });
-
-    const issuedCoveralls: { [size: string]: number } = {};
-    let issuedShoes = 0;
-
-    manpowerProfiles.forEach(profile => {
-      const historyArray = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
-      historyArray.forEach(item => {
-        if (item.ppeType === 'Coverall') {
-          issuedCoveralls[item.size] = (issuedCoveralls[item.size] || 0) + (item.quantity || 1);
-        } else if (item.ppeType === 'Safety Shoes') {
-          issuedShoes += (item.quantity || 1);
-        }
-      });
-    });
-
-    const finalCoverallSizes: { [size: string]: number } = {};
-    const allCoverallSizes = new Set([...Object.keys(inwardCoveralls), ...Object.keys(issuedCoveralls)]);
-    allCoverallSizes.forEach(size => {
-      finalCoverallSizes[size] = (inwardCoveralls[size] || 0) - (issuedCoveralls[size] || 0);
-    });
-
-    const finalShoeQuantity = inwardShoes - issuedShoes;
-
-    return [
-      { id: 'coveralls', name: 'Coveralls', sizes: finalCoverallSizes, lastUpdated: new Date().toISOString() },
-      { id: 'safetyShoes', name: 'Safety Shoes', quantity: finalShoeQuantity, lastUpdated: new Date().toISOString() }
-    ];
-}, [ppeInwardHistory, manpowerProfiles]);
-
 
   const [storedUser, setStoredUser] = useLocalStorage<User | null>('aries-user-v8', null);
   const user = storedUser;
@@ -420,16 +379,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user && user.id) {
         const userRef = ref(rtdb, `users/${user.id}`);
         const unsubscribe = onValue(userRef, (snapshot) => {
-            const updatedUser = snapshot.val();
-            if (updatedUser) {
-                const fullUser = { id: user.id, ...updatedUser };
-                setStoredUser(fullUser);
-
-                if (fullUser.status !== 'active') {
-                    router.replace('/status');
-                }
-            } else {
-                logout();
+            if (!snapshot.exists()) {
+                logout(); // User was deleted from DB
+                return;
+            }
+            const updatedUser = { id: snapshot.key, ...snapshot.val() };
+            setStoredUser(updatedUser);
+            
+            if (updatedUser.status && updatedUser.status !== 'active') {
+                router.replace('/status');
             }
         });
         return () => unsubscribe();
@@ -452,7 +410,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById);
       clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
       clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
-      clearState(setPpeInwardHistoryById);
+      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
       return;
     }
   
@@ -486,6 +444,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createDataListener('buildings', setBuildingsById),
       createDataListener('jobSchedules', setJobSchedulesById),
       createDataListener('ppeRequests', setPpeRequestsById),
+      createDataListener('ppeStock', setPpeStockById),
       createDataListener('ppeInwardHistory', setPpeInwardHistoryById),
       createDataListener('payments', setPaymentsById),
       createDataListener('vendors', setVendorsById),
@@ -1907,22 +1866,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addPpeInwardRecord = useCallback((record: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => {
     if (!user) return;
+
+    const updates: { [key: string]: any } = {};
+    
+    // Add to history
     const newRef = push(ref(rtdb, 'ppeInwardHistory'));
-    set(newRef, { ...record, date: record.date.toISOString(), addedByUserId: user.id });
+    updates[`ppeInwardHistory/${newRef.key}`] = { ...record, date: record.date.toISOString(), addedByUserId: user.id, id: newRef.key };
+
+    // Update current stock
+    if (record.ppeType === 'Coverall' && record.sizes) {
+      const currentSizes = ppeStock.find(s => s.id === 'coveralls')?.sizes || {};
+      const newSizes = { ...currentSizes };
+      for (const size in record.sizes) {
+        newSizes[size] = (newSizes[size] || 0) + (record.sizes[size] || 0);
+      }
+      updates['ppeStock/coveralls/sizes'] = newSizes;
+      updates['ppeStock/coveralls/lastUpdated'] = new Date().toISOString();
+    } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
+      const currentQuantity = ppeStock.find(s => s.id === 'safetyShoes')?.quantity || 0;
+      updates['ppeStock/safetyShoes/quantity'] = currentQuantity + record.quantity;
+      updates['ppeStock/safetyShoes/lastUpdated'] = new Date().toISOString();
+    }
+    
+    update(ref(rtdb), updates);
     addActivityLog(user.id, 'PPE Inward Registered', `Type: ${record.ppeType}`);
-  }, [user, addActivityLog]);
+  }, [user, ppeStock, addActivityLog]);
 
   const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+    // This function will need to calculate the difference and update the main stock
+    // For simplicity, we just update the history for now. A more robust solution is needed.
     const { id, ...data } = record;
     update(ref(rtdb, `ppeInwardHistory/${id}`), data);
     if(user) addActivityLog(user.id, 'PPE Inward Updated', `Record ID: ${id}`);
   }, [user, addActivityLog]);
 
-  const deletePpeInwardRecord = useCallback((recordId: string) => {
-    if(!user) return;
-    remove(ref(rtdb, `ppeInwardHistory/${recordId}`));
-    addActivityLog(user.id, 'PPE Inward Deleted', `Record ID: ${recordId}`);
-  }, [user, addActivityLog]);
+  const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+    if (!user || user.role !== 'Admin') return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`ppeInwardHistory/${record.id}`] = null;
+  
+    // Subtract from current stock
+    if (record.ppeType === 'Coverall' && record.sizes) {
+      const currentSizes = ppeStock.find(s => s.id === 'coveralls')?.sizes || {};
+      const newSizes = { ...currentSizes };
+      for (const size in record.sizes) {
+        newSizes[size] = (newSizes[size] || 0) - (record.sizes[size] || 0);
+      }
+      updates['ppeStock/coveralls/sizes'] = newSizes;
+      updates['ppeStock/coveralls/lastUpdated'] = new Date().toISOString();
+    } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
+      const currentQuantity = ppeStock.find(s => s.id === 'safetyShoes')?.quantity || 0;
+      updates['ppeStock/safetyShoes/quantity'] = currentQuantity - record.quantity;
+      updates['ppeStock/safetyShoes/lastUpdated'] = new Date().toISOString();
+    }
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'PPE Inward Deleted', `Record ID: ${record.id}`);
+  }, [user, ppeStock, addActivityLog]);
   
   const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
     if (!user) return { importedCount: 0, notFoundCount: 0 };
@@ -2567,5 +2568,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    

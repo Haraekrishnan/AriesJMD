@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ type InwardFormValues = z.infer<typeof inwardSchema>;
 
 
 export default function PpeStockPage() {
-    const { user, can, ppeStock, addPpeInwardRecord, ppeInwardHistory, deletePpeInwardRecord, loading } = useAppContext();
+    const { user, can, ppeStock, updatePpeStock, addPpeInwardRecord, ppeInwardHistory, deletePpeInwardRecord, loading } = useAppContext();
     const { toast } = useToast();
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [isImportOpen, setIsImportOpen] = useState(false);
@@ -59,18 +59,42 @@ export default function PpeStockPage() {
         resolver: zodResolver(inwardSchema),
         defaultValues: { ppeType: 'Coverall', date: new Date() }
     });
+    
+    const [coverallSizes, setCoverallSizes] = useState(coverallStock?.sizes || {});
+    const [shoeQuantity, setShoeQuantity] = useState(shoeStock?.quantity || 0);
+
+    useEffect(() => {
+        setCoverallSizes(coverallStock?.sizes || {});
+        setShoeQuantity(shoeStock?.quantity || 0);
+    }, [ppeStock, coverallStock, shoeStock]);
+
+    const canEdit = useMemo(() => can.manage_ppe_stock, [can]);
 
     const watchPpeType = form.watch('ppeType');
 
     const handleInwardSubmit = (data: InwardFormValues) => {
         addPpeInwardRecord(data);
-        toast({ title: 'Stock Added', description: 'Inward stock has been added to the history.' });
+        toast({ title: 'Stock Added', description: 'Inward stock has been added to the history and stock levels updated.' });
         form.reset({ ppeType: data.ppeType, date: new Date(), sizes: {}, quantity: 0 });
     };
 
-    const handleDeleteRecord = (recordId: string) => {
-        deletePpeInwardRecord(recordId);
-        toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed.' });
+    const handleDeleteRecord = (record: PpeInwardRecord) => {
+        deletePpeInwardRecord(record);
+        toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed and stock levels have been adjusted.' });
+    };
+
+    const handleCoverallChange = (size: string, value: string) => {
+        setCoverallSizes(prev => ({ ...prev, [size]: Number(value) }));
+    };
+
+    const handleCoverallSave = () => {
+        updatePpeStock('coveralls', coverallSizes);
+        toast({ title: 'Coverall Stock Updated' });
+    };
+
+    const handleShoeSave = () => {
+        updatePpeStock('safetyShoes', shoeQuantity);
+        toast({ title: 'Safety Shoe Stock Updated' });
     };
 
     if (loading) {
@@ -176,12 +200,18 @@ export default function PpeStockPage() {
                                 <Input 
                                     id={`coverall-${size}`} 
                                     type="number" 
-                                    defaultValue={coverallStock?.sizes?.[size] || 0}
-                                    readOnly
+                                    value={coverallSizes[size] || ''}
+                                    onChange={(e) => handleCoverallChange(size, e.target.value)}
+                                    disabled={!canEdit}
                                 />
                             </div>
                         ))}
                     </CardContent>
+                    {canEdit && (
+                        <CardFooter>
+                            <Button onClick={handleCoverallSave}>Save Coverall Stock</Button>
+                        </CardFooter>
+                    )}
                 </Card>
 
                 <Card>
@@ -195,11 +225,17 @@ export default function PpeStockPage() {
                             <Input 
                                 id="safety-shoes" 
                                 type="number"
-                                defaultValue={shoeStock?.quantity || 0}
-                                readOnly
+                                value={shoeQuantity}
+                                onChange={(e) => setShoeQuantity(Number(e.target.value))}
+                                disabled={!canEdit}
                             />
                         </div>
                     </CardContent>
+                    {canEdit && (
+                        <CardFooter>
+                            <Button onClick={handleShoeSave}>Save Shoe Stock</Button>
+                        </CardFooter>
+                    )}
                 </Card>
             </div>
             
@@ -243,7 +279,7 @@ export default function PpeStockPage() {
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteRecord(record.id)}>Delete</AlertDialogAction>
+                                                        <AlertDialogAction onClick={() => handleDeleteRecord(record)}>Delete</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
@@ -273,5 +309,3 @@ export default function PpeStockPage() {
         </div>
     );
 }
-
-    
