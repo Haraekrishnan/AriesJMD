@@ -28,7 +28,7 @@ const inwardSchema = z.object({
     quantity: z.coerce.number().min(0).optional(),
 }).refine(data => {
     if (data.ppeType === 'Coverall') {
-        return data.sizes && Object.values(data.sizes).some(q => q > 0);
+        return data.sizes && Object.values(data.sizes).some(q => q && q > 0);
     }
     if (data.ppeType === 'Safety Shoes') {
         return data.quantity && data.quantity > 0;
@@ -65,13 +65,13 @@ export default function PpeStockPage() {
             return;
         }
 
-        if (data.ppeType === 'Coverall') {
+        if (data.ppeType === 'Coverall' && stockToUpdate.sizes) {
             const newSizes = { ...stockToUpdate.sizes };
             for (const size in data.sizes) {
                 newSizes[size] = (newSizes[size] || 0) + (data.sizes[size] || 0);
             }
             updatePpeStock('coveralls', newSizes);
-        } else {
+        } else if (data.ppeType === 'Safety Shoes' && typeof stockToUpdate.quantity === 'number') {
             const newQuantity = (stockToUpdate.quantity || 0) + (data.quantity || 0);
             updatePpeStock('safetyShoes', newQuantity);
         }
@@ -175,9 +175,8 @@ export default function PpeStockPage() {
                                 <Input 
                                     id={`coverall-${size}`} 
                                     type="number" 
-                                    value={coverallStock?.sizes?.[size] || 0}
-                                    disabled={!canEditStock}
-                                    readOnly={!canEditStock}
+                                    defaultValue={coverallStock?.sizes?.[size] || 0}
+                                    readOnly
                                 />
                             </div>
                         ))}
@@ -200,9 +199,8 @@ export default function PpeStockPage() {
                             <Input 
                                 id="safety-shoes" 
                                 type="number"
-                                value={shoeStock?.quantity || 0}
-                                disabled={!canEditStock}
-                                readOnly={!canEditStock}
+                                defaultValue={shoeStock?.quantity || 0}
+                                readOnly
                             />
                         </div>
                     </CardContent>
