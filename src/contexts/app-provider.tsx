@@ -1627,22 +1627,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deletePpeHistoryRecord = useCallback(async (manpowerId: string, recordId: string) => {
     if (!user || user.role !== 'Admin') return;
-  
-    const profileRef = ref(rtdb, `manpowerProfiles/${manpowerId}`);
-    const snapshot = await get(profileRef);
-    if (!snapshot.exists()) return;
-  
-    const profile = snapshot.val() as ManpowerProfile;
-    const ppeHistory = Array.isArray(profile.ppeHistory) 
-      ? profile.ppeHistory 
-      : profile.ppeHistory ? Object.values(profile.ppeHistory) : [];
-  
-    const updatedHistory = ppeHistory.filter(record => record.id !== recordId);
-    
-    // Using `set` to overwrite the entire array ensures Firebase removes the item correctly
-    // and re-indexes the array if it's stored as an array-like object.
-    await set(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`), updatedHistory);
-  
+    // Direct removal of the object by its key is more reliable for Firebase RTDB
+    await remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
     addActivityLog(user.id, 'PPE History Deleted', `Record ID: ${recordId} for manpower ID: ${manpowerId}`);
   }, [user, addActivityLog]);
 
@@ -2629,5 +2615,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
