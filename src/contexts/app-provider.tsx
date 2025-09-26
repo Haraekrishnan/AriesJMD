@@ -1631,9 +1631,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${record.id}`), record);
   }, [user]);
 
-  const deletePpeHistoryRecord = useCallback((manpowerId: string, recordId: string) => {
+  const deletePpeHistoryRecord = useCallback(async (manpowerId: string, recordId: string) => {
     if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
+    const historyRef = ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`);
+    const snapshot = await get(historyRef);
+    if (snapshot.exists()) {
+        const currentHistory = snapshot.val();
+        if (typeof currentHistory === 'object' && currentHistory !== null) {
+            delete currentHistory[recordId];
+            await set(historyRef, currentHistory);
+        }
+    }
   }, [user]);
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
@@ -1952,7 +1960,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'PPE Inward Updated', `Record ID: ${record.id}`);
   }, [user, ppeStock, ppeInwardHistory, addActivityLog]);
   
-  const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+  const deletePpeInwardRecord = useCallback(async (record: PpeInwardRecord) => {
     if (!user || user.role !== 'Admin') return;
   
     const updates: { [key: string]: any } = {};
@@ -2068,8 +2076,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const itemData: Partial<InventoryItem> = {
           name: item['ITEM NAME'],
           serialNumber: serialNumber,
-          chestCrollNo: item['CHEST CROLL NO']?.toString(),
-          ariesId: item['ARIES ID']?.toString(),
+          chestCrollNo: item['CHEST CROLL NO']?.toString() || null,
+          ariesId: item['ARIES ID']?.toString() || null,
           inspectionDate: parseExcelDate(item['INSPECTION DATE']),
           inspectionDueDate: parseExcelDate(item['INSPECTION DUE DATE']),
           tpInspectionDueDate: parseExcelDate(item['TP INSPECTION DUE DATE']),
@@ -2619,4 +2627,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
