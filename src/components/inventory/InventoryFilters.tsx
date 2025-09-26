@@ -68,7 +68,7 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
             <Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger><SelectContent><SelectItem value="all">All Projects</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
 
             <div className="flex gap-2 ml-auto">
-                <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
+                <Button variant="secondary" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
             </div>
         </div>
     );
