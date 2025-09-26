@@ -43,7 +43,7 @@ const PpeHistoryForm = ({ profile }: { profile: ManpowerProfile }) => {
     const { toast } = useToast();
     const form = useForm<PpeHistoryFormValues>({
         resolver: zodResolver(ppeHistorySchema),
-        defaultValues: { requestType: 'New', quantity: 1 },
+        defaultValues: { requestType: 'New', quantity: 1, issueDate: undefined },
     });
     
     const ppeType = form.watch('ppeType');
@@ -67,7 +67,7 @@ const PpeHistoryForm = ({ profile }: { profile: ManpowerProfile }) => {
     };
 
     return (
-        <form onSubmit={form.handleSubmit(handleAddRecord)} className="space-y-4 p-4 border rounded-lg bg-muted/50">
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
             <h4 className="font-semibold text-sm">Add New PPE Issue</h4>
              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -104,7 +104,7 @@ const PpeHistoryForm = ({ profile }: { profile: ManpowerProfile }) => {
             <div className="flex justify-end">
                 <Button type="button" onClick={form.handleSubmit(handleAddRecord)}>Add Record</Button>
             </div>
-        </form>
+        </div>
     );
 };
 
@@ -315,7 +315,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             documentFolderUrl: '',
             leaveHistory: [],
             memoHistory: [],
-            ppeHistory: [],
+            ppeHistory: {},
         };
         form.reset(defaultValues as any);
     }
@@ -738,6 +738,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
 
 
