@@ -80,7 +80,7 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
                         </ul>
                     </AlertDescription>
                 </Alert>
-                <Input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
+                <Input type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileChange} />
             </div>
             <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
