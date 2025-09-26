@@ -76,7 +76,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'view_performance_reports',
       'manage_vehicles',
-      'manage_igp_ogp', 'view_ppe_requests'
+      'manage_igp_ogp', 'view_ppe_requests', 'manage_ppe_stock'
     ],
     isEditable: false,
   },

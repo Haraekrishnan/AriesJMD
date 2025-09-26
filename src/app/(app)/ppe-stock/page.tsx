@@ -111,7 +111,7 @@ export default function PpeStockPage() {
         )
     }
 
-    if (!can.view_ppe_requests) {
+    if (!can.manage_ppe_stock) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                 <CardHeader className="text-center items-center">
