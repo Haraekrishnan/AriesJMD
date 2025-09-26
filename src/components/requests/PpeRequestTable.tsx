@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Paperclip, Edit, Check, Trash2, Settings } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, D
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
+import { Paperclip, Upload } from 'lucide-react';
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -103,6 +104,14 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             markPpeRequestAsViewed(req.id);
         }
     };
+    
+    const stockInfo = useMemo(() => {
+        if (!selectedRequest) return 'N/A';
+        const stockItem = ppeStock.find(s => s.id === (selectedRequest.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
+        return selectedRequest.ppeType === 'Coverall' && stockItem && 'sizes' in stockItem && stockItem.sizes
+            ? `${stockItem.sizes[selectedRequest.size] || 0} in stock`
+            : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
+    }, [selectedRequest, ppeStock]);
 
     return (
         <Card className={cn("relative", hasUpdate && "border-blue-500")}>
@@ -143,27 +152,27 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     <AccordionItem value={req.id} className="border-none">
                         <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
-                            <h4 className="font-semibold text-xs mb-2">Comment History</h4>
-                            <div className="space-y-2">
-                                {commentsArray.length > 0 ? commentsArray.map((c,i) => {
-                                    const commentUser = users.find(u => u.id === c.userId);
-                                    return (
-                                        <div key={i} className="flex items-start gap-2">
-                                            <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                            <div className="text-xs bg-background p-2 rounded-md w-full">
-                                                <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
-                                            </div>
+                        <h4 className="font-semibold text-xs mb-2">Comment History</h4>
+                        <div className="space-y-2">
+                            {commentsArray.length > 0 ? commentsArray.map((c,i) => {
+                                const commentUser = users.find(u => u.id === c.userId);
+                                return (
+                                    <div key={i} className="flex items-start gap-2">
+                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="text-xs bg-background p-2 rounded-md w-full">
+                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
                                         </div>
-                                    )
-                                }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                            </div>
+                                    </div>
+                                )
+                            }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                        </div>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
             </CardContent>
             <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
-                 {isManager && req.status === 'Pending' && (
+                 {canApprove && req.status === 'Pending' && (
                     <>
                         <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
@@ -172,7 +181,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                  {canIssue && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
-                 {(user?.role === 'Admin' || (user?.id === req.requesterId && req.status === 'Pending')) && (
+                 {(user?.role === 'Admin' || (isRequester && req.status === 'Pending')) && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
@@ -227,12 +236,28 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                 <AlertDialog open={!!(selectedRequest && action)} onOpenChange={() => setSelectedRequest(null)}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>{action} PPE Request?</AlertDialogTitle>
-                            <AlertDialogDescription>Please provide a comment for this action. {action === 'Approved' && '(Optional)'}</AlertDialogDescription>
+                            <AlertDialogTitle>{action} Request?</AlertDialogTitle>
+                            <AlertDialogDescription>Review the details before confirming.</AlertDialogDescription>
                         </AlertDialogHeader>
-                        <div>
-                            <Label htmlFor="comment">Comment</Label>
-                            <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                        <div className="space-y-4 text-sm">
+                            <div className="grid grid-cols-2 gap-2 p-2 border rounded-md">
+                                <div className="font-semibold">Stock Availability:</div>
+                                <div>{stockInfo}</div>
+                                <div className="font-semibold">Last Issue Date:</div>
+                                <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
+                                <div className="font-semibold">Size & Quantity:</div>
+                                <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
+                                {(selectedRequest.newRequestJustification || selectedRequest.remarks) && (
+                                    <>
+                                     <div className="font-semibold col-span-2">Justification / Remarks:</div>
+                                     <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks}</div>
+                                    </>
+                                )}
+                            </div>
+                            <div>
+                                <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
+                                <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                            </div>
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
