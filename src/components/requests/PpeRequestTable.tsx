@@ -269,9 +269,9 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                     <>
                                         <div className="font-semibold">Attachment:</div>
                                         <div>
-                                            <a href={selectedRequest.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                            <button onClick={() => setViewingAttachmentUrl(selectedRequest.attachmentUrl!)} className="text-blue-600 hover:underline">
                                                 View Attached File
-                                            </a>
+                                            </button>
                                         </div>
                                     </>
                                 )}
@@ -361,3 +361,5 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </div>
     );
 }
+
+    
