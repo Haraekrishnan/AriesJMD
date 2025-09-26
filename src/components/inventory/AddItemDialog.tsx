@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -24,9 +25,9 @@ const itemSchema = z.object({
   chestCrollNo: z.string().optional(),
   status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired']),
   projectId: z.string().min(1, 'Location is required'),
-  inspectionDate: z.date({ required_error: 'Inspection date is required' }),
-  inspectionDueDate: z.date({ required_error: 'Inspection due date is required' }),
-  tpInspectionDueDate: z.date({ required_error: 'TP inspection due date is required' }),
+  inspectionDate: z.date().optional().nullable(),
+  inspectionDueDate: z.date().optional().nullable(),
+  tpInspectionDueDate: z.date().optional().nullable(),
 });
 
 type ItemFormValues = z.infer<typeof itemSchema>;
@@ -56,9 +57,9 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
   const onSubmit = (data: ItemFormValues) => {
     addInventoryItem({
         ...data,
-        inspectionDate: data.inspectionDate.toISOString(),
-        inspectionDueDate: data.inspectionDueDate.toISOString(),
-        tpInspectionDueDate: data.tpInspectionDueDate.toISOString(),
+        inspectionDate: data.inspectionDate ? data.inspectionDate.toISOString() : '',
+        inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
+        tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
     });
     toast({ title: 'Item Added', description: `${data.name} has been added to the inventory.` });
     setIsOpen(false);
@@ -119,9 +120,9 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                 </div>
             </div>
 
-            <div><Label>Inspection Date</Label><Controller control={form.control} name="inspectionDate" render={({ field }) => (<Popover><PopoverTrigger asChild><Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>)}/>{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
-            <div><Label>Inspection Due Date</Label><Controller control={form.control} name="inspectionDueDate" render={({ field }) => (<Popover><PopoverTrigger asChild><Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>)}/>{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
-            <div><Label>TP Inspection Due Date</Label><Controller control={form.control} name="tpInspectionDueDate" render={({ field }) => (<Popover><PopoverTrigger asChild><Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>)}/>{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
+            <div><Label>Inspection Date</Label><Controller control={form.control} name="inspectionDate" render={({ field }) => (<Popover><PopoverTrigger asChild><Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>)}/>{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
+            <div><Label>Inspection Due Date</Label><Controller control={form.control} name="inspectionDueDate" render={({ field }) => (<Popover><PopoverTrigger asChild><Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>)}/>{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
+            <div><Label>TP Inspection Due Date</Label><Controller control={form.control} name="tpInspectionDueDate" render={({ field }) => (<Popover><PopoverTrigger asChild><Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>)}/>{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
