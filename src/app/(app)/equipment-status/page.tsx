@@ -383,7 +383,7 @@ export default function EquipmentStatusPage() {
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddUT}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add UT Machine
@@ -472,7 +472,7 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                 <TabsContent value="dft-machines" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddDft}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add DFT Machine
@@ -486,7 +486,7 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                 <TabsContent value="digital-camera" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddDigitalCamera}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add Digital Camera
@@ -500,7 +500,7 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                 <TabsContent value="anemometer" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddAnemometer}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add Anemometer
@@ -514,7 +514,7 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                 <TabsContent value="mobile-sim" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddMobileSim}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add Mobile/SIM
@@ -528,7 +528,7 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                  <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddLaptopDesktop}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add Laptop/Desktop
@@ -542,7 +542,7 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                  <TabsContent value="other-equipments" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {can.manage_equipment_status && (
+                        {can.add_new_equipment && (
                             <Button onClick={handleAddOtherEquipment}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add Other Equipment
@@ -556,27 +556,27 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
             </Tabs>
 
-            {can.manage_equipment_status && <AddUTMachineDialog isOpen={isAddUTMachineOpen} setIsOpen={setIsAddUTMachineOpen} />}
+            {can.add_new_equipment && <AddUTMachineDialog isOpen={isAddUTMachineOpen} setIsOpen={setIsAddUTMachineOpen} />}
             {selectedUTMachine && can.manage_equipment_status && (<EditUTMachineDialog isOpen={isEditUTMachineOpen} setIsOpen={setIsEditUTMachineOpen} machine={selectedUTMachine}/>)}
             {selectedUTMachine && (<UTMachineLogManagerDialog isOpen={isUTLogManagerOpen} setIsOpen={setIsUTLogManagerOpen} machine={selectedUTMachine}/>)}
 
-            {can.manage_equipment_status && <AddDftMachineDialog isOpen={isAddDftMachineOpen} setIsOpen={setIsAddDftMachineOpen} />}
+            {can.add_new_equipment && <AddDftMachineDialog isOpen={isAddDftMachineOpen} setIsOpen={setIsAddDftMachineOpen} />}
             {selectedDftMachine && can.manage_equipment_status && (<EditDftMachineDialog isOpen={isEditDftMachineOpen} setIsOpen={setIsEditDftMachineOpen} machine={selectedDftMachine} />)}
             {selectedDftMachine && (<DftMachineLogManagerDialog isOpen={isDftLogManagerOpen} setIsOpen={setIsDftLogManagerOpen} machine={selectedDftMachine} />)}
 
-            {can.manage_equipment_status && <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />}
+            {can.add_new_equipment && <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />}
             {selectedMobileSim && can.manage_equipment_status && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
         
-            {can.manage_equipment_status && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
+            {can.add_new_equipment && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
             {selectedLaptopDesktop && can.manage_equipment_status && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
             
-            {can.manage_equipment_status && <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />}
+            {can.add_new_equipment && <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />}
             {selectedDigitalCamera && can.manage_equipment_status && <EditDigitalCameraDialog isOpen={isEditDigitalCameraOpen} setIsOpen={setIsEditDigitalCameraOpen} item={selectedDigitalCamera} />}
 
-            {can.manage_equipment_status && <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />}
+            {can.add_new_equipment && <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />}
             {selectedAnemometer && can.manage_equipment_status && <EditAnemometerDialog isOpen={isEditAnemometerOpen} setIsOpen={setIsEditAnemometerOpen} item={selectedAnemometer} />}
 
-            {can.manage_equipment_status && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
+            {can.add_new_equipment && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
             {selectedOtherEquipment && can.manage_equipment_status && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
 
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}

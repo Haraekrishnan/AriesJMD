@@ -35,7 +35,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'manage_igp_ogp',
-      'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests'
+      'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests', 'add_new_equipment'
     ],
     isEditable: false,
   },
@@ -76,14 +76,14 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'view_performance_reports',
       'manage_vehicles',
-      'manage_igp_ogp', 'view_ppe_requests'
+      'manage_igp_ogp', 'view_ppe_requests', 'add_new_equipment'
     ],
     isEditable: false,
   },
   {
     id: 'role-asst-store-incharge',
     name: 'Assistant Store Incharge',
-    permissions: ['manage_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status'],
+    permissions: ['manage_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status', 'add_new_equipment'],
     isEditable: false,
   },
   {
@@ -97,7 +97,7 @@ export const ROLES: RoleDefinition[] = [
     name: 'Document Controller',
     permissions: [
         'manage_manpower_list', 'manage_tasks', 'log_manpower', 
-        'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests'
+        'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests', 'add_new_equipment'
     ],
     isEditable: true,
   }

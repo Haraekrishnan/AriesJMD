@@ -223,6 +223,7 @@ export const ALL_PERMISSIONS = [
   'manage_igp_ogp',
   'manage_feedback',
   'manage_user_lock_status',
+  'add_new_equipment',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -388,7 +389,7 @@ export type ManpowerProfile = {
   contractValidity?: string; // ISO
   
   // Leave and Termination
-  leaveHistory?: LeaveRecord[];
+  leaveHistory?: PpeHistoryRecord[] | { [key: string]: LeaveRecord };
   memoHistory?: MemoRecord[];
   ppeHistory?: PpeHistoryRecord[] | { [key: string]: PpeHistoryRecord };
 
