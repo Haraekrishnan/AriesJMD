@@ -1,4 +1,5 @@
 
+
 export type PpeInwardRecord = {
   id: string;
   date: string; // ISO string
@@ -389,7 +390,8 @@ export type ManpowerProfile = {
   // Leave and Termination
   leaveHistory?: LeaveRecord[];
   memoHistory?: MemoRecord[];
-  ppeHistory?: PpeHistoryRecord[];
+  ppeHistory?: PpeHistoryRecord[] | { [key: string]: PpeHistoryRecord };
+
   terminationDate?: string; // ISO
   resignationDate?: string; // ISO
   feedback?: string;

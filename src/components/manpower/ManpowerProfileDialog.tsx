@@ -243,7 +243,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
 
@@ -409,6 +409,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     if (profile) {
         deleteMemoRecord(profile.id, memoId);
         toast({ variant: 'destructive', title: 'Record Deleted' });
+    }
+  };
+
+  const handleDeletePpe = (recordId: string) => {
+    if(profile) {
+      deletePpeHistoryRecord(profile.id, recordId);
+      toast({ variant: 'destructive', title: 'PPE Record Deleted' });
     }
   };
 
@@ -583,6 +590,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                   <TableHead>Qty</TableHead>
                                   <TableHead>Date</TableHead>
                                   <TableHead>Req Type</TableHead>
+                                   {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -593,6 +601,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                     <TableCell>{item.quantity}</TableCell>
                                     <TableCell>{format(new Date(item.issueDate), 'dd-MM-yyyy')}</TableCell>
                                     <TableCell>{item.requestType}</TableCell>
+                                     {user?.role === 'Admin' && (
+                                        <TableCell className="text-right">
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader><AlertDialogTitle>Delete PPE Record?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this issue record. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeletePpe(item.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </TableCell>
+                                     )}
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -699,3 +723,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
