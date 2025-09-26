@@ -37,15 +37,15 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-4xl h-full max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] grid grid-rows-[auto_1fr_auto]">
         <DialogHeader>
           <DialogTitle>PPE Issuance Status</DialogTitle>
           <DialogDescription>A list of active employees with no recorded PPE history.</DialogDescription>
         </DialogHeader>
-        <div className="grid md:grid-cols-2 gap-8 p-1">
-            <div className="space-y-2 flex flex-col">
+        <div className="grid md:grid-cols-2 gap-8 p-1 overflow-y-auto">
+            <div className="space-y-2">
                 <Label className="font-semibold">Employees Missing Coverall History ({missingCoverall.length})</Label>
-                <ScrollArea className="flex-1 rounded-md border h-96">
+                <ScrollArea className="rounded-md border h-full">
                    <div className="p-2 space-y-1">
                         {missingCoverall.length > 0 ? (
                             missingCoverall.map(p => (
@@ -57,9 +57,9 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
                    </div>
                 </ScrollArea>
             </div>
-             <div className="space-y-2 flex flex-col">
+             <div className="space-y-2">
                 <Label className="font-semibold">Employees Missing Safety Shoe History ({missingShoes.length})</Label>
-                <ScrollArea className="flex-1 rounded-md border h-96">
+                <ScrollArea className="rounded-md border h-full">
                    <div className="p-2 space-y-1">
                        {missingShoes.length > 0 ? (
                             missingShoes.map(p => (
@@ -72,7 +72,7 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
                 </ScrollArea>
             </div>
         </div>
-        <DialogFooter className="mt-auto">
+        <DialogFooter className="mt-4">
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
