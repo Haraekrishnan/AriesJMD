@@ -1,7 +1,6 @@
 
-
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,17 +39,20 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
     const [search, setSearch] = useState('');
 
     const itemNames = Array.from(new Set(inventoryItems.map(item => item.name)));
+    
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            onApplyFilters({ name, status, projectId, search });
+        }, 300); // Debounce search input
+        return () => clearTimeout(handler);
+    }, [name, status, projectId, search, onApplyFilters]);
 
-    const handleApply = () => {
-        onApplyFilters({ name, status, projectId, search });
-    };
 
     const handleClear = () => {
         setName('all');
         setStatus('all');
         setProjectId('all');
         setSearch('');
-        onApplyFilters({ name: 'all', status: 'all', projectId: 'all', search: '' });
     };
 
     return (
@@ -66,7 +68,6 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
             <Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger><SelectContent><SelectItem value="all">All Projects</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
 
             <div className="flex gap-2 ml-auto">
-                <Button onClick={handleApply}>Apply</Button>
                 <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
             </div>
         </div>
