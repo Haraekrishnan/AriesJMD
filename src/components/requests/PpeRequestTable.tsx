@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Paperclip, Upload } from 'lucide-react';
+import Link from 'next/link';
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -112,6 +113,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             ? `${stockItem.sizes[selectedRequest.size] || 0} in stock`
             : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
     }, [selectedRequest, ppeStock]);
+    
+    const employeeForSelectedRequest = useMemo(() => {
+        if (!selectedRequest) return null;
+        return manpowerProfiles.find(p => p.id === selectedRequest.manpowerId);
+    }, [selectedRequest, manpowerProfiles]);
 
     return (
         <Card className={cn("relative", hasUpdate && "border-blue-500")}>
@@ -240,17 +246,33 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                             <AlertDialogDescription>Review the details before confirming.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="space-y-4 text-sm">
-                            <div className="grid grid-cols-2 gap-2 p-2 border rounded-md">
-                                <div className="font-semibold">Stock Availability:</div>
-                                <div>{stockInfo}</div>
-                                <div className="font-semibold">Last Issue Date:</div>
-                                <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
+                            <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 p-2 border rounded-md">
+                                <div className="font-semibold">Employee:</div>
+                                <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
+
                                 <div className="font-semibold">Size & Quantity:</div>
                                 <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
+                                
+                                <div className="font-semibold">Stock Availability:</div>
+                                <div>{stockInfo}</div>
+
+                                <div className="font-semibold">Last Issue Date:</div>
+                                <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
+
                                 {(selectedRequest.newRequestJustification || selectedRequest.remarks) && (
                                     <>
-                                     <div className="font-semibold col-span-2">Justification / Remarks:</div>
+                                     <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
                                      <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks}</div>
+                                    </>
+                                )}
+                                 {selectedRequest.attachmentUrl && (
+                                    <>
+                                        <div className="font-semibold">Attachment:</div>
+                                        <div>
+                                            <a href={selectedRequest.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                                View Attached File
+                                            </a>
+                                        </div>
                                     </>
                                 )}
                             </div>
