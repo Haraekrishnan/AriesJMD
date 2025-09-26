@@ -88,7 +88,8 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     }
 
     const manpower = manpowerProfiles.find(p => p.id === req.manpowerId);
-    const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
+    const isRequester = req.requesterId === user?.id;
+    const hasUpdate = isRequester && !req.viewedByRequester;
     const canApprove = isManager && req.status === 'Pending';
     const canMarkAsIssued = canIssue && req.status === 'Approved';
     const lastIssue = useMemo(() => {
