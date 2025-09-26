@@ -155,8 +155,8 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                 <TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                 <TableCell><Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
                                                 <TableCell>{getProjectName(item.projectId)}</TableCell>
-                                                <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{format(new Date(item.inspectionDueDate), 'dd-MM-yyyy')}</TableCell>
-                                                <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy')}</TableCell>
+                                                <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{item.inspectionDueDate ? format(new Date(item.inspectionDueDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                                <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                         <AlertDialog>
                                                             <DropdownMenu>
@@ -188,4 +188,3 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         </>
     );
 }
-
