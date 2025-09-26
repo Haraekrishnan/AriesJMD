@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -101,46 +100,47 @@ export default function InventoryTable({ items }: InventoryTableProps) {
             <Accordion type="multiple" className="w-full space-y-2">
                 {Object.entries(groupedItems).map(([itemName, itemList]) => (
                     <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                            <div className="flex justify-between items-center w-full">
+                        <div className="flex justify-between items-center p-4">
+                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
                                 <div className="flex items-center gap-4">
                                     <h3 className="font-semibold text-lg">{itemName}</h3>
                                     <Badge variant="secondary">Total: {itemList.length}</Badge>
                                 </div>
-                                {user?.role === 'Admin' && (
-                                    <div className="flex items-center gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
-                                        <Button variant="ghost" size="sm" onClick={() => handleRenameGroupClick(itemName)}>
-                                            <Pencil className="mr-2 h-4 w-4" /> Edit Name
-                                        </Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="sm">
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Group
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete all {itemList.length} items named "{itemName}".
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteGroup(itemName)}>Delete All</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                )}
-                            </div>
-                        </AccordionTrigger>
+                            </AccordionTrigger>
+                             {user?.role === 'Admin' && (
+                                <div className="flex items-center gap-2 pl-4">
+                                    <Button variant="ghost" size="sm" onClick={() => handleRenameGroupClick(itemName)}>
+                                        <Pencil className="mr-2 h-4 w-4" /> Edit Name
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="sm">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Group
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete all {itemList.length} items named "{itemName}".
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteGroup(itemName)}>Delete All</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            )}
+                        </div>
                         <AccordionContent>
-                            <div className="p-1">
+                            <div className="p-1 border-t">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Serial No.</TableHead>
+                                            <TableHead>Aries ID</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>Location</TableHead>
                                             <TableHead>Insp. Due</TableHead>
@@ -152,6 +152,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                         {itemList.map(item => (
                                             <TableRow key={item.id}>
                                                 <TableCell>{item.serialNumber}</TableCell>
+                                                <TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                 <TableCell><Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
                                                 <TableCell>{getProjectName(item.projectId)}</TableCell>
                                                 <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{format(new Date(item.inspectionDueDate), 'dd-MM-yyyy')}</TableCell>
@@ -187,3 +188,4 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         </>
     );
 }
+
