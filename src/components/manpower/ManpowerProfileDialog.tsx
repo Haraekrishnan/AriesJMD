@@ -25,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Badge } from '../ui/badge';
 import EditMemoDialog from './EditMemoDialog';
+import EditPpeHistoryDialog from './EditPpeHistoryDialog';
 
 const ppeHistorySchema = z.object({
   ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required."}),
@@ -243,9 +244,10 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, updatePpeHistoryRecord } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
+  const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
 
   const canAddPpe = useMemo(() => {
     if (!user) return false;
@@ -421,6 +423,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
   const handleEditMemo = (memo: MemoRecord) => {
       setEditingMemo(memo);
+  };
+  
+  const handleEditPpe = (record: PpeHistoryRecord) => {
+      setEditingPpeRecord(record);
   };
 
   return (
@@ -604,6 +610,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                      {user?.role === 'Admin' && (
                                         <TableCell className="text-right">
                                             <AlertDialog>
+                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditPpe(item)}><Edit className="h-4 w-4"/></Button>
                                                 <AlertDialogTrigger asChild>
                                                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
                                                 </AlertDialogTrigger>
@@ -720,7 +727,16 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             profile={profile}
         />
     )}
+    {editingPpeRecord && profile && (
+        <EditPpeHistoryDialog
+            isOpen={!!editingPpeRecord}
+            setIsOpen={() => setEditingPpeRecord(null)}
+            record={editingPpeRecord}
+            profile={profile}
+        />
+    )}
     </>
   );
 }
+
 
