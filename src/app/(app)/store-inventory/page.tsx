@@ -47,7 +47,9 @@ export default function StoreInventoryPage() {
       return inventoryItems.filter(item => {
         const { name, status, projectId, search } = filters;
         if (name !== 'all' && item.name !== name) return false;
-        if (search && !item.serialNumber.toLowerCase().includes(search.toLowerCase())) return false;
+        if (search && !(item.serialNumber.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()))) {
+            return false;
+        }
         
         if (projectId !== 'all' && item.projectId !== projectId) return false;
         

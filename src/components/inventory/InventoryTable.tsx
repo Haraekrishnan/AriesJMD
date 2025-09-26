@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, ShieldQuestion } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
@@ -16,17 +16,20 @@ import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import RequestCertificateDialog from './RequestCertificateDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import RenameItemGroupDialog from './RenameItemGroupDialog';
 
 interface InventoryTableProps {
   items: InventoryItem[];
 }
 
 export default function InventoryTable({ items }: InventoryTableProps) {
-    const { user, roles, deleteInventoryItem, projects } = useAppContext();
+    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
+    const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+    const [selectedItemGroup, setSelectedItemGroup] = useState<string | null>(null);
 
     const canManage = useMemo(() => {
         if (!user) return false;
@@ -57,11 +60,21 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         setSelectedItem(item);
         setIsCertRequestOpen(true);
     };
+    
+    const handleRenameGroupClick = (itemName: string) => {
+        setSelectedItemGroup(itemName);
+        setIsRenameOpen(true);
+    };
 
     const handleDelete = (itemId: string) => {
         deleteInventoryItem(itemId);
         toast({ variant: 'destructive', title: 'Item Deleted' });
     };
+
+    const handleDeleteGroup = (itemName: string) => {
+        deleteInventoryItemGroup(itemName);
+        toast({ variant: 'destructive', title: 'Item Group Deleted', description: `All items named "${itemName}" have been deleted.` });
+    }
     
     const getDateStyles = (dateString?: string): string => {
         if (!dateString) return '';
@@ -89,9 +102,37 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                 {Object.entries(groupedItems).map(([itemName, itemList]) => (
                     <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
                         <AccordionTrigger className="p-4 hover:no-underline">
-                            <div className="flex items-center gap-4">
-                                <h3 className="font-semibold text-lg">{itemName}</h3>
-                                <Badge variant="secondary">Total: {itemList.length}</Badge>
+                            <div className="flex justify-between items-center w-full">
+                                <div className="flex items-center gap-4">
+                                    <h3 className="font-semibold text-lg">{itemName}</h3>
+                                    <Badge variant="secondary">Total: {itemList.length}</Badge>
+                                </div>
+                                {user?.role === 'Admin' && (
+                                    <div className="flex items-center gap-2 pr-4" onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="ghost" size="sm" onClick={() => handleRenameGroupClick(itemName)}>
+                                            <Pencil className="mr-2 h-4 w-4" /> Edit Name
+                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" size="sm">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Group
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete all {itemList.length} items named "{itemName}".
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteGroup(itemName)}>Delete All</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                )}
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
@@ -142,6 +183,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
             </Accordion>
             {selectedItem && canManage && <EditItemDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} item={selectedItem} />}
             {selectedItem && <RequestCertificateDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} item={selectedItem} />}
+            {selectedItemGroup && <RenameItemGroupDialog isOpen={isRenameOpen} setIsOpen={setIsRenameOpen} currentItemName={selectedItemGroup} />}
         </>
     );
 }

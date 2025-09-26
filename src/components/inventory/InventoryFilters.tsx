@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -58,7 +59,7 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
     return (
         <div className="flex flex-wrap gap-4 items-center">
             <Input 
-                placeholder="Search by serial no..." 
+                placeholder="Search by serial or aries id..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 className="w-full md:w-auto"
