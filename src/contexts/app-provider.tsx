@@ -1623,18 +1623,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRecordRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
     const newRecordWithId = { ...record, id: newRecordRef.key! };
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${newRecordWithId.id}`), newRecordWithId);
+    set(newRecordRef, newRecordWithId);
   }, [user]);
   
   const updatePpeHistoryRecord = useCallback((manpowerId: string, record: PpeHistoryRecord) => {
     if (!user || user.role !== 'Admin') return;
-    const { id, ...data } = record;
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${id}`), data);
+    update(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${record.id}`), record);
   }, [user]);
 
-  const deletePpeHistoryRecord = useCallback(async (manpowerId: string, recordId: string) => {
+  const deletePpeHistoryRecord = useCallback((manpowerId: string, recordId: string) => {
     if (!user || user.role !== 'Admin') return;
-    await remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
   }, [user]);
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
@@ -2620,3 +2619,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
