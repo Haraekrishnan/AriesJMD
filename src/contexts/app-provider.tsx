@@ -173,32 +173,13 @@ type AppContextType = {
   addPpeHistoryRecord: (manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => void;
   updatePpeHistoryRecord: (manpowerId: string, record: PpeHistoryRecord) => void;
   deletePpeHistoryRecord: (manpowerId: string, recordId: string) => void;
-  addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
-  updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
-  updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
-  deleteInternalRequest: (requestId: string) => void;
-  markInternalRequestAsViewed: (requestId: string) => void;
-  acknowledgeInternalRequest: (requestId: string) => void;
-  addManagementRequest: (request: Omit<ManagementRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
-  updateManagementRequest: (request: ManagementRequest) => void;
-  updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
-  deleteManagementRequest: (requestId: string) => void;
-  markManagementRequestAsViewed: (requestId: string) => void;
-  addPpeRequest: (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
-  updatePpeRequest: (request: PpeRequest) => void;
-  updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
-  deletePpeRequest: (requestId: string) => void;
-  deletePpeAttachment: (requestId: string) => void;
-  markPpeRequestAsViewed: (requestId: string) => void;
-  updatePpeStock: (stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => void;
-  addPpeInwardRecord: (record: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => void;
-  updatePpeInwardRecord: (record: PpeInwardRecord) => void;
-  deletePpeInwardRecord: (record: PpeInwardRecord) => void;
   addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
   deleteInventoryItem: (itemId: string) => void;
+  deleteInventoryItemGroup: (itemName: string) => void;
+  renameInventoryItemGroup: (oldName: string, newName: string) => void;
   addCertificateRequest: (requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
   addCertificateRequestComment: (requestId: string, comment: string) => void;
@@ -2047,48 +2028,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
 
-    const unassignedProject = projects.find(p => p.name === 'Unassigned');
-
     itemsData.forEach(item => {
-      const serialNumber = item['SERIAL NUMBER']?.toString().trim();
-      if (!serialNumber) return;
+        const serialNumber = item['SERIAL NUMBER']?.toString().trim();
+        if (!serialNumber) return;
 
-      const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+        const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
 
-      const parseExcelDate = (date: any): string => {
-        if (!date) return new Date().toISOString();
-        if (date instanceof Date && isValid(date)) {
-          return date.toISOString();
-        }
-        if (typeof date === 'string') {
-          const parsed = parse(date, 'yyyy-MM-dd', new Date());
-          if (isValid(parsed)) return parsed.toISOString();
-        }
-        return new Date().toISOString();
-      };
-      
-      const projectName = item['PROJECT']?.trim();
-      const project = projects.find(p => p.name.toLowerCase() === projectName?.toLowerCase());
-      
-      const itemData: Partial<InventoryItem> = {
-          name: item['ITEM NAME'],
-          serialNumber: serialNumber,
-          chestCrollNo: item['CHEST CROLL NO']?.toString() || null,
-          ariesId: item['ARIES ID']?.toString() || null,
-          inspectionDate: parseExcelDate(item['INSPECTION DATE']),
-          inspectionDueDate: parseExcelDate(item['INSPECTION DUE DATE']),
-          tpInspectionDueDate: parseExcelDate(item['TP INSPECTION DUE DATE']),
-          status: item['STATUS'] as InventoryItemStatus || 'In Store',
-          projectId: project?.id || unassignedProject?.id || projects[0]?.id,
-          lastUpdated: new Date().toISOString(),
-      };
-      
-      const itemId = existingItem ? existingItem.id : push(ref(rtdb)).key;
-      if (!itemId) return;
+        const parseExcelDate = (date: any): string | undefined => {
+            if (!date) return undefined;
+            if (date instanceof Date && isValid(date)) {
+                return date.toISOString();
+            }
+            if (typeof date === 'string') {
+                const parsed = parse(date, 'yyyy-MM-dd', new Date());
+                if (isValid(parsed)) return parsed.toISOString();
+            }
+            return undefined;
+        };
+        
+        const projectName = item['PROJECT']?.trim();
+        const project = projects.find(p => p.name.toLowerCase() === projectName?.toLowerCase());
+        
+        const itemData: Partial<InventoryItem> = {
+            name: item['ITEM NAME'] || null,
+            serialNumber: serialNumber || null,
+            chestCrollNo: item['CHEST CROLL NO']?.toString() || null,
+            ariesId: item['ARIES ID']?.toString() || null,
+            inspectionDate: parseExcelDate(item['INSPECTION DATE']),
+            inspectionDueDate: parseExcelDate(item['INSPECTION DUE DATE']),
+            tpInspectionDueDate: parseExcelDate(item['TP INSPECTION DUE DATE']),
+            status: item['STATUS'] || null,
+            projectId: project?.id || null,
+            lastUpdated: new Date().toISOString(),
+        };
+        
+        const itemId = existingItem ? existingItem.id : push(ref(rtdb)).key;
+        if (!itemId) return;
 
-      const finalData = existingItem ? { ...existingItem, ...itemData } : itemData;
-      updates[`inventoryItems/${itemId}`] = finalData;
-      importedCount++;
+        const finalData = existingItem ? { ...existingItem, ...itemData } : itemData;
+        
+        // Ensure no undefined values are being sent to Firebase
+        Object.keys(finalData).forEach(key => {
+            if (finalData[key as keyof typeof finalData] === undefined) {
+                finalData[key as keyof typeof finalData] = null;
+            }
+        });
+
+        updates[`inventoryItems/${itemId}`] = finalData;
+        importedCount++;
     });
 
     if (Object.keys(updates).length > 0) {
@@ -2097,7 +2084,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     
     return importedCount;
-  }, [user, inventoryItems, projects, addActivityLog]);
+}, [user, inventoryItems, projects, addActivityLog]);
 
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
@@ -2109,6 +2096,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const item = inventoryItems.find(i => i.id === itemId);
     remove(ref(rtdb, `inventoryItems/${itemId}`));
     if(user && item) addActivityLog(user.id, 'Inventory Item Deleted', item.name);
+  }, [user, inventoryItems, addActivityLog]);
+
+  const deleteInventoryItemGroup = useCallback((itemName: string) => {
+    if (!user || user.role !== 'Admin') return;
+    const updates: { [key: string]: null } = {};
+    const itemsToDelete = inventoryItems.filter(item => item.name === itemName);
+    itemsToDelete.forEach(item => {
+        updates[`inventoryItems/${item.id}`] = null;
+    });
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Item Group Deleted', `Deleted all items named: ${itemName}`);
+  }, [user, inventoryItems, addActivityLog]);
+
+  const renameInventoryItemGroup = useCallback((oldName: string, newName: string) => {
+    if (!user || user.role !== 'Admin') return;
+    const updates: { [key: string]: any } = {};
+    const itemsToRename = inventoryItems.filter(item => item.name === oldName);
+    itemsToRename.forEach(item => {
+        updates[`inventoryItems/${item.id}/name`] = newName;
+    });
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
   
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
@@ -2610,7 +2619,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addPpeHistoryFromExcel, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
     ...computedValue,
   };
 
@@ -2624,6 +2633,8 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
 
 
 
