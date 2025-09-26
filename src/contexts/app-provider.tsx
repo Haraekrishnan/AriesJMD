@@ -1796,7 +1796,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         remarks: requestData.remarks,
         attachmentUrl: requestData.attachmentUrl,
         joiningDate: employee?.joiningDate ? format(parseISO(employee.joiningDate), 'dd MMM, yyyy') : 'N/A',
-        rejoiningDate: employee?.leaveHistory?.find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(employee.leaveHistory.find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
+        rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
         eligibility: requestData.eligibility,
@@ -2624,6 +2624,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 
