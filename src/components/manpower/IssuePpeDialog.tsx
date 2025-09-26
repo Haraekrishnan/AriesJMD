@@ -42,10 +42,10 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
           <DialogTitle>PPE Issuance Status</DialogTitle>
           <DialogDescription>A list of active employees with no recorded PPE history.</DialogDescription>
         </DialogHeader>
-        <div className="grid md:grid-cols-2 gap-8 flex-1 overflow-hidden p-1">
+        <div className="grid md:grid-cols-2 gap-8 p-1">
             <div className="space-y-2 flex flex-col">
                 <Label className="font-semibold">Employees Missing Coverall History ({missingCoverall.length})</Label>
-                <ScrollArea className="flex-1 rounded-md border">
+                <ScrollArea className="flex-1 rounded-md border h-96">
                    <div className="p-2 space-y-1">
                         {missingCoverall.length > 0 ? (
                             missingCoverall.map(p => (
@@ -59,7 +59,7 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
             </div>
              <div className="space-y-2 flex flex-col">
                 <Label className="font-semibold">Employees Missing Safety Shoe History ({missingShoes.length})</Label>
-                <ScrollArea className="flex-1 rounded-md border">
+                <ScrollArea className="flex-1 rounded-md border h-96">
                    <div className="p-2 space-y-1">
                        {missingShoes.length > 0 ? (
                             missingShoes.map(p => (
