@@ -83,10 +83,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
 
   const eligibility = useMemo(() => {
     if (!manpowerId || !ppeType) return null;
-    if (isNewEmployee && requestType === 'New') {
-        return { eligible: true, reason: 'Eligible for initial issue as a new employee.' };
-    }
-    
+
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile) return null;
 
@@ -94,30 +91,44 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     const lastIssue = historyArray
       .filter(h => h && h.ppeType === ppeType)
       .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
-    
-    // Prioritize last issue date. If no issue history, fall back to joining date.
-    const baselineDateStr = lastIssue?.issueDate || profile.joiningDate;
-    
-    if (!baselineDateStr) {
-      return { eligible: false, reason: 'Eligibility cannot be determined. Joining date is missing and no prior issue history found.' };
+
+    if (requestType === 'New') {
+        if (!lastIssue) {
+            return { eligible: true, reason: 'Eligible for new issue as there is no prior record.' };
+        } else {
+             const baselineDate = parseISO(lastIssue.issueDate);
+             const nextEligibleDate = addYears(baselineDate, 1);
+             if (isAfter(new Date(), nextEligibleDate)) {
+                 return { eligible: true, reason: 'Eligible for new issue. Last issue was over a year ago.' };
+             }
+             return { eligible: false, reason: `Not eligible for new issue. Last issue was on ${format(baselineDate, 'dd MMM, yyyy')}.` };
+        }
     }
 
-    const baselineDate = parseISO(baselineDateStr);
-    const nextEligibleDate = addYears(baselineDate, 1);
-    const referencePoint = lastIssue ? 'last issue' : 'joining date';
-
-    if (isAfter(new Date(), nextEligibleDate)) {
-        return { eligible: true, reason: `Eligible for replacement. The ${referencePoint} was ${format(baselineDate, 'dd MMM, yyyy')}.` };
-    } else {
-        return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+    if (requestType === 'Replacement') {
+        if (!lastIssue) {
+            return { eligible: false, reason: 'No prior issue record found to be replaced. Please select "New" request type.' };
+        }
+        const baselineDate = parseISO(lastIssue.issueDate);
+        const nextEligibleDate = addYears(baselineDate, 1);
+        if (isAfter(new Date(), nextEligibleDate)) {
+            return { eligible: true, reason: `Eligible for replacement. Last issue was on ${format(baselineDate, 'dd MMM, yyyy')}.` };
+        } else {
+            return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+        }
     }
-  }, [manpowerId, ppeType, isNewEmployee, requestType, manpowerProfiles]);
+    
+    return null;
+
+  }, [manpowerId, ppeType, requestType, manpowerProfiles]);
   
   const showJustificationField = useMemo(() => {
     if (eligibility?.eligible === false) return true;
+    if (!isNewEmployee && requestType === 'New' && eligibility?.eligible) {
+        // If it's a "New" request for an existing employee, but they ARE eligible (e.g. >1yr since last issue), justification is not needed
+        return false;
+    }
     if (!isNewEmployee && requestType === 'New') return true;
-    if (requestType === 'Replacement' && eligibility?.eligible === false) return true;
-    if (requestType === 'Replacement' && eligibility?.eligible === true) return false; // This is the fix
     return false;
   }, [eligibility, isNewEmployee, requestType]);
 
