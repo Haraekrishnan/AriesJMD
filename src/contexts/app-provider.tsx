@@ -1633,15 +1633,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deletePpeHistoryRecord = useCallback(async (manpowerId: string, recordId: string) => {
     if (!user || user.role !== 'Admin') return;
-    const historyRef = ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`);
-    const snapshot = await get(historyRef);
-    if (snapshot.exists()) {
-        const currentHistory = snapshot.val();
-        if (typeof currentHistory === 'object' && currentHistory !== null) {
-            delete currentHistory[recordId];
-            await set(historyRef, currentHistory);
-        }
-    }
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
   }, [user]);
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
@@ -2055,6 +2047,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
 
+    const unassignedProject = projects.find(p => p.name === 'Unassigned');
+
     itemsData.forEach(item => {
       const serialNumber = item['SERIAL NUMBER']?.toString().trim();
       if (!serialNumber) return;
@@ -2073,6 +2067,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return new Date().toISOString();
       };
       
+      const projectName = item['PROJECT']?.trim();
+      const project = projects.find(p => p.name.toLowerCase() === projectName?.toLowerCase());
+      
       const itemData: Partial<InventoryItem> = {
           name: item['ITEM NAME'],
           serialNumber: serialNumber,
@@ -2082,7 +2079,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           inspectionDueDate: parseExcelDate(item['INSPECTION DUE DATE']),
           tpInspectionDueDate: parseExcelDate(item['TP INSPECTION DUE DATE']),
           status: item['STATUS'] as InventoryItemStatus || 'In Store',
-          projectId: projects.find(p => p.name === item['PROJECT'])?.id || projects[0].id,
+          projectId: project?.id || unassignedProject?.id || projects[0]?.id,
           lastUpdated: new Date().toISOString(),
       };
       
@@ -2627,5 +2624,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 

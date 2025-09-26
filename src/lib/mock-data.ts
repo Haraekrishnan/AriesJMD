@@ -111,6 +111,7 @@ export const PROJECTS: Project[] = [
     { id: 'proj-5', name: 'SOLAR' },
     { id: 'proj-6', name: 'Head Office' },
     { id: 'proj-7', name: 'Pass Section' },
+    { id: 'proj-8', name: 'Unassigned' },
 ];
 
 export const USERS: User[] = [
@@ -316,7 +317,7 @@ export const INVENTORY_ITEMS: InventoryItem[] = [
     { id: 'inv-3', name: 'Foot Loop', serialNumber: 'FL-001', status: 'In Use', inspectionDate: sub(new Date(), { days: 10 }).toISOString(), inspectionDueDate: add(new Date(), { months: 5, days: 20 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 11, days: 20 }).toISOString(), projectId: 'proj-2', lastUpdated: new Date().toISOString() },
     { id: 'inv-4', name: 'Grinder', serialNumber: 'GR-001', status: 'Damaged', inspectionDate: sub(new Date(), { years: 1 }).toISOString(), inspectionDueDate: sub(new Date(), { months: 6 }).toISOString(), tpInspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), projectId: 'proj-3', lastUpdated: new Date().toISOString() },
     { id: 'inv-5', name: 'Harness', serialNumber: 'HN-003', chestCrollNo: 'CCN-B1', ariesId: 'ARIES-003', status: 'In Use', inspectionDate: new Date().toISOString(), inspectionDueDate: add(new Date(), { days: 25 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 6, days: 25 }).toISOString(), projectId: 'proj-4', lastUpdated: new Date().toISOString() },
-    { id: 'inv-6', name: 'Harness', serialNumber: 'HN-004', chestCrollNo: 'CCN-B2', ariesId: 'ARIES-004', status: 'Expired', inspectionDate: sub(new Date(), { months: 7 }).toISOString(), inspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), tpInspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), projectId: 'proj-1', lastUpdated: new Date().toISOString() },
+    { id: 'inv-6', name: 'Harness', serialNumber: 'HN-004', chestCrollNo: 'CCN-B2', ariesId: 'ARIES-004', status: 'Expired', inspectionDate: sub(new Date(), { months: 7 }).toISOString(), inspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), tpInspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), projectId: 'proj-8', lastUpdated: new Date().toISOString() },
 ];
 
 export const CERTIFICATE_REQUESTS: CertificateRequest[] = [
@@ -510,3 +511,4 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const IGP_OGP_RECORDS: IgpOgpRecord[] = [];
+
