@@ -89,6 +89,15 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         return '';
     };
 
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
+        try {
+            return format(new Date(dateString), 'dd-MM-yyyy');
+        } catch (error) {
+            return 'Invalid Date';
+        }
+    };
+
     if (items.length === 0) {
         return (
             <div className="flex items-center justify-center h-48 border-dashed border-2 rounded-lg">
@@ -155,6 +164,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                         <TableRow>
                                             <TableHead>Serial No.</TableHead>
                                             <TableHead>Aries ID</TableHead>
+                                            {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No</TableHead>}
                                             <TableHead>Status</TableHead>
                                             <TableHead>Location</TableHead>
                                             <TableHead>Insp. Due</TableHead>
@@ -167,10 +177,11 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                             <TableRow key={item.id}>
                                                 <TableCell>{item.serialNumber}</TableCell>
                                                 <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                                                {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
                                                 <TableCell><Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
                                                 <TableCell>{getProjectName(item.projectId)}</TableCell>
-                                                <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{item.inspectionDueDate ? format(new Date(item.inspectionDueDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                                                <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                                <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
+                                                <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
                                                 <TableCell className="text-right">
                                                         <AlertDialog>
                                                             <DropdownMenu>
