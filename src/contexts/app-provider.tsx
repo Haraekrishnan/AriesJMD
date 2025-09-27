@@ -1664,7 +1664,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const commentText = "The item list for this request has been updated by the store manager.";
+    const commentText = `The item list for this request has been updated by the ${user.role}.`;
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { id: newCommentRef.key, userId: user.id, text: commentText, date: new Date().toISOString() };
     
     update(ref(rtdb), updates);
@@ -2055,8 +2055,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
 
-        const parseExcelDate = (date: any): string | undefined => {
-            if (!date) return undefined;
+        const parseExcelDate = (date: any): string | null => {
+            if (!date) return null;
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
             }
@@ -2064,7 +2064,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const parsed = parse(date, 'yyyy-MM-dd', new Date());
                 if (isValid(parsed)) return parsed.toISOString();
             }
-            return undefined;
+            return null;
         };
         
         const projectName = item['PROJECT']?.trim();
@@ -2653,6 +2653,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 

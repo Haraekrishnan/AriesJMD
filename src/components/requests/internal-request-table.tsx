@@ -22,6 +22,7 @@ import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 interface InternalRequestTableProps {
@@ -208,28 +209,31 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
             {selectedRequest && isEditing && (
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                    <DialogContent className="sm:max-w-2xl">
+                    <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90vh]">
                         <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
-                        <form onSubmit={form.handleSubmit(onEditSubmit)}>
-                            <div className="space-y-4 p-4 max-h-[60vh] overflow-y-auto">
-                                <div className="grid grid-cols-12 gap-2 items-center px-2">
-                                    <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
-                                    <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
-                                    <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
-                                    <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
-                                    <div className="col-span-1"></div>
+                        <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 overflow-hidden flex flex-col">
+                            <ScrollArea className="flex-1 pr-2">
+                                <div className="space-y-4 p-4 ">
+                                    <div className="grid grid-cols-12 gap-2 items-center px-2">
+                                        <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
+                                        <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
+                                        <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
+                                        <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
+                                        <div className="col-span-1"></div>
+                                    </div>
+                                    {fields.map((field, index) => (
+                                    <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                                        <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
+                                        <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
+                                        <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
+                                        <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
+                                        <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
+                                    </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, unit: 'pcs', remarks: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Item</Button>
                                 </div>
-                                {fields.map((field, index) => (
-                                <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                                    <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
-                                    <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
-                                    <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
-                                    <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
-                                    <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
-                                </div>
-                                ))}
-                            </div>
-                            <DialogFooter>
+                            </ScrollArea>
+                            <DialogFooter className="mt-4 pt-4 border-t">
                             <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
                             <Button type="submit">Save Changes</Button>
                             </DialogFooter>
@@ -288,3 +292,4 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+
