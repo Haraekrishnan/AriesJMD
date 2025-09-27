@@ -9,6 +9,7 @@ import { Button } from '../ui/button';
 import { FileDown } from 'lucide-react';
 import { generateScheduleExcel } from './generateScheduleExcel';
 import { generateSchedulePdf } from './generateSchedulePdf';
+import type { JobSchedule } from '@/lib/types';
 
 interface JobScheduleTableProps {
   selectedDate: string; // YYYY-MM-DD
@@ -23,7 +24,8 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
     return (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') && user?.projectId === projId;
   };
   
-  const handleExportExcel = (schedule: any, projectName: string) => {
+  const handleExportExcel = (schedule: JobSchedule | undefined, projectName: string) => {
+    if (!schedule) return;
     const scheduleWithNames = {
         ...schedule,
         items: schedule.items.map((item: any) => ({
@@ -35,7 +37,8 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
     generateScheduleExcel(scheduleWithNames, projectName, new Date(selectedDate));
   };
   
-  const handleExportPdf = (schedule: any, projectName: string) => {
+  const handleExportPdf = (schedule: JobSchedule | undefined, projectName: string) => {
+    if (!schedule) return;
     const scheduleWithNames = {
         ...schedule,
         items: schedule.items.map((item: any) => ({
@@ -62,7 +65,7 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
             <div key={project.id}>
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-lg font-semibold">{project.name}</h3>
-                    {canEdit && scheduleForProject && (
+                    {scheduleForProject && (
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleExportExcel(scheduleForProject, project.name)}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
                             <Button variant="outline" size="sm" onClick={() => handleExportPdf(scheduleForProject, project.name)}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
@@ -98,12 +101,12 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
     <div className="space-y-6">
       {projectsWithSchedules.map(project => {
         const scheduleForProject = schedulesToShow.find(s => s.projectId === project.id);
-        const canEdit = user?.role === 'Admin' || isSupervisorForProject(project.id);
+        const isEditor = user?.role === 'Admin' || isSupervisorForProject(project.id);
         return (
           <div key={project.id}>
             <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold">{project.name}</h3>
-                 {canEdit && scheduleForProject && (
+                 {scheduleForProject && (
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleExportExcel(scheduleForProject, project.name)}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
                         <Button variant="outline" size="sm" onClick={() => handleExportPdf(scheduleForProject, project.name)}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
@@ -111,7 +114,16 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
                 )}
             </div>
             <div className="border rounded-lg">
-              <ReadOnlyJobSchedule schedule={scheduleForProject} />
+              {isEditor ? (
+                 <EditableJobSchedule
+                    schedule={scheduleForProject}
+                    projectId={project.id}
+                    selectedDate={selectedDate}
+                    globallyAssignedIds={globallyAssignedIds}
+                />
+              ) : (
+                <ReadOnlyJobSchedule schedule={scheduleForProject} />
+              )}
             </div>
           </div>
         );
