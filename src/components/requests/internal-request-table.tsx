@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -211,7 +210,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
                     <DialogContent className="sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
                         <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
-                        <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 overflow-hidden flex flex-col">
+                        <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 flex flex-col overflow-hidden">
                             <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2">
                                 <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
