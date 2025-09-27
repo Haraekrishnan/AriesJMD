@@ -209,7 +209,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
             {selectedRequest && isEditing && (
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                    <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90vh]">
+                    <DialogContent className="sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
                         <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
                         <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 overflow-hidden flex flex-col">
                             <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2">

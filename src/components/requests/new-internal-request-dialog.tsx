@@ -65,7 +65,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>New Internal Store Request</DialogTitle>
           <DialogDescription>List the items you need from the internal store.</DialogDescription>
