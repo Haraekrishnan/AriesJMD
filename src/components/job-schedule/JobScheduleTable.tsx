@@ -28,8 +28,8 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
         return <p className="text-center text-muted-foreground p-8">Project not found.</p>;
     }
     const scheduleForProject = jobSchedules.find(s => s.date === selectedDate && s.projectId === projectId);
-    const canEdit = isSupervisorForProject(project.id);
-    const canCreate = can.manage_job_schedule && !scheduleForProject;
+    const canEdit = user?.role === 'Admin' || isSupervisorForProject(project.id);
+    const canCreate = (can.manage_job_schedule || user?.role === 'Admin') && !scheduleForProject;
 
     return (
         <div className="space-y-6">
