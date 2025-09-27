@@ -31,10 +31,10 @@ export const ROLES: RoleDefinition[] = [
     permissions: [
       'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',
       'manage_vehicles', 'manage_manpower', 'manage_manpower_list', 'manage_accommodation',
-      'approve_store_requests', 'manage_inventory', 'add_new_equipment',
+      'approve_store_requests', 'manage_inventory', 
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
-      'log_manpower', 'manage_job_schedule', 'manage_igp_ogp',
+      'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
       'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests'
     ],
     isEditable: false,

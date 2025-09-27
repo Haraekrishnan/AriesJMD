@@ -211,6 +211,7 @@ export const ALL_PERMISSIONS = [
   'manage_accommodation',
   'log_manpower',
   'manage_job_schedule',
+  'prepare_master_schedule',
   'manage_ppe_stock',
   'view_ppe_requests',
   'manage_ppe_request',
