@@ -40,9 +40,10 @@ interface EditableJobScheduleProps {
   schedule?: JobSchedule;
   projectId: string;
   selectedDate: string;
+  globallyAssignedIds: Set<string>;
 }
 
-export default function EditableJobSchedule({ schedule, projectId, selectedDate }: EditableJobScheduleProps) {
+export default function EditableJobSchedule({ schedule, projectId, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
   const { user, manpowerProfiles, vehicles, saveJobSchedule } = useAppContext();
   
   const form = useForm<ScheduleFormValues>({
@@ -68,7 +69,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
     [manpowerProfiles]
   );
 
-  const assignedManpowerIds = useMemo(() => {
+  const currentlyAssignedManpowerIdsInThisForm = useMemo(() => {
     return new Set(form.getValues().items.flatMap(item => item.manpowerIds));
   }, [form.watch('items')]);
   
@@ -132,12 +133,15 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
                             <CommandEmpty>No results found.</CommandEmpty>
                             <CommandGroup>
                               {manpowerOptions.map(option => {
-                                const isSelected = controllerField.value?.includes(option.value);
-                                const isDisabled = assignedManpowerIds.has(option.value) && !isSelected;
+                                const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
+                                const isAssignedGlobally = globallyAssignedIds.has(option.value);
+                                const isDisabled = isAssignedGlobally && !isSelectedInCurrentItem;
+
                                 return (
                                 <CommandItem key={option.value} onSelect={() => {
+                                    if (isDisabled) return;
                                     const selected = new Set(controllerField.value);
-                                    if (isSelected) {
+                                    if (isSelectedInCurrentItem) {
                                       selected.delete(option.value);
                                     } else {
                                       selected.add(option.value);
@@ -147,7 +151,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate 
                                 disabled={isDisabled}
                                 className={cn(isDisabled && 'opacity-50 cursor-not-allowed')}
                                 >
-                                  <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
+                                  <Check className={cn("mr-2 h-4 w-4", isSelectedInCurrentItem ? "opacity-100" : "opacity-0")} />
                                   {option.label}
                                 </CommandItem>
                                 )

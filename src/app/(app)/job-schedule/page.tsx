@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -10,12 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
 import JobScheduleTable from '@/components/job-schedule/JobScheduleTable';
-import { generateScheduleExcel } from '@/components/job-schedule/generateScheduleExcel';
-import { generateSchedulePdf } from '@/components/job-schedule/generateSchedulePdf';
-import type { JobSchedule } from '@/lib/types';
 
 export default function JobSchedulePage() {
-    const { user, projects, jobSchedules, manpowerProfiles, vehicles, can } = useAppContext();
+    const { user, projects, jobSchedules, can } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
 
     const visibleProjects = useMemo(() => {
@@ -28,52 +26,12 @@ export default function JobSchedulePage() {
 
     const [selectedProjectId, setSelectedProjectId] = useState<string>(visibleProjects[0]?.id || 'all');
     
-    const masterSchedule = useMemo(() => {
+    const assignedManpowerIdsForDate = useMemo(() => {
         const schedulesForDate = jobSchedules.filter(s => s.date === format(selectedDate, 'yyyy-MM-dd'));
-        const combinedItems: JobSchedule['items'] = [];
-        schedulesForDate.forEach(schedule => {
-            const projectName = projects.find(p => p.id === schedule.projectId)?.name || 'Unknown Project';
-            schedule.items.forEach(item => {
-                combinedItems.push({
-                    ...item,
-                    projectVesselName: `${projectName} / ${item.projectVesselName || ''}`
-                });
-            });
-        });
-         return {
-            id: `master_${format(selectedDate, 'yyyy-MM-dd')}`,
-            date: format(selectedDate, 'yyyy-MM-dd'),
-            projectId: 'all',
-            supervisorId: user!.id,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            items: combinedItems,
-        };
-    }, [jobSchedules, selectedDate, projects, user]);
+        const allIds = schedulesForDate.flatMap(s => s.items.flatMap(i => i.manpowerIds));
+        return new Set(allIds);
+    }, [jobSchedules, selectedDate]);
 
-    const handleExportExcel = () => {
-        const scheduleWithNames = {
-            ...masterSchedule,
-            items: masterSchedule.items.map(item => ({
-                ...item,
-                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id),
-                vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
-            }))
-        };
-        generateScheduleExcel(scheduleWithNames, 'Master Schedule', selectedDate);
-    };
-
-    const handleExportPdf = () => {
-       const scheduleWithNames = {
-            ...masterSchedule,
-            items: masterSchedule.items.map(item => ({
-                ...item,
-                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id),
-                vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
-            }))
-        };
-        generateSchedulePdf(scheduleWithNames, 'Master Schedule', selectedDate);
-    };
 
     if (!can.manage_job_schedule) {
         return (
@@ -96,12 +54,6 @@ export default function JobSchedulePage() {
                     <h1 className="text-3xl font-bold tracking-tight">Job Schedule</h1>
                     <p className="text-muted-foreground">Plan and view the daily job schedule.</p>
                 </div>
-                 {can.prepare_master_schedule && (
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={handleExportExcel}><FileDown className="mr-2 h-4 w-4" /> Prepare Full Schedule (Excel)</Button>
-                        <Button variant="outline" onClick={handleExportPdf}><FileDown className="mr-2 h-4 w-4" /> Prepare Full Schedule (PDF)</Button>
-                    </div>
-                )}
             </div>
 
             <Card>
@@ -136,6 +88,7 @@ export default function JobSchedulePage() {
                     <JobScheduleTable 
                         selectedDate={format(selectedDate, 'yyyy-MM-dd')} 
                         projectId={selectedProjectId}
+                        globallyAssignedIds={assignedManpowerIdsForDate}
                     />
                 </CardContent>
             </Card>
