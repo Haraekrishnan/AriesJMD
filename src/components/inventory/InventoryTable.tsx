@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -16,6 +17,7 @@ import { cn } from '@/lib/utils';
 import RequestCertificateDialog from './RequestCertificateDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import RenameItemGroupDialog from './RenameItemGroupDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -108,16 +110,27 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                 </div>
                             </AccordionTrigger>
                              {user?.role === 'Admin' && (
-                                <div className="flex items-center gap-2 pl-4">
-                                    <Button variant="ghost" size="sm" onClick={() => handleRenameGroupClick(itemName)}>
-                                        <Pencil className="mr-2 h-4 w-4" /> Edit Name
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="destructive" size="sm">
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Group
+                                <TooltipProvider>
+                                <div className="flex items-center gap-1 pl-4">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRenameGroupClick(itemName)}>
+                                                <Pencil className="h-4 w-4" />
                                             </Button>
-                                        </AlertDialogTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Edit Group Name</p></TooltipContent>
+                                    </Tooltip>
+                                    <AlertDialog>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Delete Entire Group</p></TooltipContent>
+                                        </Tooltip>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -132,6 +145,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 </div>
+                                </TooltipProvider>
                             )}
                         </div>
                         <AccordionContent>

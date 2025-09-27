@@ -42,10 +42,7 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
     const itemNames = Array.from(new Set(inventoryItems.map(item => item.name)));
     
     useEffect(() => {
-        const handler = setTimeout(() => {
-            onApplyFilters({ name, status, projectId, search });
-        }, 300); // Debounce search input
-        return () => clearTimeout(handler);
+        onApplyFilters({ name, status, projectId, search });
     }, [name, status, projectId, search, onApplyFilters]);
 
 
@@ -59,7 +56,7 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
     return (
         <div className="flex flex-wrap gap-4 items-center">
             <Input 
-                placeholder="Search by serial or aries id..." 
+                placeholder="Search by serial, aries id, or croll no..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 className="w-full md:w-auto"
