@@ -1,10 +1,12 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import ReadOnlyJobSchedule from './ReadOnlyJobSchedule';
 import EditableJobSchedule from './EditableJobSchedule';
+import { Button } from '../ui/button';
+import { PlusCircle } from 'lucide-react';
 
 interface JobScheduleTableProps {
   selectedDate: string; // YYYY-MM-DD
@@ -13,6 +15,7 @@ interface JobScheduleTableProps {
 
 export default function JobScheduleTable({ selectedDate, projectId }: JobScheduleTableProps) {
   const { user, projects, jobSchedules, can } = useAppContext();
+  const [isCreating, setIsCreating] = useState(false);
 
   const isSupervisorForProject = (projId: string) => {
     return (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') && user?.projectId === projId;
@@ -26,13 +29,14 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
     }
     const scheduleForProject = jobSchedules.find(s => s.date === selectedDate && s.projectId === projectId);
     const canEdit = isSupervisorForProject(project.id);
+    const canCreate = can.manage_job_schedule && !scheduleForProject;
 
     return (
         <div className="space-y-6">
             <div key={project.id}>
                 <h3 className="text-lg font-semibold mb-2">{project.name}</h3>
                 <div className="border rounded-lg">
-                    {canEdit ? (
+                    {canEdit || isCreating ? (
                         <EditableJobSchedule
                             schedule={scheduleForProject}
                             projectId={project.id}
@@ -40,6 +44,15 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
                         />
                     ) : (
                         <ReadOnlyJobSchedule schedule={scheduleForProject} />
+                    )}
+
+                    {!isCreating && canCreate && !scheduleForProject && (
+                        <div className="p-4 text-center border-t">
+                            <Button onClick={() => setIsCreating(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Schedule
+                            </Button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -51,7 +64,7 @@ export default function JobScheduleTable({ selectedDate, projectId }: JobSchedul
   const schedulesToShow = jobSchedules.filter(s => s.date === selectedDate);
   const projectsWithSchedules = projects.filter(p => schedulesToShow.some(s => s.projectId === p.id));
   
-  if (projectsWithSchedules.length === 0) {
+  if (projectsWithSchedules.length === 0 && !isCreating) {
       return <p className="text-center text-muted-foreground p-8">No schedules found for this date.</p>;
   }
 
