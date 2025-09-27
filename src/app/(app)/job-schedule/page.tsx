@@ -30,7 +30,7 @@ export default function JobSchedulePage() {
     
     const assignedManpowerIdsForDate = useMemo(() => {
         const schedulesForDate = jobSchedules.filter(s => s.date === format(selectedDate, 'yyyy-MM-dd'));
-        const allIds = schedulesForDate.flatMap(s => s.items.flatMap(i => i.manpowerIds));
+        const allIds = schedulesForDate.flatMap(s => (s.items || []).flatMap(i => i.manpowerIds));
         return new Set(allIds);
     }, [jobSchedules, selectedDate]);
     
@@ -39,6 +39,7 @@ export default function JobSchedulePage() {
         if (schedulesForDate.length === 0) return;
 
         const allItems = schedulesForDate.flatMap(schedule => {
+            if (!schedule.items) return [];
             const projectName = projects.find(p => p.id === schedule.projectId)?.name || schedule.projectId;
             return schedule.items.map(item => ({
                 ...item,
