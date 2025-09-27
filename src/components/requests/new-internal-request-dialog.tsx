@@ -70,13 +70,16 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
           <DialogDescription>List the items you need from the internal store.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2">
+          {/* Static Header for the list */}
+          <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2 shrink-0">
             <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
             <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
             <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
             <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
             <div className="col-span-1"></div>
           </div>
+
+          {/* Scrollable Area for the items */}
           <ScrollArea className="flex-1 px-4">
             <div className="space-y-4">
               {fields.map((field, index) => (
@@ -105,14 +108,17 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
               ))}
             </div>
           </ScrollArea>
-           <div className="px-4 pt-4">
+           
+           {/* Static Footer with buttons */}
+          <div className="px-4 pt-4 shrink-0">
                 <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Item
                 </Button>
                 {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
-            </div>
-          <DialogFooter className="pt-4 mt-auto border-t px-6 pb-6">
+          </div>
+
+          <DialogFooter className="pt-4 mt-auto border-t px-6 pb-6 shrink-0">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Submit Request</Button>
           </DialogFooter>

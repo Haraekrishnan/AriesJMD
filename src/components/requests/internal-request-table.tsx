@@ -76,7 +76,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
     
     const onEditSubmit = (data: EditRequestFormValues) => {
-        if (!selectedRequest) return;
+        if (!selectedRequest || !user) return;
         updateInternalRequestItems(selectedRequest.id, data.items);
         toast({ title: 'Request Updated', description: 'The item list has been updated and the requester notified.'});
         setIsEditing(false);
@@ -211,7 +211,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     <DialogContent className="sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
                         <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
                         <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                            <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2">
+                            <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2 shrink-0">
                                 <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
@@ -231,10 +231,10 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                     ))}
                                 </div>
                             </ScrollArea>
-                            <div className="px-4 pt-4">
+                            <div className="px-4 pt-4 shrink-0">
                                 <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, unit: 'pcs', remarks: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Item</Button>
                             </div>
-                            <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6">
+                            <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6 shrink-0">
                             <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
                             <Button type="submit">Save Changes</Button>
                             </DialogFooter>
