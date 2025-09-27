@@ -512,9 +512,9 @@ export type InventoryItem = {
   chestCrollNo?: string;
   status: InventoryItemStatus;
   projectId: string;
-  inspectionDate: string; // ISO string
-  inspectionDueDate: string; // ISO string
-  tpInspectionDueDate: string; // ISO string
+  inspectionDate?: string; // ISO string
+  inspectionDueDate?: string; // ISO string
+  tpInspectionDueDate?: string; // ISO string
   lastUpdated: string; // ISO string
   remarks?: string;
 };

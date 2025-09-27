@@ -11,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
 import JobScheduleTable from '@/components/job-schedule/JobScheduleTable';
+import { generateScheduleExcel } from '@/components/job-schedule/generateScheduleExcel';
+import { generateSchedulePdf } from '@/components/job-schedule/generateSchedulePdf';
 
 export default function JobSchedulePage() {
-    const { user, projects, jobSchedules, can } = useAppContext();
+    const { user, projects, jobSchedules, can, manpowerProfiles, vehicles } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
 
     const visibleProjects = useMemo(() => {
@@ -31,6 +33,37 @@ export default function JobSchedulePage() {
         const allIds = schedulesForDate.flatMap(s => s.items.flatMap(i => i.manpowerIds));
         return new Set(allIds);
     }, [jobSchedules, selectedDate]);
+    
+    const handleMasterExport = (type: 'excel' | 'pdf') => {
+        const schedulesForDate = jobSchedules.filter(s => s.date === format(selectedDate, 'yyyy-MM-dd'));
+        if (schedulesForDate.length === 0) return;
+
+        const allItems = schedulesForDate.flatMap(schedule => {
+            const projectName = projects.find(p => p.id === schedule.projectId)?.name || schedule.projectId;
+            return schedule.items.map(item => ({
+                ...item,
+                projectVesselName: item.projectVesselName || projectName,
+                manpowerIds: item.manpowerIds.map(id => manpowerProfiles.find(p => p.id === id)?.name || id),
+                vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
+            }));
+        });
+        
+        const masterSchedule = {
+            id: 'master',
+            date: format(selectedDate, 'yyyy-MM-dd'),
+            projectId: 'All Projects',
+            supervisorId: user?.id || '',
+            items: allItems,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (type === 'excel') {
+            generateScheduleExcel(masterSchedule, 'Master Schedule', selectedDate);
+        } else {
+            generateSchedulePdf(masterSchedule, 'Master Schedule', selectedDate);
+        }
+    };
 
 
     if (!can.manage_job_schedule) {
@@ -55,6 +88,19 @@ export default function JobSchedulePage() {
                     <p className="text-muted-foreground">Plan and view the daily job schedule.</p>
                 </div>
             </div>
+            
+            {can.prepare_master_schedule && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Master Schedule</CardTitle>
+                        <CardDescription>Prepare a combined schedule of all projects for the selected date.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center gap-4">
+                        <Button onClick={() => handleMasterExport('excel')}><FileDown className="mr-2 h-4 w-4"/> Export Master Excel</Button>
+                        <Button onClick={() => handleMasterExport('pdf')}><FileDown className="mr-2 h-4 w-4"/> Export Master PDF</Button>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">

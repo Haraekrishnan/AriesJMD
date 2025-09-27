@@ -24,9 +24,13 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
         item.remarks || ''
     ]);
 
+    // Group rows by Project/Vessel's name if it's a master schedule
+    const title = projectName === 'Master Schedule' ? 'MASTER JOB SCHEDULE' : 'Job Schedule';
+    const projectTitle = projectName === 'Master Schedule' ? `All Projects` : `Project: ${projectName}`;
+    
     const ws_data = [
-        ["ARIES", null, null, null, null, null, null, null, null, "Job Schedule"],
-        [`Project: ${projectName}`, null, null, null, null, null, null, null, null, `Date: ${format(selectedDate, 'dd-MM-yyyy')}`],
+        ["ARIES", null, null, null, null, null, null, null, null, title],
+        [projectTitle, null, null, null, null, null, null, null, null, `Date: ${format(selectedDate, 'dd-MM-yyyy')}`],
         [],
         header,
         ...body
@@ -50,7 +54,7 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
     
     if(!ws['J1']) ws['J1'] = {t:'s', v:''};
     ws['J1'].s = rightAlignStyle;
-    ws['J1'].v = "Job Schedule";
+    ws['J1'].v = title;
 
     // Set column widths for better readability
     ws['!cols'] = [
@@ -60,5 +64,9 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
 
     XLSX.utils.book_append_sheet(wb, ws, "Job Schedule");
     
-    XLSX.writeFile(wb, `JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`);
+    const fileName = projectName === 'Master Schedule' 
+        ? `Master_JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`
+        : `JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`;
+    
+    XLSX.writeFile(wb, fileName);
 }

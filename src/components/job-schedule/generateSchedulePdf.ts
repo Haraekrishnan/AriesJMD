@@ -7,6 +7,8 @@ import type { JobSchedule } from '@/lib/types';
 export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
+    const title = projectName === 'Master Schedule' ? 'MASTER JOB SCHEDULE' : 'Job Schedule';
+    const projectTitle = projectName === 'Master Schedule' ? `All Projects` : `Project: ${projectName}`;
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
@@ -14,14 +16,14 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "normal");
-    doc.text("Job Schedule", 280, 20, { align: 'right' });
+    doc.text(title, 280, 20, { align: 'right' });
     
     doc.setDrawColor(0, 0, 255); 
     doc.setLineWidth(0.5);
     doc.line(10, 23, 287, 23);
 
     doc.setFontSize(10);
-    doc.text(`Project: ${projectName}`, 14, 28);
+    doc.text(projectTitle, 14, 28);
     doc.text(`Date: ${format(selectedDate, 'dd-MM-yyyy')}`, 280, 28, { align: 'right' });
     
     doc.setDrawColor(0, 0, 0); 
@@ -48,8 +50,20 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
         startY: 35,
         theme: 'grid',
         headStyles: { fillColor: [220, 220, 220], textColor: 0, fontStyle: 'bold' },
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, cellPadding: 1.5, overflow: 'linebreak' },
+        columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 40 },
+            4: { cellWidth: 30 },
+            5: { cellWidth: 30 },
+            7: { cellWidth: 30 },
+            9: { cellWidth: 40 },
+        }
     });
     
-    doc.save(`JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
+    const fileName = projectName === 'Master Schedule' 
+        ? `Master_JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`
+        : `JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.pdf`;
+    
+    doc.save(fileName);
 }
