@@ -69,9 +69,10 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
     [manpowerProfiles]
   );
 
+  const watchedItems = form.watch('items');
   const currentlyAssignedManpowerIdsInThisForm = useMemo(() => {
-    return new Set(form.getValues().items.flatMap(item => item.manpowerIds));
-  }, [form.watch('items')]);
+    return new Set(watchedItems.flatMap(item => item.manpowerIds));
+  }, [watchedItems]);
   
   const vehicleOptions = useMemo(() => vehicles, [vehicles]);
 
@@ -135,7 +136,9 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
                               {manpowerOptions.map(option => {
                                 const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
                                 const isAssignedGlobally = globallyAssignedIds.has(option.value);
-                                const isDisabled = isAssignedGlobally && !isSelectedInCurrentItem;
+                                const isAssignedInThisForm = currentlyAssignedManpowerIdsInThisForm.has(option.value);
+
+                                const isDisabled = (isAssignedGlobally || isAssignedInThisForm) && !isSelectedInCurrentItem;
 
                                 return (
                                 <CommandItem key={option.value} onSelect={() => {
