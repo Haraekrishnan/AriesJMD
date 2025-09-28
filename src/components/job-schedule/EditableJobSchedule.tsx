@@ -1,3 +1,4 @@
+
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,12 +11,13 @@ import { Textarea } from '../ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Check, PlusCircle, Save, Trash2 } from 'lucide-react';
+import { Check, PlusCircle, Save, Trash2, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { format, subDays } from 'date-fns';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
@@ -44,7 +46,7 @@ interface EditableJobScheduleProps {
 }
 
 export default function EditableJobSchedule({ schedule, projectId, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
-  const { user, manpowerProfiles, vehicles, saveJobSchedule } = useAppContext();
+  const { user, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<ScheduleFormValues>({
@@ -58,7 +60,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
     form.reset({ items: schedule?.items ?? [] });
   }, [schedule, form]);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'items',
   });
@@ -89,6 +91,27 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
     });
     toast({ title: 'Schedule Saved', description: 'Your changes have been saved successfully.' });
   };
+  
+  const handleCopyYesterday = () => {
+    const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
+    const yesterdaySchedule = jobSchedules.find(s => s.date === yesterdayStr && s.projectId === projectId);
+    
+    if (yesterdaySchedule && yesterdaySchedule.items) {
+      const newItems = yesterdaySchedule.items.map(item => ({
+        ...item,
+        id: `item-${Date.now()}-${Math.random()}`, // Create a new unique ID for the new row
+      }));
+      replace(newItems);
+      toast({ title: "Yesterday's Schedule Copied", description: "Review and save the schedule for today." });
+    } else {
+      toast({ variant: 'destructive', title: 'No Schedule Found', description: "No schedule from yesterday to copy." });
+    }
+  };
+
+  const yesterdayScheduleExists = useMemo(() => {
+    const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
+    return jobSchedules.some(s => s.date === yesterdayStr && s.projectId === projectId);
+  }, [jobSchedules, selectedDate, projectId]);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -198,21 +221,32 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
           {fields.length === 0 && (
               <TableRow>
                   <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
-                      No schedule entries for this day. Click "Add Row" to begin.
+                      No schedule entries for this day. Click "Add Row" or copy from yesterday.
                   </TableCell>
               </TableRow>
           )}
         </TableBody>
       </Table>
-      <div className="flex justify-end p-4 border-t gap-2">
-           <Button type="button" variant="outline" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '', clientContact: '', vehicleId: 'none', remarks: '' })}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Row
-          </Button>
-          <Button type="submit">
-              <Save className="mr-2 h-4 w-4"/>
-              Save Schedule
-          </Button>
+      <div className="flex justify-between items-center p-4 border-t gap-2">
+           <div>
+            {fields.length === 0 && (
+              <Button type="button" variant="outline" onClick={handleCopyYesterday} disabled={!yesterdayScheduleExists}>
+                <Copy className="mr-2 h-4 w-4"/> Copy Yesterday's Schedule
+              </Button>
+            )}
+           </div>
+           <div className="flex gap-2">
+             <Button type="button" variant="outline" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '', clientContact: '', vehicleId: 'none', remarks: '' })}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Row
+            </Button>
+            <Button type="submit">
+                <Save className="mr-2 h-4 w-4"/>
+                Save Schedule
+            </Button>
+           </div>
       </div>
     </form>
   );
 }
+
+    
