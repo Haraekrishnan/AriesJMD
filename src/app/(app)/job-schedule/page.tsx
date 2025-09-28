@@ -16,7 +16,7 @@ import { generateSchedulePdf } from '@/components/job-schedule/generateScheduleP
 import { useToast } from '@/hooks/use-toast';
 
 export default function JobSchedulePage() {
-    const { user, projects, jobSchedules, can, manpowerProfiles, vehicles, lockJobSchedule, unlockJobSchedule } = useAppContext();
+    const { user, projects, jobSchedules, can, manpowerProfiles, vehicles, lockJobSchedule } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
     const { toast } = useToast();
 
@@ -32,7 +32,7 @@ export default function JobSchedulePage() {
     
     const assignedManpowerIdsForDate = useMemo(() => {
         const schedulesForDate = jobSchedules.filter(s => s.date === format(selectedDate, 'yyyy-MM-dd'));
-        const allIds = schedulesForDate.flatMap(s => (s.items || []).flatMap(i => i.manpowerIds));
+        const allIds = schedulesForDate.flatMap(s => s.items ? s.items.flatMap(i => i.manpowerIds) : []);
         return new Set(allIds);
     }, [jobSchedules, selectedDate]);
     
@@ -72,11 +72,6 @@ export default function JobSchedulePage() {
         toast({ title: 'Master Schedule Generated & Locked', description: 'Schedules for this date are now locked for editing.' });
     };
 
-    const handleUnlockSchedules = () => {
-        unlockJobSchedule(format(selectedDate, 'yyyy-MM-dd'));
-        toast({ title: 'Schedules Unlocked', description: 'Schedules for this date can now be edited.'});
-    };
-
     if (!can.manage_job_schedule) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
@@ -109,7 +104,6 @@ export default function JobSchedulePage() {
                     <CardContent className="flex items-center gap-4">
                         <Button onClick={() => handleMasterExport('excel')}><FileDown className="mr-2 h-4 w-4"/> Export Master Excel</Button>
                         <Button onClick={() => handleMasterExport('pdf')}><FileDown className="mr-2 h-4 w-4"/> Export Master PDF</Button>
-                        <Button variant="destructive" onClick={handleUnlockSchedules}><Unlock className="mr-2 h-4 w-4"/> Unlock Today's Schedules</Button>
                     </CardContent>
                 </Card>
             )}

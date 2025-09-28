@@ -683,12 +683,12 @@ export type Building = {
 export type JobScheduleItem = {
   id: string;
   manpowerIds: string[];
-  jobType?: string;
-  jobNo?: string;
-  projectVesselName?: string;
-  location?: string;
-  reportingTime?: string; // HH:mm
-  clientContact?: string;
+  jobType: string;
+  jobNo: string;
+  projectVesselName: string;
+  location: string;
+  reportingTime: string; // HH:mm
+  clientContact: string;
   vehicleId?: string;
   remarks?: string;
 };
