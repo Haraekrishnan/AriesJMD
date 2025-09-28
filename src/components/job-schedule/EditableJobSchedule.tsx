@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
@@ -46,7 +48,7 @@ interface EditableJobScheduleProps {
 }
 
 export default function EditableJobSchedule({ schedule, projectId, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
-  const { user, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule } = useAppContext();
+  const { user, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, users, projects } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<ScheduleFormValues>({
@@ -112,6 +114,21 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
     const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
     return jobSchedules.some(s => s.date === yesterdayStr && s.projectId === projectId);
   }, [jobSchedules, selectedDate, projectId]);
+  
+  const getAssignmentInfo = (manpowerId: string) => {
+    for (const s of jobSchedules) {
+      if (s.date === selectedDate) {
+        for (const item of s.items) {
+          if (item.manpowerIds.includes(manpowerId)) {
+            const supervisor = users.find(u => u.id === s.supervisorId);
+            const projectName = projects.find(p => p.id === s.projectId)?.name || 'Unknown Project';
+            return `Assigned to ${projectName} by ${supervisor?.name || 'Unknown'}`;
+          }
+        }
+      }
+    }
+    return 'Assigned elsewhere on this date.';
+  };
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -158,32 +175,45 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
                           <CommandList>
                             <CommandEmpty>No results found.</CommandEmpty>
                             <CommandGroup>
+                             <TooltipProvider>
                               {manpowerOptions.map(option => {
                                 const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
                                 const isAssignedGlobally = globallyAssignedIds.has(option.value);
                                 const isAssignedInThisForm = currentlyAssignedManpowerIdsInThisForm.has(option.value);
-
                                 const isDisabled = (isAssignedGlobally || isAssignedInThisForm) && !isSelectedInCurrentItem;
 
                                 return (
-                                <CommandItem key={option.value} onSelect={() => {
-                                    if (isDisabled) return;
-                                    const selected = new Set(controllerField.value);
-                                    if (isSelectedInCurrentItem) {
-                                      selected.delete(option.value);
-                                    } else {
-                                      selected.add(option.value);
-                                    }
-                                    controllerField.onChange(Array.from(selected));
-                                }}
-                                disabled={isDisabled}
-                                className={cn(isDisabled && 'opacity-50 cursor-not-allowed')}
-                                >
-                                  <Check className={cn("mr-2 h-4 w-4", isSelectedInCurrentItem ? "opacity-100" : "opacity-0")} />
-                                  {option.label}
-                                </CommandItem>
+                                <Tooltip key={option.value} open={isDisabled ? undefined : false}>
+                                    <TooltipTrigger asChild>
+                                        <div className={cn(isDisabled && 'cursor-not-allowed')}>
+                                        <CommandItem
+                                            onSelect={() => {
+                                                if (isDisabled) return;
+                                                const selected = new Set(controllerField.value);
+                                                if (isSelectedInCurrentItem) {
+                                                selected.delete(option.value);
+                                                } else {
+                                                selected.add(option.value);
+                                                }
+                                                controllerField.onChange(Array.from(selected));
+                                            }}
+                                            disabled={isDisabled}
+                                            className={cn('w-full', isDisabled && 'opacity-50')}
+                                        >
+                                            <Check className={cn("mr-2 h-4 w-4", isSelectedInCurrentItem ? "opacity-100" : "opacity-0")} />
+                                            {option.label}
+                                        </CommandItem>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {isDisabled && (
+                                        <TooltipContent>
+                                            <p>{getAssignmentInfo(option.value)}</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
                                 )
                               })}
+                              </TooltipProvider>
                             </CommandGroup>
                           </CommandList>
                         </Command>
