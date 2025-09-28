@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import ReadOnlyJobSchedule from './ReadOnlyJobSchedule';
 import EditableJobSchedule from './EditableJobSchedule';
 import { Button } from '../ui/button';
-import { FileDown } from 'lucide-react';
+import { FileDown, Lock } from 'lucide-react';
 import { generateScheduleExcel } from './generateScheduleExcel';
 import { generateSchedulePdf } from './generateSchedulePdf';
 import type { JobSchedule } from '@/lib/types';
@@ -49,7 +49,10 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
     };
     generateSchedulePdf(scheduleWithNames, projectName, new Date(selectedDate));
   };
-
+  
+  const isScheduleLocked = (schedule: JobSchedule | undefined) => {
+      return schedule?.isLocked || false;
+  };
 
   // If a specific project is selected, display only that one.
   if (projectId !== 'all') {
@@ -58,13 +61,17 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
         return <p className="text-center text-muted-foreground p-8">Project not found.</p>;
     }
     const scheduleForProject = jobSchedules.find(s => s.date === selectedDate && s.projectId === projectId);
-    const canEdit = user?.role === 'Admin' || isSupervisorForProject(project.id);
+    const canEdit = (user?.role === 'Admin' || isSupervisorForProject(project.id)) && !isScheduleLocked(scheduleForProject);
+    const canView = user?.role === 'Admin' || isSupervisorForProject(project.id) || can.prepare_master_schedule;
     
     return (
         <div className="space-y-6">
             <div key={project.id}>
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold">{project.name}</h3>
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        {project.name}
+                        {isScheduleLocked(scheduleForProject) && <Lock className="h-4 w-4 text-muted-foreground" title="Schedule is locked" />}
+                    </h3>
                     {scheduleForProject && (
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleExportExcel(scheduleForProject, project.name)}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
@@ -73,13 +80,17 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
                     )}
                 </div>
                 <div className="border rounded-lg">
-                    {canEdit ? (
-                        <EditableJobSchedule
-                            schedule={scheduleForProject}
-                            projectId={project.id}
-                            selectedDate={selectedDate}
-                            globallyAssignedIds={globallyAssignedIds}
-                        />
+                    {canEdit || canView ? (
+                        canEdit ? (
+                            <EditableJobSchedule
+                                schedule={scheduleForProject}
+                                projectId={project.id}
+                                selectedDate={selectedDate}
+                                globallyAssignedIds={globallyAssignedIds}
+                            />
+                        ) : (
+                            <ReadOnlyJobSchedule schedule={scheduleForProject} />
+                        )
                     ) : (
                         <ReadOnlyJobSchedule schedule={scheduleForProject} />
                     )}
@@ -91,21 +102,26 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
   
   // If 'All Projects' is selected, display all schedules for the date.
   const schedulesToShow = jobSchedules.filter(s => s.date === selectedDate);
-  const projectsWithSchedules = projects.filter(p => schedulesToShow.some(s => s.projectId === p.id));
   
-  if (projectsWithSchedules.length === 0) {
+  if (schedulesToShow.length === 0 && projectId === 'all') {
       return <p className="text-center text-muted-foreground p-8">No schedules found for this date.</p>;
   }
 
+  const projectsToDisplay = projectId === 'all' ? projects : projects.filter(p => p.id === projectId);
+
   return (
     <div className="space-y-6">
-      {projectsWithSchedules.map(project => {
+      {projectsToDisplay.map(project => {
         const scheduleForProject = schedulesToShow.find(s => s.projectId === project.id);
-        const isEditor = user?.role === 'Admin' || isSupervisorForProject(project.id);
+        const canEdit = (user?.role === 'Admin' || isSupervisorForProject(project.id)) && !isScheduleLocked(scheduleForProject);
+        
         return (
           <div key={project.id}>
             <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold">{project.name}</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    {project.name}
+                    {isScheduleLocked(scheduleForProject) && <Lock className="h-4 w-4 text-muted-foreground" title="Schedule is locked" />}
+                </h3>
                  {scheduleForProject && (
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleExportExcel(scheduleForProject, project.name)}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
@@ -114,7 +130,7 @@ export default function JobScheduleTable({ selectedDate, projectId, globallyAssi
                 )}
             </div>
             <div className="border rounded-lg">
-              {isEditor ? (
+              {canEdit ? (
                  <EditableJobSchedule
                     schedule={scheduleForProject}
                     projectId={project.id}

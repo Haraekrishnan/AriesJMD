@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, FileDown, AlertTriangle } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, AlertTriangle, Unlock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,10 +13,12 @@ import { addDays, format } from 'date-fns';
 import JobScheduleTable from '@/components/job-schedule/JobScheduleTable';
 import { generateScheduleExcel } from '@/components/job-schedule/generateScheduleExcel';
 import { generateSchedulePdf } from '@/components/job-schedule/generateSchedulePdf';
+import { useToast } from '@/hooks/use-toast';
 
 export default function JobSchedulePage() {
-    const { user, projects, jobSchedules, can, manpowerProfiles, vehicles } = useAppContext();
+    const { user, projects, jobSchedules, can, manpowerProfiles, vehicles, lockJobSchedule, unlockJobSchedule } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
+    const { toast } = useToast();
 
     const visibleProjects = useMemo(() => {
         if (!user) return [];
@@ -64,8 +66,16 @@ export default function JobSchedulePage() {
         } else {
             generateSchedulePdf(masterSchedule, 'Master Schedule', selectedDate);
         }
+        
+        // Lock the schedule for the day after generating master
+        lockJobSchedule(format(selectedDate, 'yyyy-MM-dd'));
+        toast({ title: 'Master Schedule Generated & Locked', description: 'Schedules for this date are now locked for editing.' });
     };
 
+    const handleUnlockSchedules = () => {
+        unlockJobSchedule(format(selectedDate, 'yyyy-MM-dd'));
+        toast({ title: 'Schedules Unlocked', description: 'Schedules for this date can now be edited.'});
+    };
 
     if (!can.manage_job_schedule) {
         return (
@@ -93,12 +103,13 @@ export default function JobSchedulePage() {
             {can.prepare_master_schedule && (
                  <Card>
                     <CardHeader>
-                        <CardTitle>Master Schedule</CardTitle>
-                        <CardDescription>Prepare a combined schedule of all projects for the selected date.</CardDescription>
+                        <CardTitle>Master Schedule Controls</CardTitle>
+                        <CardDescription>Prepare a combined schedule of all projects for the selected date. Generating a master schedule will lock daily editing.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex items-center gap-4">
                         <Button onClick={() => handleMasterExport('excel')}><FileDown className="mr-2 h-4 w-4"/> Export Master Excel</Button>
                         <Button onClick={() => handleMasterExport('pdf')}><FileDown className="mr-2 h-4 w-4"/> Export Master PDF</Button>
+                        <Button variant="destructive" onClick={handleUnlockSchedules}><Unlock className="mr-2 h-4 w-4"/> Unlock Today's Schedules</Button>
                     </CardContent>
                 </Card>
             )}

@@ -701,6 +701,7 @@ export type JobSchedule = {
   items: JobScheduleItem[];
   createdAt: string; // ISO
   updatedAt: string; // ISO
+  isLocked?: boolean;
 };
 
 export type PpeStock = {

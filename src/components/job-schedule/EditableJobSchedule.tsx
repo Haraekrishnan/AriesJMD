@@ -1,4 +1,3 @@
-
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,16 +15,17 @@ import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useMemo, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
   manpowerIds: z.array(z.string()).min(1, "Select at least one person"),
-  jobType: z.string().optional(),
-  jobNo: z.string().optional(),
-  projectVesselName: z.string().optional(),
-  location: z.string().optional(),
-  reportingTime: z.string().optional(),
-  clientContact: z.string().optional(),
+  jobType: z.string().min(1, 'Required'),
+  jobNo: z.string().min(1, 'Required'),
+  projectVesselName: z.string().min(1, 'Required'),
+  location: z.string().min(1, 'Required'),
+  reportingTime: z.string().min(1, 'Required'),
+  clientContact: z.string().min(1, 'Required'),
   vehicleId: z.string().optional(),
   remarks: z.string().optional(),
 });
@@ -45,6 +45,7 @@ interface EditableJobScheduleProps {
 
 export default function EditableJobSchedule({ schedule, projectId, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
   const { user, manpowerProfiles, vehicles, saveJobSchedule } = useAppContext();
+  const { toast } = useToast();
   
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleSchema),
@@ -86,6 +87,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
       updatedAt: new Date().toISOString(),
       items: data.items,
     });
+    toast({ title: 'Schedule Saved', description: 'Your changes have been saved successfully.' });
   };
 
   return (
@@ -166,13 +168,14 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
                     </Popover>
                   )}
                 />
+                 {form.formState.errors.items?.[index]?.manpowerIds && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.manpowerIds?.message}</p>}
               </TableCell>
-              <TableCell><Input {...form.register(`items.${index}.jobType`)} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.jobNo`)} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.location`)} /></TableCell>
-              <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.clientContact`)} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.jobType`)} className={cn(form.formState.errors.items?.[index]?.jobType && "border-destructive")} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.jobNo`)} className={cn(form.formState.errors.items?.[index]?.jobNo && "border-destructive")} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} className={cn(form.formState.errors.items?.[index]?.projectVesselName && "border-destructive")} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.location`)} className={cn(form.formState.errors.items?.[index]?.location && "border-destructive")} /></TableCell>
+              <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} className={cn(form.formState.errors.items?.[index]?.reportingTime && "border-destructive")} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.clientContact`)} className={cn(form.formState.errors.items?.[index]?.clientContact && "border-destructive")} /></TableCell>
               <TableCell>
                  <Controller name={`items.${index}.vehicleId`} control={form.control} render={({ field: controllerField }) => (
                     <Select onValueChange={controllerField.onChange} value={controllerField.value}>
