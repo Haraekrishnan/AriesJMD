@@ -21,7 +21,7 @@ export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobSchedulePro
     return vehicles.find(v => v.id === id)?.vehicleNumber || 'N/A';
   };
 
-  if (!schedule || schedule.items.length === 0) {
+  if (!schedule || !schedule.items || schedule.items.length === 0) {
     return (
       <div className="text-center p-8 text-muted-foreground">
         No schedule has been set for this project on this date.
