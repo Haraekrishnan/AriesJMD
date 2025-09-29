@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -62,7 +63,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { toast } = useToast();
     
     const form = useForm<EditRequestFormValues>({ resolver: zodResolver(editRequestSchema) });
-    const { fields, append, remove, control } = useFieldArray({ control: form.control, name: 'items' });
+    const { control, handleSubmit } = form;
+    const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
 
     const canApprove = useMemo(() => {
         if (!user) return false;
@@ -176,6 +178,9 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
                         </>
                      )}
+                     {user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester && (
+                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
+                     )}
                      {user?.role === 'Admin' && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -239,7 +244,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
                     <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
                         <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
-                        <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 flex flex-col overflow-hidden">
+                        <form onSubmit={handleSubmit(onEditSubmit)} className="flex-1 flex flex-col overflow-hidden">
                             <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2 shrink-0">
                                 <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
