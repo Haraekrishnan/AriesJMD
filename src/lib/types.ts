@@ -1,5 +1,13 @@
 
 
+export type Broadcast = {
+  id: string;
+  message: string;
+  creatorId: string;
+  createdAt: string; // ISO String
+  dismissedBy: string[];
+};
+
 export type PpeInwardRecord = {
   id: string;
   date: string; // ISO string
@@ -224,6 +232,7 @@ export const ALL_PERMISSIONS = [
   'manage_igp_ogp',
   'manage_feedback',
   'manage_user_lock_status',
+  'create_broadcast',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -278,6 +287,7 @@ export type Driver = {
   woExpiry?: string;
   labourContractExpiry?: string;
   wcPolicyExpiry?: string;
+  licenseExpiry?: string;
 };
 
 export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Pending' | 'Resolved' | 'Closed';

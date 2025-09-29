@@ -1,22 +1,20 @@
 
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle } from 'lucide-react';
-import { AppSidebar } from './app-sidebar';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
+import NewBroadcastDialog from '../announcements/NewBroadcastDialog';
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount } = useAppContext();
@@ -93,9 +91,10 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
 
 
 export default function Header() {
-  const { user, roles, appName, appLogo } = useAppContext();
+  const { user, appName, appLogo, can } = useAppContext();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
   
   const getPageTitle = () => {
     if (pathname.startsWith('/schedule')) return 'Planner';
@@ -104,7 +103,13 @@ export default function Header() {
     return name.charAt(0).toUpperCase() + name.slice(1);
   };
 
+  const canBroadcast = useMemo(() => {
+    if (!can) return false;
+    return can.create_broadcast;
+  }, [can]);
+
   return (
+    <>
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
       <div className="flex items-center gap-4">
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -136,6 +141,18 @@ export default function Header() {
       </div>
       <div className="flex items-center gap-2">
         <AnnouncementApprovalDialog />
+        {canBroadcast && (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => setIsBroadcastOpen(true)}>
+                            <Radio />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent><p>New Broadcast</p></TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        )}
         <NewAnnouncementDialog />
         <TooltipProvider>
             <Tooltip>
@@ -164,5 +181,7 @@ export default function Header() {
         </Avatar>
       </div>
     </header>
+    {canBroadcast && <NewBroadcastDialog isOpen={isBroadcastOpen} setIsOpen={setIsBroadcastOpen} />}
+    </>
   );
 }
