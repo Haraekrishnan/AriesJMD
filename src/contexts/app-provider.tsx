@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -174,7 +172,6 @@ type AppContextType = {
   addPpeHistoryRecord: (manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => void;
   updatePpeHistoryRecord: (manpowerId: string, record: PpeHistoryRecord) => void;
   deletePpeHistoryRecord: (manpowerId: string, recordId: string) => void;
-  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
@@ -1483,7 +1480,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
   
       const existingProfile = manpowerProfiles.find(mp => mp.hardCopyFileNo === hardCopyFileNo);
-  
+
       const parseExcelDate = (date: any): string | undefined => {
           if (!date) return undefined;
           // Excel stores dates as numbers (days since 1900). `cellDates: true` in xlsx handles this.
@@ -1641,66 +1638,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
   }, [user]);
   
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-
-    for (const row of data) {
-        const employeeName = row['Employee Name']?.trim();
-        const size = row['Size']?.toString().trim();
-        const issueDateRaw = row['Date'];
-
-        if (!employeeName || !size || !issueDateRaw) {
-            console.warn('Skipping row due to missing data:', row);
-            continue;
-        }
-
-        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
-
-        if (!profile) {
-            console.warn(`Employee not found: ${employeeName}`);
-            notFoundCount++;
-            continue;
-        }
-
-        let issueDate: Date;
-        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
-            issueDate = issueDateRaw;
-        } else {
-            const parsed = parseISO(issueDateRaw)
-            if (isValid(parsed)) {
-                issueDate = parsed;
-            } else {
-                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
-                continue;
-            }
-        }
-
-        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
-            ppeType: 'Coverall',
-            size: size,
-            issueDate: issueDate.toISOString(),
-            requestType: 'New', // Default for bulk import
-            issuedById: user.id,
-            remarks: 'Bulk imported from Excel.'
-        };
-
-        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
-        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
-        importedCount++;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
-    }
-    
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, addActivityLog]);
-  
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -1716,7 +1653,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created');
     
-    const storeApproverRoles = roles.filter(r => r.permissions.includes('approve_store_requests')).map(r => r.name);
+    const storeApproverRoles = roles.filter(r => r.permissions && r.permissions.includes('approve_store_requests')).map(r => r.name);
     const approvers = users.filter(u => storeApproverRoles.includes(u.role));
     approvers.forEach(approver => {
         if(approver.email) {
@@ -1962,7 +1899,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2044,10 +1981,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 'Item': `${request.ppeType} (Size: ${request.size})`,
                 'Updated By': user.name,
                 'Comment': comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'View Request'
-        );
+            }, `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`, 'View Request')
     }
   }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
@@ -2749,8 +2683,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const paymentData = {
       vendorId: purchase.vendorId,
       amount: purchase.grandTotal,
-      durationFrom: purchase.durationFrom,
-      durationTo: purchase.durationTo,
+      durationFrom: purchase.durationTo,
       emailSentDate: purchase.emailSentDate,
       purchaseRegisterId: newRef.key!,
       remarks: `From Purchase Register #${newRef.key?.slice(-6)}`,
@@ -2805,6 +2738,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, feedback, can.manage_feedback]);
 
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    if (!user) return { importedCount: 0, notFoundCount: 0 };
+    
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    for (const row of data) {
+        const employeeName = row['Employee Name']?.trim();
+        const size = row['Size']?.toString().trim();
+        const issueDateRaw = row['Date'];
+
+        if (!employeeName || !size || !issueDateRaw) {
+            console.warn('Skipping row due to missing data:', row);
+            continue;
+        }
+
+        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
+
+        if (!profile) {
+            console.warn(`Employee not found: ${employeeName}`);
+            notFoundCount++;
+            continue;
+        }
+
+        let issueDate: Date;
+        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
+            issueDate = issueDateRaw;
+        } else {
+            const parsed = parseISO(issueDateRaw)
+            if (isValid(parsed)) {
+                issueDate = parsed;
+            } else {
+                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
+                continue;
+            }
+        }
+
+        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
+            ppeType: 'Coverall',
+            size: size,
+            issueDate: issueDate.toISOString(),
+            requestType: 'New', // Default for bulk import
+            issuedById: user.id,
+            remarks: 'Bulk imported from Excel.'
+        };
+
+        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
+        importedCount++;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
+    }
+    
+    return { importedCount, notFoundCount };
+  }, [user, manpowerProfiles, addActivityLog]);
+
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
     login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, lockJobSchedule, unlockJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
@@ -2821,7 +2814,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
-
