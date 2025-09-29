@@ -1641,6 +1641,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
   }, [user]);
   
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    if (!user) return { importedCount: 0, notFoundCount: 0 };
+    
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    for (const row of data) {
+        const employeeName = row['Employee Name']?.trim();
+        const size = row['Size']?.toString().trim();
+        const issueDateRaw = row['Date'];
+
+        if (!employeeName || !size || !issueDateRaw) {
+            console.warn('Skipping row due to missing data:', row);
+            continue;
+        }
+
+        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
+
+        if (!profile) {
+            console.warn(`Employee not found: ${employeeName}`);
+            notFoundCount++;
+            continue;
+        }
+
+        let issueDate: Date;
+        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
+            issueDate = issueDateRaw;
+        } else {
+            const parsed = parseISO(issueDateRaw)
+            if (isValid(parsed)) {
+                issueDate = parsed;
+            } else {
+                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
+                continue;
+            }
+        }
+
+        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
+            ppeType: 'Coverall',
+            size: size,
+            issueDate: issueDate.toISOString(),
+            requestType: 'New', // Default for bulk import
+            issuedById: user.id,
+            remarks: 'Bulk imported from Excel.'
+        };
+
+        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
+        importedCount++;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
+    }
+    
+    return { importedCount, notFoundCount };
+  }, [user, manpowerProfiles, addActivityLog]);
+  
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -1655,7 +1715,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created');
-  }, [user, addActivityLog]);
+    
+    // Notify approvers
+    const storeApproverRoles = roles.filter(r => r.permissions.includes('approve_store_requests')).map(r => r.name);
+    const approvers = users.filter(u => storeApproverRoles.includes(u.role));
+    approvers.forEach(approver => {
+        if(approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `New Internal Store Request from ${user.name}`,
+                'New Internal Store Request for Approval',
+                {
+                    'Requested By': user.name,
+                    'Items': requestData.items.map(i => `${i.quantity} ${i.unit} of ${i.description}`).join(', '),
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'Review Request'
+            );
+        }
+    });
+
+  }, [user, roles, users, addActivityLog]);
   
   const updateInternalRequestItems = useCallback((requestId: string, items: InternalRequest['items']) => {
     if(!user || !can.approve_store_requests) return;
@@ -1770,7 +1850,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Management Request Created', `Subject: ${requestData.subject}`);
 
     const recipient = users.find(u => u.id === requestData.recipientId);
-    if(recipient) {
+    if(recipient && recipient.email) {
       createAndSendNotification(
         recipient.email,
         `New Management Request: ${requestData.subject}`,
@@ -1811,7 +1891,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Management Request Status Updated', `Request ID: ${requestId} to ${status}`);
 
     const requester = users.find(u => u.id === request.requesterId);
-    if (requester) {
+    if (requester && requester.email) {
         createAndSendNotification(
             requester.email,
             `Update on your request: ${request.subject}`,
@@ -1951,13 +2031,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'PPE Request Status Updated', `Request ID: ${requestId} to ${status}`);
 
     const requester = users.find(u => u.id === request.requesterId);
-    if (requester) {
+    const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+    if (requester && requester.email && employee) {
         createAndSendNotification(
             requester.email,
-            `Update on PPE Request for ${manpowerProfiles.find(p => p.id === request.manpowerId)?.name}`,
+            `Update on PPE Request for ${employee.name}`,
             `Your PPE request status is now: ${status}`,
             {
-                'Request For': manpowerProfiles.find(p => p.id === request.manpowerId)?.name || 'N/A',
+                'Request For': employee.name,
                 'Item': `${request.ppeType} (Size: ${request.size})`,
                 'Updated By': user.name,
                 'Comment': comment,
@@ -2598,14 +2679,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newPayment);
     const approvers = users.filter(u => u.role === 'Admin' || u.role === 'Manager');
     approvers.forEach(approver => {
-        createAndSendNotification(
-            approver.email,
-            `New Payment for Approval: ${vendors.find(v => v.id === payment.vendorId)?.name}`,
-            `A new payment of ${payment.amount} has been logged by ${user.name} and requires your approval.`, {
-                'Vendor': vendors.find(v => v.id === payment.vendorId)?.name || 'N/A',
-                'Amount': payment.amount,
-                'Requested By': user.name,
-            }, `${process.env.NEXT_PUBLIC_APP_URL}/vendor-management`, 'Review Payment')
+        if (approver.email) {
+            const vendor = vendors.find(v => v.id === payment.vendorId);
+            createAndSendNotification(
+                approver.email,
+                `New Payment for Approval: ${vendor?.name}`,
+                `A new payment of ${payment.amount} has been logged by ${user.name} and requires your approval.`, {
+                    'Vendor': vendor?.name || 'N/A',
+                    'Amount': payment.amount,
+                    'Requested By': user.name,
+                }, `${process.env.NEXT_PUBLIC_APP_URL}/vendor-management`, 'Review Payment')
+        }
     });
   }, [user, users, vendors]);
   
@@ -2629,13 +2713,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     update(ref(rtdb, `payments/${paymentId}`), updates);
     const requester = users.find(u => u.id === payment.requesterId);
-    if (requester) {
+    if (requester && requester.email) {
+        const vendor = vendors.find(v => v.id === payment.vendorId);
         createAndSendNotification(
             requester.email,
-            `Update on Payment for ${vendors.find(v => v.id === payment.vendorId)?.name}`,
+            `Update on Payment for ${vendor?.name}`,
             `Your payment request status is now: ${status}`,
             {
-                'Vendor': vendors.find(v => v.id === payment.vendorId)?.name || 'N/A',
+                'Vendor': vendor?.name || 'N/A',
                 'Amount': payment.amount,
                 'Updated By': user.name,
                 'Comment': comment,
@@ -2794,4 +2879,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
 
