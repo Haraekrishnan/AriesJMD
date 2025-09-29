@@ -13,7 +13,7 @@ export default function BroadcastTicker() {
     };
     
     const visibleBroadcasts = useMemo(() => {
-        if (!user) return [];
+        if (!user || !broadcasts) return [];
         return broadcasts
             .filter(b => !(b.dismissedBy || []).includes(user.id))
             .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

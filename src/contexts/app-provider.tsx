@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +45,7 @@ type AppContextType = {
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   announcements: Announcement[];
+  broadcasts: Broadcast[];
   buildings: Building[];
   jobSchedules: JobSchedule[];
   ppeRequests: PpeRequest[];
@@ -238,6 +239,8 @@ type AppContextType = {
   deleteAnnouncement: (announcementId: string) => void;
   returnAnnouncement: (announcementId: string, comment: string) => void;
   dismissAnnouncement: (announcementId: string) => void;
+  addBroadcast: (message: string, sendEmail: boolean) => void;
+  dismissBroadcast: (broadcastId: string) => void;
   addBuilding: (buildingNumber: string) => void;
   updateBuilding: (building: Building) => void;
   deleteBuilding: (buildingId: string) => void;
@@ -319,6 +322,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
   const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
   const [announcementsById, setAnnouncementsById] = useState<Record<string, Announcement>>({});
+  const [broadcastsById, setBroadcastsById] = useState<Record<string, Broadcast>>({});
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   const [jobSchedulesById, setJobSchedulesById] = useState<Record<string, JobSchedule>>({});
   const [ppeRequestsById, setPpeRequestsById] = useState<Record<string, PpeRequest>>({});
@@ -362,6 +366,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
   const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
   const announcements = useMemo(() => Object.values(announcementsById), [announcementsById]);
+  const broadcasts = useMemo(() => Object.values(broadcastsById), [broadcastsById]);
   const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
   const jobSchedules = useMemo(() => Object.values(jobSchedulesById), [jobSchedulesById]);
   const ppeRequests = useMemo(() => Object.values(ppeRequestsById), [ppeRequestsById]);
@@ -418,7 +423,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
       clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById);
       clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById);
-      clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
+      clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
       clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
       return;
     }
@@ -450,6 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createDataListener('machineLogs', setMachineLogsById),
       createDataListener('certificateRequests', setCertificateRequestsById),
       createDataListener('announcements', setAnnouncementsById),
+      createDataListener('broadcasts', setBroadcastsById),
       createDataListener('buildings', setBuildingsById),
       createDataListener('jobSchedules', setJobSchedulesById),
       createDataListener('ppeRequests', setPpeRequestsById),
@@ -1696,8 +1702,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const parseExcelDate = (date: any): string | undefined => {
           if (!date) return undefined;
-          if (date instanceof Date) {
-              return isValid(date) ? date.toISOString() : undefined;
+          if (date instanceof Date && isValid(date)) {
+              return date.toISOString();
           }
           if (typeof date === 'string') {
               const parsed = parse(date, 'yyyy-MM-dd', new Date());
@@ -1865,7 +1871,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Internal Store Request Created');
     
     const storeApproverRoles = roles.filter(r => r.permissions?.includes('approve_store_requests')).map(r => r.name);
-    const approvers = users.filter(u => storeApproverRoles.includes(u.role));
+    const approvers = users.filter(u => u.role && storeApproverRoles.includes(u.role));
     approvers.forEach(approver => {
         if(approver.email) {
             createAndSendNotification(
@@ -2726,7 +2732,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`announcements/${announcementId}/status`] = 'approved';
   
     if (announcement.notifyAll) {
-      const usersToNotify = users.filter(u => u.role !== 'Manager' && u.id !== announcement.creatorId && u.email);
+      const usersToNotify = users.filter(u => u.role !== 'Manager' && u.email && u.status === 'active');
       usersToNotify.forEach(u => {
         createAndSendNotification(
           u.email!,
@@ -2774,6 +2780,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, announcements]);
   
+  const addBroadcast = useCallback((message: string, sendEmail: boolean) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'broadcasts'));
+    const newBroadcast: Omit<Broadcast, 'id'> = {
+      message,
+      creatorId: user.id,
+      createdAt: new Date().toISOString(),
+      dismissedBy: [],
+    };
+    set(newRef, newBroadcast);
+  
+    if (sendEmail) {
+      const hierarchy: Record<Role, number> = {
+        'Manager': 1,
+        'Admin': 2,
+        'Project Coordinator': 2,
+        'Document Controller': 3,
+        'Assistant Store Incharge': 4,
+        'Store in Charge': 4,
+        'Supervisor': 5,
+        'HSE': 5,
+        'Junior Supervisor': 6,
+        'Junior HSE': 6,
+        'Team Member': 6,
+      };
+  
+      const senderLevel = hierarchy[user.role] || 99;
+      const usersToNotify = users.filter(u => {
+        const userLevel = hierarchy[u.role] || 99;
+        return u.role !== 'Manager' && userLevel >= senderLevel && u.email && u.status === 'active';
+      });
+  
+      usersToNotify.forEach(u => {
+        createAndSendNotification(
+          u.email!,
+          `Important Broadcast from ${user.name}`,
+          'Important Broadcast',
+          { Message: message },
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+          'Go to Dashboard'
+        );
+      });
+    }
+  }, [user, users]);
+  
+  const dismissBroadcast = useCallback((broadcastId: string) => {
+    if (!user) return;
+    const broadcast = broadcasts.find(b => b.id === broadcastId);
+    if (!broadcast) return;
+    const dismissedBy = broadcast.dismissedBy || [];
+    if (!dismissedBy.includes(user.id)) {
+      update(ref(rtdb, `broadcasts/${broadcastId}`), { dismissedBy: [...dismissedBy, user.id] });
+    }
+  }, [user, broadcasts]);
+
   const addBuilding = useCallback((buildingNumber: string) => {
     const newRef = push(ref(rtdb, 'buildings'));
     const newBuilding: Omit<Building, 'id' | 'rooms'> = { buildingNumber };
@@ -3111,8 +3172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, manpowerProfiles, addActivityLog]);
 
   const contextValue: AppContextType = {
-    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, lockJobSchedule, unlockJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItems, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, lockJobSchedule, unlockJobSchedule, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
     ...computedValue,
   };
 
