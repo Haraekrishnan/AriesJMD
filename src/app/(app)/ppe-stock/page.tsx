@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -301,7 +300,11 @@ export default function PpeStockPage() {
                     <CardDescription>Select a date range to generate a downloadable Excel report of all issued PPE.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col sm:flex-row gap-4 items-center">
-                    <DateRangePicker date={reportDateRange} onDateChange={setReportDateRange} />
+                    <DateRangePicker 
+                        date={reportDateRange} 
+                        onDateChange={setReportDateRange} 
+                        fromDate={new Date(2025, 7, 17)} // August 17, 2025
+                    />
                     <PpeReportDownloads dateRange={reportDateRange} />
                 </CardContent>
             </Card>
