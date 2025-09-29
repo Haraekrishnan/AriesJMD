@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -120,6 +119,8 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
         return manpowerProfiles.find(p => p.id === selectedRequest.manpowerId);
     }, [selectedRequest, manpowerProfiles]);
 
+    const canEditRequest = user?.role === 'Admin' || (isRequester && req.status === 'Pending');
+
     return (
         <Card className={cn("relative", hasUpdate && "border-blue-500")}>
             {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
@@ -194,7 +195,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                             <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => handleEditClick(req)} disabled={req.status !== 'Pending'}>
+                            <DropdownMenuItem onSelect={() => handleEditClick(req)} disabled={!canEditRequest}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Request
                             </DropdownMenuItem>
                              <AlertDialog>
@@ -362,5 +363,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         </div>
     );
 }
+
+    
 
     

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -84,7 +85,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
-        if (!comment.trim()) {
+        if (!comment.trim() && action !== 'Approved') {
             toast({ title: 'Comment required', variant: 'destructive'});
             return;
         }
@@ -161,7 +162,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             </CardContent>
             <CardFooter className="p-2 bg-muted/50">
                  <div className="flex flex-wrap justify-end gap-2 w-full">
-                     {canApprove && !['Issued', 'Rejected'].includes(req.status) && (
+                     {canApprove && (
                         <>
                             <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
                             <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')} disabled={req.status !== 'Pending'}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
@@ -195,7 +196,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <div>
-                            <Label htmlFor="comment">Comment (Required)</Label>
+                            <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
                             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                         </div>
                         <AlertDialogFooter>
@@ -293,3 +294,5 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+
+    
