@@ -240,7 +240,7 @@ type AppContextType = {
   deleteAnnouncement: (announcementId: string) => void;
   returnAnnouncement: (announcementId: string, comment: string) => void;
   dismissAnnouncement: (announcementId: string) => void;
-  addBroadcast: (message: string, sendEmail: boolean) => void;
+  addBroadcast: (message: string, emailTarget: 'none' | 'roles' | 'individuals', recipientRoles?: string[], recipientUserIds?: string[]) => void;
   dismissBroadcast: (broadcastId: string) => void;
   addBuilding: (buildingNumber: string) => void;
   updateBuilding: (building: Building) => void;
@@ -2733,7 +2733,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`announcements/${announcementId}/status`] = 'approved';
   
     if (announcement.notifyAll) {
-      const usersToNotify = users.filter(u => u.role !== 'Manager' && u.email && u.status === 'active');
+      const usersToNotify = users.filter(u => u.role !== 'Manager' && u.status === 'active' && u.email);
       usersToNotify.forEach(u => {
         createAndSendNotification(
           u.email!,
@@ -2781,7 +2781,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, announcements]);
   
-  const addBroadcast = useCallback((message: string, sendEmail: boolean) => {
+  const addBroadcast = useCallback((message: string, emailTarget: 'none' | 'roles' | 'individuals', recipientRoles?: string[], recipientUserIds?: string[]) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'broadcasts'));
     const newBroadcast: Omit<Broadcast, 'id'> = {
@@ -2789,25 +2789,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       creatorId: user.id,
       createdAt: new Date().toISOString(),
       dismissedBy: [],
+      emailTarget,
+      recipientRoles,
+      recipientUserIds,
     };
     set(newRef, newBroadcast);
-  
-    if (sendEmail) {
-      const hierarchy: Record<Role, number> = {
-        'Manager': 1, 'Admin': 2, 'Project Coordinator': 2, 'Document Controller': 3, 'Assistant Store Incharge': 4,
-        'Store in Charge': 4, 'Supervisor': 5, 'HSE': 5, 'Junior Supervisor': 6, 'Junior HSE': 6, 'Team Member': 6,
-      };
-      
-      const senderLevel = hierarchy[user.role as Role] || 99;
-      
-      const usersToNotify = users.filter(u => {
-        if (u.role === 'Manager' || u.status !== 'active' || !u.email) {
-          return false;
+
+    if (emailTarget !== 'none') {
+        let usersToNotify: User[] = [];
+        if (emailTarget === 'roles' && recipientRoles) {
+            usersToNotify = users.filter(u => u.status === 'active' && u.email && recipientRoles.includes(u.role));
+        } else if (emailTarget === 'individuals' && recipientUserIds) {
+            usersToNotify = users.filter(u => u.status === 'active' && u.email && recipientUserIds.includes(u.id));
         }
-        const userLevel = hierarchy[u.role as Role] || 99;
-        return userLevel >= senderLevel;
-      });
-  
+
       usersToNotify.forEach(u => {
         createAndSendNotification(
           u.email!,

@@ -6,6 +6,9 @@ export type Broadcast = {
   creatorId: string;
   createdAt: string; // ISO String
   dismissedBy: string[];
+  emailTarget?: 'none' | 'roles' | 'individuals';
+  recipientRoles?: string[];
+  recipientUserIds?: string[];
 };
 
 export type PpeInwardRecord = {
