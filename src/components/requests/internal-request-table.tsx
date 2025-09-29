@@ -5,16 +5,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Trash2, Settings } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import type { InternalRequest, InternalRequestStatus, Comment } from '@/lib/types';
+import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Input } from '../ui/input';
@@ -24,7 +24,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { PlusCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
-
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -35,13 +35,17 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
   Approved: 'default',
   Issued: 'success',
   Rejected: 'destructive',
+  'Partially Issued': 'outline',
+  'Partially Approved': 'outline'
 };
 
 const requestItemSchema = z.object({
+  id: z.string(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   unit: z.string().min(1, 'Unit is required.'),
   remarks: z.string().optional(),
+  status: z.enum(['Pending', 'Approved', 'Rejected', 'Issued']),
 });
 const editRequestSchema = z.object({
   items: z.array(requestItemSchema).min(1, 'At least one item is required.'),
@@ -58,7 +62,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { toast } = useToast();
     
     const form = useForm<EditRequestFormValues>({ resolver: zodResolver(editRequestSchema) });
-    const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
+    const { fields, append, remove, control } = useFieldArray({ control: form.control, name: 'items' });
 
     const canApprove = useMemo(() => {
         if (!user) return false;
@@ -138,6 +142,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             {req.items.map((item, index) => (
                             <li key={index}>
                                 {item.quantity} {item.unit} {item.description}
+                                <Badge variant="secondary" className="ml-2 text-xs">{item.status}</Badge>
                                 {item.remarks && <span className="text-muted-foreground text-xs"> ({item.remarks})</span>}
                             </li>
                             ))}
@@ -165,10 +170,10 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                  <div className="flex flex-wrap justify-end gap-2 w-full">
                      {canApprove && (
                         <>
-                            <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={!canEditRequest}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
-                            <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')} disabled={req.status !== 'Pending'}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
-                            <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={req.status !== 'Approved'}><Truck className="mr-2 h-4 w-4" /> Issue</Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={req.status === 'Issued' && user?.role !== 'Admin'}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                            <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')} disabled={req.status !== 'Pending'}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
+                            <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={!['Approved', 'Partially Approved'].includes(req.status)}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
                         </>
                      )}
                      {user?.role === 'Admin' && (
@@ -232,41 +237,51 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
             {selectedRequest && isEditing && (
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                    <DialogContent className="sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
+                    <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
                         <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
                         <form onSubmit={form.handleSubmit(onEditSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                            {/* Static Header for the list */}
                             <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2 shrink-0">
                                 <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
-                                <div className="col-span-2"><Label className="text-xs">Unit</Label></div>
+                                <div className="col-span-1"><Label className="text-xs">Unit</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
+                                {user?.role === 'Admin' && <div className="col-span-1"><Label className="text-xs">Status</Label></div>}
                                 <div className="col-span-1"></div>
                             </div>
                             <ScrollArea className="flex-1 px-4">
                                 <div className="space-y-4">
                                     {fields.map((field, index) => (
                                     <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                                        <div className="col-span-5 space-y-1">
-                                            <Textarea {...form.register(`items.${index}.description`)} rows={1} />
-                                            {form.formState.errors.items?.[index]?.description && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.description?.message}</p>}
-                                        </div>
-                                        <div className="col-span-2 space-y-1">
-                                            <Input type="number" {...form.register(`items.${index}.quantity`)} />
-                                            {form.formState.errors.items?.[index]?.quantity && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.quantity?.message}</p>}
-                                        </div>
-                                        <div className="col-span-2 space-y-1">
-                                            <Input {...form.register(`items.${index}.unit`)} />
-                                            {form.formState.errors.items?.[index]?.unit && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.unit?.message}</p>}
-                                        </div>
+                                        <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
+                                        <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
+                                        <div className="col-span-1 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
                                         <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
+                                        {user?.role === 'Admin' && (
+                                          <div className="col-span-1">
+                                            <Controller
+                                              name={`items.${index}.status`}
+                                              control={control}
+                                              render={({ field: selectField }) => (
+                                                <Select onValueChange={selectField.onChange} value={selectField.value}>
+                                                  <SelectTrigger className="h-10 text-xs"><SelectValue /></SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="Pending">Pending</SelectItem>
+                                                    <SelectItem value="Approved">Approved</SelectItem>
+                                                    <SelectItem value="Issued">Issued</SelectItem>
+                                                    <SelectItem value="Rejected">Rejected</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                              )}
+                                            />
+                                          </div>
+                                        )}
                                         <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                                     </div>
                                     ))}
                                 </div>
                             </ScrollArea>
                             <div className="px-4 pt-4 shrink-0">
-                                <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, unit: 'pcs', remarks: '' })}><PlusCircle className="mr-2 h-4 w-4" />Add Item</Button>
+                                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '', status: 'Pending' })}><PlusCircle className="mr-2 h-4 w-4" />Add Item</Button>
                                 {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
                             </div>
                             <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6 shrink-0">

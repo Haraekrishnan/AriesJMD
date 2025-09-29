@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,9 +15,10 @@ interface DateRangePickerProps extends React.ComponentProps<'div'> {
     date: DateRange | undefined;
     onDateChange: (date: DateRange | undefined) => void;
     placeholder?: string;
+    fromDate?: Date;
 }
 
-export function DateRangePicker({ className, date, onDateChange, placeholder }: DateRangePickerProps) {
+export function DateRangePicker({ className, date, onDateChange, placeholder, fromDate }: DateRangePickerProps) {
   return (
     <div className={cn('grid gap-2', className)}>
       <Popover>
@@ -48,6 +50,7 @@ export function DateRangePicker({ className, date, onDateChange, placeholder }: 
             selected={date}
             onSelect={onDateChange}
             numberOfMonths={2}
+            fromDate={fromDate}
           />
         </PopoverContent>
       </Popover>
