@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +14,7 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 
 const requestItemSchema = z.object({
+  id: z.string(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   unit: z.string().min(1, 'Unit is required. (e.g., pcs, box, m)'),
@@ -37,7 +39,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
     defaultValues: {
-      items: [{ description: '', quantity: 1, unit: 'pcs', remarks: '' }],
+      items: [{ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '' }],
     },
   });
 
@@ -57,7 +59,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ items: [{ description: '', quantity: 1, unit: 'pcs', remarks: '' }] });
+      form.reset({ items: [{ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '' }] });
     }
     setIsOpen(open);
   };
@@ -111,7 +113,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
            
            {/* Static Footer with buttons */}
           <div className="px-4 pt-4 shrink-0">
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Item
                 </Button>

@@ -442,19 +442,21 @@ export type ManpowerLog = {
   total: number;
 };
 
-export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Partially Issued' | 'Disputed';
 export type InternalRequestItem = {
+    id: string;
     description: string;
     quantity: number;
     unit: string;
     remarks: string;
+    status: InternalRequestStatus;
 };
 export type InternalRequest = {
   id: string;
   requesterId: string;
   date: string; // YYYY-MM-DD
   items: InternalRequestItem[];
-  status: InternalRequestStatus;
+  status: InternalRequestStatus; // This will now be a summary status
   approverId?: string;
   comments: Comment[];
   viewedByRequester: boolean;
@@ -476,7 +478,7 @@ export type ManagementRequest = {
     viewedByRequester: boolean;
 }
 
-export type PpeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+export type PpeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Disputed';
 
 export type PpeRequest = {
   id: string;

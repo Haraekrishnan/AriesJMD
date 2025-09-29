@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -31,13 +32,14 @@ const statusVariant: Record<PpeRequestStatus, 'default' | 'secondary' | 'destruc
   Approved: 'default',
   Issued: 'success',
   Rejected: 'destructive',
+  Disputed: 'destructive',
 };
 
 const RequestCard = ({ req }: { req: PpeRequest }) => {
     const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
     const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
-    const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | null>(null);
+    const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | null>(null);
     const [comment, setComment] = useState('');
     const { toast } = useToast();
     const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
@@ -53,20 +55,21 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
         return storeRoles.includes(user.role);
     }, [user]);
     
-    const handleActionClick = (req: PpeRequest, act: 'Approved' | 'Rejected' | 'Issued') => {
+    const handleActionClick = (req: PpeRequest, act: 'Approved' | 'Rejected' | 'Issued' | 'Disputed') => {
         setSelectedRequest(req);
         setAction(act);
-        setComment('');
+        setComment(act === 'Disputed' ? 'I have not received the issued item. Please investigate.' : '');
     };
 
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
-        if (!comment.trim() && action !== 'Approved') {
+        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed' || action === 'Issued')) {
             toast({ title: 'Comment required', variant: 'destructive'});
             return;
         }
 
-        updatePpeRequestStatus(selectedRequest.id, action, comment);
+        const finalStatus = action === 'Disputed' ? 'Rejected' : action;
+        updatePpeRequestStatus(selectedRequest.id, finalStatus, comment);
         toast({ title: `Request ${action}` });
         setSelectedRequest(null);
         setAction(null);
@@ -91,6 +94,8 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const hasUpdate = isRequester && !req.viewedByRequester;
     const canApprove = isManager && req.status === 'Pending';
     const canMarkAsIssued = canIssue && req.status === 'Approved';
+    const canClaimIssue = isRequester && req.status === 'Issued';
+    
     const lastIssue = useMemo(() => {
       if (!manpower?.ppeHistory) return null;
       const historyArray = Array.isArray(manpower.ppeHistory) ? manpower.ppeHistory : Object.values(manpower.ppeHistory);
@@ -189,6 +194,9 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                  {canIssue && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
+                  {canClaimIssue && (
+                    <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
+                 )}
                  {(user?.role === 'Admin' || (isRequester && req.status === 'Pending')) && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -279,7 +287,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 )}
                             </div>
                             <div>
-                                <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
+                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' || action === 'Issued' ? '(Required)' : '(Optional)'}</Label>
                                 <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                             </div>
                         </div>
@@ -364,6 +372,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     );
 }
 
-    
-
-    
