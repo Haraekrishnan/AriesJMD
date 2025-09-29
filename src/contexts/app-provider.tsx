@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1871,7 +1872,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Internal Store Request Created');
     
     const storeApproverRoles = roles.filter(r => r.permissions?.includes('approve_store_requests')).map(r => r.name);
-    const approvers = users.filter(u => u.role && storeApproverRoles.includes(u.role));
+    const approvers = users.filter(u => storeApproverRoles.includes(u.role));
     approvers.forEach(approver => {
         if(approver.email) {
             createAndSendNotification(
@@ -2793,23 +2794,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     if (sendEmail) {
       const hierarchy: Record<Role, number> = {
-        'Manager': 1,
-        'Admin': 2,
-        'Project Coordinator': 2,
-        'Document Controller': 3,
-        'Assistant Store Incharge': 4,
-        'Store in Charge': 4,
-        'Supervisor': 5,
-        'HSE': 5,
-        'Junior Supervisor': 6,
-        'Junior HSE': 6,
-        'Team Member': 6,
+        'Manager': 1, 'Admin': 2, 'Project Coordinator': 2, 'Document Controller': 3, 'Assistant Store Incharge': 4,
+        'Store in Charge': 4, 'Supervisor': 5, 'HSE': 5, 'Junior Supervisor': 6, 'Junior HSE': 6, 'Team Member': 6,
       };
-  
-      const senderLevel = hierarchy[user.role] || 99;
+      
+      const senderLevel = hierarchy[user.role as Role] || 99;
+      
       const usersToNotify = users.filter(u => {
-        const userLevel = hierarchy[u.role] || 99;
-        return u.role !== 'Manager' && userLevel >= senderLevel && u.email && u.status === 'active';
+        if (u.role === 'Manager' || u.status !== 'active' || !u.email) {
+          return false;
+        }
+        const userLevel = hierarchy[u.role as Role] || 99;
+        return userLevel >= senderLevel;
       });
   
       usersToNotify.forEach(u => {
