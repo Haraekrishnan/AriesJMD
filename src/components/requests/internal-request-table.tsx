@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -37,7 +36,8 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
   Issued: 'success',
   Rejected: 'destructive',
   'Partially Issued': 'outline',
-  'Partially Approved': 'outline'
+  'Partially Approved': 'outline',
+  Disputed: 'destructive'
 };
 
 const requestItemSchema = z.object({
@@ -64,7 +64,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const form = useForm<EditRequestFormValues>({ resolver: zodResolver(editRequestSchema) });
     const { control, handleSubmit } = form;
-    const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
+    const { fields, append, remove } = useFieldArray({ control, name: 'items' });
 
     const canApprove = useMemo(() => {
         if (!user) return false;
@@ -115,7 +115,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const requester = users.find(u => u.id === req.requesterId);
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
-    const canEditRequest = user?.role === 'Admin' || (canApprove && req.status === 'Pending');
+    const canEditRequest = user?.role === 'Admin' || (canApprove && (req.status === 'Pending' || req.status === 'Approved'));
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
 
@@ -178,7 +178,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
                         </>
                      )}
-                     {user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester && (
+                      {user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester && (
                          <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
                      )}
                      {user?.role === 'Admin' && (
@@ -250,7 +250,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
                                 <div className="col-span-1"><Label className="text-xs">Unit</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
-                                {user?.role === 'Admin' && <div className="col-span-1"><Label className="text-xs">Status</Label></div>}
+                                <div className="col-span-1"><Label className="text-xs">Status</Label></div>
                                 <div className="col-span-1"></div>
                             </div>
                             <ScrollArea className="flex-1 px-4">
@@ -261,25 +261,23 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                         <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
                                         <div className="col-span-1 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
                                         <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
-                                        {user?.role === 'Admin' && (
-                                          <div className="col-span-1">
+                                        <div className="col-span-1">
                                             <Controller
-                                              name={`items.${index}.status`}
-                                              control={control}
-                                              render={({ field: selectField }) => (
-                                                <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                                  <SelectTrigger className="h-10 text-xs"><SelectValue /></SelectTrigger>
-                                                  <SelectContent>
+                                                name={`items.${index}.status`}
+                                                control={control}
+                                                render={({ field: selectField }) => (
+                                                <Select onValueChange={selectField.onChange} value={selectField.value} disabled={user?.role !== 'Admin' && req.status === 'Issued'}>
+                                                    <SelectTrigger className="h-10 text-xs"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
                                                     <SelectItem value="Pending">Pending</SelectItem>
                                                     <SelectItem value="Approved">Approved</SelectItem>
                                                     <SelectItem value="Issued">Issued</SelectItem>
                                                     <SelectItem value="Rejected">Rejected</SelectItem>
-                                                  </SelectContent>
+                                                    </SelectContent>
                                                 </Select>
-                                              )}
+                                                )}
                                             />
-                                          </div>
-                                        )}
+                                        </div>
                                         <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                                     </div>
                                     ))}
