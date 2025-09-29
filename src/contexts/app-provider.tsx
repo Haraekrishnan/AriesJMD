@@ -1758,7 +1758,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     
     return importedCount;
-  }, [user, manpowerProfiles, addActivityLog]);
+}, [user, manpowerProfiles, addActivityLog]);
   
 
   const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
@@ -2733,7 +2733,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`announcements/${announcementId}/status`] = 'approved';
   
     if (announcement.notifyAll) {
-      const usersToNotify = users.filter(u => u.role !== 'Manager' && u.status === 'active' && u.email);
+      const usersToNotify = users.filter(u => u.status === 'active' && u.role !== 'Manager' && u.email);
       usersToNotify.forEach(u => {
         createAndSendNotification(
           u.email!,
@@ -2794,6 +2794,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       recipientUserIds,
     };
     set(newRef, newBroadcast);
+    addActivityLog(user.id, 'Broadcast Sent', message);
 
     if (emailTarget !== 'none') {
         let usersToNotify: User[] = [];
@@ -2814,7 +2815,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       });
     }
-  }, [user, users]);
+  }, [user, users, addActivityLog]);
   
   const dismissBroadcast = useCallback((broadcastId: string) => {
     if (!user) return;
