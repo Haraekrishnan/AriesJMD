@@ -173,7 +173,7 @@ type AppContextType = {
   addPpeHistoryRecord: (manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => void;
   updatePpeHistoryRecord: (manpowerId: string, record: PpeHistoryRecord) => void;
   deletePpeHistoryRecord: (manpowerId: string, recordId: string) => void;
-  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number }>;
+  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
@@ -261,7 +261,6 @@ type AppContextType = {
   addFeedback: (subject: string, message: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
   markFeedbackAsViewed: () => void;
-  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -591,8 +590,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
     await set(newRequestRef, newRequest);
+
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+        if (admin.email) {
+            createAndSendNotification(
+                admin.email,
+                `Password Reset Request from ${targetUser.email}`,
+                'Password Reset Request',
+                { 'User Email': targetUser.email },
+                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+                'View Requests'
+            );
+        }
+    });
+
     return true;
-  }, []);
+  }, [users]);
   
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -665,7 +679,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'pending',
     };
     set(newRequestRef, newRequest);
-  }, []);
+
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+        if (admin.email) {
+            createAndSendNotification(
+                admin.email,
+                `Account Unlock Request from ${userName}`,
+                'Account Unlock Request',
+                { 'User': userName },
+                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+                'View Requests'
+            );
+        }
+    });
+
+  }, [users]);
 
   const resolveUnlockRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -772,7 +801,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
 
     const incidentNotificationCount = incidentReports.filter(i => {
-      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(u.id);
+      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
       const isUnread = !i.viewedBy?.[user.id];
       return isParticipant && isUnread;
     }).length;
@@ -834,7 +863,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const assigneeNames = users.filter(u => assigneeIds.includes(u.id)).map(u => u.name).join(', ');
     addActivityLog(user.id, 'Task Created', `Task "${newTask.title}" for ${assigneeNames}`);
 
-    // Send email to assignees
     const assignees = users.filter(u => assigneeIds.includes(u.id));
     assignees.forEach(assignee => {
         if(assignee.email) {
@@ -892,7 +920,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb, `tasks/${taskId}`), updates);
     addActivityLog(user.id, 'Comment Added', `Task ID: ${taskId}`);
-  }, [user, tasks, addActivityLog]);
+
+    const allParticipants = users.filter(u => updatedParticipants.includes(u.id) && u.id !== user.id);
+    allParticipants.forEach(participant => {
+        if(participant.email) {
+            createAndSendNotification(
+                participant.email,
+                `New comment on task: ${task.title}`,
+                'New Task Comment',
+                {
+                    'Task': task.title,
+                    'Comment By': user.name,
+                    'Comment': commentText
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                'View Task'
+            );
+        }
+    });
+
+  }, [user, tasks, users, addActivityLog]);
 
   const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
     if (!user) return;
@@ -1146,8 +1193,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const newEventRef = push(ref(rtdb, 'plannerEvents'));
         set(newEventRef, eventData);
         addActivityLog(user.id, 'Planner Event Added', `Added event: ${eventData.title}`);
+        
+        const eventForUser = users.find(u => u.id === eventData.userId);
+        if(eventForUser && eventForUser.email && eventForUser.id !== user.id) {
+            createAndSendNotification(
+                eventForUser.email,
+                `New Event Added to Your Planner: ${eventData.title}`,
+                'New Planner Event',
+                {
+                    'Title': eventData.title,
+                    'Date': format(parseISO(eventData.date), 'PPP'),
+                    'Frequency': eventData.frequency,
+                    'Created By': user.name,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+                'View Planner'
+            );
+        }
     }
-  }, [user, addActivityLog]);
+  }, [user, users, addActivityLog]);
   
   const updatePlannerEvent = useCallback((updatedEvent: PlannerEvent) => {
     if (user) {
@@ -1195,7 +1259,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   
     update(ref(rtdb), updates);
-  }, [user, dailyPlannerComments]);
+
+    const plannerUser = users.find(u => u.id === plannerUserId);
+    if(plannerUser && plannerUser.email && plannerUser.id !== user.id) {
+        createAndSendNotification(
+            plannerUser.email,
+            `New comment on your planner for ${format(day, 'PPP')}`,
+            'New Planner Comment',
+            {
+                'Date': format(day, 'PPP'),
+                'Comment By': user.name,
+                'Comment': text
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+            'View Planner'
+        );
+    }
+
+  }, [user, dailyPlannerComments, users]);
 
 
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
@@ -1241,9 +1322,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           status: 'approved',
           createdAt: new Date().toISOString(),
           comments: [],
+          notifyAll: true,
       };
-      const newRef = push(ref(rtdb, 'announcements'));
-      set(newRef, newAnnouncement);
+      addAnnouncement(newAnnouncement);
     }
   }, [user, users, can.manage_achievements, addActivityLog]);
 
@@ -1550,7 +1631,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await set(ref(rtdb, `manpowerLogs/${logId}`), logEntry);
     addActivityLog(user.id, 'Manpower Logged', `Project: ${logData.projectId}, Total: ${total}`);
-  }, [user, manpowerLogs, addActivityLog]);
+
+    const rolesToNotify: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+    const usersToNotify = users.filter(u => rolesToNotify.includes(u.role));
+    usersToNotify.forEach(u => {
+        if(u.email) {
+            createAndSendNotification(
+                u.email,
+                `Manpower Log Update for ${projects.find(p => p.id === logData.projectId)?.name}`,
+                'Manpower Log Updated',
+                {
+                    'Project': projects.find(p => p.id === logData.projectId)?.name || 'N/A',
+                    'In': countIn,
+                    'Out': countOut,
+                    'On Leave': countOnLeave,
+                    'New Total': total,
+                    'Updated By': user.name,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/manpower`,
+                'View Manpower Logs'
+            );
+        }
+    });
+
+  }, [user, users, projects, manpowerLogs, addActivityLog]);
 
   const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => {
       if(!user) return;
@@ -1994,7 +2098,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility,
+        eligibility: requestData.eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2125,7 +2229,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
 
     addActivityLog(user.id, 'PPE Inward Registered', `Type: ${newRecord.ppeType}`);
-  }, [user, ppeStock, addActivityLog]);
+    
+    const rolesToNotify: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+    const usersToNotify = users.filter(u => rolesToNotify.includes(u.role));
+    usersToNotify.forEach(u => {
+        if(u.email) {
+            createAndSendNotification(
+                u.email,
+                `New PPE Inward Stock Registered`,
+                'PPE Stock Updated',
+                {
+                    'Type': newRecord.ppeType,
+                    'Details': newRecord.ppeType === 'Coverall' ? JSON.stringify(newRecord.sizes) : `Quantity: ${newRecord.quantity}`,
+                    'Registered By': user.name,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/ppe-stock`,
+                'View PPE Stock'
+            );
+        }
+    });
+
+  }, [user, users, ppeStock, addActivityLog]);
 
   const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
     if(!user || user.role !== 'Admin') return;
@@ -2307,7 +2431,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRef, newRequest);
     addActivityLog(user.id, 'Certificate Requested', `Type: ${requestData.requestType}`);
-  }, [user, addActivityLog]);
+    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+    storePersonnel.forEach(p => {
+        if(p.email) {
+            createAndSendNotification(
+                p.email,
+                `New Certificate Request from ${user.name}`,
+                'New Certificate Request',
+                {
+                    'Request Type': requestData.requestType,
+                    'Requested By': user.name,
+                    'Remarks': requestData.remarks || 'N/A'
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'View Requests'
+            );
+        }
+    });
+  }, [user, users, addActivityLog]);
 
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
@@ -2462,7 +2603,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `digitalCameras/${id}`), data);
     addActivityLog(user.id, 'Digital Camera Updated', camera.serialNumber);
   }, [user, addActivityLog]);
-
+  
   const deleteDigitalCamera = useCallback((cameraId: string) => {
     if(!user) return;
     remove(ref(rtdb, `digitalCameras/${cameraId}`));
@@ -2518,7 +2659,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loggedByUserId: user.id
     };
     set(newLogRef, newLog);
-  }, [user]);
+    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+    storePersonnel.forEach(p => {
+        if(p.email) {
+            createAndSendNotification(
+                p.email,
+                `New Log for Machine ID: ${machineId}`,
+                'New Machine Log Entry',
+                {
+                    'Machine ID': machineId,
+                    'User': logData.userName,
+                    'Job': logData.jobDescription,
+                    'Logged By': user.name
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/equipment-status`,
+                'View Logs'
+            );
+        }
+    });
+  }, [user, users]);
 
   const deleteMachineLog = useCallback((logId: string) => {
     if(!user || user.role !== 'Admin') return;
@@ -2679,7 +2838,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
@@ -2688,7 +2847,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveJobSchedule = useCallback((schedule: JobSchedule) => {
     set(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
     if (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') {
-      const pcs = users.filter(u => u.role === 'Project Coordinator' || u.permissions?.includes('prepare_master_schedule'));
+      const pcs = users.filter(u => u.permissions?.includes('prepare_master_schedule'));
       pcs.forEach(pc => {
         if(pc.email) {
           createAndSendNotification(
@@ -2853,7 +3012,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         viewedBy: { [user.id]: true }
     };
     set(newRef, newFeedback);
-  }, [user]);
+
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+        if(admin.email) {
+            createAndSendNotification(
+                admin.email,
+                `New Feedback Received: ${subject}`,
+                'New Feedback/Complaint Submitted',
+                {
+                    'From': user.name,
+                    'Subject': subject,
+                    'Message': message,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+                'View Feedback'
+            );
+        }
+    });
+
+  }, [user, users]);
 
   const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
     update(ref(rtdb, `feedback/${feedbackId}`), { status });
