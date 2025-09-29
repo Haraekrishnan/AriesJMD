@@ -12,6 +12,7 @@ import { ref, onValue, set, push, remove, update, get, query, orderByChild, equa
 import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { uploadFile } from '@/lib/storage';
+import { createAndSendNotification } from '@/app/actions/sendNotificationEmail';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -1690,7 +1691,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
-  }, [user, internalRequests, addActivityLog]);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester) {
+        createAndSendNotification(
+            requester.email,
+            `Update on your Internal Store Request #${requestId.slice(-6)}`,
+            `Your request status is now: ${status}`,
+            {
+                'Request ID': `#${requestId.slice(-6)}`,
+                'Updated By': user.name,
+                'Comment': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'View Request'
+        );
+    }
+  }, [user, internalRequests, users, addActivityLog]);
 
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
@@ -1722,7 +1739,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Management Request Created', `Subject: ${requestData.subject}`);
-  }, [user, addActivityLog]);
+
+    const recipient = users.find(u => u.id === requestData.recipientId);
+    if(recipient) {
+      createAndSendNotification(
+        recipient.email,
+        `New Management Request: ${requestData.subject}`,
+        `New Request from ${user.name}`,
+        {
+          'Subject': requestData.subject,
+          'Details': requestData.body,
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'Review Request'
+      );
+    }
+  }, [user, users, addActivityLog]);
 
   const updateManagementRequest = useCallback((request: ManagementRequest) => {
     if(!user) return;
@@ -1748,7 +1780,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Management Request Status Updated', `Request ID: ${requestId} to ${status}`);
-  }, [user, managementRequests, addActivityLog]);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester) {
+        createAndSendNotification(
+            requester.email,
+            `Update on your request: ${request.subject}`,
+            `Your request status is now: ${status}`,
+            {
+                'Subject': request.subject,
+                'Updated By': user.name,
+                'Comment': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'View Request'
+        );
+    }
+  }, [user, managementRequests, users, addActivityLog]);
   
   const deleteManagementRequest = useCallback((requestId: string) => {
     if(!user || user.role !== 'Admin') return;
@@ -1872,7 +1920,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'PPE Request Status Updated', `Request ID: ${requestId} to ${status}`);
-  }, [user, ppeRequests, ppeStock, addActivityLog]);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester) {
+        createAndSendNotification(
+            requester.email,
+            `Update on PPE Request for ${manpowerProfiles.find(p => p.id === request.manpowerId)?.name}`,
+            `Your PPE request status is now: ${status}`,
+            {
+                'Request For': manpowerProfiles.find(p => p.id === request.manpowerId)?.name || 'N/A',
+                'Item': `${request.ppeType} (Size: ${request.size})`,
+                'Updated By': user.name,
+                'Comment': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'View Request'
+        );
+    }
+  }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
@@ -1979,66 +2044,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'PPE Inward Deleted', `Record ID: ${record.id}`);
   }, [user, ppeStock, addActivityLog]);
-  
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-
-    for (const row of data) {
-        const employeeName = row['Employee Name']?.trim();
-        const size = row['Size']?.toString().trim();
-        const issueDateRaw = row['Date'];
-
-        if (!employeeName || !size || !issueDateRaw) {
-            console.warn('Skipping row due to missing data:', row);
-            continue;
-        }
-
-        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
-
-        if (!profile) {
-            console.warn(`Employee not found: ${employeeName}`);
-            notFoundCount++;
-            continue;
-        }
-
-        let issueDate: Date;
-        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
-            issueDate = issueDateRaw;
-        } else {
-            const parsed = parseISO(issueDateRaw)
-            if (isValid(parsed)) {
-                issueDate = parsed;
-            } else {
-                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
-                continue;
-            }
-        }
-
-        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
-            ppeType: 'Coverall',
-            size: size,
-            issueDate: issueDate.toISOString(),
-            requestType: 'New', // Default for bulk import
-            issuedById: user.id,
-            remarks: 'Bulk imported from Excel.'
-        };
-
-        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
-        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
-        importedCount++;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
-    }
-    
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, addActivityLog]);
 
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if(!user) return;
@@ -2556,7 +2561,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         comments: [],
     };
     set(newRef, newPayment);
-  }, [user]);
+    const approvers = users.filter(u => u.role === 'Admin' || u.role === 'Manager');
+    approvers.forEach(approver => {
+        createAndSendNotification(
+            approver.email,
+            `New Payment for Approval: ${vendors.find(v => v.id === payment.vendorId)?.name}`,
+            `A new payment of ${payment.amount} has been logged by ${user.name} and requires your approval.`, {
+                'Vendor': vendors.find(v => v.id === payment.vendorId)?.name || 'N/A',
+                'Amount': payment.amount,
+                'Requested By': user.name,
+            }, `${process.env.NEXT_PUBLIC_APP_URL}/vendor-management`, 'Review Payment')
+    });
+  }, [user, users, vendors]);
   
   const updatePayment = useCallback((payment: Payment) => {
     const { id, ...data } = payment;
@@ -2577,7 +2593,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         comments: [...(payment.comments || []), {id: newCommentRef.key!, ...newComment}],
     };
     update(ref(rtdb, `payments/${paymentId}`), updates);
-  }, [user, payments]);
+    const requester = users.find(u => u.id === payment.requesterId);
+    if (requester) {
+        createAndSendNotification(
+            requester.email,
+            `Update on Payment for ${vendors.find(v => v.id === payment.vendorId)?.name}`,
+            `Your payment request status is now: ${status}`,
+            {
+                'Vendor': vendors.find(v => v.id === payment.vendorId)?.name || 'N/A',
+                'Amount': payment.amount,
+                'Updated By': user.name,
+                'Comment': comment,
+            }, `${process.env.NEXT_PUBLIC_APP_URL}/vendor-management`, 'View Payment')
+    }
+  }, [user, payments, users, vendors]);
 
   const deletePayment = useCallback((paymentId: string) => {
     if(!user || user.role !== 'Admin') return;
@@ -2653,6 +2682,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
     }
   }, [user, feedback, can.manage_feedback]);
+
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    if (!user) return { importedCount: 0, notFoundCount: 0 };
+    
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    for (const row of data) {
+        const employeeName = row['Employee Name']?.trim();
+        const size = row['Size']?.toString().trim();
+        const issueDateRaw = row['Date'];
+
+        if (!employeeName || !size || !issueDateRaw) {
+            console.warn('Skipping row due to missing data:', row);
+            continue;
+        }
+
+        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
+
+        if (!profile) {
+            console.warn(`Employee not found: ${employeeName}`);
+            notFoundCount++;
+            continue;
+        }
+
+        let issueDate: Date;
+        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
+            issueDate = issueDateRaw;
+        } else {
+            const parsed = parseISO(issueDateRaw)
+            if (isValid(parsed)) {
+                issueDate = parsed;
+            } else {
+                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
+                continue;
+            }
+        }
+
+        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
+            ppeType: 'Coverall',
+            size: size,
+            issueDate: issueDate.toISOString(),
+            requestType: 'New', // Default for bulk import
+            issuedById: user.id,
+            remarks: 'Bulk imported from Excel.'
+        };
+
+        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
+        importedCount++;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
+    }
+    
+    return { importedCount, notFoundCount };
+  }, [user, manpowerProfiles, addActivityLog]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, buildings, jobSchedules, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
