@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -115,7 +116,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const requester = users.find(u => u.id === req.requesterId);
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
-    const canEditRequest = user?.role === 'Admin' || (canApprove && (req.status === 'Pending' || req.status === 'Approved'));
+    const canEditRequest = user?.role === 'Admin' || (canApprove && (req.status === 'Pending' || req.status === 'Approved' || req.status === 'Partially Approved' || req.status === 'Issued' || req.status === 'Partially Issued'));
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
 
@@ -172,13 +173,13 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                  <div className="flex flex-wrap justify-end gap-2 w-full">
                      {canApprove && (
                         <>
-                            <Button size="sm" variant="outline" onClick={() => handleEditClick(req)} disabled={req.status === 'Issued' && user?.role !== 'Admin'}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleEditClick(req)}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
                             <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')} disabled={req.status !== 'Pending'}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
                             <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={!['Approved', 'Partially Approved'].includes(req.status)}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
                             <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
                         </>
                      )}
-                      {user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester && (
+                      {user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued') && !req.acknowledgedByRequester && (
                          <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
                      )}
                      {user?.role === 'Admin' && (
@@ -261,7 +262,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                         <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
                                         <div className="col-span-1 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
                                         <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
-                                        <div className="col-span-1">
+                                        <div className="col-span-2">
                                             <Controller
                                                 name={`items.${index}.status`}
                                                 control={control}
@@ -278,7 +279,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                                 )}
                                             />
                                         </div>
-                                        <div className="col-span-1 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
+                                        <div className="col-span-0 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                                     </div>
                                     ))}
                                 </div>
