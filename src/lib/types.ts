@@ -269,7 +269,6 @@ export type Driver = {
   name: string;
   photo: string;
   licenseNumber: string;
-  licenseExpiry?: string;
   epNumber?: string;
   sdpNumber?: string;
   epExpiry?: string;
@@ -442,14 +441,14 @@ export type ManpowerLog = {
   total: number;
 };
 
-export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Partially Issued' | 'Disputed';
+export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Partially Issued' | 'Disputed' | 'Partially Approved';
 export type InternalRequestItem = {
     id: string;
     description: string;
     quantity: number;
     unit: string;
     remarks: string;
-    status: InternalRequestStatus;
+    status: 'Pending' | 'Approved' | 'Rejected' | 'Issued';
 };
 export type InternalRequest = {
   id: string;
@@ -652,6 +651,7 @@ export type Announcement = {
     date: string;
   }[];
   dismissedBy?: string[];
+  notifyAll?: boolean;
 };
 
 export type DailyPlannerComment = {

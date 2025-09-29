@@ -1,5 +1,6 @@
+
 'use client';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
@@ -12,11 +13,13 @@ import { Textarea } from '../ui/textarea';
 import { Megaphone } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Checkbox } from '../ui/checkbox';
 
 
 const announcementSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   content: z.string().min(1, 'Content is required'),
+  notifyAll: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof announcementSchema>;
@@ -28,7 +31,7 @@ export default function NewAnnouncementDialog() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(announcementSchema),
-    defaultValues: { title: '', content: '' }
+    defaultValues: { title: '', content: '', notifyAll: false }
   });
 
   const onSubmit = (data: FormValues) => {
@@ -86,6 +89,23 @@ export default function NewAnnouncementDialog() {
                 <Label htmlFor="content">Content</Label>
                 <Textarea id="content" {...form.register('content')} placeholder="Write your announcement here..." rows={8}/>
                 {form.formState.errors.content && <p className="text-xs text-destructive">{form.formState.errors.content.message}</p>}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+                <Controller
+                    control={form.control}
+                    name="notifyAll"
+                    render={({ field }) => (
+                       <Checkbox
+                          id="notifyAll"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                    )}
+                />
+                <Label htmlFor="notifyAll" className="text-sm font-normal">
+                    Send email notification to all users (except Managers)
+                </Label>
             </div>
           
           <DialogFooter>
