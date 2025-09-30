@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -10,7 +11,7 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -330,7 +332,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={`${req.id}-${index}`} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -355,4 +357,5 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
 }
     
     
+
 
