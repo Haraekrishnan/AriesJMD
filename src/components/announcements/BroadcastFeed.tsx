@@ -1,10 +1,9 @@
-
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Radio, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { parseISO, isAfter } from 'date-fns';
 
 export default function BroadcastFeed() {
     const { user, broadcasts, dismissBroadcast } = useAppContext();
@@ -16,7 +15,16 @@ export default function BroadcastFeed() {
     const visibleBroadcasts = useMemo(() => {
         if (!user || !broadcasts) return [];
         return broadcasts
-            .filter(b => !(b.dismissedBy || []).includes(user.id))
+            .filter(b => {
+                const isExpired = isAfter(new Date(), parseISO(b.expiryDate));
+                if (isExpired) return false;
+                
+                const hasDismissed = (b.dismissedBy || []).includes(user.id);
+                if (hasDismissed) return false;
+
+                const isRecipient = b.recipientUserIds?.includes(user.id) || b.recipientRoles?.includes(user.role);
+                return isRecipient;
+            })
             .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [broadcasts, user]);
 

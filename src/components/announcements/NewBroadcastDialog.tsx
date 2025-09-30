@@ -7,19 +7,29 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Label } from '@/components/ui/label';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { TransferList } from '../ui/transfer-list';
 import type { Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { Input } from '../ui/input';
+import { format } from 'date-fns';
 
 const broadcastSchema = z.object({
   message: z.string().min(1, 'Message is required'),
-  emailTarget: z.enum(['none', 'roles', 'individuals']),
+  expiryDate: z.date({ required_error: 'Expiry date is required' }),
+  expiryTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Please enter a valid time in HH:mm format."),
+  emailTarget: z.enum(['roles', 'individuals']),
   recipientRoles: z.array(z.string()).optional(),
   recipientUserIds: z.array(z.string()).optional(),
-});
+}).refine(data => {
+    if (data.emailTarget === 'roles') return data.recipientRoles && data.recipientRoles.length > 0;
+    if (data.emailTarget === 'individuals') return data.recipientUserIds && data.recipientUserIds.length > 0;
+    return false;
+}, { message: "Please select at least one recipient.", path: ['recipientRoles'] });
+
 
 type BroadcastFormValues = z.infer<typeof broadcastSchema>;
 
@@ -36,17 +46,28 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
     resolver: zodResolver(broadcastSchema),
     defaultValues: {
       message: '',
-      emailTarget: 'none',
+      emailTarget: 'roles',
       recipientRoles: [],
       recipientUserIds: [],
+      expiryTime: format(new Date(), 'HH:mm'),
     },
   });
 
   const onSubmit = (data: BroadcastFormValues) => {
-    addBroadcast(data.message, data.emailTarget, data.recipientRoles, data.recipientUserIds);
+    const [hours, minutes] = data.expiryTime.split(':').map(Number);
+    const expiryDateTime = new Date(data.expiryDate);
+    expiryDateTime.setHours(hours, minutes);
+
+    addBroadcast({
+        message: data.message,
+        expiryDate: expiryDateTime.toISOString(),
+        recipientRoles: data.recipientRoles || [],
+        recipientUserIds: data.recipientUserIds || [],
+    });
+
     toast({
       title: 'Broadcast Sent',
-      description: 'Your message has been broadcast.',
+      description: 'Your message has been broadcast to the selected users.',
     });
     setIsOpen(false);
   };
@@ -55,9 +76,10 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
     if (!open) {
       form.reset({
         message: '',
-        emailTarget: 'none',
+        emailTarget: 'roles',
         recipientRoles: [],
         recipientUserIds: [],
+        expiryTime: format(new Date(), 'HH:mm'),
       });
     }
     setIsOpen(open);
@@ -78,7 +100,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>New Broadcast</DialogTitle>
-          <DialogDescription>Send a scrolling message to all users' dashboards and optionally send an email.</DialogDescription>
+          <DialogDescription>Send a scrolling message and an email to selected users.</DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-4 py-2">
@@ -88,8 +110,21 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
                   {form.formState.errors.message && <p className="text-xs text-destructive">{form.formState.errors.message.message}</p>}
               </div>
 
+             <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label>Expiry Date</Label>
+                    <Controller control={form.control} name="expiryDate" render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                     {form.formState.errors.expiryDate && <p className="text-xs text-destructive">{form.formState.errors.expiryDate.message}</p>}
+                 </div>
+                 <div className="space-y-2">
+                    <Label>Expiry Time</Label>
+                    <Input type="time" {...form.register('expiryTime')} />
+                    {form.formState.errors.expiryTime && <p className="text-xs text-destructive">{form.formState.errors.expiryTime.message}</p>}
+                 </div>
+             </div>
+
               <div>
-                  <Label>Email Notification (Optional)</Label>
+                  <Label>Email Notification Recipients</Label>
                    <Controller
                       control={form.control}
                       name="emailTarget"
@@ -97,7 +132,6 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
                           <Select onValueChange={field.onChange} value={field.value}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                  <SelectItem value="none">Don't send email</SelectItem>
                                   <SelectItem value="roles">Send to specific roles</SelectItem>
                                   <SelectItem value="individuals">Send to specific individuals</SelectItem>
                               </SelectContent>
