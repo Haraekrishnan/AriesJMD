@@ -178,7 +178,7 @@ type AppContextType = {
   addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestItems: (requestId: string, items: InternalRequest['items']) => void;
-  splitInternalRequest: (originalRequestId: string, revertedItems: InternalRequest['items'], comment: string) => void;
+  splitInternalRequest: (originalRequestId: string, revertedItems: InternalRequestItem[], comment: string) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
   deleteInternalRequest: (requestId: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
@@ -1961,27 +1961,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${newRequestId}`] = newRequestData;
   
-    // 2. Update the original request
-    const keptItems = originalRequest.items.filter(
-      item => !revertedItems.some(revItem => revItem.id === item.id)
-    );
-    
-    const originalRequestComment = `Request split. Reverted items moved to new request #${newRequestId.slice(-6)}. Reason: ${comment}`;
-    const newCommentForOriginalRef = push(ref(rtdb, `internalRequests/${originalRequestId}/comments`));
+    // 2. Update the original request by removing the reverted items
+    const revertedItemIds = new Set(revertedItems.map(item => item.id));
+    const originalItemsRef = ref(rtdb, `internalRequests/${originalRequestId}/items`);
   
-    updates[`internalRequests/${originalRequestId}/items`] = keptItems;
-    updates[`internalRequests/${originalRequestId}/comments/${newCommentForOriginalRef.key}`] = { id: newCommentForOriginalRef.key, userId: user.id, text: originalRequestComment, date: new Date().toISOString() };
-    
-    if (keptItems.length === 0) {
-      // If no items are left, we can mark it as fully handled or delete it.
-      // For audit purposes, let's just mark it as 'Issued' but with no items.
-      updates[`internalRequests/${originalRequestId}/status`] = 'Issued';
-    } else {
-      const allKeptIssued = keptItems.every(item => item.status === 'Issued');
-      updates[`internalRequests/${originalRequestId}/status`] = allKeptIssued ? 'Issued' : 'Partially Issued';
-    }
-  
-    update(ref(rtdb), updates);
+    get(originalItemsRef).then((snapshot) => {
+        if (snapshot.exists()) {
+            const items = snapshot.val();
+            // Firebase returns arrays as objects when they are sparse, so we handle both cases.
+            if (Array.isArray(items)) {
+                const keptItems = items.filter(item => item && !revertedItemIds.has(item.id));
+                updates[`internalRequests/${originalRequestId}/items`] = keptItems;
+            } else if (typeof items === 'object' && items !== null) {
+                Object.keys(items).forEach(key => {
+                    if (items[key] && revertedItemIds.has(items[key].id)) {
+                        updates[`internalRequests/${originalRequestId}/items/${key}`] = null;
+                    }
+                });
+            }
+
+            const originalRequestComment = `Request split. Reverted items moved to new request #${newRequestId.slice(-6)}. Reason: ${comment}`;
+            const newCommentForOriginalRef = push(ref(rtdb, `internalRequests/${originalRequestId}/comments`));
+            updates[`internalRequests/${originalRequestId}/comments/${newCommentForOriginalRef.key}`] = { id: newCommentForOriginalRef.key, userId: user.id, text: originalRequestComment, date: new Date().toISOString() };
+            
+            // Re-evaluate the status of the original request
+            const remainingItems = Object.values(updates[`internalRequests/${originalRequestId}/items`] || []).filter(Boolean);
+            if (remainingItems.length === 0) {
+              updates[`internalRequests/${originalRequestId}/status`] = 'Issued'; 
+            } else {
+              const allKeptIssued = remainingItems.every(item => (item as InternalRequestItem).status === 'Issued');
+              updates[`internalRequests/${originalRequestId}/status`] = allKeptIssued ? 'Issued' : 'Partially Issued';
+            }
+
+            update(ref(rtdb), updates);
+        }
+    });
   
     // 3. Notify requester
     const requester = users.find(u => u.id === originalRequest.requesterId);
