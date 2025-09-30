@@ -17,9 +17,6 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -42,72 +39,12 @@ const itemStatusVariant: Record<InternalRequestItem['status'], 'default' | 'seco
   Rejected: 'destructive',
 };
 
-const EditItemStatusDialog = ({
-    item,
-    isOpen,
-    onClose,
-    onSave,
-}: {
-    item: InternalRequestItem;
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (newStatus: InternalRequestItem['status']) => void;
-}) => {
-    const [status, setStatus] = useState(item.status);
-
-    useEffect(() => {
-        if (isOpen) {
-            setStatus(item.status);
-        }
-    }, [isOpen, item.status]);
-
-    const handleSave = () => {
-        onSave(status);
-        onClose();
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Edit Item Status</DialogTitle>
-                    <DialogDescription>
-                        Change the status for: {item.quantity} {item.unit} - {item.description}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                    <Label>Status</Label>
-                    <Select value={status} onValueChange={(value) => setStatus(value as InternalRequestItem['status'])}>
-                        <SelectTrigger>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Pending">Pending</SelectItem>
-                            <SelectItem value="Approved">Approved</SelectItem>
-                            <SelectItem value="Issued">Issued</SelectItem>
-                            <SelectItem value="Rejected">Rejected</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button onClick={handleSave}>Save</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest, splitInternalRequest } = useAppContext();
-    const { toast } = useToast();
+    const { user, users, roles, updateInternalRequestStatus, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
-    const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
+    const { toast } = useToast();
     
     const canApprove = useMemo(() => {
         if (!user) return false;
@@ -143,25 +80,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         }
     };
     
-    const handleSaveItemStatus = (itemId: string, newStatus: InternalRequestItem['status']) => {
-        const originalItem = req.items.find(item => item.id === itemId);
-        if (!originalItem) return;
-
-        if (originalItem.status === 'Issued' && newStatus !== 'Issued') {
-            const revertedItems = [{ ...originalItem, status: newStatus }];
-            const splitComment = `Item "${originalItem.description}" status changed from Issued to ${newStatus} by ${user?.name}.`;
-            splitInternalRequest(req.id, revertedItems, splitComment);
-            toast({ title: 'Request Split', description: `A new request has been created for the reverted item.` });
-        } else {
-            const updatedItems = req.items.map(item =>
-                item.id === itemId ? { ...item, status: newStatus } : item
-            );
-            updateInternalRequestItems(req.id, updatedItems);
-            toast({ title: 'Item status updated' });
-        }
-        setEditingItem(null);
-    };
-
     const requester = users.find(u => u.id === req.requesterId);
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
     const canBulkApprove = canApprove && req.status === 'Pending';
@@ -191,20 +109,12 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
                     {req.items.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
-                        <div>
-                            <p>{item.quantity} {item.unit} - {item.description}</p>
-                            {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
+                        <div key={item.id + index} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                            <div>
+                                <p>{item.quantity} {item.unit} - {item.description}</p>
+                                {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <Badge variant={itemStatusVariant[item.status]}>{item.status}</Badge>
-                            {canApprove && (
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingItem(item)}>
-                                    <Edit className="h-3 w-3"/>
-                                </Button>
-                            )}
-                        </div>
-                    </div>
                     ))}
                 </div>
                     <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
@@ -281,15 +191,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     </AlertDialog>
                 )}
             </Card>
-
-            {editingItem && (
-                 <EditItemStatusDialog
-                    item={editingItem}
-                    isOpen={!!editingItem}
-                    onClose={() => setEditingItem(null)}
-                    onSave={(newStatus) => handleSaveItemStatus(editingItem.id, newStatus)}
-                />
-            )}
         </>
     )
 }
@@ -332,7 +233,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={`${req.id}-${index}`} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id + index} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -346,7 +247,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={`${req.id}-${index}`} req={req} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id + index} req={req} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -357,5 +258,6 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
 }
     
     
+
 
 
