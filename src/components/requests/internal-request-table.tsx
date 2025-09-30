@@ -12,15 +12,12 @@ import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestIt
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -44,13 +41,12 @@ const itemStatusVariant: Record<InternalRequestItem['status'], 'default' | 'seco
 };
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest, splitInternalRequest } = useAppContext();
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
     const { toast } = useToast();
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     
-    // State for inline item status editing
     const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>({});
 
     useEffect(() => {
@@ -104,12 +100,21 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
     
     const handleSaveItemStatusChanges = () => {
-        const updatedItems: InternalRequestItem[] = req.items.map(item => ({
-            ...item,
-            status: itemStatuses[item.id] || item.status,
-        }));
-        updateInternalRequestItems(req.id, updatedItems);
-        toast({ title: 'Item statuses updated' });
+        const revertedItems = req.items.filter(item => 
+            item.status === 'Issued' && itemStatuses[item.id] !== 'Issued'
+        );
+
+        if (revertedItems.length > 0) {
+            splitInternalRequest(req.id, revertedItems, 'Item status reverted by admin.');
+            toast({ title: 'Request Split', description: 'Reverted items have been moved to a new request.' });
+        } else {
+            const updatedItems: InternalRequestItem[] = req.items.map(item => ({
+                ...item,
+                status: itemStatuses[item.id] || item.status,
+            }));
+            updateInternalRequestItems(req.id, updatedItems);
+            toast({ title: 'Item statuses updated' });
+        }
     };
 
     const requester = users.find(u => u.id === req.requesterId);
