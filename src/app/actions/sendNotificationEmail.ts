@@ -1,8 +1,9 @@
+
 'use server';
 
 import * as nodemailer from 'nodemailer';
 
-export async function sendNotificationEmail({ to, subject, htmlBody }: { to: string, subject: string, htmlBody: string }) {
+export async function sendNotificationEmail({ to, subject, htmlBody, fromAddress }: { to: string, subject: string, htmlBody: string, fromAddress?: string }) {
   const { GMAIL_USER, GMAIL_APP_PASS } = process.env;
 
   if (!GMAIL_USER || !GMAIL_APP_PASS) {
@@ -21,7 +22,7 @@ export async function sendNotificationEmail({ to, subject, htmlBody }: { to: str
     });
 
     await transporter.sendMail({
-      from: `"Aries Marine Portal" <${GMAIL_USER}>`,
+      from: fromAddress ? `Aries Marine Portal <${fromAddress}>` : `"Aries Marine Portal" <${GMAIL_USER}>`,
       to: to, // The recipient's email address
       subject: subject,
       html: htmlBody,
@@ -66,8 +67,11 @@ export async function createAndSendNotification(
   title: string,
   details: { [key: string]: string | number },
   actionUrl?: string,
-  actionText?: string
+  actionText?: string,
+  fromAddress?: string,
 ) {
   const htmlBody = createEmailBody(title, details, actionUrl, actionText);
-  return sendNotificationEmail({ to, subject, htmlBody });
+  return sendNotificationEmail({ to, subject, htmlBody, fromAddress });
 }
+
+  

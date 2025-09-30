@@ -507,7 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (user?.role === 'Admin' && broadcasts.length > 0) {
         const now = new Date();
-        const expiredBroadcasts = broadcasts.filter(b => b.expiryDate && isAfter(now, parseISO(b.expiryDate)));
+        const expiredBroadcasts = broadcasts.filter(b => b && b.expiryDate && isAfter(now, parseISO(b.expiryDate)));
         if (expiredBroadcasts.length > 0) {
             const updates: { [key: string]: null } = {};
             expiredBroadcasts.forEach(b => {
@@ -2800,27 +2800,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addBroadcast = useCallback((broadcastData: Omit<Broadcast, 'id'|'creatorId'|'createdAt'|'dismissedBy'>) => {
     if (!user) return;
+    const { message, expiryDate, emailTarget, recipientRoles, recipientUserIds } = broadcastData;
     const newRef = push(ref(rtdb, 'broadcasts'));
-    const newBroadcast = { ...broadcastData, creatorId: user.id, createdAt: new Date().toISOString(), dismissedBy: [] };
+    const newBroadcast = {
+      message,
+      expiryDate,
+      creatorId: user.id,
+      createdAt: new Date().toISOString(),
+      dismissedBy: [],
+      recipientRoles,
+      recipientUserIds,
+    };
     set(newRef, newBroadcast);
-    addActivityLog(user.id, 'Broadcast Sent', broadcastData.message);
-
-    if (broadcastData.emailTarget !== 'none') {
-        let usersToNotify: User[] = [];
-        if (broadcastData.emailTarget === 'roles' && broadcastData.recipientRoles) {
-            usersToNotify = users.filter(u => u.status === 'active' && u.email && broadcastData.recipientRoles?.includes(u.role));
-        } else if (broadcastData.emailTarget === 'individuals' && broadcastData.recipientUserIds) {
-            usersToNotify = users.filter(u => u.status === 'active' && u.email && broadcastData.recipientUserIds?.includes(u.id));
-        }
-
+    addActivityLog(user.id, 'Broadcast Sent', message);
+  
+    if (emailTarget !== 'none') {
+      let usersToNotify: User[] = [];
+      if (emailTarget === 'roles' && recipientRoles) {
+        usersToNotify = users.filter(u => u.status === 'active' && u.email && recipientRoles.includes(u.role));
+      } else if (emailTarget === 'individuals' && recipientUserIds) {
+        usersToNotify = users.filter(u => u.status === 'active' && u.email && recipientUserIds.includes(u.id));
+      }
+  
       usersToNotify.forEach(u => {
         createAndSendNotification(
-          u.email!,
-          `Important Broadcast from ${user.name}`,
-          'Important Broadcast',
-          { Message: broadcastData.message },
-          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-          'Go to Dashboard'
+            u.email!,
+            `Important Broadcast from ${user.name}`,
+            'Important Broadcast',
+            { Message: message },
+            `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+            'Go to Dashboard',
+            'ariesjmdportal@gmail.com'
         );
       });
     }
@@ -3192,3 +3202,6 @@ export const useAppContext = (): AppContextType => {
     
 
 
+
+
+  
