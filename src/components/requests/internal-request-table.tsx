@@ -86,11 +86,21 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const onEditSubmit = (data: EditRequestFormValues) => {
         if (!selectedRequest || !user) return;
-    
-        // Scenario 1: Splitting an issued request
+        
+        const originalItems = selectedRequest.items;
+        const newItems = data.items;
+        
+        const structuralChange = originalItems.length !== newItems.length || newItems.some((newItem, index) => {
+            const originalItem = originalItems[index];
+            if (!originalItem) return true;
+            return newItem.description !== originalItem.description || newItem.quantity !== originalItem.quantity || newItem.unit !== originalItem.unit || newItem.remarks !== originalItem.remarks;
+        });
+
+        const statusChange = newItems.some((newItem, index) => newItem.status !== originalItems[index]?.status);
+
         if (['Issued', 'Partially Issued'].includes(selectedRequest.status)) {
-            const revertedItems = data.items.filter((newItem, index) => {
-                const originalItem = selectedRequest.items[index];
+            const revertedItems = newItems.filter((newItem, index) => {
+                const originalItem = originalItems[index];
                 return originalItem && originalItem.status === 'Issued' && newItem.status !== 'Issued';
             });
     
@@ -99,34 +109,19 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 if (comment) {
                     splitInternalRequest(selectedRequest.id, revertedItems, comment);
                     toast({ title: 'Request Split', description: 'A new request has been created for the reverted items.' });
-                    setIsEditing(false);
-                    setSelectedRequest(null);
-                    return;
                 } else {
                     toast({ title: 'Action Cancelled', description: 'A reason is required to split a request.', variant: 'destructive' });
-                    return;
                 }
+                setIsEditing(false);
+                setSelectedRequest(null);
+                return;
             }
         }
-    
-        // Scenario 2: Standard item or status updates
-        const originalItems = selectedRequest.items;
-        const newItems = data.items;
-    
-        const structuralChange = originalItems.length !== newItems.length ||
-            newItems.some((newItem, index) => {
-                const originalItem = originalItems[index];
-                if (!originalItem) return true; // Added item
-                return newItem.description !== originalItem.description ||
-                    newItem.quantity !== originalItem.quantity ||
-                    newItem.unit !== originalItem.unit ||
-                    newItem.remarks !== originalItem.remarks;
-            });
-    
+
         if (structuralChange) {
             updateInternalRequestItems(selectedRequest.id, newItems);
             toast({ title: 'Request Items Updated' });
-        } else {
+        } else if (statusChange) {
             const itemStatuses = new Set(newItems.map(i => i.status));
             let newOverallStatus: InternalRequestStatus = 'Pending';
     
@@ -136,16 +131,19 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 newOverallStatus = 'Partially Issued';
             } else if (itemStatuses.has('Approved')) {
                 newOverallStatus = 'Partially Approved';
+            } else if (itemStatuses.has('Rejected') && !itemStatuses.has('Pending') && !itemStatuses.has('Approved') && !itemStatuses.has('Issued')) {
+                newOverallStatus = 'Rejected';
             }
-    
-            if (newOverallStatus !== selectedRequest.status || newItems.some((item, i) => item.status !== originalItems[i].status)) {
-                updateInternalRequestStatus(selectedRequest.id, newOverallStatus, `Item statuses updated by ${user.role}.`);
-                toast({ title: 'Item Statuses Updated' });
+            
+            if (newOverallStatus !== selectedRequest.status) {
+                 updateInternalRequestStatus(selectedRequest.id, newOverallStatus, `Item statuses updated by ${user.role}.`);
             } else {
-                toast({ title: 'No Changes Detected' });
+                updateInternalRequestItems(selectedRequest.id, newItems);
             }
+        } else {
+            toast({ title: 'No Changes Detected' });
         }
-    
+
         setIsEditing(false);
         setSelectedRequest(null);
     };
