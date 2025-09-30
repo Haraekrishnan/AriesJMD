@@ -10,7 +10,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
@@ -98,13 +98,12 @@ const EditItemStatusDialog = ({
     );
 };
 
-
 const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest, splitInternalRequest } = useAppContext();
+    const { toast } = useToast();
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
-    const { toast } = useToast();
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     
     const canApprove = useMemo(() => {
@@ -189,8 +188,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     <div className="space-y-2">
-                        {req.items.map((item) => (
-                        <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                        {req.items.map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                             <div>
                                 <p>{item.quantity} {item.unit} - {item.description}</p>
                                 {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -354,5 +353,5 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
-
+    
     
