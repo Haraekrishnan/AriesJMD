@@ -233,7 +233,7 @@ type AppContextType = {
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
   updateBranding: (name: string, logo: string | null) => void;
-  addAnnouncement: (data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => void;
+  addAnnouncement: (data: Partial<Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>>) => void;
   updateAnnouncement: (announcement: Announcement) => void;
   approveAnnouncement: (announcementId: string) => void;
   rejectAnnouncement: (announcementId: string) => void;
@@ -488,7 +488,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  // Effect for cleaning up old activity logs
+  // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
     if (user?.role === 'Admin' && activityLogs.length > 0) {
       const thirtyDaysAgo = sub(new Date(), { days: 30 }).toISOString();
@@ -504,7 +504,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     }
-  }, [user, activityLogs]);
+    
+    if (user?.role === 'Admin' && broadcasts.length > 0) {
+        const now = new Date();
+        const expiredBroadcasts = broadcasts.filter(b => isAfter(now, parseISO(b.expiryDate)));
+        if (expiredBroadcasts.length > 0) {
+            const updates: { [key: string]: null } = {};
+            expiredBroadcasts.forEach(b => {
+                updates[`/broadcasts/${b.id}`] = null;
+            });
+            update(ref(rtdb), updates).then(() => {
+                console.log(`Deleted ${expiredBroadcasts.length} expired broadcasts.`);
+            });
+        }
+    }
+
+  }, [user, activityLogs, broadcasts]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
@@ -2701,20 +2716,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Branding Updated');
   }, [user, addActivityLog]);
 
-  const addAnnouncement = useCallback((data: Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>) => {
+  const addAnnouncement = useCallback((data: Partial<Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>>) => {
     if (!user || !user.supervisorId) {
         toast({ variant: 'destructive', title: "No Supervisor", description: "You must have a supervisor assigned to create an announcement." });
         return;
     }
     const newRef = push(ref(rtdb, 'announcements'));
     const newAnnouncement: Omit<Announcement, 'id'> = {
-        ...data,
+        title: data.title!,
+        content: data.content!,
         creatorId: user.id,
         status: 'pending',
         approverId: user.supervisorId,
         createdAt: new Date().toISOString(),
         comments: [],
-        dismissedBy: []
+        dismissedBy: [],
+        notifyAll: data.notifyAll || false,
     };
     set(newRef, newAnnouncement);
     addActivityLog(user.id, 'Announcement Submitted', `Title: ${data.title}`);
@@ -2783,27 +2800,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addBroadcast = useCallback((broadcastData: Omit<Broadcast, 'id'|'creatorId'|'createdAt'|'dismissedBy'>) => {
     if (!user) return;
-    const { message, expiryDate, emailTarget, recipientRoles, recipientUserIds } = broadcastData;
     const newRef = push(ref(rtdb, 'broadcasts'));
-    const newBroadcast: Omit<Broadcast, 'id'> = {
-      message,
-      creatorId: user.id,
-      createdAt: new Date().toISOString(),
-      expiryDate,
-      dismissedBy: [],
-      emailTarget: emailTarget,
-      recipientRoles: recipientRoles || [],
-      recipientUserIds: recipientUserIds || [],
-    };
+    const newBroadcast = { ...broadcastData, creatorId: user.id, createdAt: new Date().toISOString(), dismissedBy: [] };
     set(newRef, newBroadcast);
-    addActivityLog(user.id, 'Broadcast Sent', message);
+    addActivityLog(user.id, 'Broadcast Sent', broadcastData.message);
 
-    if (emailTarget !== 'none') {
+    if (broadcastData.emailTarget !== 'none') {
         let usersToNotify: User[] = [];
-        if (emailTarget === 'roles' && recipientRoles) {
-            usersToNotify = users.filter(u => u.status === 'active' && u.email && recipientRoles.includes(u.role));
-        } else if (emailTarget === 'individuals' && recipientUserIds) {
-            usersToNotify = users.filter(u => u.status === 'active' && u.email && recipientUserIds.includes(u.id));
+        if (broadcastData.emailTarget === 'roles' && broadcastData.recipientRoles) {
+            usersToNotify = users.filter(u => u.status === 'active' && u.email && broadcastData.recipientRoles?.includes(u.role));
+        } else if (broadcastData.emailTarget === 'individuals' && broadcastData.recipientUserIds) {
+            usersToNotify = users.filter(u => u.status === 'active' && u.email && broadcastData.recipientUserIds?.includes(u.id));
         }
 
       usersToNotify.forEach(u => {
@@ -2811,7 +2818,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           u.email!,
           `Important Broadcast from ${user.name}`,
           'Important Broadcast',
-          { Message: message },
+          { Message: broadcastData.message },
           `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
           'Go to Dashboard'
         );
@@ -3183,3 +3190,4 @@ export const useAppContext = (): AppContextType => {
 };
 
     
+

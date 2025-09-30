@@ -86,9 +86,53 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const onEditSubmit = (data: EditRequestFormValues) => {
         if (!selectedRequest || !user) return;
-        updateInternalRequestItems(selectedRequest.id, data.items);
-        toast({ title: 'Request Updated', description: 'The item list has been updated and the requester notified.'});
+
+        const originalItems = selectedRequest.items;
+        const newItems = data.items;
+
+        const structuralChange = originalItems.length !== newItems.length || 
+            newItems.some((newItem, index) => {
+                const originalItem = originalItems[index];
+                if (!originalItem) return true; // Added item
+                return newItem.description !== originalItem.description ||
+                       newItem.quantity !== originalItem.quantity ||
+                       newItem.unit !== originalItem.unit ||
+                       newItem.remarks !== originalItem.remarks;
+            });
+            
+        const statusChange = newItems.some((newItem, index) => {
+            const originalItem = originalItems[index];
+            return originalItem && newItem.status !== originalItem.status;
+        });
+
+        if (structuralChange) {
+            updateInternalRequestItems(selectedRequest.id, newItems);
+            toast({ title: 'Request Updated', description: 'The item list has been updated and the requester notified.'});
+        } else if (statusChange) {
+            // If only statuses changed, find the new overall status and use the status update function
+            const itemStatuses = new Set(newItems.map(i => i.status));
+            let newOverallStatus: InternalRequestStatus = 'Pending';
+            if (itemStatuses.size === 1) {
+                newOverallStatus = Array.from(itemStatuses)[0] as InternalRequestStatus;
+            } else if (itemStatuses.has('Issued')) {
+                newOverallStatus = 'Partially Issued';
+            } else if (itemStatuses.has('Approved')) {
+                newOverallStatus = 'Partially Approved';
+            }
+            
+            // To prevent calling status update if it's not a real change
+            if (newOverallStatus !== selectedRequest.status || newItems.some((item, i) => item.status !== originalItems[i].status)) {
+               updateInternalRequestStatus(selectedRequest.id, newOverallStatus, `Item statuses updated by ${user.role}.`);
+               toast({ title: 'Item Statuses Updated' });
+            } else {
+               toast({ title: 'No Changes Detected' });
+            }
+        } else {
+            toast({ title: 'No Changes Detected' });
+        }
+        
         setIsEditing(false);
+        setSelectedRequest(null);
     }
 
     const handleConfirmAction = () => {
@@ -278,7 +322,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                                 )}
                                             />
                                         </div>
-                                        <div className="col-span-0 flex items-end h-full"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button></div>
                                     </div>
                                     ))}
                                 </div>
