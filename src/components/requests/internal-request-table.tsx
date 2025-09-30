@@ -101,7 +101,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
                     {req.items.map((item, index) => (
-                        <div key={item.id + index} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                        <div key={item.id || index} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                             <div>
                                 <p>{item.quantity} {item.unit} - {item.description}</p>
                                 {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -248,5 +248,3 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
-    
-    
