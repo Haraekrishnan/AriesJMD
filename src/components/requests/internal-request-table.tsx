@@ -145,7 +145,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
                     {req.items.map((item, index) => (
-                    <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                    <div key={index} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                         <div>
                             <p>{item.quantity} {item.unit} - {item.description}</p>
                             {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -181,7 +181,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             {commentsArray.length > 0 ? commentsArray.map((c,i) => {
                                 const commentUser = users.find(u => u.id === c.userId);
                                 return (
-                                    <div key={i} className="flex items-start gap-2">
+                                    <div key={c.id} className="flex items-start gap-2">
                                         <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                         <div className="text-xs bg-background p-2 rounded-md w-full">
                                             <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
