@@ -47,9 +47,16 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { toast } = useToast();
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     
-    const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>({});
-    const [popoverOpen, setPopoverOpen] = useState<Record<string, boolean>>({});
-
+    // This state will now hold the state for each item's dropdown.
+    const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>(() => {
+        const initialStatuses: Record<string, InternalRequestItem['status']> = {};
+        req.items.forEach(item => {
+            initialStatuses[item.id] = item.status;
+        });
+        return initialStatuses;
+    });
+    
+    // Reset local state if the request data changes from the context
     useEffect(() => {
         const initialStatuses: Record<string, InternalRequestItem['status']> = {};
         req.items.forEach(item => {
@@ -98,7 +105,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const handleItemStatusChange = (itemId: string, newStatus: InternalRequestItem['status']) => {
         setItemStatuses(prev => ({...prev, [itemId]: newStatus}));
-        setPopoverOpen(prev => ({ ...prev, [itemId]: false }));
     };
     
     const handleSaveItemStatusChanges = () => {
@@ -146,8 +152,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             </CardHeader>
             <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
-                    {req.items.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                    {req.items.map((item) => (
+                    <div key={`${req.id}-${item.id}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                         <div>
                             <p>{item.quantity} {item.unit} - {item.description}</p>
                             {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
