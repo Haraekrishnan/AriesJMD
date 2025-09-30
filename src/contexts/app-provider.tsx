@@ -1945,28 +1945,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, internalRequests, users, addActivityLog]);
 
   const deleteInternalRequest = useCallback((requestId: string) => {
-    if (!user || user.role !== 'Admin') {
-        toast({
-            variant: "destructive",
-            title: "Permission Denied",
-            description: "You do not have permission to delete this request.",
-        });
+    if (!user) return;
+    const requestToDelete = internalRequests.find(r => r.id === requestId);
+    if (!requestToDelete) {
+        toast({ variant: "destructive", title: "Deletion Failed", description: "Could not find the request to delete." });
         return;
     }
-    const requestRef = ref(rtdb, `internalRequests/${requestId}`);
-    remove(requestRef)
+    const canDelete = user.role === 'Admin' || (user.id === requestToDelete.requesterId && requestToDelete.status === 'Pending');
+    if (!canDelete) {
+        toast({ variant: "destructive", title: "Permission Denied", description: "You do not have permission to delete this request." });
+        return;
+    }
+    remove(ref(rtdb, `internalRequests/${requestId}`))
         .then(() => {
             toast({ title: 'Request Deleted' });
             addActivityLog(user.id, 'Internal Request Deleted', `ID: ${requestId}`);
         })
         .catch((error) => {
-            toast({
-                variant: "destructive",
-                title: "Deletion Failed",
-                description: error.message,
-            });
+            toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
         });
-  }, [user, addActivityLog, toast]);
+  }, [user, internalRequests, addActivityLog, toast]);
   
   const markInternalRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;
@@ -3192,5 +3190,6 @@ export const useAppContext = (): AppContextType => {
   
 
     
+
 
 

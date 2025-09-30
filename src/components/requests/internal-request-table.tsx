@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -63,7 +64,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     const handleDelete = (requestId: string) => {
         deleteInternalRequest(requestId);
-        toast({ variant: 'destructive', title: 'Request Deleted' });
     };
 
     const handleAccordionToggle = (openValue: string) => {
@@ -80,6 +80,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
+    const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && req.status === 'Pending');
 
     return (
         <>
@@ -144,7 +145,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         {canClaimIssue && (
                             <Button size="sm" variant="destructive" onClick={() => handleActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
                         )}
-                        {user?.role === 'Admin' && (
+                        {canDelete && (
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
@@ -225,7 +226,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={req.id + index} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -239,7 +240,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id + index} req={req} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
