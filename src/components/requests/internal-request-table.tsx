@@ -251,8 +251,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
                                 <div className="col-span-1"><Label className="text-xs">Unit</Label></div>
                                 <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
-                                <div className="col-span-1"><Label className="text-xs">Status</Label></div>
-                                <div className="col-span-1"></div>
+                                <div className="col-span-2"><Label className="text-xs">Status</Label></div>
                             </div>
                             <ScrollArea className="flex-1 px-4">
                                 <div className="space-y-4">
