@@ -10,7 +10,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
@@ -330,7 +330,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req) => <RequestCard key={req.id} req={req} />)}
+            {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
