@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -11,7 +10,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
@@ -146,7 +145,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         const originalItem = req.items.find(item => item.id === itemId);
         if (!originalItem) return;
 
-        // If an issued item is being reverted, trigger the split logic
         if (originalItem.status === 'Issued' && newStatus !== 'Issued') {
             const revertedItems = [{ ...originalItem, status: newStatus }];
             const splitComment = `Item "${originalItem.description}" status changed from Issued to ${newStatus} by ${user?.name}.`;
