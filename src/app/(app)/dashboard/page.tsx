@@ -12,7 +12,7 @@ import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
-import BroadcastTicker from '@/components/announcements/BroadcastTicker';
+import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 
 export default function DashboardPage() {
   const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
@@ -53,7 +53,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <BroadcastTicker />
+      <BroadcastFeed />
       <AnnouncementFeed />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

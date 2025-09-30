@@ -5,10 +5,9 @@ export type Broadcast = {
   message: string;
   creatorId: string;
   createdAt: string; // ISO String
-  dismissedBy: string[];
-  emailTarget?: 'none' | 'roles' | 'individuals';
-  recipientRoles?: string[];
-  recipientUserIds?: string[];
+  expiryDate: string; // ISO String
+  recipientUserIds: string[];
+  recipientRoles: string[];
 };
 
 export type PpeInwardRecord = {
