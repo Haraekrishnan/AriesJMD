@@ -32,6 +32,8 @@ interface NewInternalRequestDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const generateNewItemId = () => `item-${Date.now()}-${Math.random()}`;
+
 export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInternalRequestDialogProps) {
   const { addInternalRequest } = useAppContext();
   const { toast } = useToast();
@@ -39,7 +41,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
     defaultValues: {
-      items: [{ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '' }],
+      items: [{ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' }],
     },
   });
 
@@ -59,7 +61,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ items: [{ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '' }] });
+      form.reset({ items: [{ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' }] });
     }
     setIsOpen(open);
   };
@@ -113,7 +115,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
            
            {/* Static Footer with buttons */}
           <div className="px-4 pt-4 shrink-0">
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Item
                 </Button>
