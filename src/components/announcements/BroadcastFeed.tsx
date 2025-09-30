@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -16,13 +17,14 @@ export default function BroadcastFeed() {
         if (!user || !broadcasts) return [];
         return broadcasts
             .filter(b => {
+                if (!b.expiryDate) return false; // Ensure expiryDate exists
                 const isExpired = isAfter(new Date(), parseISO(b.expiryDate));
                 if (isExpired) return false;
                 
                 const hasDismissed = (b.dismissedBy || []).includes(user.id);
                 if (hasDismissed) return false;
 
-                const isRecipient = b.recipientUserIds?.includes(user.id) || b.recipientRoles?.includes(user.role);
+                const isRecipient = b.recipientUserIds?.includes(user.id) || (b.recipientRoles && user.role && b.recipientRoles.includes(user.role));
                 return isRecipient;
             })
             .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
