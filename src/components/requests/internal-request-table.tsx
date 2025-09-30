@@ -6,26 +6,21 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
-import { ScrollArea } from '../ui/scroll-area';
-import { PlusCircle } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -41,123 +36,56 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
   Disputed: 'destructive'
 };
 
-const requestItemSchema = z.object({
-  id: z.string(),
-  description: z.string().min(1, 'Description is required'),
-  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
-  unit: z.string().min(1, 'Unit is required.'),
-  remarks: z.string().optional(),
-  status: z.enum(['Pending', 'Approved', 'Rejected', 'Issued']),
-});
-const editRequestSchema = z.object({
-  items: z.array(requestItemSchema).min(1, 'At least one item is required.'),
-});
-type EditRequestFormValues = z.infer<typeof editRequestSchema>;
-
+const itemStatusVariant: Record<InternalRequestItem['status'], 'default' | 'secondary' | 'destructive' | 'success'> = {
+  Pending: 'secondary',
+  Approved: 'default',
+  Issued: 'success',
+  Rejected: 'destructive',
+};
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, splitInternalRequest, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
-    const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
     const { toast } = useToast();
+    const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     
-    const form = useForm<EditRequestFormValues>({ resolver: zodResolver(editRequestSchema) });
-    const { control, handleSubmit } = form;
-    const { fields, append, remove } = useFieldArray({ control, name: 'items' });
+    // State for inline item status editing
+    const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>({});
 
+    useEffect(() => {
+        const initialStatuses: Record<string, InternalRequestItem['status']> = {};
+        req.items.forEach(item => {
+            initialStatuses[item.id] = item.status;
+        });
+        setItemStatuses(initialStatuses);
+    }, [req.items]);
+
+    const isDirty = useMemo(() => {
+        return req.items.some(item => item.status !== itemStatuses[item.id]);
+    }, [req.items, itemStatuses]);
+    
     const canApprove = useMemo(() => {
         if (!user) return false;
         const userRole = roles.find(r => r.name === user.role);
         return userRole?.permissions.includes('approve_store_requests');
     }, [user, roles]);
 
-    const handleActionClick = (req: InternalRequest, newStatus: InternalRequestStatus) => {
-        setAction(newStatus);
-        setSelectedRequest(req);
-    };
-    
-    const handleEditClick = (req: InternalRequest) => {
-        setSelectedRequest(req);
-        form.reset({ items: req.items });
-        setIsEditing(true);
-    };
-    
-    const onEditSubmit = (data: EditRequestFormValues) => {
-        if (!selectedRequest || !user) return;
-        
-        const originalItems = selectedRequest.items;
-        const newItems = data.items;
-        
-        const structuralChange = originalItems.length !== newItems.length || newItems.some((newItem, index) => {
-            const originalItem = originalItems[index];
-            if (!originalItem) return true;
-            return newItem.description !== originalItem.description || newItem.quantity !== originalItem.quantity || newItem.unit !== originalItem.unit || newItem.remarks !== originalItem.remarks;
-        });
-
-        const statusChange = newItems.some((newItem, index) => newItem.status !== originalItems[index]?.status);
-
-        if (['Issued', 'Partially Issued'].includes(selectedRequest.status)) {
-            const revertedItems = newItems.filter((newItem, index) => {
-                const originalItem = originalItems[index];
-                return originalItem && originalItem.status === 'Issued' && newItem.status !== 'Issued';
-            });
-    
-            if (revertedItems.length > 0) {
-                const comment = prompt('Please provide a reason for reverting issued items (this will be logged).');
-                if (comment) {
-                    splitInternalRequest(selectedRequest.id, revertedItems, comment);
-                    toast({ title: 'Request Split', description: 'A new request has been created for the reverted items.' });
-                } else {
-                    toast({ title: 'Action Cancelled', description: 'A reason is required to split a request.', variant: 'destructive' });
-                }
-                setIsEditing(false);
-                setSelectedRequest(null);
-                return;
-            }
-        }
-
-        if (structuralChange) {
-            updateInternalRequestItems(selectedRequest.id, newItems);
-            toast({ title: 'Request Items Updated' });
-        } else if (statusChange) {
-            const itemStatuses = new Set(newItems.map(i => i.status));
-            let newOverallStatus: InternalRequestStatus = 'Pending';
-    
-            if (itemStatuses.size === 1) {
-                newOverallStatus = Array.from(itemStatuses)[0] as InternalRequestStatus;
-            } else if (itemStatuses.has('Issued')) {
-                newOverallStatus = 'Partially Issued';
-            } else if (itemStatuses.has('Approved')) {
-                newOverallStatus = 'Partially Approved';
-            } else if (itemStatuses.has('Rejected') && !itemStatuses.has('Pending') && !itemStatuses.has('Approved') && !itemStatuses.has('Issued')) {
-                newOverallStatus = 'Rejected';
-            }
-            
-            if (newOverallStatus !== selectedRequest.status) {
-                 updateInternalRequestStatus(selectedRequest.id, newOverallStatus, `Item statuses updated by ${user.role}.`);
-            } else {
-                updateInternalRequestItems(selectedRequest.id, newItems);
-            }
-        } else {
-            toast({ title: 'No Changes Detected' });
-        }
-
-        setIsEditing(false);
-        setSelectedRequest(null);
+    const handleActionClick = (act: InternalRequestStatus) => {
+        setAction(act);
+        setIsActionConfirmOpen(true);
     };
 
     const handleConfirmAction = () => {
-        if (!selectedRequest || !action) return;
+        if (!req || !action) return;
         if (!comment.trim() && action !== 'Approved') {
             toast({ title: 'Comment required', variant: 'destructive'});
             return;
         }
-        updateInternalRequestStatus(selectedRequest.id, action, comment);
+        updateInternalRequestStatus(req.id, action, comment);
         toast({ title: `Request ${action}` });
-        setSelectedRequest(null);
-        setAction(null);
+        setIsActionConfirmOpen(false);
+        setComment('');
     };
 
     const handleDelete = (requestId: string) => {
@@ -171,9 +99,25 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         }
     };
     
+    const handleItemStatusChange = (itemId: string, newStatus: InternalRequestItem['status']) => {
+        setItemStatuses(prev => ({...prev, [itemId]: newStatus}));
+    };
+    
+    const handleSaveItemStatusChanges = () => {
+        const updatedItems: InternalRequestItem[] = req.items.map(item => ({
+            ...item,
+            status: itemStatuses[item.id] || item.status,
+        }));
+        updateInternalRequestItems(req.id, updatedItems);
+        toast({ title: 'Item statuses updated' });
+    };
+
     const requester = users.find(u => u.id === req.requesterId);
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
-    const canEdit = user?.role === 'Admin' || (canApprove && (req.status === 'Pending' || req.status === 'Approved' || req.status === 'Partially Approved' || req.status === 'Issued' || req.status === 'Partially Issued'));
+    const canBulkApprove = canApprove && req.status === 'Pending';
+    const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
+    const canClaimIssue = user?.id === req.requesterId && req.status === 'Issued';
+    
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
 
@@ -194,19 +138,39 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-                 <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
+                 <div className="space-y-2">
+                    {req.items.map((item, index) => (
+                    <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                        <div>
+                            <p>{item.quantity} {item.unit} - {item.description}</p>
+                            {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
+                        </div>
+                        {canApprove ? (
+                            <Select 
+                                value={itemStatuses[item.id]} 
+                                onValueChange={(value) => handleItemStatusChange(item.id, value as InternalRequestItem['status'])}
+                                disabled={item.status === 'Issued' && user?.role !== 'Admin'}
+                            >
+                                <SelectTrigger className="w-[120px] h-8 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Pending">Pending</SelectItem>
+                                    <SelectItem value="Approved">Approved</SelectItem>
+                                    <SelectItem value="Issued">Issued</SelectItem>
+                                    <SelectItem value="Rejected">Rejected</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Badge variant={itemStatusVariant[item.status]}>{item.status}</Badge>
+                        )}
+                    </div>
+                    ))}
+                </div>
+                 <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
                     <AccordionItem value={req.id} className="border-none">
-                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Items & History</AccordionTrigger>
+                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
-                        <ul className="list-disc pl-4 text-sm mb-4">
-                            {req.items.map((item, index) => (
-                            <li key={index}>
-                                {item.quantity} {item.unit} {item.description}
-                                <Badge variant="secondary" className="ml-2 text-xs">{item.status}</Badge>
-                                {item.remarks && <span className="text-muted-foreground text-xs"> ({item.remarks})</span>}
-                            </li>
-                            ))}
-                        </ul>
                         <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                         <div className="space-y-2">
                             {commentsArray.length > 0 ? commentsArray.map((c,i) => {
@@ -228,63 +192,45 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             </CardContent>
             <CardFooter className="p-2 bg-muted/50">
                  <div className="flex flex-wrap justify-end gap-2 w-full">
+                     {isDirty && canApprove && (
+                         <Button size="sm" onClick={handleSaveItemStatusChanges}><Save className="mr-2 h-4 w-4"/>Save Statuses</Button>
+                     )}
                      {canApprove && (
                         <>
-                            <Button size="sm" variant="outline" onClick={() => handleEditClick(req)}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
-                            <Button size="sm" variant="default" onClick={() => handleActionClick(req, 'Approved')} disabled={req.status !== 'Pending'}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
-                            <Button size="sm" variant="secondary" onClick={() => handleActionClick(req, 'Issued')} disabled={!['Approved', 'Partially Approved'].includes(req.status)}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleActionClick('Approved')} disabled={!canBulkApprove}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
+                            <Button size="sm" variant="secondary" onClick={() => handleActionClick('Issued')} disabled={!canBulkIssue}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleActionClick('Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
                         </>
                      )}
-                      {user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued') && !req.acknowledgedByRequester && (
-                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
+                      {canClaimIssue && (
+                         <Button size="sm" variant="destructive" onClick={() => handleActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
                      )}
                      {user?.role === 'Admin' && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger>Revise Status</DropdownMenuSubTrigger>
-                                    <DropdownMenuPortal>
-                                        <DropdownMenuSubContent>
-                                            <DropdownMenuItem onSelect={() => handleActionClick(req, 'Pending')}>Set to Pending</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleActionClick(req, 'Approved')}>Set to Approved</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleActionClick(req, 'Issued')}>Set to Issued</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleActionClick(req, 'Rejected')}>Set to Rejected</DropdownMenuItem>
-                                        </DropdownMenuSubContent>
-                                    </DropdownMenuPortal>
-                                </DropdownMenuSub>
-                                 <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                          <Trash2 className="mr-2 h-4 w-4" /> Delete Request
-                                        </DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+                            </AlertDialogTrigger>
+                             <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                      )}
                  </div>
             </CardFooter>
 
-            {selectedRequest && action && (
-                <AlertDialog open={!!(selectedRequest && action)} onOpenChange={() => setSelectedRequest(null)}>
+            {req && action && (
+                <AlertDialog open={isActionConfirmOpen} onOpenChange={setIsActionConfirmOpen}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>{action} Request?</AlertDialogTitle>
-                            <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
+                            <AlertDialogDescription>Please provide a comment for this action. This will apply to all items in the request.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <div>
                             <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
@@ -296,60 +242,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            )}
-
-            {selectedRequest && isEditing && (
-                <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                    <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
-                        <DialogHeader><DialogTitle>Edit Request Items</DialogTitle></DialogHeader>
-                        <form onSubmit={handleSubmit(onEditSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                            <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2 shrink-0">
-                                <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
-                                <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
-                                <div className="col-span-1"><Label className="text-xs">Unit</Label></div>
-                                <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
-                                <div className="col-span-2"><Label className="text-xs">Status</Label></div>
-                            </div>
-                            <ScrollArea className="flex-1 px-4">
-                                <div className="space-y-4">
-                                    {fields.map((field, index) => (
-                                    <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                                        <div className="col-span-5 space-y-1"><Textarea {...form.register(`items.${index}.description`)} rows={1} /></div>
-                                        <div className="col-span-2 space-y-1"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
-                                        <div className="col-span-1 space-y-1"><Input {...form.register(`items.${index}.unit`)} /></div>
-                                        <div className="col-span-2 space-y-1"><Input {...form.register(`items.${index}.remarks`)} /></div>
-                                        <div className="col-span-2">
-                                            <Controller
-                                                name={`items.${index}.status`}
-                                                control={control}
-                                                render={({ field: selectField }) => (
-                                                <Select onValueChange={selectField.onChange} value={selectField.value} disabled={user?.role !== 'Admin' && selectField.value === 'Issued'}>
-                                                    <SelectTrigger className="h-10 text-xs"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                    <SelectItem value="Pending">Pending</SelectItem>
-                                                    <SelectItem value="Approved">Approved</SelectItem>
-                                                    <SelectItem value="Issued">Issued</SelectItem>
-                                                    <SelectItem value="Rejected">Rejected</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                            <div className="px-4 pt-4 shrink-0">
-                                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, description: '', quantity: 1, unit: 'pcs', remarks: '', status: 'Pending' })}><PlusCircle className="mr-2 h-4 w-4" />Add Item</Button>
-                                {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
-                            </div>
-                            <DialogFooter className="mt-4 pt-4 border-t px-6 pb-6 shrink-0">
-                            <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
-                            <Button type="submit">Save Changes</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
             )}
         </Card>
     )
