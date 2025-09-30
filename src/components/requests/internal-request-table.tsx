@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
@@ -30,13 +29,6 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
   'Partially Issued': 'outline',
   'Partially Approved': 'outline',
   Disputed: 'destructive'
-};
-
-const itemStatusVariant: Record<InternalRequestItem['status'], 'default' | 'secondary' | 'destructive' | 'success'> = {
-  Pending: 'secondary',
-  Approved: 'default',
-  Issued: 'success',
-  Rejected: 'destructive',
 };
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
@@ -258,6 +250,3 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
 }
     
     
-
-
-
