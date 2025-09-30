@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Dialog, DialogClose } from '../ui/dialog';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -39,34 +40,72 @@ const itemStatusVariant: Record<InternalRequestItem['status'], 'default' | 'seco
   Rejected: 'destructive',
 };
 
+const EditItemStatusDialog = ({
+    item,
+    isOpen,
+    onClose,
+    onSave,
+}: {
+    item: InternalRequestItem;
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (newStatus: InternalRequestItem['status']) => void;
+}) => {
+    const [status, setStatus] = useState(item.status);
+
+    useEffect(() => {
+        if (isOpen) {
+            setStatus(item.status);
+        }
+    }, [isOpen, item.status]);
+
+    const handleSave = () => {
+        onSave(status);
+        onClose();
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Item Status</DialogTitle>
+                    <DialogDescription>
+                        Change the status for: {item.quantity} {item.unit} - {item.description}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label>Status</Label>
+                    <Select value={status} onValueChange={(value) => setStatus(value as InternalRequestItem['status'])}>
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Approved">Approved</SelectItem>
+                            <SelectItem value="Issued">Issued</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleSave}>Save</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest, splitInternalRequest } = useAppContext();
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
     const { toast } = useToast();
-    
-    // This state will now hold the state for each item's dropdown.
-    const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>(() => {
-        const initialStatuses: Record<string, InternalRequestItem['status']> = {};
-        req.items.forEach(item => {
-            initialStatuses[item.id] = item.status;
-        });
-        return initialStatuses;
-    });
-    
-    // Reset local state if the request data changes from the context
-    useEffect(() => {
-        const initialStatuses: Record<string, InternalRequestItem['status']> = {};
-        req.items.forEach(item => {
-            initialStatuses[item.id] = item.status;
-        });
-        setItemStatuses(initialStatuses);
-    }, [req.items]);
-
-    const isDirty = useMemo(() => {
-        return req.items.some(item => item.status !== itemStatuses[item.id]);
-    }, [req.items, itemStatuses]);
+    const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     
     const canApprove = useMemo(() => {
         if (!user) return false;
@@ -102,26 +141,13 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         }
     };
     
-    const handleItemStatusChange = (itemId: string, newStatus: InternalRequestItem['status']) => {
-        setItemStatuses(prev => ({...prev, [itemId]: newStatus}));
-    };
-    
-    const handleSaveItemStatusChanges = () => {
-        const revertedItems = req.items.filter(item => 
-            item.status === 'Issued' && itemStatuses[item.id] !== 'Issued'
+    const handleSaveItemStatus = (itemId: string, newStatus: InternalRequestItem['status']) => {
+        const updatedItems = req.items.map(item => 
+            item.id === itemId ? { ...item, status: newStatus } : item
         );
-
-        if (revertedItems.length > 0 && user?.role === 'Admin') {
-            splitInternalRequest(req.id, revertedItems, 'Item status reverted by admin.');
-            toast({ title: 'Request Split', description: 'Reverted items have been moved to a new request.' });
-        } else {
-            const updatedItems: InternalRequestItem[] = req.items.map(item => ({
-                ...item,
-                status: itemStatuses[item.id] || item.status,
-            }));
-            updateInternalRequestItems(req.id, updatedItems);
-            toast({ title: 'Item statuses updated' });
-        }
+        updateInternalRequestItems(req.id, updatedItems);
+        toast({ title: 'Item status updated' });
+        setEditingItem(null);
     };
 
     const requester = users.find(u => u.id === req.requesterId);
@@ -134,128 +160,125 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
 
     return (
-        <Card className={cn("relative", hasUpdate && "border-blue-500")}>
-            {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
-            <CardHeader className="p-4">
-                <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
-                      <p className="text-sm text-muted-foreground">ID: {req.id.slice(-6)} &middot; {format(new Date(req.date), 'dd MMM yyyy')}</p>
-                    </div>
-                    {needsAcknowledgement ? (
-                       <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
-                    ) : (
-                       <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-                 <div className="space-y-2">
-                    {req.items.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+        <>
+            <Card className={cn("relative", hasUpdate && "border-blue-500")}>
+                {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
+                <CardHeader className="p-4">
+                    <div className="flex justify-between items-start">
                         <div>
-                            <p>{item.quantity} {item.unit} - {item.description}</p>
-                            {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
+                        <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
+                        <p className="text-sm text-muted-foreground">ID: {req.id.slice(-6)} &middot; {format(new Date(req.date), 'dd MMM yyyy')}</p>
                         </div>
-                        {canApprove ? (
-                             <Select 
-                                value={itemStatuses[item.id]} 
-                                onValueChange={(value) => handleItemStatusChange(item.id, value as InternalRequestItem['status'])}
-                                disabled={item.status === 'Issued' && user?.role !== 'Admin'}
-                            >
-                                <SelectTrigger className="w-[120px] h-8 text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Pending">Pending</SelectItem>
-                                    <SelectItem value="Approved">Approved</SelectItem>
-                                    <SelectItem value="Issued">Issued</SelectItem>
-                                    <SelectItem value="Rejected">Rejected</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        {needsAcknowledgement ? (
+                        <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
                         ) : (
-                            <Badge variant={itemStatusVariant[item.status]}>{item.status}</Badge>
+                        <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                         )}
                     </div>
-                    ))}
-                </div>
-                 <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
-                    <AccordionItem value={req.id} className="border-none">
-                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
-                        <AccordionContent className="pt-2 text-muted-foreground">
-                        <h4 className="font-semibold text-xs mb-2">Comment History</h4>
-                        <div className="space-y-2">
-                            {commentsArray.length > 0 ? commentsArray.map((c, i) => {
-                                const commentUser = users.find(u => u.id === c.userId);
-                                return (
-                                    <div key={`${req.id}-comment-${i}`} className="flex items-start gap-2">
-                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                        <div className="text-xs bg-background p-2 rounded-md w-full">
-                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                    <div className="space-y-2">
+                        {req.items.map((item) => (
+                        <div key={`${item.id}-${item.description}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                            <div>
+                                <p>{item.quantity} {item.unit} - {item.description}</p>
+                                {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Badge variant={itemStatusVariant[item.status]}>{item.status}</Badge>
+                                {canApprove && (
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingItem(item)}>
+                                        <Edit className="h-3 w-3"/>
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                    <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
+                        <AccordionItem value={req.id} className="border-none">
+                            <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
+                            <AccordionContent className="pt-2 text-muted-foreground">
+                            <h4 className="font-semibold text-xs mb-2">Comment History</h4>
+                            <div className="space-y-2">
+                                {commentsArray.length > 0 ? commentsArray.map((c, i) => {
+                                    const commentUser = users.find(u => u.id === c.userId);
+                                    return (
+                                        <div key={`${req.id}-comment-${i}`} className="flex items-start gap-2">
+                                            <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                            <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                )
-                            }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                        </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </CardContent>
-            <CardFooter className="p-2 bg-muted/50">
-                 <div className="flex flex-wrap justify-end gap-2 w-full">
-                     {isDirty && canApprove && (
-                         <Button size="sm" onClick={handleSaveItemStatusChanges}><Save className="mr-2 h-4 w-4"/>Save Statuses</Button>
-                     )}
-                     {canApprove && (
-                        <>
-                            <Button size="sm" variant="outline" onClick={() => handleActionClick('Approved')} disabled={!canBulkApprove}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
-                            <Button size="sm" variant="secondary" onClick={() => handleActionClick('Issued')} disabled={!canBulkIssue}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleActionClick('Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
-                        </>
-                     )}
-                      {canClaimIssue && (
-                         <Button size="sm" variant="destructive" onClick={() => handleActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
-                     )}
-                     {user?.role === 'Admin' && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
-                            </AlertDialogTrigger>
-                             <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                     )}
-                 </div>
-            </CardFooter>
+                                    )
+                                }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                            </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </CardContent>
+                <CardFooter className="p-2 bg-muted/50">
+                    <div className="flex flex-wrap justify-end gap-2 w-full">
+                        {canApprove && (
+                            <>
+                                <Button size="sm" variant="outline" onClick={() => handleActionClick('Approved')} disabled={!canBulkApprove}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
+                                <Button size="sm" variant="secondary" onClick={() => handleActionClick('Issued')} disabled={!canBulkIssue}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleActionClick('Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
+                            </>
+                        )}
+                        {canClaimIssue && (
+                            <Button size="sm" variant="destructive" onClick={() => handleActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
+                        )}
+                        {user?.role === 'Admin' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </div>
+                </CardFooter>
 
-            {req && action && (
-                <AlertDialog open={isActionConfirmOpen} onOpenChange={setIsActionConfirmOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>{action} Request?</AlertDialogTitle>
-                            <AlertDialogDescription>Please provide a comment for this action. This will apply to all items in the request.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div>
-                            <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
-                            <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
-                        </div>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                {isActionConfirmOpen && (
+                    <AlertDialog open={isActionConfirmOpen} onOpenChange={setIsActionConfirmOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{action} Request?</AlertDialogTitle>
+                                <AlertDialogDescription>Please provide a comment for this action. This will apply to all items in the request.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div>
+                                <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
+                                <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                            </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </Card>
+
+            {editingItem && (
+                 <EditItemStatusDialog
+                    item={editingItem}
+                    isOpen={!!editingItem}
+                    onClose={() => setEditingItem(null)}
+                    onSave={(newStatus) => handleSaveItemStatus(editingItem.id, newStatus)}
+                />
             )}
-        </Card>
+        </>
     )
 }
 
@@ -297,7 +320,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={`${req.id}-${index}`} req={req} />)}
+            {activeRequests.map((req) => <RequestCard key={req.id} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
