@@ -507,7 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (user?.role === 'Admin' && broadcasts.length > 0) {
         const now = new Date();
-        const expiredBroadcasts = broadcasts.filter(b => isAfter(now, parseISO(b.expiryDate)));
+        const expiredBroadcasts = broadcasts.filter(b => b.expiryDate && isAfter(now, parseISO(b.expiryDate)));
         if (expiredBroadcasts.length > 0) {
             const updates: { [key: string]: null } = {};
             expiredBroadcasts.forEach(b => {
@@ -3190,4 +3190,5 @@ export const useAppContext = (): AppContextType => {
 };
 
     
+
 
