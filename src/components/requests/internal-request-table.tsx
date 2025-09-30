@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -152,8 +151,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             </CardHeader>
             <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
-                    {req.items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                    {req.items.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                         <div>
                             <p>{item.quantity} {item.unit} - {item.description}</p>
                             {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -298,7 +297,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={`${req.id}-${index}`} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
