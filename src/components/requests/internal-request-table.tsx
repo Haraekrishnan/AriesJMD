@@ -144,8 +144,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             </CardHeader>
             <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
-                    {req.items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                    {req.items.map((item) => (
+                    <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                         <div>
                             <p>{item.quantity} {item.unit} - {item.description}</p>
                             {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -178,7 +178,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         <AccordionContent className="pt-2 text-muted-foreground">
                         <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                         <div className="space-y-2">
-                            {commentsArray.length > 0 ? commentsArray.map((c,i) => {
+                            {commentsArray.length > 0 ? commentsArray.map((c) => {
                                 const commentUser = users.find(u => u.id === c.userId);
                                 return (
                                     <div key={c.id} className="flex items-start gap-2">
