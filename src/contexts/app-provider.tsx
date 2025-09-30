@@ -1938,7 +1938,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Store Request Items Updated', `Request ID: ${requestId}`);
   }, [user, can.approve_store_requests, internalRequests, addActivityLog]);
 
-  const splitInternalRequest = useCallback((originalRequestId: string, revertedItems: InternalRequest['items'], comment: string) => {
+  const splitInternalRequest = useCallback((originalRequestId: string, revertedItems: InternalRequestItem[], comment: string) => {
     if (!user) return;
     const originalRequest = internalRequests.find(r => r.id === originalRequestId);
     if (!originalRequest) return;
@@ -1947,39 +1947,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
     const newRequestId = newRequestRef.key!;
     const splitComment = `This is a new request split from original request #${originalRequestId.slice(-6)}. Reason: ${comment}`;
-    const newRequest: Omit<InternalRequest, 'id'> = {
+    
+    const newRequestData: Omit<InternalRequest, 'id'> = {
       ...originalRequest,
-      items: revertedItems.map(item => ({ ...item, status: 'Pending' })),
+      items: revertedItems.map(item => ({ ...item, status: 'Pending' })), // Reset status for new request
       status: 'Pending',
       date: new Date().toISOString(),
-      comments: [
-        { id: `comm-init`, text: splitComment, userId: user.id, date: new Date().toISOString() }
-      ],
+      comments: [{ id: `comm-init-${Date.now()}`, text: splitComment, userId: user.id, date: new Date().toISOString() }],
       acknowledgedByRequester: false,
       viewedByRequester: false,
     };
-    set(newRequestRef, newRequest);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${newRequestId}`] = newRequestData;
   
-    // 2. Update the original request to only contain the items that were not reverted
+    // 2. Update the original request
     const keptItems = originalRequest.items.filter(
       item => !revertedItems.some(revItem => revItem.id === item.id)
     );
     
-    const originalRequestUpdate: { [key: string]: any } = {};
-    const newCommentRef = push(ref(rtdb, `internalRequests/${originalRequestId}/comments`));
     const originalRequestComment = `Request split. Reverted items moved to new request #${newRequestId.slice(-6)}. Reason: ${comment}`;
+    const newCommentForOriginalRef = push(ref(rtdb, `internalRequests/${originalRequestId}/comments`));
+  
+    updates[`internalRequests/${originalRequestId}/items`] = keptItems;
+    updates[`internalRequests/${originalRequestId}/comments/${newCommentForOriginalRef.key}`] = { id: newCommentForOriginalRef.key, userId: user.id, text: originalRequestComment, date: new Date().toISOString() };
     
-    originalRequestUpdate[`internalRequests/${originalRequestId}/items`] = keptItems;
-    originalRequestUpdate[`internalRequests/${originalRequestId}/comments/${newCommentRef.key}`] = { id: newCommentRef.key, userId: user.id, text: originalRequestComment, date: new Date().toISOString() };
-    
-    // If all items were reverted, we delete the original request. Otherwise, we update its status.
     if (keptItems.length === 0) {
-      remove(ref(rtdb, `internalRequests/${originalRequestId}`));
+      // If no items are left, we can mark it as fully handled or delete it.
+      // For audit purposes, let's just mark it as 'Issued' but with no items.
+      updates[`internalRequests/${originalRequestId}/status`] = 'Issued';
     } else {
       const allKeptIssued = keptItems.every(item => item.status === 'Issued');
-      originalRequestUpdate[`internalRequests/${originalRequestId}/status`] = allKeptIssued ? 'Issued' : 'Partially Issued';
-      update(ref(rtdb), originalRequestUpdate);
+      updates[`internalRequests/${originalRequestId}/status`] = allKeptIssued ? 'Issued' : 'Partially Issued';
     }
+  
+    update(ref(rtdb), updates);
   
     // 3. Notify requester
     const requester = users.find(u => u.id === originalRequest.requesterId);

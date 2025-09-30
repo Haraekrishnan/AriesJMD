@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -10,7 +11,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
@@ -98,6 +99,7 @@ const EditItemStatusDialog = ({
     );
 };
 
+
 const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest, splitInternalRequest } = useAppContext();
     const { toast } = useToast();
@@ -151,7 +153,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             splitInternalRequest(req.id, revertedItems, splitComment);
             toast({ title: 'Request Split', description: `A new request has been created for the reverted item.` });
         } else {
-            const updatedItems = req.items.map(item => 
+            const updatedItems = req.items.map(item =>
                 item.id === itemId ? { ...item, status: newStatus } : item
             );
             updateInternalRequestItems(req.id, updatedItems);
@@ -187,24 +189,24 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     </div>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                    <div className="space-y-2">
-                        {req.items.map((item, index) => (
-                        <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
-                            <div>
-                                <p>{item.quantity} {item.unit} - {item.description}</p>
-                                {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Badge variant={itemStatusVariant[item.status]}>{item.status}</Badge>
-                                {canApprove && (
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingItem(item)}>
-                                        <Edit className="h-3 w-3"/>
-                                    </Button>
-                                )}
-                            </div>
+                 <div className="space-y-2">
+                    {req.items.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                        <div>
+                            <p>{item.quantity} {item.unit} - {item.description}</p>
+                            {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
                         </div>
-                        ))}
+                        <div className="flex items-center gap-1">
+                            <Badge variant={itemStatusVariant[item.status]}>{item.status}</Badge>
+                            {canApprove && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingItem(item)}>
+                                    <Edit className="h-3 w-3"/>
+                                </Button>
+                            )}
+                        </div>
                     </div>
+                    ))}
+                </div>
                     <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
                         <AccordionItem value={req.id} className="border-none">
                             <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
