@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
-import { Dialog, DialogClose } from '../ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -142,11 +142,22 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
     
     const handleSaveItemStatus = (itemId: string, newStatus: InternalRequestItem['status']) => {
-        const updatedItems = req.items.map(item => 
-            item.id === itemId ? { ...item, status: newStatus } : item
-        );
-        updateInternalRequestItems(req.id, updatedItems);
-        toast({ title: 'Item status updated' });
+        const originalItem = req.items.find(item => item.id === itemId);
+        if (!originalItem) return;
+
+        // If an issued item is being reverted, trigger the split logic
+        if (originalItem.status === 'Issued' && newStatus !== 'Issued') {
+            const revertedItems = [{ ...originalItem, status: newStatus }];
+            const splitComment = `Item "${originalItem.description}" status changed from Issued to ${newStatus} by ${user?.name}.`;
+            splitInternalRequest(req.id, revertedItems, splitComment);
+            toast({ title: 'Request Split', description: `A new request has been created for the reverted item.` });
+        } else {
+            const updatedItems = req.items.map(item => 
+                item.id === itemId ? { ...item, status: newStatus } : item
+            );
+            updateInternalRequestItems(req.id, updatedItems);
+            toast({ title: 'Item status updated' });
+        }
         setEditingItem(null);
     };
 
@@ -179,7 +190,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 <CardContent className="p-4 pt-0">
                     <div className="space-y-2">
                         {req.items.map((item) => (
-                        <div key={`${item.id}-${item.description}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                        <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                             <div>
                                 <p>{item.quantity} {item.unit} - {item.description}</p>
                                 {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -204,7 +215,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 {commentsArray.length > 0 ? commentsArray.map((c, i) => {
                                     const commentUser = users.find(u => u.id === c.userId);
                                     return (
-                                        <div key={`${req.id}-comment-${i}`} className="flex items-start gap-2">
+                                        <div key={i} className="flex items-start gap-2">
                                             <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                             <div className="text-xs bg-background p-2 rounded-md w-full">
                                                 <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
@@ -343,3 +354,5 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+
+    
