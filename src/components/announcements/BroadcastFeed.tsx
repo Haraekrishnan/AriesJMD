@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -40,7 +39,7 @@ export default function BroadcastFeed() {
                         <Radio className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                         <div className="flex-1 overflow-hidden">
                             <div className="inline-block animate-marquee whitespace-nowrap text-sm text-yellow-800 dark:text-yellow-300">
-                                <span className='font-semibold'>Broadcast:</span> {broadcast.message}
+                                {broadcast.message}
                             </div>
                         </div>
                          <Button 
