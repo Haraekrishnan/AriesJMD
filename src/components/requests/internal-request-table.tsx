@@ -56,7 +56,7 @@ type EditRequestFormValues = z.infer<typeof editRequestSchema>;
 
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, splitInternalRequest, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
@@ -86,32 +86,50 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const onEditSubmit = (data: EditRequestFormValues) => {
         if (!selectedRequest || !user) return;
-
+    
+        // Scenario 1: Splitting an issued request
+        if (['Issued', 'Partially Issued'].includes(selectedRequest.status)) {
+            const revertedItems = data.items.filter((newItem, index) => {
+                const originalItem = selectedRequest.items[index];
+                return originalItem && originalItem.status === 'Issued' && newItem.status !== 'Issued';
+            });
+    
+            if (revertedItems.length > 0) {
+                const comment = prompt('Please provide a reason for reverting issued items (this will be logged).');
+                if (comment) {
+                    splitInternalRequest(selectedRequest.id, revertedItems, comment);
+                    toast({ title: 'Request Split', description: 'A new request has been created for the reverted items.' });
+                    setIsEditing(false);
+                    setSelectedRequest(null);
+                    return;
+                } else {
+                    toast({ title: 'Action Cancelled', description: 'A reason is required to split a request.', variant: 'destructive' });
+                    return;
+                }
+            }
+        }
+    
+        // Scenario 2: Standard item or status updates
         const originalItems = selectedRequest.items;
         const newItems = data.items;
-
-        const structuralChange = originalItems.length !== newItems.length || 
+    
+        const structuralChange = originalItems.length !== newItems.length ||
             newItems.some((newItem, index) => {
                 const originalItem = originalItems[index];
                 if (!originalItem) return true; // Added item
                 return newItem.description !== originalItem.description ||
-                       newItem.quantity !== originalItem.quantity ||
-                       newItem.unit !== originalItem.unit ||
-                       newItem.remarks !== originalItem.remarks;
+                    newItem.quantity !== originalItem.quantity ||
+                    newItem.unit !== originalItem.unit ||
+                    newItem.remarks !== originalItem.remarks;
             });
-            
-        const statusChange = newItems.some((newItem, index) => {
-            const originalItem = originalItems[index];
-            return originalItem && newItem.status !== originalItem.status;
-        });
-
+    
         if (structuralChange) {
             updateInternalRequestItems(selectedRequest.id, newItems);
-            toast({ title: 'Request Updated', description: 'The item list has been updated and the requester notified.'});
-        } else if (statusChange) {
-            // If only statuses changed, find the new overall status and use the status update function
+            toast({ title: 'Request Items Updated' });
+        } else {
             const itemStatuses = new Set(newItems.map(i => i.status));
             let newOverallStatus: InternalRequestStatus = 'Pending';
+    
             if (itemStatuses.size === 1) {
                 newOverallStatus = Array.from(itemStatuses)[0] as InternalRequestStatus;
             } else if (itemStatuses.has('Issued')) {
@@ -119,21 +137,18 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             } else if (itemStatuses.has('Approved')) {
                 newOverallStatus = 'Partially Approved';
             }
-            
-            // To prevent calling status update if it's not a real change
+    
             if (newOverallStatus !== selectedRequest.status || newItems.some((item, i) => item.status !== originalItems[i].status)) {
-               updateInternalRequestStatus(selectedRequest.id, newOverallStatus, `Item statuses updated by ${user.role}.`);
-               toast({ title: 'Item Statuses Updated' });
+                updateInternalRequestStatus(selectedRequest.id, newOverallStatus, `Item statuses updated by ${user.role}.`);
+                toast({ title: 'Item Statuses Updated' });
             } else {
-               toast({ title: 'No Changes Detected' });
+                toast({ title: 'No Changes Detected' });
             }
-        } else {
-            toast({ title: 'No Changes Detected' });
         }
-        
+    
         setIsEditing(false);
         setSelectedRequest(null);
-    }
+    };
 
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
@@ -160,7 +175,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const requester = users.find(u => u.id === req.requesterId);
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
-    const canEditRequest = user?.role === 'Admin' || (canApprove && (req.status === 'Pending' || req.status === 'Approved' || req.status === 'Partially Approved' || req.status === 'Issued' || req.status === 'Partially Issued'));
+    const canEdit = user?.role === 'Admin' || (canApprove && (req.status === 'Pending' || req.status === 'Approved' || req.status === 'Partially Approved' || req.status === 'Issued' || req.status === 'Partially Issued'));
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
 
@@ -181,7 +196,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-                <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
+                 <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
                     <AccordionItem value={req.id} className="border-none">
                         <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Items & History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
@@ -310,7 +325,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                                 name={`items.${index}.status`}
                                                 control={control}
                                                 render={({ field: selectField }) => (
-                                                <Select onValueChange={selectField.onChange} value={selectField.value} disabled={user?.role !== 'Admin' && req.status === 'Issued'}>
+                                                <Select onValueChange={selectField.onChange} value={selectField.value} disabled={user?.role !== 'Admin' && selectField.value === 'Issued'}>
                                                     <SelectTrigger className="h-10 text-xs"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
                                                     <SelectItem value="Pending">Pending</SelectItem>
