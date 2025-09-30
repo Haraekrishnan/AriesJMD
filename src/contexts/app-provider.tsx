@@ -2802,12 +2802,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const { message, expiryDate, emailTarget, recipientRoles, recipientUserIds } = broadcastData;
     const newRef = push(ref(rtdb, 'broadcasts'));
-    const newBroadcast = {
+    const newBroadcast: Omit<Broadcast, 'id'> = {
       message,
       expiryDate,
       creatorId: user.id,
       createdAt: new Date().toISOString(),
       dismissedBy: [],
+      emailTarget: emailTarget,
       recipientRoles,
       recipientUserIds,
     };
@@ -3205,3 +3206,5 @@ export const useAppContext = (): AppContextType => {
 
 
   
+
+    
