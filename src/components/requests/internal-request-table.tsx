@@ -42,10 +42,10 @@ const itemStatusVariant: Record<InternalRequestItem['status'], 'default' | 'seco
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItems, markInternalRequestAsViewed, deleteInternalRequest, acknowledgeInternalRequest, splitInternalRequest } = useAppContext();
+    const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
     const { toast } = useToast();
-    const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     
     // This state will now hold the state for each item's dropdown.
     const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>(() => {
@@ -112,7 +112,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             item.status === 'Issued' && itemStatuses[item.id] !== 'Issued'
         );
 
-        if (revertedItems.length > 0) {
+        if (revertedItems.length > 0 && user?.role === 'Admin') {
             splitInternalRequest(req.id, revertedItems, 'Item status reverted by admin.');
             toast({ title: 'Request Split', description: 'Reverted items have been moved to a new request.' });
         } else {
@@ -153,7 +153,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
                     {req.items.map((item) => (
-                    <div key={`${req.id}-${item.id}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                    <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                         <div>
                             <p>{item.quantity} {item.unit} - {item.description}</p>
                             {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
@@ -189,7 +189,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             {commentsArray.length > 0 ? commentsArray.map((c, i) => {
                                 const commentUser = users.find(u => u.id === c.userId);
                                 return (
-                                    <div key={i} className="flex items-start gap-2">
+                                    <div key={`${req.id}-comment-${i}`} className="flex items-start gap-2">
                                         <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                         <div className="text-xs bg-background p-2 rounded-md w-full">
                                             <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
@@ -312,7 +312,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map(req => <RequestCard key={req.id} req={req} />)}
+                {completedRequests.map((req, index) => <RequestCard key={`${req.id}-${index}`} req={req} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
