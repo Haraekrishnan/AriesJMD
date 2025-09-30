@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -177,7 +178,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     <div className="flex justify-between items-start">
                         <div>
                         <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
-                        <p className="text-sm text-muted-foreground">ID: {req.id.slice(-6)} &middot; {format(new Date(req.date), 'dd MMM yyyy')}</p>
+                        <p className="text-sm text-muted-foreground">ID: {req.id.slice(-6)} &middot; {format(parseISO(req.date), 'dd MMM yyyy')}</p>
                         </div>
                         {needsAcknowledgement ? (
                         <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
