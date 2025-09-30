@@ -48,6 +48,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     
     const [itemStatuses, setItemStatuses] = useState<Record<string, InternalRequestItem['status']>>({});
+    const [popoverOpen, setPopoverOpen] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const initialStatuses: Record<string, InternalRequestItem['status']> = {};
@@ -97,6 +98,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const handleItemStatusChange = (itemId: string, newStatus: InternalRequestItem['status']) => {
         setItemStatuses(prev => ({...prev, [itemId]: newStatus}));
+        setPopoverOpen(prev => ({ ...prev, [itemId]: false }));
     };
     
     const handleSaveItemStatusChanges = () => {
@@ -144,14 +146,14 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             </CardHeader>
             <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
-                    {req.items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                    {req.items.map((item, index) => (
+                    <div key={`${item.id}-${index}`} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                         <div>
                             <p>{item.quantity} {item.unit} - {item.description}</p>
                             {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
                         </div>
                         {canApprove ? (
-                            <Select 
+                             <Select 
                                 value={itemStatuses[item.id]} 
                                 onValueChange={(value) => handleItemStatusChange(item.id, value as InternalRequestItem['status'])}
                                 disabled={item.status === 'Issued' && user?.role !== 'Admin'}
@@ -178,10 +180,10 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         <AccordionContent className="pt-2 text-muted-foreground">
                         <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                         <div className="space-y-2">
-                            {commentsArray.length > 0 ? commentsArray.map((c) => {
+                            {commentsArray.length > 0 ? commentsArray.map((c, i) => {
                                 const commentUser = users.find(u => u.id === c.userId);
                                 return (
-                                    <div key={c.id} className="flex items-start gap-2">
+                                    <div key={i} className="flex items-start gap-2">
                                         <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                         <div className="text-xs bg-background p-2 rounded-md w-full">
                                             <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
