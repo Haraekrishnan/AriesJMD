@@ -240,7 +240,7 @@ type AppContextType = {
   deleteAnnouncement: (announcementId: string) => void;
   returnAnnouncement: (announcementId: string, comment: string) => void;
   dismissAnnouncement: (announcementId: string) => void;
-  addBroadcast: (message: string, emailTarget: 'none' | 'roles' | 'individuals', recipientRoles?: string[], recipientUserIds?: string[]) => void;
+  addBroadcast: (broadcastData: Omit<Broadcast, 'id'|'creatorId'|'createdAt'|'dismissedBy'>) => void;
   dismissBroadcast: (broadcastId: string) => void;
   addBuilding: (buildingNumber: string) => void;
   updateBuilding: (building: Building) => void;
@@ -2781,17 +2781,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, announcements]);
   
-  const addBroadcast = useCallback((message: string, emailTarget: 'none' | 'roles' | 'individuals', recipientRoles?: string[], recipientUserIds?: string[]) => {
+  const addBroadcast = useCallback((broadcastData: Omit<Broadcast, 'id'|'creatorId'|'createdAt'|'dismissedBy'>) => {
     if (!user) return;
+    const { message, expiryDate, emailTarget, recipientRoles, recipientUserIds } = broadcastData;
     const newRef = push(ref(rtdb, 'broadcasts'));
     const newBroadcast: Omit<Broadcast, 'id'> = {
       message,
       creatorId: user.id,
       createdAt: new Date().toISOString(),
+      expiryDate,
       dismissedBy: [],
-      emailTarget,
-      recipientRoles,
-      recipientUserIds,
+      emailTarget: emailTarget,
+      recipientRoles: recipientRoles || [],
+      recipientUserIds: recipientUserIds || [],
     };
     set(newRef, newBroadcast);
     addActivityLog(user.id, 'Broadcast Sent', message);

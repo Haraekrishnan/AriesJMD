@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -21,13 +22,13 @@ const broadcastSchema = z.object({
   message: z.string().min(1, 'Message is required'),
   expiryDate: z.date({ required_error: 'Expiry date is required' }),
   expiryTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Please enter a valid time in HH:mm format."),
-  emailTarget: z.enum(['roles', 'individuals']),
+  emailTarget: z.enum(['none', 'roles', 'individuals']),
   recipientRoles: z.array(z.string()).optional(),
   recipientUserIds: z.array(z.string()).optional(),
 }).refine(data => {
     if (data.emailTarget === 'roles') return data.recipientRoles && data.recipientRoles.length > 0;
     if (data.emailTarget === 'individuals') return data.recipientUserIds && data.recipientUserIds.length > 0;
-    return false;
+    return true;
 }, { message: "Please select at least one recipient.", path: ['recipientRoles'] });
 
 
@@ -46,7 +47,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
     resolver: zodResolver(broadcastSchema),
     defaultValues: {
       message: '',
-      emailTarget: 'roles',
+      emailTarget: 'none',
       recipientRoles: [],
       recipientUserIds: [],
       expiryTime: format(new Date(), 'HH:mm'),
@@ -61,6 +62,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
     addBroadcast({
         message: data.message,
         expiryDate: expiryDateTime.toISOString(),
+        emailTarget: data.emailTarget,
         recipientRoles: data.recipientRoles || [],
         recipientUserIds: data.recipientUserIds || [],
     });
@@ -76,7 +78,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
     if (!open) {
       form.reset({
         message: '',
-        emailTarget: 'roles',
+        emailTarget: 'none',
         recipientRoles: [],
         recipientUserIds: [],
         expiryTime: format(new Date(), 'HH:mm'),
@@ -132,6 +134,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
                           <Select onValueChange={field.onChange} value={field.value}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
+                                  <SelectItem value="none">Don't send email</SelectItem>
                                   <SelectItem value="roles">Send to specific roles</SelectItem>
                                   <SelectItem value="individuals">Send to specific individuals</SelectItem>
                               </SelectContent>
