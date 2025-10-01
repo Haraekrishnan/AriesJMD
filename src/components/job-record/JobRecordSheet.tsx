@@ -92,7 +92,7 @@ export default function JobRecordSheet() {
             });
         });
         setLocalCellValues(newLocalCellValues);
-    }, [currentMonth, jobRecords, manpowerProfiles, dayHeaders]);
+    }, [currentMonth, jobRecords, manpowerProfiles, dayHeaders, monthKey]);
 
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
@@ -437,3 +437,5 @@ export default function JobRecordSheet() {
         </div>
     );
 }
+
+    
