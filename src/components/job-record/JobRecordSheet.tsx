@@ -320,8 +320,16 @@ export default function JobRecordSheet() {
                                                     <PopoverTrigger asChild>
                                                         <Input
                                                             value={code}
-                                                            onChange={(e) => setLocalCellValues(prev => ({...prev, [cellKey]: e.target.value.toUpperCase()}))}
-                                                            onBlur={() => handleStatusChange(profile.id, day, code)}
+                                                            onChange={(e) => {
+                                                                const newCode = e.target.value.toUpperCase();
+                                                                setLocalCellValues(prev => ({...prev, [cellKey]: newCode}));
+                                                                if(JOB_CODES.some(jc => jc.code === newCode)) {
+                                                                    handleStatusChange(profile.id, day, newCode);
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                handleStatusChange(profile.id, day, e.target.value.toUpperCase());
+                                                            }}
                                                             className={cn("w-full h-full p-2 text-center font-bold border-b border-dashed border-input focus-visible:ring-1 focus-visible:ring-ring bg-transparent rounded-none", colorInfo.bg, colorInfo.text)}
                                                         />
                                                     </PopoverTrigger>
