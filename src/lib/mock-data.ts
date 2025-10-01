@@ -1,4 +1,5 @@
 
+
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
@@ -107,11 +108,12 @@ export const PROJECTS: Project[] = [
     { id: 'proj-1', name: 'SEZ', isPlant: true },
     { id: 'proj-2', name: 'DTA', isPlant: true },
     { id: 'proj-3', name: 'MTF', isPlant: true },
-    { id: 'proj-4', name: 'JPC', isPlant: true },
-    { id: 'proj-5', name: 'SOLAR', isPlant: true },
-    { id: 'proj-6', name: 'Head Office', isPlant: false },
-    { id: 'proj-7', name: 'Pass Section', isPlant: false },
-    { id: 'proj-8', name: 'Unassigned', isPlant: false },
+    { id: 'proj-4', name: 'DTA-JPC', isPlant: true },
+    { id: 'proj-5', name: 'SEZ-JPC', isPlant: true },
+    { id: 'proj-6', name: 'RPMG-SOLAR', isPlant: true },
+    { id: 'proj-7', name: 'Head Office', isPlant: false },
+    { id: 'proj-8', name: 'Pass Section', isPlant: false },
+    { id: 'proj-9', name: 'Unassigned', isPlant: false },
 ];
 
 export const USERS: User[] = [

@@ -51,9 +51,9 @@ export default function JobRecordSheet() {
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? 0 : parseInt(value, 10);
         if (!isNaN(days) && days >= 0) {
-            saveJobRecord(monthKey, employeeId, 0, days, 'sundayDuty');
+            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
         } else if (value === '') {
-            saveJobRecord(monthKey, employeeId, 0, 0, 'sundayDuty');
+            saveJobRecord(monthKey, employeeId, 0, 'sundayDuty', 'sundayDuty');
         }
     };
 
@@ -218,7 +218,9 @@ export default function JobRecordSheet() {
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center">{day}</TableHead>
+                                <TableHead key={day} className="text-center min-w-[60px] w-[60px]">
+                                    {day}
+                                </TableHead>
                             ))}
                             <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
                             <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
@@ -391,6 +393,7 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
     };
 
     const handleCodeButtonClick = (newCode: string) => {
+        setCode(newCode);
         onSave(newCode, overtime);
         setPopoverOpen(false);
     };
@@ -415,16 +418,23 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
                                 code ? colorInfo.text : 'text-foreground'
                             )}
                         />
-                        {(initialOvertime && initialOvertime > 0) && (
-                            <div className="absolute bottom-0 right-0 h-3 w-3" title={`${initialOvertime} hours OT`}>
-                                <Clock className="h-full w-full text-blue-500" />
-                            </div>
-                        )}
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-6 p-0 rounded-none">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </PopoverTrigger>
+                         <div className="absolute right-0 top-0 h-full flex items-center">
+                            {(initialOvertime && initialOvertime > 0) && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="h-4 w-4 mr-1">
+                                            <Clock className="h-full w-full text-blue-500" />
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>
+                                </Tooltip>
+                            )}
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-full w-6 p-0 rounded-none">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </PopoverTrigger>
+                         </div>
                     </div>
                 </TooltipTrigger>
                 {(initialOvertime && initialOvertime > 0) && <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>}

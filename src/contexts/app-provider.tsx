@@ -250,7 +250,7 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number, codeOrPlant: string | number, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number, codeOrPlantOrHours: string | number, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -2936,10 +2936,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (type === 'dailyOvertime') {
       const day = dayOrValue as number;
       const hours = codeOrPlantOrHours as number;
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime`), { [day]: hours });
+      const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${day}`;
+      if (hours > 0) {
+        set(ref(rtdb, path), hours);
+      } else {
+        remove(ref(rtdb, path));
+      }
     } else if (type === 'sundayDuty') {
       const sundayDuty = dayOrValue as number;
-      update(ref(rtdb, `jobRecords/${monthKey}/additionalSundayDuty`), { [employeeId]: sundayDuty });
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { additionalSundayDuty: sundayDuty });
     }
   }, []);
 
