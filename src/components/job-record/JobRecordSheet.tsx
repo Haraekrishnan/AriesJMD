@@ -1,17 +1,19 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSunday } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from '../ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
@@ -19,6 +21,7 @@ const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
 export default function JobRecordSheet() {
     const { manpowerProfiles, jobRecords, saveJobRecord } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const { toast } = useToast();
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const daysInMonth = getDaysInMonth(currentMonth);
@@ -27,6 +30,21 @@ export default function JobRecordSheet() {
     const plantAssignments = useMemo(() => {
         return jobRecords[monthKey]?.plantAssignments || {};
     }, [jobRecords, monthKey]);
+    
+    const overtimeData = useMemo(() => {
+        return jobRecords[monthKey]?.overtime || {};
+    }, [jobRecords, monthKey]);
+
+    const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
+
+    useEffect(() => {
+        // When overtimeData from context changes, update local state
+        const initialTempOvertime: {[key: string]: string} = {};
+        for (const profileId in overtimeData) {
+            initialTempOvertime[profileId] = String(overtimeData[profileId]);
+        }
+        setTempOvertime(initialTempOvertime);
+    }, [overtimeData]);
 
     const groupedProfiles = useMemo(() => {
         const groups: { [key: string]: typeof manpowerProfiles } = {
@@ -52,6 +70,20 @@ export default function JobRecordSheet() {
     const handlePlantChange = (employeeId: string, plant: string) => {
         saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
     }
+
+    const handleOvertimeChange = (employeeId: string, value: string) => {
+        setTempOvertime(prev => ({ ...prev, [employeeId]: value }));
+    };
+
+    const handleOvertimeSave = (employeeId: string) => {
+        const value = tempOvertime[employeeId];
+        if (value !== undefined && !isNaN(Number(value))) {
+            saveJobRecord(monthKey, employeeId, Number(value), '', 'overtime');
+            toast({title: 'Overtime Saved'});
+        } else {
+            toast({variant: 'destructive', title: 'Invalid Value', description: 'Please enter a valid number for overtime.'});
+        }
+    };
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
@@ -64,23 +96,34 @@ export default function JobRecordSheet() {
             sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             sheetData.push([]); 
 
-            const header = ['S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total Working Days'];
+            const header = [
+                'S.No', 'Name', ...dayHeaders, 'Total Leave', 'Total ML', 'Total OFF', 'Total Rept/Office', 'Total Standby/Training',
+                'Total working Days', 'Over Time', 'Salary Days', 'Additional Sunday Duty'
+            ];
             sheetData.push(header);
 
             profiles.forEach((profile, index) => {
-                const row: (string | number)[] = [index + 1, profile.name];
                 const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
-                let offDays = 0, leaveDays = 0, workDays = 0;
-
-                dayHeaders.forEach(day => {
-                    const code = employeeRecord[day] || '';
-                    row.push(code);
-                    if (code === 'OFF' || code === 'PH') offDays++;
-                    if (code === 'L') leaveDays++;
-                    if (code && !['OFF', 'PH', 'L'].includes(code)) workDays++;
-                });
+                const summary = dayHeaders.reduce((acc, day) => {
+                    const code = employeeRecord[day];
+                    if (code === 'OFF' || code === 'PH') acc.offDays++;
+                    if (code === 'L') acc.leaveDays++;
+                    if (code === 'ML') acc.medicalLeave++;
+                    if (['S', 'CQ', 'RST'].includes(code)) acc.standbyTraining++;
+                    if (code === 'R') acc.reptOffice++;
+                    if (code && !['OFF', 'PH', 'L', 'ML'].includes(code)) acc.workDays++;
+                    if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
+                        acc.sundayDuty++;
+                    }
+                    return acc;
+                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, sundayDuty: 0 });
+                 const salaryDays = daysInMonth - summary.leaveDays;
                 
-                row.push(offDays, leaveDays, workDays);
+                const row: (string | number)[] = [index + 1, profile.name];
+                dayHeaders.forEach(day => {
+                    row.push(employeeRecord[day] || '');
+                });
+                row.push(summary.leaveDays, summary.medicalLeave, summary.offDays, summary.reptOffice, summary.standbyTraining, summary.workDays, overtimeData[profile.id] || 0, salaryDays, summary.sundayDuty);
                 sheetData.push(row);
             });
             
@@ -113,7 +156,13 @@ export default function JobRecordSheet() {
                             ))}
                             <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
                             <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
-                            <TableHead className="text-center min-w-[120px]">Working Days</TableHead>
+                            <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Total Standby etc.</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Add. Sunday Duty</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -123,9 +172,17 @@ export default function JobRecordSheet() {
                                 const code = employeeRecord[day];
                                 if (code === 'OFF' || code === 'PH') acc.offDays++;
                                 if (code === 'L') acc.leaveDays++;
-                                if (code && !['OFF', 'PH', 'L'].includes(code)) acc.workDays++;
+                                if (code === 'ML') acc.medicalLeave++;
+                                if (['S', 'CQ', 'RST'].includes(code)) acc.standbyTraining++;
+                                if (code === 'R') acc.reptOffice++;
+                                if (code && !['OFF', 'PH', 'L', 'ML'].includes(code)) acc.workDays++;
+                                if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
+                                    acc.sundayDuty++;
+                                }
                                 return acc;
-                            }, { offDays: 0, leaveDays: 0, workDays: 0 });
+                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, sundayDuty: 0 });
+
+                            const salaryDays = daysInMonth - summary.leaveDays;
 
                             return (
                                 <TableRow key={profile.id}>
@@ -170,7 +227,25 @@ export default function JobRecordSheet() {
                                     })}
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                type="text"
+                                                value={tempOvertime[profile.id] ?? ''}
+                                                onChange={(e) => handleOvertimeChange(profile.id, e.target.value)}
+                                                className="w-16 h-8 text-center"
+                                            />
+                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleOvertimeSave(profile.id)}>
+                                                <Download className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-center font-bold">{salaryDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.sundayDuty}</TableCell>
                                 </TableRow>
                             );
                         })}

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -250,7 +249,7 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number | string, code: string, type: 'status' | 'plant') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -918,11 +917,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
 
   const deleteTask = useCallback((taskId: string) => {
-    if (!user) return;
     const taskToDelete = tasks.find(t => t.id === taskId);
-    if(taskToDelete) {
-      remove(ref(rtdb, `tasks/${taskId}`));
-      addActivityLog(user.id, 'Task Deleted', `Task: "${taskToDelete.title}"`);
+    if(taskToDelete && user) {
+      if (user.id === taskToDelete.creatorId || user.role === 'Admin') {
+        remove(ref(rtdb, `tasks/${taskId}`));
+        addActivityLog(user.id, 'Task Deleted', `Task: "${taskToDelete.title}"`);
+      }
     }
   }, [user, tasks, addActivityLog]);
   
@@ -2927,13 +2927,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, value: string | number, code: string, type: 'status' | 'plant') => {
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime') => {
     if (type === 'status') {
       const day = value as number;
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: code });
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: codeOrPlant });
     } else if (type === 'plant') {
-      const plant = code;
+      const plant = codeOrPlant;
       update(ref(rtdb, `jobRecords/${monthKey}/plantAssignments`), { [employeeId]: plant });
+    } else if (type === 'overtime') {
+      const overtime = value as number;
+      update(ref(rtdb, `jobRecords/${monthKey}/overtime`), { [employeeId]: overtime });
     }
   }, []);
 
@@ -3205,6 +3208,7 @@ export const useAppContext = (): AppContextType => {
   
 
     
+
 
 
 
