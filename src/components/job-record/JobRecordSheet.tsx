@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, ChevronsUpDown } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSunday } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -17,14 +17,65 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Label } from '../ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { cn } from '@/lib/utils';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Check } from 'lucide-react';
 
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
+
+// New Combobox component for job codes
+const JobCodeCombobox = ({ value, onSelect, onInputChange, inputValue, onOpenChange, open }: { value: string, onSelect: (code: string) => void, onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void, inputValue: string, onOpenChange: (open: boolean) => void, open: boolean }) => {
+    const colorInfo = JOB_CODE_COLORS[value] || { bg: 'bg-transparent' };
+
+    return (
+        <Popover open={open} onOpenChange={onOpenChange}>
+            <PopoverTrigger asChild>
+                <div className="relative">
+                    <Input
+                        type="text"
+                        value={inputValue}
+                        onChange={onInputChange}
+                        className={cn('w-full h-full text-center rounded-none border-0 font-bold p-0', colorInfo.bg, colorInfo.text)}
+                        placeholder="-"
+                    />
+                </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0">
+                <Command>
+                    <CommandList>
+                        <CommandEmpty>No code found.</CommandEmpty>
+                        <CommandGroup>
+                            {JOB_CODES.map(jobCode => (
+                                <CommandItem
+                                    key={jobCode.code}
+                                    value={jobCode.code}
+                                    onSelect={(currentValue) => {
+                                        onSelect(currentValue.toUpperCase());
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            value === jobCode.code ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {jobCode.code} - {jobCode.details}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+};
 
 export default function JobRecordSheet() {
     const { manpowerProfiles, jobRecords, saveJobRecord } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
+    const [activeCell, setActiveCell] = useState<{ profileId: string; day: number } | null>(null);
+    const [cellInputValues, setCellInputValues] = useState<Record<string, string>>({});
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const daysInMonth = getDaysInMonth(currentMonth);
@@ -66,6 +117,8 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
+        setActiveCell(null);
+        setCellInputValues(prev => ({...prev, [`${employeeId}-${day}`]: code}));
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -136,6 +189,30 @@ export default function JobRecordSheet() {
             });
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+            ws['!cols'] = [{ wch: 5 }, { wch: 25 }];
+            header.slice(2).forEach(() => ws['!cols']?.push({ wch: 10 }));
+            
+            profiles.forEach((profile, rIndex) => {
+                const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                dayHeaders.forEach((day, cIndex) => {
+                    const code = employeeRecord[day] || '';
+                    const colorInfo = JOB_CODE_COLORS[code];
+                    if (colorInfo?.excelFill) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                        if (ws[cellAddress]) {
+                             ws[cellAddress].s = {
+                                fill: {
+                                    patternType: "solid",
+                                    fgColor: colorInfo.excelFill.fgColor,
+                                },
+                                ...colorInfo.excelFill.font && { font: colorInfo.excelFill.font }
+                            };
+                        }
+                    }
+                });
+            });
+
             XLSX.utils.book_append_sheet(wb, ws, plant);
         });
 
@@ -252,33 +329,32 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
+                                        const cellKey = `${profile.id}-${day}`;
                                         const code = employeeRecord[day] || '';
-                                        const colorInfo = JOB_CODE_COLORS[code] || { bg: 'bg-transparent' };
+                                        const isOpen = activeCell?.profileId === profile.id && activeCell?.day === day;
+                                        
                                         return (
                                             <TableCell key={day} className="p-0 text-center">
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="ghost" className={cn('w-full h-full rounded-none font-bold', colorInfo.bg, colorInfo.text)}>
-                                                            {code || '-'}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0">
-                                                      <ScrollArea className="h-72">
-                                                        <div className="grid grid-cols-5 gap-1 p-1">
-                                                            {JOB_CODES.map(jobCode => (
-                                                                <Button
-                                                                    key={jobCode.code}
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => handleStatusChange(profile.id, day, jobCode.code)}
-                                                                >
-                                                                    {jobCode.code}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
-                                                      </ScrollArea>
-                                                    </PopoverContent>
-                                                </Popover>
+                                                <JobCodeCombobox
+                                                    value={code}
+                                                    inputValue={cellInputValues[cellKey] ?? code}
+                                                    onInputChange={(e) => {
+                                                        const newText = e.target.value.toUpperCase();
+                                                        setCellInputValues(prev => ({...prev, [cellKey]: newText}));
+                                                        const matchingCode = JOB_CODES.find(jc => jc.code === newText);
+                                                        if(matchingCode) {
+                                                            handleStatusChange(profile.id, day, newText);
+                                                        }
+                                                    }}
+                                                    onSelect={(newCode) => handleStatusChange(profile.id, day, newCode)}
+                                                    open={isOpen}
+                                                    onOpenChange={(openState) => {
+                                                        setActiveCell(openState ? { profileId: profile.id, day } : null);
+                                                        if (!openState) {
+                                                            setCellInputValues(prev => ({...prev, [cellKey]: code}));
+                                                        }
+                                                    }}
+                                                />
                                             </TableCell>
                                         );
                                     })}
