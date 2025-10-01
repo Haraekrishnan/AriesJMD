@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -71,11 +72,8 @@ export default function JobRecordSheet() {
 
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
+        setLocalCellValues(prev => ({...prev, [`${employeeId}-${day}`]: code}));
         saveJobRecord(monthKey, employeeId, day, code, 'status');
-    };
-    
-    const handleLocalChange = (key: string, value: string) => {
-        setLocalCellValues(prev => ({...prev, [key]: value}));
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -316,7 +314,7 @@ export default function JobRecordSheet() {
                                                         <Input
                                                             type="text"
                                                             value={code}
-                                                            onChange={(e) => handleLocalChange(cellKey, e.target.value.toUpperCase())}
+                                                            onChange={(e) => setLocalCellValues(prev => ({...prev, [cellKey]: e.target.value.toUpperCase()}))}
                                                             onBlur={() => handleStatusChange(profile.id, day, code)}
                                                             className={cn(
                                                                 "w-16 h-10 text-center font-bold border-b-2 border-dotted focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative rounded-none",
@@ -336,7 +334,6 @@ export default function JobRecordSheet() {
                                                                         size="sm"
                                                                         className="h-8"
                                                                         onClick={() => {
-                                                                            handleLocalChange(cellKey, jobCode.code);
                                                                             handleStatusChange(profile.id, day, jobCode.code);
                                                                             document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
                                                                         }}
