@@ -51,6 +51,8 @@ export default function JobRecordSheet() {
         const days = value === '' ? 0 : parseInt(value, 10);
         if (!isNaN(days) && days >= 0) {
             saveJobRecord(monthKey, employeeId, days, '', 'sundayDuty');
+        } else if (value === '') {
+            saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
         }
     };
 
@@ -59,10 +61,6 @@ export default function JobRecordSheet() {
       projects.forEach(p => {
         if (p.isPlant) plants.add(p.name);
       });
-       // Add hardcoded default plants
-      const defaultPlants = ["SEZ", "DTA", "MTF", "JPC", "SOLAR"];
-      defaultPlants.forEach(p => plants.add(p));
-
       return Array.from(plants).sort();
     }, [projects]);
 
@@ -98,7 +96,7 @@ export default function JobRecordSheet() {
             ];
             sheetData.push(header);
 
-            profiles.forEach((profile, index) => {
+            profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
@@ -120,10 +118,10 @@ export default function JobRecordSheet() {
                 }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                const additionalSundays = jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || 0;
+                const additionalSundays = record.additionalSundayDuty || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
-                const row: (string | number)[] = [index + 1, profile.name];
+                const row: (string | number)[] = [rIndex + 1, profile.name];
                 dayHeaders.forEach(day => {
                     row.push(employeeRecord[day] || '');
                 });
@@ -189,15 +187,17 @@ export default function JobRecordSheet() {
     };
 
     const groupedProfiles = useMemo(() => {
-        const groups: { [key: string]: typeof manpowerProfiles } = { 'Unassigned': [] };
-        plantProjects.forEach(p => groups[p] = []);
+        const groups: { [key: string]: typeof manpowerProfiles } = {};
+        const availablePlants = new Set(plantProjects);
+        availablePlants.add('Unassigned');
+
+        availablePlants.forEach(p => groups[p] = []);
 
         manpowerProfiles.forEach(profile => {
             const plant = profile.plant || 'Unassigned';
             if (groups[plant]) {
                 groups[plant].push(profile);
             } else {
-                if (!groups['Unassigned']) groups['Unassigned'] = [];
                 groups['Unassigned'].push(profile);
             }
         });
@@ -255,7 +255,7 @@ export default function JobRecordSheet() {
                             }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
                             const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                            const additionalSundays = jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || 0;
+                            const additionalSundays = record.additionalSundayDuty || 0;
                             const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
                             return (
@@ -319,7 +319,7 @@ export default function JobRecordSheet() {
                                                   )}
                                                 </div>
                                               </PopoverTrigger>
-                                              <PopoverContent className="w-auto p-2">
+                                              <PopoverContent className="w-auto p-0">
                                                 <DailyRecordEditor
                                                   initialCode={code}
                                                   initialOvertime={overtimeForDay}
@@ -340,8 +340,8 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center font-bold">{salaryDays}</TableCell>
                                     <TableCell className="text-center">
                                         <Input
-                                            type="text"
-                                            defaultValue={jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || ''}
+                                            type="number"
+                                            defaultValue={record.additionalSundayDuty || ''}
                                             onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                             className="w-16 h-8 text-center"
                                             placeholder="0"
@@ -404,39 +404,66 @@ interface DailyRecordEditorProps {
 function DailyRecordEditor({ initialCode, initialOvertime, onSave }: DailyRecordEditorProps) {
     const [code, setCode] = useState(initialCode);
     const [overtime, setOvertime] = useState(initialOvertime);
+    const [popoverOpen, setPopoverOpen] = useState(true);
 
     const handleSave = () => {
         onSave(code.toUpperCase(), overtime);
+        setPopoverOpen(false);
+    };
+
+    const handleCodeButtonClick = (newCode: string) => {
+        setCode(newCode);
+        // We'll save and close when "Set" is clicked, or they can click a new button
+        onSave(newCode, overtime);
+        setPopoverOpen(false);
+    };
+    
+    // This wrapper is needed to prevent the Popover from closing when interacting with its content
+    const handleWrapperClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
     };
 
     return (
-        <div className="space-y-4">
-            <div>
-                <Label>Job Code</Label>
-                <div className="grid grid-cols-5 gap-1">
-                    {JOB_CODES.map(jc => (
-                        <Button
-                            key={jc.code}
-                            variant={code === jc.code ? "default" : "outline"}
-                            size="sm"
-                            className="h-8"
-                            onClick={() => setCode(jc.code)}
-                        >
-                            {jc.code}
-                        </Button>
-                    ))}
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+            <PopoverTrigger asChild>
+                <span></span> 
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" onClick={handleWrapperClick}>
+                 <div className="space-y-4">
+                     <div>
+                        <Label>Job Code</Label>
+                        <Input 
+                            value={code}
+                            onChange={(e) => setCode(e.target.value.toUpperCase())}
+                            placeholder="Type code..."
+                            className="mb-2"
+                        />
+                        <div className="grid grid-cols-5 gap-1">
+                            {JOB_CODES.map(jc => (
+                                <Button
+                                    key={jc.code}
+                                    variant={code === jc.code ? "default" : "outline"}
+                                    size="sm"
+                                    className="h-8"
+                                    onClick={() => handleCodeButtonClick(jc.code)}
+                                >
+                                    {jc.code}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <Label>Overtime Hours (Optional)</Label>
+                        <Input 
+                            type="number" 
+                            value={overtime || ''}
+                            onChange={(e) => setOvertime(Number(e.target.value) || undefined)}
+                            placeholder="e.g., 2.5"
+                        />
+                    </div>
+                    <Button onClick={handleSave} className="w-full">Set</Button>
                 </div>
-            </div>
-            <div>
-                <Label>Overtime Hours (Optional)</Label>
-                <Input 
-                    type="number" 
-                    value={overtime || ''}
-                    onChange={(e) => setOvertime(Number(e.target.value))}
-                    placeholder="e.g., 2.5"
-                />
-            </div>
-            <Button onClick={handleSave} className="w-full">Set</Button>
-        </div>
+            </PopoverContent>
+        </Popover>
     );
 }
