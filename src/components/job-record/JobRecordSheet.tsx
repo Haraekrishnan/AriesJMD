@@ -55,8 +55,11 @@ export default function JobRecordSheet() {
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const daysInMonth = getDaysInMonth(currentMonth);
-    const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     
+    const dayHeaders = useMemo(() => 
+        Array.from({ length: daysInMonth }, (_, i) => i + 1), 
+    [daysInMonth]);
+
     const plantAssignments = useMemo(() => {
         return jobRecords[monthKey]?.plantAssignments || {};
     }, [jobRecords, monthKey]);
@@ -89,7 +92,7 @@ export default function JobRecordSheet() {
             });
         });
         setLocalCellValues(newLocalCellValues);
-    }, [currentMonth, jobRecords, manpowerProfiles, dayHeaders, monthKey]);
+    }, [currentMonth, jobRecords, manpowerProfiles, dayHeaders]);
 
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
@@ -236,7 +239,7 @@ export default function JobRecordSheet() {
                 });
             });
             return counts;
-        }, [profiles, monthKey, jobRecords]);
+        }, [profiles, monthKey, jobRecords, dayHeaders]);
     
         return (
             <div className="mt-4">
@@ -434,5 +437,3 @@ export default function JobRecordSheet() {
         </div>
     );
 }
-
-    
