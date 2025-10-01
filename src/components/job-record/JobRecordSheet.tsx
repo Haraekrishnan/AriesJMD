@@ -101,6 +101,8 @@ export default function JobRecordSheet() {
         if (value !== undefined && !isNaN(Number(value))) {
             saveJobRecord(monthKey, employeeId, Number(value), '', 'overtime');
             toast({title: 'Overtime Saved'});
+        } else if (value === '' || value === undefined) {
+             saveJobRecord(monthKey, employeeId, 0, '', 'overtime');
         } else {
             toast({variant: 'destructive', title: 'Invalid Value', description: 'Please enter a valid number for overtime.'});
         }
@@ -115,6 +117,8 @@ export default function JobRecordSheet() {
         if (value !== undefined && !isNaN(Number(value))) {
             saveJobRecord(monthKey, employeeId, Number(value), '', 'sundayDuty');
             toast({ title: 'Additional Sunday Duty Saved' });
+        } else if (value === '' || value === undefined) {
+            saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
         } else {
             toast({ variant: 'destructive', title: 'Invalid Value', description: 'Please enter a valid number for Sunday duty.' });
         }
@@ -374,35 +378,28 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
                                     <TableCell className="text-center">
-                                        <div className="flex items-center gap-1">
-                                            <Input
-                                                type="text"
-                                                value={tempOvertime[profile.id] ?? ''}
-                                                onChange={(e) => handleOvertimeChange(profile.id, e.target.value)}
-                                                className="w-16 h-8 text-center"
-                                            />
-                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleOvertimeSave(profile.id)}>
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        <Input
+                                            type="text"
+                                            value={tempOvertime[profile.id] ?? ''}
+                                            onChange={(e) => handleOvertimeChange(profile.id, e.target.value)}
+                                            onBlur={() => handleOvertimeSave(profile.id)}
+                                            className="w-16 h-8 text-center"
+                                            placeholder="0"
+                                        />
                                     </TableCell>
                                     <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
                                     <TableCell className="text-center font-bold">{salaryDays}</TableCell>
                                     <TableCell className="text-center">
-                                        <div className="flex items-center gap-1">
-                                            <Input
-                                                type="text"
-                                                value={tempSundayDuty[profile.id] ?? ''}
-                                                onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
-                                                className="w-16 h-8 text-center"
-                                                placeholder="0"
-                                            />
-                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleSundayDutySave(profile.id)}>
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        <Input
+                                            type="text"
+                                            value={tempSundayDuty[profile.id] ?? ''}
+                                            onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
+                                            onBlur={() => handleSundayDutySave(profile.id)}
+                                            className="w-16 h-8 text-center"
+                                            placeholder="0"
+                                        />
                                     </TableCell>
                                 </TableRow>
                             );
