@@ -319,9 +319,10 @@ export default function JobRecordSheet() {
                                                             onChange={(e) => handleLocalChange(cellKey, e.target.value.toUpperCase())}
                                                             onBlur={() => handleStatusChange(profile.id, day, code)}
                                                             className={cn(
-                                                                "w-12 h-10 text-center font-bold border-0 focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative rounded-none",
+                                                                "w-16 h-10 text-center font-bold border-b-2 border-dotted focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative rounded-none",
                                                                 code ? colorInfo.bg : 'bg-transparent',
-                                                                code ? colorInfo.text : 'text-foreground'
+                                                                code ? colorInfo.text : 'text-foreground',
+                                                                !code && 'border-gray-300 dark:border-gray-700'
                                                             )}
                                                         />
                                                     </PopoverTrigger>
