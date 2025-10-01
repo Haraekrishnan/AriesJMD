@@ -20,11 +20,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
 
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, addJobRecordPlant, jobRecordPlants } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -60,14 +62,6 @@ export default function JobRecordSheet() {
     const plantProjects = useMemo(() => {
       return (jobRecordPlants || []).map(p => p.name).sort();
     }, [jobRecordPlants]);
-
-    const handleAddPlant = () => {
-        const newPlantName = prompt("Enter new plant name:");
-        if (newPlantName && newPlantName.trim() !== '') {
-            addJobRecordPlant(newPlantName);
-            toast({ title: "Plant Added", description: `You can now assign employees to ${newPlantName}.`});
-        }
-    };
 
     const handleRemoveFromPlant = (employeeId: string) => {
         saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
@@ -151,9 +145,7 @@ export default function JobRecordSheet() {
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-            ws['!cols'] = [{ wch: 5 }, { wch: 25 }];
-            dayHeaders.forEach(() => ws['!cols']?.push({ wch: 5 }));
-            header.slice(2 + dayHeaders.length).forEach(() => ws['!cols']?.push({ wch: 10 }));
+            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
             
             profiles.forEach((profile, rIndex) => {
                 const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
@@ -218,7 +210,7 @@ export default function JobRecordSheet() {
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center min-w-[60px] w-[60px]">
+                                <TableHead key={day} className="text-center min-w-[70px] w-[70px]">
                                     {day}
                                 </TableHead>
                             ))}
@@ -297,7 +289,7 @@ export default function JobRecordSheet() {
                                         const overtimeForDay = dailyOvertime[day];
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         return (
-                                          <TableCell key={day} className="p-0 text-center relative w-[60px] min-w-[60px]">
+                                          <TableCell key={day} className="p-0 text-center relative w-[70px] min-w-[70px]">
                                             <DailyRecordEditor
                                               employeeId={profile.id}
                                               day={day}
@@ -351,7 +343,7 @@ export default function JobRecordSheet() {
                      <div className="flex items-center gap-2">
                         <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
                         {user?.role === 'Admin' && (
-                            <Button onClick={handleAddPlant} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                            <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                         )}
                     </div>
                 </div>
@@ -367,6 +359,7 @@ export default function JobRecordSheet() {
                     ))}
                 </Tabs>
             </div>
+            <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
         </TooltipProvider>
     );
 }
@@ -389,7 +382,7 @@ function DailyRecordEditor({ employeeId, day, initialCode, initialOvertime, onSa
     useEffect(() => {
         setCode(initialCode);
         setOvertime(initialOvertime);
-    }, [initialCode, initialOvertime]);
+    }, [initialCode, initialOvertime, popoverOpen]);
 
     const handleSave = () => {
         onSave(code.toUpperCase(), overtime);
@@ -423,15 +416,10 @@ function DailyRecordEditor({ employeeId, day, initialCode, initialOvertime, onSa
                             )}
                         />
                          <div className="absolute right-0 top-0 h-full flex items-center">
-                            {(overtime && overtime > 0) && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="h-4 w-4 mr-1">
-                                            <Clock className="h-full w-full text-blue-500" />
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>{overtime} hours OT</p></TooltipContent>
-                                </Tooltip>
+                            {overtime && overtime > 0 && (
+                                <div className="h-4 w-4 mr-1">
+                                    <Clock className="h-full w-full text-blue-500" />
+                                </div>
                             )}
                             <PopoverTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-full w-6 p-0 rounded-none">
@@ -448,13 +436,6 @@ function DailyRecordEditor({ employeeId, day, initialCode, initialOvertime, onSa
                  <div className="space-y-4 w-80">
                      <div>
                         <Label>Job Code</Label>
-                         <Input 
-                            type="text"
-                            placeholder="Type code..."
-                            value={code}
-                            onChange={handleCodeInputChange}
-                            className="mt-1"
-                        />
                         <div className="grid grid-cols-5 gap-1 mt-2">
                             {JOB_CODES.map(jc => (
                                 <Button
@@ -484,3 +465,4 @@ function DailyRecordEditor({ employeeId, day, initialCode, initialOvertime, onSa
         </Popover>
     );
 }
+
