@@ -97,8 +97,8 @@ export default function JobRecordSheet() {
             sheetData.push([]); 
 
             const header = [
-                'S.No', 'Name', ...dayHeaders, 'Total Leave', 'Total ML', 'Total OFF', 'Total Rept/Office', 'Total Standby/Training',
-                'Total working Days', 'Over Time', 'Salary Days', 'Additional Sunday Duty'
+                'S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training',
+                'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'
             ];
             sheetData.push(header);
 
@@ -123,7 +123,7 @@ export default function JobRecordSheet() {
                 dayHeaders.forEach(day => {
                     row.push(employeeRecord[day] || '');
                 });
-                row.push(summary.leaveDays, summary.medicalLeave, summary.offDays, summary.reptOffice, summary.standbyTraining, summary.workDays, overtimeData[profile.id] || 0, salaryDays, summary.sundayDuty);
+                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, overtimeData[profile.id] || 0, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, summary.sundayDuty);
                 sheetData.push(row);
             });
             
@@ -157,10 +157,10 @@ export default function JobRecordSheet() {
                             <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
                             <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
                             <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
-                            <TableHead className="text-center min-w-[150px]">Total Standby etc.</TableHead>
-                            <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
-                            <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
                             <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Total Standby etc.</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
                             <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
                             <TableHead className="text-center min-w-[150px]">Add. Sunday Duty</TableHead>
                         </TableRow>
@@ -228,9 +228,6 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
                                     <TableCell className="text-center">
                                         <div className="flex items-center gap-1">
                                             <Input
@@ -244,6 +241,9 @@ export default function JobRecordSheet() {
                                             </Button>
                                         </div>
                                     </TableCell>
+                                    <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
                                     <TableCell className="text-center font-bold">{salaryDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.sundayDuty}</TableCell>
                                 </TableRow>
@@ -300,3 +300,5 @@ export default function JobRecordSheet() {
         </div>
     );
 }
+
+    
