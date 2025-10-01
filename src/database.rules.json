@@ -141,6 +141,10 @@
         ".read": true,
         ".write": true
     },
+    "jobRecordPlants": {
+        ".read": true,
+        ".write": true
+    },
     "payments": {
       ".read": true,
       ".write": true
@@ -168,4 +172,3 @@
     }
   }
 }
-

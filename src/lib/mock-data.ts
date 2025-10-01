@@ -1,6 +1,6 @@
 
 
-import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord } from './types';
+import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
 
@@ -73,7 +73,7 @@ export const ROLES: RoleDefinition[] = [
     name: 'Store in Charge',
     permissions: [
       'manage_tasks', 'manage_planner', 'manage_incidents',
-      'manage_inventory', 'approve_store_requests', 'add_new_equipment',
+      'manage_inventory', 'approve_store_requests',
       'manage_equipment_status',
       'view_performance_reports',
       'manage_vehicles',
@@ -84,7 +84,7 @@ export const ROLES: RoleDefinition[] = [
   {
     id: 'role-asst-store-incharge',
     name: 'Assistant Store Incharge',
-    permissions: ['manage_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status', 'add_new_equipment'],
+    permissions: ['manage_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status'],
     isEditable: false,
   },
   {
@@ -97,7 +97,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-document-controller',
     name: 'Document Controller',
     permissions: [
-        'manage_manpower_list', 'manage_tasks', 'log_manpower', 'add_new_equipment',
+        'manage_manpower_list', 'manage_tasks', 'log_manpower',
         'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests'
     ],
     isEditable: true,
@@ -105,16 +105,24 @@ export const ROLES: RoleDefinition[] = [
 ];
 
 export const PROJECTS: Project[] = [
-    { id: 'proj-1', name: 'SEZ', isPlant: true },
-    { id: 'proj-2', name: 'DTA', isPlant: true },
-    { id: 'proj-3', name: 'MTF', isPlant: true },
-    { id: 'proj-4', name: 'DTA-JPC', isPlant: true },
-    { id: 'proj-5', name: 'SEZ-JPC', isPlant: true },
-    { id: 'proj-6', name: 'RPMG-SOLAR', isPlant: true },
-    { id: 'proj-7', name: 'Head Office', isPlant: false },
-    { id: 'proj-8', name: 'Pass Section', isPlant: false },
-    { id: 'proj-9', name: 'Unassigned', isPlant: false },
+    { id: 'proj-1', name: 'SEZ' },
+    { id: 'proj-2', name: 'DTA' },
+    { id: 'proj-3', name: 'MTF' },
+    { id: 'proj-4', name: 'DTA-JPC' },
+    { id: 'proj-5', name: 'SEZ-JPC' },
+    { id: 'proj-6', name: 'RPMG-SOLAR' },
+    { id: 'proj-7', name: 'Head Office' },
+    { id: 'proj-8', name: 'Pass Section' },
+    { id: 'proj-9', name: 'Unassigned' },
 ];
+
+export const JOB_RECORD_PLANTS: JobRecordPlant[] = [
+    { id: 'plant-1', name: 'DTA' },
+    { id: 'plant-2', name: 'SEZ' },
+    { id: 'plant-3', name: 'DTA-JPC' },
+    { id: 'plant-4', name: 'MTF' },
+];
+
 
 export const USERS: User[] = [
   { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'Admin', avatar: 'https://i.pravatar.cc/150?u=1', projectId: 'proj-6', planningScore: 0 },
@@ -277,8 +285,8 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
         id: 'ireq-1',
         requesterId: '19', 
         items: [
-          { description: 'A4 paper ream', quantity: 5, unit: 'pcs', remarks: '' },
-          { description: 'Blue and black pens', quantity: 2, unit: 'box', remarks: '1 box each' }
+          { id: 'item-1-1', description: 'A4 paper ream', quantity: 5, unit: 'pcs', remarks: '', status: 'Pending' },
+          { id: 'item-1-2', description: 'Blue and black pens', quantity: 2, unit: 'box', remarks: '1 box each', status: 'Pending' }
         ],
         status: 'Pending',
         date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
@@ -289,7 +297,7 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
         id: 'ireq-2',
         requesterId: '12', 
         items: [
-          { description: 'Fluke Multimeters', quantity: 2, unit: 'pcs', remarks: 'The old ones are malfunctioning.' }
+          { id: 'item-2-1', description: 'Fluke Multimeters', quantity: 2, unit: 'pcs', remarks: 'The old ones are malfunctioning.', status: 'Approved' }
         ],
         status: 'Approved',
         approverId: '22',

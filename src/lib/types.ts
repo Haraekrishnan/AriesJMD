@@ -6,9 +6,10 @@ export type Broadcast = {
   creatorId: string;
   createdAt: string; // ISO String
   expiryDate: string; // ISO String
-  recipientUserIds: string[];
   recipientRoles: string[];
+  recipientUserIds: string[];
   dismissedBy: string[];
+  emailTarget: 'none' | 'roles' | 'individuals';
 };
 
 export type JobRecord = {
@@ -16,10 +17,10 @@ export type JobRecord = {
   records: {
     [employeeId: string]: {
       days: { [day: number]: string }; // day: 1-31, value: code
-      dailyOvertime?: { [day: number]: number }; // New field for daily OT
+      dailyOvertime?: { [day: number]: number };
+      additionalSundayDuty?: number;
     };
   };
-  additionalSundayDuty?: { [employeeId: string]: number };
 };
 
 export type PpeInwardRecord = {
@@ -263,7 +264,6 @@ export type RoleDefinition = {
 export type Project = {
   id: string;
   name: string;
-  isPlant?: boolean; // New field to distinguish job record plants
 };
 
 export type ActivityLog = {
@@ -750,4 +750,9 @@ export type Feedback = {
   date: string; // ISO String
   status: FeedbackStatus;
   viewedBy?: { [key: string]: boolean };
+};
+
+export type JobRecordPlant = {
+  id: string;
+  name: string;
 };

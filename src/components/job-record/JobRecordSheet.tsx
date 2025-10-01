@@ -23,7 +23,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject, projects } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, addJobRecordPlant, jobRecordPlants } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
     
@@ -58,13 +58,13 @@ export default function JobRecordSheet() {
     };
 
     const plantProjects = useMemo(() => {
-      return projects.filter(p => p.isPlant).map(p => p.name).sort();
-    }, [projects]);
+      return (jobRecordPlants || []).map(p => p.name).sort();
+    }, [jobRecordPlants]);
 
     const handleAddPlant = () => {
         const newPlantName = prompt("Enter new plant name:");
         if (newPlantName && newPlantName.trim() !== '') {
-            addProject(newPlantName, true);
+            addJobRecordPlant(newPlantName);
             toast({ title: "Plant Added", description: `You can now assign employees to ${newPlantName}.`});
         }
     };
@@ -297,8 +297,10 @@ export default function JobRecordSheet() {
                                         const overtimeForDay = dailyOvertime[day];
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         return (
-                                          <TableCell key={day} className="p-0 text-center relative">
+                                          <TableCell key={day} className="p-0 text-center relative w-[60px] min-w-[60px]">
                                             <DailyRecordEditor
+                                              employeeId={profile.id}
+                                              day={day}
                                               initialCode={code}
                                               initialOvertime={overtimeForDay}
                                               onSave={(newCode, newOvertime) => handleStatusChange(profile.id, day, newCode, newOvertime)}
@@ -371,13 +373,15 @@ export default function JobRecordSheet() {
 
 
 interface DailyRecordEditorProps {
+    employeeId: string;
+    day: number;
     initialCode: string;
     initialOvertime?: number;
     onSave: (code: string, overtime?: number) => void;
     colorInfo: { bg?: string; text?: string };
 }
 
-function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: DailyRecordEditorProps) {
+function DailyRecordEditor({ employeeId, day, initialCode, initialOvertime, onSave, colorInfo }: DailyRecordEditorProps) {
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [code, setCode] = useState(initialCode);
     const [overtime, setOvertime] = useState(initialOvertime);
@@ -385,7 +389,7 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
     useEffect(() => {
         setCode(initialCode);
         setOvertime(initialOvertime);
-    }, [initialCode, initialOvertime, popoverOpen]);
+    }, [initialCode, initialOvertime]);
 
     const handleSave = () => {
         onSave(code.toUpperCase(), overtime);
@@ -419,14 +423,14 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
                             )}
                         />
                          <div className="absolute right-0 top-0 h-full flex items-center">
-                            {(initialOvertime && initialOvertime > 0) && (
+                            {(overtime && overtime > 0) && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className="h-4 w-4 mr-1">
                                             <Clock className="h-full w-full text-blue-500" />
                                         </div>
                                     </TooltipTrigger>
-                                    <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>
+                                    <TooltipContent><p>{overtime} hours OT</p></TooltipContent>
                                 </Tooltip>
                             )}
                             <PopoverTrigger asChild>
@@ -437,7 +441,7 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
                          </div>
                     </div>
                 </TooltipTrigger>
-                {(initialOvertime && initialOvertime > 0) && <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>}
+                {(overtime && overtime > 0) && <TooltipContent><p>{overtime} hours OT</p></TooltipContent>}
             </Tooltip>
 
             <PopoverContent className="w-auto p-4" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -480,4 +484,3 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
         </Popover>
     );
 }
-
