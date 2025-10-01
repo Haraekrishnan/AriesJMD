@@ -32,7 +32,7 @@ export default function JobRecordPage() {
                 </p>
             </div>
             <Card>
-                <CardContent className="p-0 overflow-x-auto">
+                <CardContent className="overflow-x-auto">
                     <JobRecordSheet />
                 </CardContent>
             </Card>
