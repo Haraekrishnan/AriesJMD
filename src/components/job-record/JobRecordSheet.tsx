@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,6 +11,8 @@ import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
 
@@ -23,7 +24,9 @@ export default function JobRecordSheet() {
     const daysInMonth = getDaysInMonth(currentMonth);
     const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     
-    const plantAssignments = useMemo(() => jobRecords[monthKey]?.plantAssignments || {}, [jobRecords, monthKey]);
+    const plantAssignments = useMemo(() => {
+        return jobRecords[monthKey]?.plantAssignments || {};
+    }, [jobRecords, monthKey]);
 
     const groupedProfiles = useMemo(() => {
         const groups: { [key: string]: typeof manpowerProfiles } = {
@@ -37,7 +40,8 @@ export default function JobRecordSheet() {
                 groups['Unassigned'].push(profile);
             }
         });
-        Object.values(groups).forEach(group => group.sort((a,b) => a.name.localeCompare(b.name)));
+        // Sort each group alphabetically by name
+        Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
     }, [manpowerProfiles, plantAssignments]);
 
@@ -51,17 +55,15 @@ export default function JobRecordSheet() {
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
-        const sheetData: (string|number)[][] = [];
 
-        // Header
-        sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')}`]);
-        sheetData.push([]); // Empty row
-
-        PLANT_OPTIONS.forEach(plant => {
+        [...PLANT_OPTIONS, 'Unassigned'].forEach(plant => {
             const profiles = groupedProfiles[plant];
             if (profiles.length === 0) return;
 
-            sheetData.push([`Plant: ${plant}`]);
+            const sheetData: (string|number)[][] = [];
+            sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
+            sheetData.push([]); 
+
             const header = ['S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total Working Days'];
             sheetData.push(header);
 
@@ -81,20 +83,102 @@ export default function JobRecordSheet() {
                 row.push(offDays, leaveDays, workDays);
                 sheetData.push(row);
             });
-            sheetData.push([]); // Empty row between plants
+            
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            XLSX.utils.book_append_sheet(wb, ws, plant);
         });
 
-        // Legend
-        sheetData.push([]);
-        sheetData.push(['CODE', 'JOB DETAILS']);
-        JOB_CODES.forEach(jc => {
-            sheetData.push([jc.code, jc.details]);
-        });
+        // Add Legend sheet
+        const legendData = [['CODE', 'JOB DETAILS'], ...JOB_CODES.map(jc => [jc.code, jc.details])];
+        const legendWs = XLSX.utils.aoa_to_sheet(legendData);
+        XLSX.utils.book_append_sheet(wb, legendWs, 'Legend');
 
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
-        XLSX.utils.book_append_sheet(wb, ws, `Job Record - ${format(currentMonth, 'MMM yyyy')}`);
         XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
     };
+    
+    const renderTableForPlant = (plantName: string, profiles: typeof manpowerProfiles) => {
+         if (profiles.length === 0) {
+            return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant for this month.</div>
+        }
+        return (
+            <div className="overflow-x-auto">
+                <Table className="min-w-full">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="sticky left-0 bg-card z-10 w-[50px]">S.No</TableHead>
+                            <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
+                            <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
+                            {dayHeaders.map(day => (
+                                <TableHead key={day} className="text-center">{day}</TableHead>
+                            ))}
+                            <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
+                            <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Working Days</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {profiles.map((profile, index) => {
+                            const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                            const summary = dayHeaders.reduce((acc, day) => {
+                                const code = employeeRecord[day];
+                                if (code === 'OFF' || code === 'PH') acc.offDays++;
+                                if (code === 'L') acc.leaveDays++;
+                                if (code && !['OFF', 'PH', 'L'].includes(code)) acc.workDays++;
+                                return acc;
+                            }, { offDays: 0, leaveDays: 0, workDays: 0 });
+
+                            return (
+                                <TableRow key={profile.id}>
+                                    <TableCell className="sticky left-0 bg-card z-10">{index + 1}</TableCell>
+                                    <TableCell className="sticky left-[50px] bg-card z-10 font-medium">{profile.name}</TableCell>
+                                    <TableCell className="sticky left-[250px] bg-card z-10">
+                                        <Select value={plantAssignments[profile.id]} onValueChange={(value) => handlePlantChange(profile.id, value)}>
+                                            <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {[...PLANT_OPTIONS, 'Unassigned'].map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    {dayHeaders.map(day => {
+                                        const code = employeeRecord[day] || '';
+                                        const colorClass = JOB_CODE_COLORS[code] || 'bg-transparent';
+                                        return (
+                                            <TableCell key={day} className="p-0 text-center">
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="ghost" className={`w-full h-full rounded-none font-bold ${colorClass}`}>
+                                                            {code || '-'}
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-1">
+                                                        <div className="grid grid-cols-4 gap-1">
+                                                            {JOB_CODES.map(jobCode => (
+                                                                <Button
+                                                                    key={jobCode.code}
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handleStatusChange(profile.id, day, jobCode.code)}
+                                                                >
+                                                                    {jobCode.code}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </TableCell>
+                                        );
+                                    })}
+                                    <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -113,92 +197,22 @@ export default function JobRecordSheet() {
                     Export Excel
                 </Button>
             </div>
-            <div className="space-y-8">
-                {PLANT_OPTIONS.map(plant => (
-                    <div key={plant}>
-                        <h3 className="font-bold text-xl p-4">{plant} Plant</h3>
-                        <div className="overflow-x-auto">
-                            <Table className="min-w-full">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="sticky left-0 bg-card z-10 w-[50px]">S.No</TableHead>
-                                        <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
-                                        <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
-                                        {dayHeaders.map(day => (
-                                            <TableHead key={day} className="text-center">{day}</TableHead>
-                                        ))}
-                                        <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
-                                        <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
-                                        <TableHead className="text-center min-w-[120px]">Working Days</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {groupedProfiles[plant].map((profile, index) => {
-                                        const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
-                                        const summary = dayHeaders.reduce((acc, day) => {
-                                            const code = employeeRecord[day];
-                                            if (code === 'OFF' || code === 'PH') acc.offDays++;
-                                            if (code === 'L') acc.leaveDays++;
-                                            if (code && !['OFF', 'PH', 'L'].includes(code)) acc.workDays++;
-                                            return acc;
-                                        }, { offDays: 0, leaveDays: 0, workDays: 0 });
 
-                                        return (
-                                            <TableRow key={profile.id}>
-                                                <TableCell className="sticky left-0 bg-card z-10">{index + 1}</TableCell>
-                                                <TableCell className="sticky left-[50px] bg-card z-10 font-medium">{profile.name}</TableCell>
-                                                <TableCell className="sticky left-[250px] bg-card z-10">
-                                                    <Select value={plantAssignments[profile.id]} onValueChange={(value) => handlePlantChange(profile.id, value)}>
-                                                        <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {PLANT_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </TableCell>
-                                                {dayHeaders.map(day => {
-                                                    const code = employeeRecord[day] || '';
-                                                    const colorClass = JOB_CODE_COLORS[code] || 'bg-transparent';
-                                                    return (
-                                                        <TableCell key={day} className="p-0 text-center">
-                                                            <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <Button variant="ghost" className={`w-full h-full rounded-none font-bold ${colorClass}`}>
-                                                                        {code || '-'}
-                                                                    </Button>
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-auto p-1">
-                                                                    <div className="grid grid-cols-4 gap-1">
-                                                                        {JOB_CODES.map(jobCode => (
-                                                                            <Button
-                                                                                key={jobCode.code}
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => handleStatusChange(profile.id, day, jobCode.code)}
-                                                                            >
-                                                                                {jobCode.code}
-                                                                            </Button>
-                                                                        ))}
-                                                                    </div>
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                                <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
-                                                <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
-                                                <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                     {groupedProfiles[plant].length === 0 && (
-                                        <TableRow><TableCell colSpan={dayHeaders.length + 6} className="h-24 text-center">No employees assigned to this plant for this month.</TableCell></TableRow>
-                                     )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
+            <Tabs defaultValue="DTA" className="w-full">
+                <TabsList>
+                    {PLANT_OPTIONS.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                    <TabsTrigger value="Unassigned">Unassigned</TabsTrigger>
+                </TabsList>
+                {PLANT_OPTIONS.map(plant => (
+                    <TabsContent key={plant} value={plant}>
+                        {renderTableForPlant(plant, groupedProfiles[plant])}
+                    </TabsContent>
                 ))}
-            </div>
+                 <TabsContent value="Unassigned">
+                    {renderTableForPlant('Unassigned', groupedProfiles['Unassigned'])}
+                </TabsContent>
+            </Tabs>
+            
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {JOB_CODES.map(jc => (
                     <div key={jc.code} className="flex items-center gap-2">

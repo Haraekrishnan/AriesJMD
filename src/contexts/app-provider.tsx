@@ -250,7 +250,7 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, day: number, code: string) => void;
+  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number | string, code: string, type: 'status' | 'plant') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -2927,8 +2927,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number, code: string) => {
-    update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: code });
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, value: string | number, code: string, type: 'status' | 'plant') => {
+    if (type === 'status') {
+      const day = value as number;
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: code });
+    } else if (type === 'plant') {
+      const plant = code;
+      update(ref(rtdb, `jobRecords/${monthKey}/plantAssignments`), { [employeeId]: plant });
+    }
   }, []);
 
   const lockJobSchedule = useCallback((date: string) => {
@@ -3199,6 +3205,7 @@ export const useAppContext = (): AppContextType => {
   
 
     
+
 
 
 
