@@ -28,7 +28,6 @@ export default function JobRecordSheet() {
     const { manpowerProfiles, jobRecords, saveJobRecord } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
-    const [activeCell, setActiveCell] = useState<{ profileId: string; day: number } | null>(null);
     const [localCellValues, setLocalCellValues] = useState<Record<string, string>>({});
     
     const monthKey = format(currentMonth, 'yyyy-MM');
