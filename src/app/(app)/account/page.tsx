@@ -254,7 +254,7 @@ export default function AccountPage() {
           </Card>
       )}
 
-      {can.manage_roles && (
+      {(can.manage_roles || user.role === 'Admin') && (
           <Card>
             <CardHeader>
                 <CardTitle>Role Management</CardTitle>
