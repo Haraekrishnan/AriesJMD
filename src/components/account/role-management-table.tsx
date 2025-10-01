@@ -54,6 +54,7 @@ export default function RoleManagementTable() {
                 <TableBody>
                     {roles.map(role => {
                         const isActionable = can.manage_roles && (role.isEditable || user?.role === 'Admin');
+                        const canDelete = role.isEditable || user?.role === 'Admin';
                         const permissions = role.permissions || [];
                         return (
                         <TableRow key={role.id}>
@@ -74,7 +75,7 @@ export default function RoleManagementTable() {
                                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(role)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        {role.isEditable && (
+                                        {canDelete && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
