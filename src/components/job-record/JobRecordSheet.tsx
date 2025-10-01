@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -6,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, ChevronsUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSunday } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -312,25 +313,22 @@ export default function JobRecordSheet() {
                                     {dayHeaders.map(day => {
                                         const cellKey = `${profile.id}-${day}`;
                                         const code = localCellValues[cellKey] ?? employeeRecord[day] ?? '';
-                                        const isOpen = activeCell?.profileId === profile.id && activeCell?.day === day;
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         return (
                                             <TableCell key={day} className="p-0 text-center">
-                                                <Popover open={isOpen} onOpenChange={(openState) => setActiveCell(openState ? { profileId: profile.id, day } : null)}>
+                                                <Popover onOpenChange={(open) => !open && setActiveCell(null)}>
                                                     <PopoverTrigger asChild>
                                                         <Input
                                                             value={code}
                                                             onChange={(e) => {
                                                                 const newCode = e.target.value.toUpperCase();
                                                                 setLocalCellValues(prev => ({...prev, [cellKey]: newCode}));
-                                                                if(JOB_CODES.some(jc => jc.code === newCode)) {
-                                                                    handleStatusChange(profile.id, day, newCode);
-                                                                }
                                                             }}
                                                             onBlur={(e) => {
                                                                 handleStatusChange(profile.id, day, e.target.value.toUpperCase());
                                                             }}
-                                                            className={cn("w-full h-full p-2 text-center font-bold border-b border-dashed border-input focus-visible:ring-1 focus-visible:ring-ring bg-transparent rounded-none", colorInfo.bg, colorInfo.text)}
+                                                            onClick={() => setActiveCell({ profileId: profile.id, day })}
+                                                            className={cn("w-full h-full p-2 text-center font-bold border-b border-dashed focus-visible:ring-1 focus-visible:ring-ring bg-transparent rounded-none", colorInfo.bg, colorInfo.text)}
                                                         />
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0">
@@ -420,3 +418,5 @@ export default function JobRecordSheet() {
         </div>
     );
 }
+
+    
