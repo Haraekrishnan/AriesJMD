@@ -389,16 +389,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Temporary fix to rename admin role
-  useEffect(() => {
-    if (user && user.role === 'Admin') {
-      const updatedUser = { ...user, role: 'job' as Role };
-      setStoredUser(updatedUser);
-      // Also update in the database for consistency if needed, but local storage is key for session
-      update(ref(rtdb, `users/${user.id}`), { role: 'job' });
-    }
-  }, [user, setStoredUser]);
-
   // Listen for status changes on the current user
   useEffect(() => {
     if (user && user.id) {

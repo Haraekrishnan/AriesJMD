@@ -85,6 +85,10 @@
       ".read": true,
       ".write": true
     },
+    "broadcasts": {
+      ".read": true,
+      ".write": true
+    },
     "buildings": {
       ".read": true,
       ".write": true
@@ -113,6 +117,10 @@
       ".read": true,
       ".write": true
     },
+    "ppeInwardHistory": {
+      ".read": true,
+      ".write": true
+    },
     "vehicles": {
       ".read": true,
       ".write": true
@@ -128,6 +136,10 @@
     "jobSchedules": {
       ".read": true,
       ".write": true
+    },
+    "jobRecords": {
+        ".read": true,
+        ".write": true
     },
     "payments": {
       ".read": true,
@@ -145,9 +157,15 @@
       ".read": true,
       ".write": true,
       ".indexOn": "email"
+    },
+    "feedback": {
+        ".read": true,
+        ".write": "auth != null"
+    },
+    "unlockRequests": {
+        ".read": "auth != null",
+        ".write": true
     }
   }
 }
-
-
 

@@ -8,7 +8,7 @@ export { ALL_PERMISSIONS };
 export const ROLES: RoleDefinition[] = [
   {
     id: 'role-admin',
-    name: 'job',
+    name: 'Admin',
     permissions: [...ALL_PERMISSIONS],
     isEditable: true,
   },
@@ -115,7 +115,7 @@ export const PROJECTS: Project[] = [
 ];
 
 export const USERS: User[] = [
-  { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'job', avatar: 'https://i.pravatar.cc/150?u=1', projectId: 'proj-6', planningScore: 0 },
+  { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'Admin', avatar: 'https://i.pravatar.cc/150?u=1', projectId: 'proj-6', planningScore: 0 },
   { id: '2', name: 'Manu M G', email: 'manu@ariesmarine.com', password: 'password', role: 'Project Coordinator', avatar: 'https://i.pravatar.cc/150?u=2', supervisorId: '1', projectId: 'proj-6', planningScore: 0 },
   { id: '3', name: 'Mujeeb', email: 'mujeeb@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=3', supervisorId: '2', projectId: 'proj-1', planningScore: 0 },
   { id: '4', name: 'Albin Raju', email: 'albin@ariesmarine.com', password: 'password', role: 'Supervisor', avatar: 'https://i.pravatar.cc/150?u=4', supervisorId: '2', projectId: 'proj-2', planningScore: 0 },
