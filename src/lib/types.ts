@@ -17,6 +17,9 @@ export type JobRecord = {
       days: { [day: number]: string }; // day: 1-31, value: code
     };
   };
+  plantAssignments?: {
+    [employeeId: string]: 'DTA' | 'SEZ' | 'DTA-JPC' | 'MTF';
+  };
 };
 
 export type PpeInwardRecord = {
