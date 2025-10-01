@@ -16,6 +16,7 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { Label } from '../ui/label';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
@@ -156,8 +157,7 @@ export default function JobRecordSheet() {
         }, [profiles, monthKey, jobRecords]);
     
         return (
-            <div className="mt-8 p-4 border rounded-lg">
-                <h3 className="font-semibold text-lg mb-4">Job Code Legend & Man-Days Count</h3>
+            <div className="mt-4">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -296,7 +296,14 @@ export default function JobRecordSheet() {
                     </TableBody>
                 </Table>
             </div>
-            <LegendTable profiles={profiles} />
+             <Accordion type="single" collapsible className="w-full mt-4">
+                <AccordionItem value="item-1">
+                    <AccordionTrigger className="font-semibold">Job Code Legend & Man-Days Count</AccordionTrigger>
+                    <AccordionContent>
+                        <LegendTable profiles={profiles} />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
             </>
         );
     }
