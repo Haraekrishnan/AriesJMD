@@ -44,18 +44,29 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
         row.forEach((cell, c) => {
             const code = typeof cell === 'string' ? cell : '';
             const colorInfo = JOB_CODE_COLORS[code];
-            if (colorInfo && colorInfo.excelFill) {
+            if (colorInfo && (colorInfo.excelFill || colorInfo.text)) {
                 const cellAddress = XLSX.utils.encode_cell({ r, c });
                 if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                ws[cellAddress].s = { 
-                    fill: { fgColor: { rgb: colorInfo.excelFill.fgColor.rgb.replace('#', '') } },
-                    font: { 
-                        color: { rgb: colorInfo.text ? 'FF000000' : 'FF000000' } // Default to black
-                    }
-                };
-                 if (code === 'X') {
-                    ws[cellAddress].s.font.color = { rgb: 'FFFF0000' };
+                
+                const style: { fill?: any, font?: any } = {};
+
+                if (colorInfo.excelFill) {
+                    style.fill = colorInfo.excelFill;
                 }
+                if (colorInfo.text) {
+                    // Extract color from Tailwind class e.g. text-red-500 -> red-500
+                    const textColorClass = colorInfo.text.split('-').slice(1).join('-');
+                    const colorMap: { [key: string]: string } = {
+                        'red-500': 'FFFF0000',
+                        'black': 'FF000000',
+                    };
+                    const colorHex = colorMap[textColorClass];
+                    if(colorHex) {
+                       style.font = { color: { rgb: colorHex } };
+                    }
+                }
+                
+                ws[cellAddress].s = style;
             }
         });
     });

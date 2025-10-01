@@ -17,13 +17,18 @@ export default {
         code: ['monospace'],
       },
       colors: {
-        'job-code-red-light': '#ffcccc', // For X, ML, L
-        'job-code-blue': '#bde2ff', // For ST, Q, KD, S, CQ
-        'job-code-purple': '#d9d2e9', // For NWS
-        'job-code-yellow': '#fff2cc', // For OS
-        'job-code-pink': '#ffd9e2', // For TR, RST
-        'job-code-green-light': '#d9ead3', // For EP, PH, PD
-        'job-code-gray': '#e6e6e6', // For OFF
+        'job-code-red-light': '#ff0000', 
+        'job-code-blue': '#bde2ff', 
+        'job-code-violet': '#8A2BE2',
+        'job-code-bright-blue': '#0000FF',
+        'job-code-fluorescent-blue': '#00BFFF',
+        'job-code-dark-orange': '#FF8C00',
+        'job-code-sandal': '#F4A460',
+        'job-code-pink': '#FFC0CB',
+        'job-code-dark-blue': '#00008B',
+        'job-code-dark-green': '#006400',
+        'job-code-dark-gray': '#A9A9A9',
+        'job-code-fluorescent-green': '#00FF00',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
