@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -50,6 +51,7 @@ export default function JobRecordSheet() {
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
     const [activeCell, setActiveCell] = useState<{ profileId: string; day: number } | null>(null);
+    const [localCellValues, setLocalCellValues] = useState<Record<string, string>>({});
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const daysInMonth = getDaysInMonth(currentMonth);
@@ -64,6 +66,10 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
 
     const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
+    
+    const jobRecordForMonth = useMemo(() => {
+        return jobRecords[monthKey]?.records || {};
+    }, [jobRecords, monthKey]);
 
     useEffect(() => {
         const initialTempOvertime: {[key: string]: string} = {};
@@ -91,7 +97,7 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
-        setActiveCell(null);
+        setLocalCellValues(prev => ({...prev, [`${employeeId}-${day}`]: code}));
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -269,7 +275,7 @@ export default function JobRecordSheet() {
                     </TableHeader>
                     <TableBody>
                         {profiles.map((profile, index) => {
-                            const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                            const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
                             
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
@@ -306,20 +312,26 @@ export default function JobRecordSheet() {
                                     </TableCell>
                                     {dayHeaders.map(day => {
                                         const cellKey = `${profile.id}-${day}`;
-                                        const code = employeeRecord[day] || '';
+                                        const code = localCellValues[cellKey] ?? employeeRecord[day] ?? '';
                                         const isOpen = activeCell?.profileId === profile.id && activeCell?.day === day;
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         return (
                                             <TableCell key={day} className="p-0 text-center">
                                                 <Popover open={isOpen} onOpenChange={(openState) => setActiveCell(openState ? { profileId: profile.id, day } : null)}>
                                                     <PopoverTrigger asChild>
-                                                        <button className={cn('w-full h-full p-2 font-bold', colorInfo.bg, colorInfo.text)}>
-                                                            {code || '-'}
-                                                        </button>
+                                                        <Input
+                                                            value={code}
+                                                            onChange={(e) => setLocalCellValues(prev => ({...prev, [cellKey]: e.target.value.toUpperCase()}))}
+                                                            onBlur={() => handleStatusChange(profile.id, day, code)}
+                                                            className={cn("w-full h-full p-2 text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring", colorInfo.bg, colorInfo.text)}
+                                                        />
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0">
                                                         <JobCodePicker 
-                                                            onSelect={(newCode) => handleStatusChange(profile.id, day, newCode)} 
+                                                            onSelect={(newCode) => {
+                                                                handleStatusChange(profile.id, day, newCode);
+                                                                setActiveCell(null);
+                                                            }} 
                                                             onOpenChange={(open) => setActiveCell(open ? {profileId: profile.id, day} : null)}
                                                         />
                                                     </PopoverContent>
