@@ -19,8 +19,6 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Label } from '../ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { cn } from '@/lib/utils';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Check } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
@@ -48,7 +46,8 @@ export default function JobRecordSheet() {
     const additionalSundayDutyData = useMemo(() => {
         return jobRecords[monthKey]?.additionalSundayDuty || {};
     }, [jobRecords, monthKey]);
-
+    
+    const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
     const [tempSundayDuty, setTempSundayDuty] = useState<{[key: string]: string}>({});
     
     const jobRecordForMonth = useMemo(() => {
@@ -56,13 +55,19 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
 
     useEffect(() => {
+        const initialTempOvertime: {[key: string]: string} = {};
+        for (const profileId in overtimeData) {
+            initialTempOvertime[profileId] = String(overtimeData[profileId]);
+        }
+        setTempOvertime(initialTempOvertime);
+
         const initialTempSundayDuty: {[key: string]: string} = {};
         for (const profileId in additionalSundayDutyData) {
             initialTempSundayDuty[profileId] = String(additionalSundayDutyData[profileId]);
         }
         setTempSundayDuty(initialTempSundayDuty);
 
-    }, [additionalSundayDutyData]);
+    }, [overtimeData, additionalSundayDutyData]);
     
     useEffect(() => {
         const newLocalCellValues: Record<string, string> = {};
@@ -77,27 +82,31 @@ export default function JobRecordSheet() {
     }, [currentMonth, jobRecordForMonth, manpowerProfiles, dayHeaders]);
 
 
+    const handleLocalChange = (cellKey: string, value: string) => {
+        setLocalCellValues(prev => ({ ...prev, [cellKey]: value.toUpperCase() }));
+    };
+
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
-        const cellKey = `${employeeId}-${day}`;
         let finalCode = code;
-        
+
         if (code.includes('+')) {
-            const otResponse = prompt(`Enter overtime hours for ${day}${getDaySuffix(day)}`);
+            const otResponse = prompt(`Enter overtime hours for ${day}${getDaySuffix(day)}:`);
             if (otResponse !== null) {
                 const overtimeHours = parseFloat(otResponse);
                 if (!isNaN(overtimeHours) && overtimeHours > 0) {
-                    saveJobRecord(monthKey, employeeId, day, String(overtimeHours), 'overtime');
-                    toast({ title: "Overtime Logged", description: `${overtimeHours} hours logged for day ${day}.` });
+                    const currentTotal = parseFloat(tempOvertime[employeeId] || '0');
+                    const newTotal = currentTotal + overtimeHours;
+                    handleOvertimeChange(employeeId, String(newTotal));
+                    handleOvertimeSave(employeeId, String(newTotal)); // Save immediately
+                    toast({ title: "Overtime Added", description: `${overtimeHours} hours added to total.` });
                 } else {
                     toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a valid number for overtime.' });
                 }
             }
             finalCode = code.replace('+', '');
-        } else if (!code.trim()) {
-            // If the code is cleared, clear the overtime for that day
-            saveJobRecord(monthKey, employeeId, day, '0', 'overtime');
         }
 
+        const cellKey = `${employeeId}-${day}`;
         setLocalCellValues(prev => ({...prev, [cellKey]: finalCode}));
         saveJobRecord(monthKey, employeeId, day, finalCode, 'status');
     };
@@ -105,20 +114,30 @@ export default function JobRecordSheet() {
     const handlePlantChange = (employeeId: string, plant: string) => {
         saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
     }
+
+    const handleOvertimeChange = (employeeId: string, value: string) => {
+        setTempOvertime(prev => ({ ...prev, [employeeId]: value }));
+    };
+
+    const handleOvertimeSave = (employeeId: string, value: string) => {
+        const hours = parseFloat(value);
+        if (!isNaN(hours) && hours >= 0) {
+            saveJobRecord(monthKey, employeeId, 0, hours, 'overtime');
+        } else if (value === '' || value === undefined) {
+             saveJobRecord(monthKey, employeeId, 0, 0, 'overtime');
+        }
+    };
     
     const handleSundayDutyChange = (employeeId: string, value: string) => {
         setTempSundayDuty(prev => ({ ...prev, [employeeId]: value }));
     };
 
-    const handleSundayDutySave = (employeeId: string) => {
-        const value = tempSundayDuty[employeeId] || '0';
-        if (value !== undefined && !isNaN(Number(value))) {
-            saveJobRecord(monthKey, employeeId, Number(value), '', 'sundayDuty');
-            toast({ title: 'Additional Sunday Duty Saved' });
+    const handleSundayDutySave = (employeeId: string, value: string) => {
+        const days = parseInt(value, 10);
+        if (!isNaN(days) && days >= 0) {
+            saveJobRecord(monthKey, employeeId, days, '', 'sundayDuty');
         } else if (value === '' || value === undefined) {
             saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
-        } else {
-            toast({ variant: 'destructive', title: 'Invalid Value', description: 'Please enter a valid number for Sunday duty.' });
         }
     };
     
@@ -168,7 +187,7 @@ export default function JobRecordSheet() {
                     return acc;
                 }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                const totalOvertime = Object.values(overtimeData[profile.id] || {}).reduce((sum, hours) => sum + hours, 0);
+                const totalOvertime = overtimeData[profile.id] || 0;
                 const additionalSundays = additionalSundayDutyData[profile.id] || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
@@ -322,7 +341,7 @@ export default function JobRecordSheet() {
                                 return acc;
                             }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                            const totalOvertime = Object.values(overtimeData[profile.id] || {}).reduce((sum, hours) => sum + hours, 0);
+                            const totalOvertime = overtimeData[profile.id] || 0;
                             const additionalSundays = additionalSundayDutyData[profile.id] || 0;
                             const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
@@ -342,29 +361,16 @@ export default function JobRecordSheet() {
                                         const cellKey = `${profile.id}-${day}`;
                                         const code = localCellValues[cellKey] ?? '';
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
-                                        const dayOvertime = overtimeData[profile.id]?.[day] || 0;
 
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative">
-                                                 {dayOvertime > 0 && (
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div className="absolute top-0 right-0 p-0.5">
-                                                                <Clock className="h-2.5 w-2.5 text-blue-600" />
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>Overtime: {dayOvertime} hrs</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                )}
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <Input
                                                             type="text"
                                                             value={code}
-                                                            onChange={(e) => setLocalCellValues(prev => ({...prev, [cellKey]: e.target.value.toUpperCase()}))}
-                                                            onBlur={() => handleStatusChange(profile.id, day, code)}
+                                                            onChange={(e) => handleLocalChange(cellKey, e.target.value)}
+                                                            onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase())}
                                                             className={cn(
                                                                 "w-16 h-10 text-center font-bold border-b-2 border-dotted focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative rounded-none",
                                                                 code ? colorInfo.bg : 'bg-transparent',
@@ -382,7 +388,8 @@ export default function JobRecordSheet() {
                                                                         variant="outline"
                                                                         size="sm"
                                                                         className="h-8"
-                                                                        onClick={() => {
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
                                                                             handleStatusChange(profile.id, day, jobCode.code);
                                                                             document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
                                                                         }}
@@ -400,7 +407,16 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                    <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
+                                    <TableCell className="text-center">
+                                      <Input
+                                          type="text"
+                                          value={tempOvertime[profile.id] ?? ''}
+                                          onChange={(e) => handleOvertimeChange(profile.id, e.target.value)}
+                                          onBlur={(e) => handleOvertimeSave(profile.id, e.target.value)}
+                                          className="w-20 h-8 text-center"
+                                          placeholder="0"
+                                      />
+                                    </TableCell>
                                     <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
@@ -410,7 +426,7 @@ export default function JobRecordSheet() {
                                             type="text"
                                             value={tempSundayDuty[profile.id] ?? ''}
                                             onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
-                                            onBlur={() => handleSundayDutySave(profile.id)}
+                                            onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                             className="w-16 h-8 text-center"
                                             placeholder="0"
                                         />

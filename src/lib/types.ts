@@ -2,6 +2,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -22,7 +23,7 @@ export type JobRecord = {
   plantAssignments?: {
     [employeeId: string]: 'DTA' | 'SEZ' | 'DTA-JPC' | 'MTF';
   };
-  overtime?: { [employeeId: string]: { [day: number]: number } };
+  overtime?: { [employeeId: string]: number };
   additionalSundayDuty?: { [employeeId: string]: number };
 };
 
