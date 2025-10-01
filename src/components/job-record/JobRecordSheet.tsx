@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -187,7 +186,7 @@ export default function JobRecordSheet() {
                                 patternType: "solid",
                                 fgColor: colorInfo.excelFill.fgColor,
                             },
-                            ...colorInfo.excelFill.font && { font: colorInfo.excelFill.font }
+                            font: colorInfo.excelFill.font ? colorInfo.excelFill.font : {}
                         };
                     } else {
                         if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
@@ -323,7 +322,7 @@ export default function JobRecordSheet() {
                                                             value={code}
                                                             onChange={(e) => setLocalCellValues(prev => ({...prev, [cellKey]: e.target.value.toUpperCase()}))}
                                                             onBlur={() => handleStatusChange(profile.id, day, code)}
-                                                            className={cn("w-full h-full p-2 text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring", colorInfo.bg, colorInfo.text)}
+                                                            className={cn("w-full h-full p-2 text-center font-bold border-b border-dashed border-input focus-visible:ring-1 focus-visible:ring-ring bg-transparent rounded-none", colorInfo.bg, colorInfo.text)}
                                                         />
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0">
