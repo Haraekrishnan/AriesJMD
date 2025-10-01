@@ -14,6 +14,8 @@ import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '../ui/scroll-area';
+import { Label } from '../ui/label';
 
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
@@ -38,7 +40,6 @@ export default function JobRecordSheet() {
     const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
 
     useEffect(() => {
-        // When overtimeData from context changes, update local state
         const initialTempOvertime: {[key: string]: string} = {};
         for (const profileId in overtimeData) {
             initialTempOvertime[profileId] = String(overtimeData[profileId]);
@@ -58,7 +59,6 @@ export default function JobRecordSheet() {
                 groups['Unassigned'].push(profile);
             }
         });
-        // Sort each group alphabetically by name
         Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
     }, [manpowerProfiles, plantAssignments]);
@@ -109,7 +109,7 @@ export default function JobRecordSheet() {
                     if (code === 'OFF' || code === 'PH') acc.offDays++;
                     if (code === 'L') acc.leaveDays++;
                     if (code === 'ML') acc.medicalLeave++;
-                    if (['S', 'CQ', 'RST'].includes(code)) acc.standbyTraining++;
+                    if (['S', 'ST', 'Q', 'NWS'].includes(code)) acc.standbyTraining++;
                     if (code === 'R') acc.reptOffice++;
                     if (code && !['OFF', 'PH', 'L', 'ML'].includes(code)) acc.workDays++;
                     if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
@@ -131,12 +131,53 @@ export default function JobRecordSheet() {
             XLSX.utils.book_append_sheet(wb, ws, plant);
         });
 
-        // Add Legend sheet
         const legendData = [['CODE', 'JOB DETAILS'], ...JOB_CODES.map(jc => [jc.code, jc.details])];
         const legendWs = XLSX.utils.aoa_to_sheet(legendData);
         XLSX.utils.book_append_sheet(wb, legendWs, 'Legend');
 
         XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
+    };
+
+    const LegendTable = ({ profiles }: { profiles: typeof manpowerProfiles }) => {
+        const manDaysCount = useMemo(() => {
+            const counts: { [code: string]: number } = {};
+            JOB_CODES.forEach(jc => counts[jc.code] = 0);
+    
+            profiles.forEach(profile => {
+                const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                dayHeaders.forEach(day => {
+                    const code = employeeRecord[day];
+                    if (code && counts.hasOwnProperty(code)) {
+                        counts[code]++;
+                    }
+                });
+            });
+            return counts;
+        }, [profiles, monthKey, jobRecords]);
+    
+        return (
+            <div className="mt-8 p-4 border rounded-lg">
+                <h3 className="font-semibold text-lg mb-4">Job Code Legend & Man-Days Count</h3>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Code</TableHead>
+                            <TableHead>Job Details</TableHead>
+                            <TableHead className="text-right">Man-Days Count</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {JOB_CODES.map(jc => (
+                            <TableRow key={jc.code}>
+                                <TableCell className="font-bold">{jc.code}</TableCell>
+                                <TableCell>{jc.details}</TableCell>
+                                <TableCell className="text-right font-bold">{manDaysCount[jc.code] || 0}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        );
     };
     
     const renderTableForPlant = (plantName: string, profiles: typeof manpowerProfiles) => {
@@ -144,6 +185,7 @@ export default function JobRecordSheet() {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant for this month.</div>
         }
         return (
+            <>
             <div className="overflow-x-auto">
                 <Table className="min-w-full">
                     <TableHeader>
@@ -156,13 +198,13 @@ export default function JobRecordSheet() {
                             ))}
                             <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
                             <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
-                            <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
-                            <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
-                            <TableHead className="text-center min-w-[150px]">Total Standby etc.</TableHead>
-                            <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
-                            <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
-                            <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
-                            <TableHead className="text-center min-w-[150px]">Add. Sunday Duty</TableHead>
+                             <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
+                             <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
+                             <TableHead className="text-center min-w-[150px]">Total Standby/Training</TableHead>
+                             <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
+                             <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
+                             <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
+                             <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -173,7 +215,7 @@ export default function JobRecordSheet() {
                                 if (code === 'OFF' || code === 'PH') acc.offDays++;
                                 if (code === 'L') acc.leaveDays++;
                                 if (code === 'ML') acc.medicalLeave++;
-                                if (['S', 'CQ', 'RST'].includes(code)) acc.standbyTraining++;
+                                if (['S', 'ST', 'Q', 'NWS'].includes(code)) acc.standbyTraining++;
                                 if (code === 'R') acc.reptOffice++;
                                 if (code && !['OFF', 'PH', 'L', 'ML'].includes(code)) acc.workDays++;
                                 if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
@@ -207,8 +249,9 @@ export default function JobRecordSheet() {
                                                             {code || '-'}
                                                         </Button>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-1">
-                                                        <div className="grid grid-cols-4 gap-1">
+                                                    <PopoverContent className="w-auto p-0">
+                                                      <ScrollArea className="h-72">
+                                                        <div className="grid grid-cols-5 gap-1 p-1">
                                                             {JOB_CODES.map(jobCode => (
                                                                 <Button
                                                                     key={jobCode.code}
@@ -220,6 +263,7 @@ export default function JobRecordSheet() {
                                                                 </Button>
                                                             ))}
                                                         </div>
+                                                      </ScrollArea>
                                                     </PopoverContent>
                                                 </Popover>
                                             </TableCell>
@@ -252,6 +296,8 @@ export default function JobRecordSheet() {
                     </TableBody>
                 </Table>
             </div>
+            <LegendTable profiles={profiles} />
+            </>
         );
     }
 
@@ -287,18 +333,6 @@ export default function JobRecordSheet() {
                     {renderTableForPlant('Unassigned', groupedProfiles['Unassigned'])}
                 </TabsContent>
             </Tabs>
-            
-            <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {JOB_CODES.map(jc => (
-                    <div key={jc.code} className="flex items-center gap-2">
-                        <div className={`w-4 h-4 rounded-full ${JOB_CODE_COLORS[jc.code] || 'border'}`}></div>
-                        <span className="text-xs font-semibold">{jc.code}:</span>
-                        <span className="text-xs text-muted-foreground">{jc.details}</span>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 }
-
-    
