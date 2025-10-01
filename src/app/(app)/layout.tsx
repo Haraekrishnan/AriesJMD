@@ -75,11 +75,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
-        <div className="flex flex-1 flex-col h-screen md:pl-64">
+        <div className="grid h-screen w-full md:grid-cols-[1fr] md:pl-64">
+          <div className="flex flex-col">
             <Header />
-            <main className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6 lg:p-8">
+            <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
                 {children}
             </main>
+          </div>
         </div>
       </div>
   );
