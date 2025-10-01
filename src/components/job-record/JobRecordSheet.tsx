@@ -8,13 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, getDaySuffix } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '../ui/scroll-area';
 import { Label } from '../ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { cn } from '@/lib/utils';
@@ -60,11 +59,12 @@ export default function JobRecordSheet() {
       projects.forEach(p => {
         if (p.isPlant) plants.add(p.name);
       });
-      manpowerProfiles.forEach(profile => {
-        if (profile.plant) plants.add(profile.plant);
-      });
+       // Add hardcoded default plants
+      const defaultPlants = ["SEZ", "DTA", "MTF", "JPC", "SOLAR"];
+      defaultPlants.forEach(p => plants.add(p));
+
       return Array.from(plants).sort();
-    }, [projects, manpowerProfiles]);
+    }, [projects]);
 
     const handleAddPlant = () => {
         const newPlantName = prompt("Enter new plant name:");
@@ -79,107 +79,113 @@ export default function JobRecordSheet() {
         toast({ title: 'Employee Unassigned', description: 'The employee has been moved to the Unassigned group.' });
     };
 
-    const exportToExcel = (plant: string) => {
+    const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
 
-        const profiles = groupedProfiles[plant];
-        if (!profiles || profiles.length === 0) {
-            toast({ variant: 'destructive', title: 'No Data', description: `No employees assigned to ${plant} to export.` });
-            return;
-        }
+        allTabs.forEach(plant => {
+            const profiles = groupedProfiles[plant];
+            if (!profiles || profiles.length === 0) {
+                return; // Skip empty sheets
+            }
 
-        const sheetData: (string|number)[][] = [];
-        sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
-        sheetData.push([]); 
+            const sheetData: (string|number)[][] = [];
+            sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
+            sheetData.push([]); 
 
-        const header = [
-            'S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training',
-            'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'
-        ];
-        sheetData.push(header);
+            const header = [
+                'S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training',
+                'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'
+            ];
+            sheetData.push(header);
 
-        profiles.forEach((profile, index) => {
-            const record = jobRecordForMonth[profile.id] || {};
-            const employeeRecord = record.days || {};
-            const dailyOvertime = record.dailyOvertime || {};
+            profiles.forEach((profile, index) => {
+                const record = jobRecordForMonth[profile.id] || {};
+                const employeeRecord = record.days || {};
+                const dailyOvertime = record.dailyOvertime || {};
+                
+                const offCodes = ['OFF', 'PH', 'OS'];
+                const leaveCodes = ['L', 'X', 'NWS'];
+                const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
+                const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                
+                const summary = dayHeaders.reduce((acc, day) => {
+                    const code = employeeRecord[day];
+                    if (offCodes.includes(code)) acc.offDays++;
+                    if (leaveCodes.includes(code)) acc.leaveDays++;
+                    if (code === 'ML') acc.medicalLeave++;
+                    if (standbyCodes.includes(code)) acc.standbyTraining++;
+                    if (code === 'R') acc.reptOffice++;
+                    if (workCodes.includes(code)) acc.workDays++;
+                    return acc;
+                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+
+                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                const additionalSundays = jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || 0;
+                const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                
+                const row: (string | number)[] = [index + 1, profile.name];
+                dayHeaders.forEach(day => {
+                    row.push(employeeRecord[day] || '');
+                });
+                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
+                sheetData.push(row);
+            });
+
+            // Add legend and man-days count
+            sheetData.push([]);
+            sheetData.push(['Job Code Legend & Man-Days Count']);
+            sheetData.push(['Code', 'Job Details', 'Man-Days']);
             
-            const offCodes = ['OFF', 'PH', 'OS'];
-            const leaveCodes = ['L', 'X', 'NWS'];
-            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-            const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
-            
-            const summary = dayHeaders.reduce((acc, day) => {
-                const code = employeeRecord[day];
-                if (offCodes.includes(code)) acc.offDays++;
-                if (leaveCodes.includes(code)) acc.leaveDays++;
-                if (code === 'ML') acc.medicalLeave++;
-                if (standbyCodes.includes(code)) acc.standbyTraining++;
-                if (code === 'R') acc.reptOffice++;
-                if (workCodes.includes(code)) acc.workDays++;
+            const manDaysCount = JOB_CODES.reduce((acc, jc) => {
+                acc[jc.code] = 0;
                 return acc;
-            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
-
-            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-            const additionalSundays = jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || 0;
-            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+            }, {} as {[key: string]: number});
             
-            const row: (string | number)[] = [index + 1, profile.name];
-            dayHeaders.forEach(day => {
-                row.push(employeeRecord[day] || '');
+            profiles.forEach(p => {
+                const days = jobRecordForMonth[p.id]?.days || {};
+                Object.values(days).forEach(code => {
+                    if (manDaysCount.hasOwnProperty(code)) {
+                        manDaysCount[code as string]++;
+                    }
+                });
             });
-            row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
-            sheetData.push(row);
-        });
 
-        // Add legend and man-days count
-        sheetData.push([]);
-        sheetData.push(['Job Code Legend & Man-Days Count']);
-        sheetData.push(['Code', 'Job Details', 'Man-Days']);
-        
-        const manDaysCount = JOB_CODES.reduce((acc, jc) => {
-            acc[jc.code] = 0;
-            return acc;
-        }, {} as {[key: string]: number});
-        
-        profiles.forEach(p => {
-            const days = jobRecordForMonth[p.id]?.days || {};
-            Object.values(days).forEach(code => {
-                if (manDaysCount.hasOwnProperty(code)) {
-                    manDaysCount[code]++;
-                }
+            JOB_CODES.forEach(jc => {
+                sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
             });
-        });
+            
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-        JOB_CODES.forEach(jc => {
-            sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
-        });
-        
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-        ws['!cols'] = [{ wch: 5 }, { wch: 25 }];
-        dayHeaders.forEach(() => ws['!cols']?.push({ wch: 5 }));
-        header.slice(3 + dayHeaders.length).forEach(() => ws['!cols']?.push({ wch: 10 }));
-        
-        profiles.forEach((profile, rIndex) => {
-            const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
-            dayHeaders.forEach((day, cIndex) => {
-                const code = employeeRecord[day] || '';
-                const colorInfo = JOB_CODE_COLORS[code];
-                const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
-                
-                if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                
-                if (colorInfo?.excelFill) {
-                     ws[cellAddress].s = {
-                        fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
-                        font: colorInfo.excelFill.font || {}
-                    };
-                }
+            ws['!cols'] = [{ wch: 5 }, { wch: 25 }];
+            dayHeaders.forEach(() => ws['!cols']?.push({ wch: 5 }));
+            header.slice(2 + dayHeaders.length).forEach(() => ws['!cols']?.push({ wch: 10 }));
+            
+            profiles.forEach((profile, rIndex) => {
+                const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
+                dayHeaders.forEach((day, cIndex) => {
+                    const code = employeeRecord[day] || '';
+                    const colorInfo = JOB_CODE_COLORS[code];
+                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                    
+                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+                    
+                    if (colorInfo?.excelFill) {
+                         ws[cellAddress].s = {
+                            fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
+                            font: colorInfo.excelFill.font || {}
+                        };
+                    }
+                });
             });
+
+            XLSX.utils.book_append_sheet(wb, ws, plant);
         });
 
-        XLSX.utils.book_append_sheet(wb, ws, plant);
-        XLSX.writeFile(wb, `JobRecord_${plant}_${monthKey}.xlsx`);
+        if(wb.SheetNames.length > 0) {
+            XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
+        } else {
+            toast({ variant: 'destructive', title: 'No Data', description: `No employees assigned to any plant to export.` });
+        }
     };
 
     const groupedProfiles = useMemo(() => {
@@ -205,7 +211,6 @@ export default function JobRecordSheet() {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
         }
         return (
-            <>
             <div className="overflow-x-auto">
                 <Table className="min-w-full">
                     <TableHeader>
@@ -348,12 +353,10 @@ export default function JobRecordSheet() {
                     </TableBody>
                 </Table>
             </div>
-            </>
         );
     }
 
-    const defaultTabs = ["SEZ", "DTA", "MTF", "JPC", "SOLAR", "Unassigned"];
-    const allTabs = Array.from(new Set([...defaultTabs, ...plantProjects])).sort();
+    const allTabs = Array.from(new Set([...plantProjects, "Unassigned"])).sort();
 
     return (
         <TooltipProvider>
@@ -368,9 +371,12 @@ export default function JobRecordSheet() {
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
-                     {user?.role === 'Admin' && (
-                        <Button onClick={handleAddPlant} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
-                    )}
+                     <div className="flex items-center gap-2">
+                        <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
+                        {user?.role === 'Admin' && (
+                            <Button onClick={handleAddPlant} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                        )}
+                    </div>
                 </div>
 
                 <Tabs defaultValue={allTabs[0]} className="w-full">
@@ -379,7 +385,6 @@ export default function JobRecordSheet() {
                     </TabsList>
                     {allTabs.map(plant => (
                         <TabsContent key={plant} value={plant}>
-                            <Button onClick={() => exportToExcel(plant)} className="m-4"><Download className="mr-2 h-4 w-4"/>Export {plant} Sheet</Button>
                             {renderTableForPlant(plant)}
                         </TabsContent>
                     ))}
