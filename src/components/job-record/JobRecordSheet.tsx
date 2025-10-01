@@ -44,7 +44,12 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.overtime || {};
     }, [jobRecords, monthKey]);
 
+    const additionalSundayDutyData = useMemo(() => {
+        return jobRecords[monthKey]?.additionalSundayDuty || {};
+    }, [jobRecords, monthKey]);
+
     const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
+    const [tempSundayDuty, setTempSundayDuty] = useState<{[key: string]: string}>({});
     
     const jobRecordForMonth = useMemo(() => {
         return jobRecords[monthKey]?.records || {};
@@ -56,7 +61,14 @@ export default function JobRecordSheet() {
             initialTempOvertime[profileId] = String(overtimeData[profileId]);
         }
         setTempOvertime(initialTempOvertime);
-    }, [overtimeData]);
+        
+        const initialTempSundayDuty: {[key: string]: string} = {};
+        for (const profileId in additionalSundayDutyData) {
+            initialTempSundayDuty[profileId] = String(additionalSundayDutyData[profileId]);
+        }
+        setTempSundayDuty(initialTempSundayDuty);
+
+    }, [overtimeData, additionalSundayDutyData]);
     
     useEffect(() => {
         const newLocalCellValues: Record<string, string> = {};
@@ -94,6 +106,20 @@ export default function JobRecordSheet() {
         }
     };
     
+    const handleSundayDutyChange = (employeeId: string, value: string) => {
+        setTempSundayDuty(prev => ({ ...prev, [employeeId]: value }));
+    };
+
+    const handleSundayDutySave = (employeeId: string) => {
+        const value = tempSundayDuty[employeeId] || '0';
+        if (value !== undefined && !isNaN(Number(value))) {
+            saveJobRecord(monthKey, employeeId, Number(value), '', 'sundayDuty');
+            toast({ title: 'Additional Sunday Duty Saved' });
+        } else {
+            toast({ variant: 'destructive', title: 'Invalid Value', description: 'Please enter a valid number for Sunday duty.' });
+        }
+    };
+    
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
 
@@ -127,19 +153,17 @@ export default function JobRecordSheet() {
                     if (standbyCodes.includes(code)) acc.standbyTraining++;
                     if (code === 'R') acc.reptOffice++;
                     if (workCodes.includes(code)) acc.workDays++;
-                    if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
-                        acc.sundayDuty++;
-                    }
                     return acc;
-                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, sundayDuty: 0 });
+                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                const salaryDays = summary.sundayDuty + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                const additionalSundays = additionalSundayDutyData[profile.id] || 0;
+                const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
                 const row: (string | number)[] = [index + 1, profile.name];
                 dayHeaders.forEach(day => {
                     row.push(employeeRecord[day] || '');
                 });
-                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, overtimeData[profile.id] || 0, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, summary.sundayDuty);
+                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, overtimeData[profile.id] || 0, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(row);
             });
             
@@ -282,13 +306,11 @@ export default function JobRecordSheet() {
                                 if (standbyCodes.includes(code)) acc.standbyTraining++;
                                 if (code === 'R') acc.reptOffice++;
                                 if (workCodes.includes(code)) acc.workDays++;
-                                if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
-                                    acc.sundayDuty++;
-                                }
                                 return acc;
-                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, sundayDuty: 0 });
+                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                            const salaryDays = summary.sundayDuty + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                            const additionalSundays = additionalSundayDutyData[profile.id] || 0;
+                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
                             return (
                                 <TableRow key={profile.id}>
@@ -368,7 +390,20 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
                                     <TableCell className="text-center font-bold">{salaryDays}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.sundayDuty}</TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                type="text"
+                                                value={tempSundayDuty[profile.id] ?? ''}
+                                                onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
+                                                className="w-16 h-8 text-center"
+                                                placeholder="0"
+                                            />
+                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleSundayDutySave(profile.id)}>
+                                                <Download className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             );
                         })}

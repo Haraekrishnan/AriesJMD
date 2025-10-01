@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -249,7 +250,7 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -2927,7 +2928,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime') => {
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => {
     if (type === 'status') {
       const day = value as number;
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: codeOrPlant });
@@ -2937,6 +2938,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (type === 'overtime') {
       const overtime = value as number;
       update(ref(rtdb, `jobRecords/${monthKey}/overtime`), { [employeeId]: overtime });
+    } else if (type === 'sundayDuty') {
+      const sundayDuty = value as number;
+      update(ref(rtdb, `jobRecords/${monthKey}/additionalSundayDuty`), { [employeeId]: sundayDuty });
     }
   }, []);
 
