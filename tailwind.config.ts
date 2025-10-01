@@ -7,7 +7,7 @@ export default {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/lib/job-codes.ts', // Make sure tailwind scans this file for classes
+    './src/lib/job-codes.ts',
   ],
   theme: {
     extend: {
@@ -17,6 +17,13 @@ export default {
         code: ['monospace'],
       },
       colors: {
+        'job-code-red-light': '#ffcccc', // For X, ML, L
+        'job-code-blue': '#bde2ff', // For ST, Q, KD, S, CQ
+        'job-code-purple': '#d9d2e9', // For NWS
+        'job-code-yellow': '#fff2cc', // For OS
+        'job-code-pink': '#ffd9e2', // For TR, RST
+        'job-code-green-light': '#d9ead3', // For EP, PH, PD
+        'job-code-gray': '#e6e6e6', // For OFF
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

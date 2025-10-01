@@ -3,6 +3,21 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
+// Excel cell colors (ARGB format)
+const colorMap: { [key: string]: string } = {
+    'X': 'FFFFC7CE', 'ML': 'FFFFC7CE', // Light Red
+    'ST': 'FFBDE2FF', 'Q': 'FFBDE2FF', 'KD': 'FFBDE2FF', // Light Blue
+    'NWS': 'FFD9D2E9', // Light Purple
+    'OS': 'FFFFF2CC', // Light Yellow
+    'TR': 'FFFFD9E2', // Light Pink
+    'EP': 'FFD9EAD3', 'PH': 'FFD9EAD3', 'PD': 'FFD9EAD3', // Light Green
+    'OFF': 'FFE6E6E6', // Light Gray
+    'L': 'FFFFC7CE', // Re-using Light Red for Leave
+    'S': 'FFBDE2FF', // Standby as Light Blue
+    'RST': 'FFFFD9E2', // Training as Light Pink
+};
+
+
 export function generateScheduleExcel(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     const wb = XLSX.utils.book_new();
 
