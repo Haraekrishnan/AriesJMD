@@ -1,5 +1,4 @@
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -8,6 +7,15 @@ export type Broadcast = {
   expiryDate: string; // ISO String
   recipientUserIds: string[];
   recipientRoles: string[];
+};
+
+export type JobRecord = {
+  id: string; // YYYY-MM
+  records: {
+    [employeeId: string]: {
+      days: { [day: number]: string }; // day: 1-31, value: code
+    };
+  };
 };
 
 export type PpeInwardRecord = {
