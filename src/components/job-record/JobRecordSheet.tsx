@@ -42,7 +42,8 @@ export default function JobRecordSheet() {
         // Body
         filteredProfiles.forEach((profile, index) => {
             const row: (string | number)[] = [index + 1, profile.name];
-            const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+            const currentMonthRecords = jobRecords && jobRecords[monthKey] ? jobRecords[monthKey] : { records: {} };
+            const employeeRecord = currentMonthRecords.records?.[profile.id]?.days || {};
             let offDays = 0;
             let leaveDays = 0;
             let workDays = 0;
@@ -117,7 +118,8 @@ export default function JobRecordSheet() {
                     </TableHeader>
                     <TableBody>
                         {filteredProfiles.map((profile, index) => {
-                             const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                            const currentMonthRecords = jobRecords && jobRecords[monthKey] ? jobRecords[monthKey] : { records: {} };
+                            const employeeRecord = currentMonthRecords.records?.[profile.id]?.days || {};
                              const summary = dayHeaders.reduce((acc, day) => {
                                  const code = employeeRecord[day];
                                  if (code === 'OFF' || code === 'PH') acc.offDays++;
