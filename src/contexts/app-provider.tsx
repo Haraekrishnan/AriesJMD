@@ -2950,7 +2950,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (hours > 0) {
         set(ref(rtdb, path), hours);
       } else {
-        remove(ref(rtdb, path));
+        set(ref(rtdb, path), null);
       }
     } else if (type === 'sundayDuty') {
       const sundayDuty = dayOrValue as number;
