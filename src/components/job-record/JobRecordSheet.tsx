@@ -23,35 +23,13 @@ import { Check } from 'lucide-react';
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
 
-// Simple Job Code Picker
-const JobCodePicker = ({ onSelect, onOpenChange }: { onSelect: (code: string) => void, onOpenChange: (open: boolean) => void }) => {
-    return (
-        <div className="grid grid-cols-5 gap-1 p-2">
-            {JOB_CODES.map(jobCode => (
-                <Button
-                    key={jobCode.code}
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => {
-                        onSelect(jobCode.code);
-                        onOpenChange(false);
-                    }}
-                >
-                    {jobCode.code}
-                </Button>
-            ))}
-        </div>
-    );
-};
-
-
 export default function JobRecordSheet() {
     const { manpowerProfiles, jobRecords, saveJobRecord } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
     const [activeCell, setActiveCell] = useState<{ profileId: string; day: number } | null>(null);
     const [localCellValues, setLocalCellValues] = useState<Record<string, string>>({});
+    const [searchCode, setSearchCode] = useState('');
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const daysInMonth = getDaysInMonth(currentMonth);
@@ -93,7 +71,6 @@ export default function JobRecordSheet() {
         });
         setLocalCellValues(newLocalCellValues);
     }, [currentMonth, jobRecords, manpowerProfiles, dayHeaders, monthKey]);
-
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
@@ -333,22 +310,67 @@ export default function JobRecordSheet() {
                                         const cellKey = `${profile.id}-${day}`;
                                         const code = localCellValues[cellKey] ?? '';
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
+
+                                        const JobCodePicker = ({ onSelect, onOpenChange }: { onSelect: (code: string) => void, onOpenChange: (open: boolean) => void }) => {
+                                            const filteredCodes = JOB_CODES.filter(jc => jc.code.toLowerCase().includes(searchCode.toLowerCase()));
+                                            
+                                            const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+                                                if (e.key === 'Enter') {
+                                                    const topResult = filteredCodes.find(c => c.code.toLowerCase() === searchCode.toLowerCase()) || filteredCodes[0];
+                                                    if(topResult) {
+                                                        onSelect(topResult.code);
+                                                        onOpenChange(false);
+                                                    }
+                                                }
+                                            };
+                                            
+                                            return (
+                                                <div className="p-2 space-y-2">
+                                                    <Input 
+                                                        placeholder="Type to search..."
+                                                        value={searchCode}
+                                                        onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
+                                                        onKeyDown={handleKeyDown}
+                                                        autoFocus
+                                                    />
+                                                    <ScrollArea className="h-48">
+                                                        <div className="grid grid-cols-5 gap-1">
+                                                            {filteredCodes.map(jobCode => (
+                                                                <Button
+                                                                    key={jobCode.code}
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-8"
+                                                                    onClick={() => {
+                                                                        onSelect(jobCode.code);
+                                                                        onOpenChange(false);
+                                                                    }}
+                                                                >
+                                                                    {jobCode.code}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    </ScrollArea>
+                                                </div>
+                                            );
+                                        };
+
                                         return (
                                             <TableCell key={day} className="p-0 text-center">
-                                                <Popover onOpenChange={(open) => !open && setActiveCell(null)}>
+                                                <Popover onOpenChange={(open) => {
+                                                    if (!open) {
+                                                        setActiveCell(null);
+                                                        handleStatusChange(profile.id, day, code);
+                                                    } else {
+                                                        setSearchCode('');
+                                                    }
+                                                }}>
                                                     <PopoverTrigger asChild>
-                                                        <Input
-                                                            value={code}
-                                                            onChange={(e) => handleLocalChange(cellKey, e.target.value.toUpperCase())}
-                                                            onBlur={() => handleStatusChange(profile.id, day, code)}
-                                                            className={cn(
-                                                                "w-full h-full p-2 text-center font-bold focus-visible:ring-1 focus-visible:ring-ring rounded-none",
-                                                                "border-b border-dashed",
-                                                                code ? colorInfo.bg : 'bg-transparent',
-                                                                code ? colorInfo.text : '',
-                                                                !code && 'border-gray-300 dark:border-gray-700'
-                                                            )}
-                                                        />
+                                                        <button 
+                                                            className={cn("w-full h-full p-2 text-center font-bold focus:ring-2 focus:ring-ring focus:z-10 relative", code ? colorInfo.bg : 'bg-transparent', code ? colorInfo.text : '', !code && 'text-muted-foreground border-b border-dashed')}
+                                                        >
+                                                            {code || '-'}
+                                                        </button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0">
                                                         <JobCodePicker 
@@ -437,5 +459,3 @@ export default function JobRecordSheet() {
         </div>
     );
 }
-
-    
