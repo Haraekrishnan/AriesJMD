@@ -250,7 +250,7 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, day: number, codeOrPlantOrHours: string | number, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -2928,18 +2928,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, value: number | string, codeOrPlant: string, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => {
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number, codeOrPlantOrHours: string | number, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => {
     if (type === 'status') {
-      const day = value as number;
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: codeOrPlant });
+      const day = dayOrValue as number;
+      const code = codeOrPlantOrHours as string;
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: code });
     } else if (type === 'plant') {
-      const plant = codeOrPlant;
+      const plant = codeOrPlantOrHours as string;
       update(ref(rtdb, `jobRecords/${monthKey}/plantAssignments`), { [employeeId]: plant });
     } else if (type === 'overtime') {
-      const overtime = value as number;
-      update(ref(rtdb, `jobRecords/${monthKey}/overtime`), { [employeeId]: overtime });
+      const day = dayOrValue as number;
+      const hours = Number(codeOrPlantOrHours as string);
+      if (hours > 0) {
+        update(ref(rtdb, `jobRecords/${monthKey}/overtime/${employeeId}`), { [day]: hours });
+      } else {
+        remove(ref(rtdb, `jobRecords/${monthKey}/overtime/${employeeId}/${day}`));
+      }
     } else if (type === 'sundayDuty') {
-      const sundayDuty = value as number;
+      const sundayDuty = dayOrValue as number;
       update(ref(rtdb, `jobRecords/${monthKey}/additionalSundayDuty`), { [employeeId]: sundayDuty });
     }
   }, []);

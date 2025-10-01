@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSunday } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -21,6 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { cn } from '@/lib/utils';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Check } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
 
@@ -48,7 +49,6 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.additionalSundayDuty || {};
     }, [jobRecords, monthKey]);
 
-    const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
     const [tempSundayDuty, setTempSundayDuty] = useState<{[key: string]: string}>({});
     
     const jobRecordForMonth = useMemo(() => {
@@ -56,19 +56,13 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
 
     useEffect(() => {
-        const initialTempOvertime: {[key: string]: string} = {};
-        for (const profileId in overtimeData) {
-            initialTempOvertime[profileId] = String(overtimeData[profileId]);
-        }
-        setTempOvertime(initialTempOvertime);
-        
         const initialTempSundayDuty: {[key: string]: string} = {};
         for (const profileId in additionalSundayDutyData) {
             initialTempSundayDuty[profileId] = String(additionalSundayDutyData[profileId]);
         }
         setTempSundayDuty(initialTempSundayDuty);
 
-    }, [overtimeData, additionalSundayDutyData]);
+    }, [additionalSundayDutyData]);
     
     useEffect(() => {
         const newLocalCellValues: Record<string, string> = {};
@@ -84,29 +78,33 @@ export default function JobRecordSheet() {
 
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
-        setLocalCellValues(prev => ({...prev, [`${employeeId}-${day}`]: code}));
-        saveJobRecord(monthKey, employeeId, day, code, 'status');
+        const cellKey = `${employeeId}-${day}`;
+        let finalCode = code;
+        
+        if (code.includes('+')) {
+            const otResponse = prompt(`Enter overtime hours for ${day}${getDaySuffix(day)}`);
+            if (otResponse !== null) {
+                const overtimeHours = parseFloat(otResponse);
+                if (!isNaN(overtimeHours) && overtimeHours > 0) {
+                    saveJobRecord(monthKey, employeeId, day, String(overtimeHours), 'overtime');
+                    toast({ title: "Overtime Logged", description: `${overtimeHours} hours logged for day ${day}.` });
+                } else {
+                    toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a valid number for overtime.' });
+                }
+            }
+            finalCode = code.replace('+', '');
+        } else if (!code.trim()) {
+            // If the code is cleared, clear the overtime for that day
+            saveJobRecord(monthKey, employeeId, day, '0', 'overtime');
+        }
+
+        setLocalCellValues(prev => ({...prev, [cellKey]: finalCode}));
+        saveJobRecord(monthKey, employeeId, day, finalCode, 'status');
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
         saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
     }
-
-    const handleOvertimeChange = (employeeId: string, value: string) => {
-        setTempOvertime(prev => ({ ...prev, [employeeId]: value }));
-    };
-
-    const handleOvertimeSave = (employeeId: string) => {
-        const value = tempOvertime[employeeId];
-        if (value !== undefined && !isNaN(Number(value))) {
-            saveJobRecord(monthKey, employeeId, Number(value), '', 'overtime');
-            toast({title: 'Overtime Saved'});
-        } else if (value === '' || value === undefined) {
-             saveJobRecord(monthKey, employeeId, 0, '', 'overtime');
-        } else {
-            toast({variant: 'destructive', title: 'Invalid Value', description: 'Please enter a valid number for overtime.'});
-        }
-    };
     
     const handleSundayDutyChange = (employeeId: string, value: string) => {
         setTempSundayDuty(prev => ({ ...prev, [employeeId]: value }));
@@ -124,6 +122,16 @@ export default function JobRecordSheet() {
         }
     };
     
+    const getDaySuffix = (day: number) => {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+        }
+    };
+
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
 
@@ -160,6 +168,7 @@ export default function JobRecordSheet() {
                     return acc;
                 }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
+                const totalOvertime = Object.values(overtimeData[profile.id] || {}).reduce((sum, hours) => sum + hours, 0);
                 const additionalSundays = additionalSundayDutyData[profile.id] || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
@@ -167,7 +176,7 @@ export default function JobRecordSheet() {
                 dayHeaders.forEach(day => {
                     row.push(employeeRecord[day] || '');
                 });
-                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, overtimeData[profile.id] || 0, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
+                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(row);
             });
             
@@ -313,6 +322,7 @@ export default function JobRecordSheet() {
                                 return acc;
                             }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
+                            const totalOvertime = Object.values(overtimeData[profile.id] || {}).reduce((sum, hours) => sum + hours, 0);
                             const additionalSundays = additionalSundayDutyData[profile.id] || 0;
                             const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
@@ -332,9 +342,22 @@ export default function JobRecordSheet() {
                                         const cellKey = `${profile.id}-${day}`;
                                         const code = localCellValues[cellKey] ?? '';
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
+                                        const dayOvertime = overtimeData[profile.id]?.[day] || 0;
 
                                         return (
-                                            <TableCell key={day} className="p-0 text-center">
+                                            <TableCell key={day} className="p-0 text-center relative">
+                                                 {dayOvertime > 0 && (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="absolute top-0 right-0 p-0.5">
+                                                                <Clock className="h-2.5 w-2.5 text-blue-600" />
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Overtime: {dayOvertime} hrs</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                )}
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <Input
@@ -377,16 +400,7 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Input
-                                            type="text"
-                                            value={tempOvertime[profile.id] ?? ''}
-                                            onChange={(e) => handleOvertimeChange(profile.id, e.target.value)}
-                                            onBlur={() => handleOvertimeSave(profile.id)}
-                                            className="w-16 h-8 text-center"
-                                            placeholder="0"
-                                        />
-                                    </TableCell>
+                                    <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
@@ -420,37 +434,39 @@ export default function JobRecordSheet() {
     }
 
     return (
-        <div>
-            <div className="flex justify-between items-center p-4">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-                        <ChevronRight className="h-4 w-4" />
+        <TooltipProvider>
+            <div>
+                <div className="flex justify-between items-center p-4">
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <Button onClick={exportToExcel}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export Excel
                     </Button>
                 </div>
-                 <Button onClick={exportToExcel}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export Excel
-                </Button>
-            </div>
 
-            <Tabs defaultValue="DTA" className="w-full">
-                <TabsList>
-                    {PLANT_OPTIONS.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                    <TabsTrigger value="Unassigned">Unassigned</TabsTrigger>
-                </TabsList>
-                {PLANT_OPTIONS.map(plant => (
-                    <TabsContent key={plant} value={plant}>
-                        {renderTableForPlant(plant, groupedProfiles[plant])}
+                <Tabs defaultValue="DTA" className="w-full">
+                    <TabsList>
+                        {PLANT_OPTIONS.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                        <TabsTrigger value="Unassigned">Unassigned</TabsTrigger>
+                    </TabsList>
+                    {PLANT_OPTIONS.map(plant => (
+                        <TabsContent key={plant} value={plant}>
+                            {renderTableForPlant(plant, groupedProfiles[plant])}
+                        </TabsContent>
+                    ))}
+                    <TabsContent value="Unassigned">
+                        {renderTableForPlant('Unassigned', groupedProfiles['Unassigned'])}
                     </TabsContent>
-                ))}
-                 <TabsContent value="Unassigned">
-                    {renderTableForPlant('Unassigned', groupedProfiles['Unassigned'])}
-                </TabsContent>
-            </Tabs>
-        </div>
+                </Tabs>
+            </div>
+        </TooltipProvider>
     );
 }
