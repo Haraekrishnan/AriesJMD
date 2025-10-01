@@ -78,26 +78,26 @@ export default function JobRecordSheet() {
         }
         setTempOvertime(initialTempOvertime);
     }, [overtimeData]);
-
-    const groupedProfiles = useMemo(() => {
-        const groups: { [key: string]: typeof manpowerProfiles } = {
-            'DTA': [], 'SEZ': [], 'DTA-JPC': [], 'MTF': [], 'Unassigned': []
-        };
+    
+    useEffect(() => {
+        const newLocalCellValues: Record<string, string> = {};
         manpowerProfiles.forEach(profile => {
-            const plant = plantAssignments[profile.id] || 'Unassigned';
-            if (groups[plant]) {
-                groups[plant].push(profile);
-            } else {
-                groups['Unassigned'].push(profile);
-            }
+            const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+            dayHeaders.forEach(day => {
+                const cellKey = `${profile.id}-${day}`;
+                newLocalCellValues[cellKey] = employeeRecord[day] || '';
+            });
         });
-        Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
-        return groups;
-    }, [manpowerProfiles, plantAssignments]);
+        setLocalCellValues(newLocalCellValues);
+    }, [currentMonth, jobRecords, manpowerProfiles, dayHeaders, monthKey]);
+
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
-        setLocalCellValues(prev => ({...prev, [`${employeeId}-${day}`]: code}));
+    };
+    
+    const handleLocalChange = (key: string, value: string) => {
+        setLocalCellValues(prev => ({...prev, [key]: value}));
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -204,6 +204,22 @@ export default function JobRecordSheet() {
 
         XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
     };
+
+    const groupedProfiles = useMemo(() => {
+        const groups: { [key: string]: typeof manpowerProfiles } = {
+            'DTA': [], 'SEZ': [], 'DTA-JPC': [], 'MTF': [], 'Unassigned': []
+        };
+        manpowerProfiles.forEach(profile => {
+            const plant = plantAssignments[profile.id] || 'Unassigned';
+            if (groups[plant]) {
+                groups[plant].push(profile);
+            } else {
+                groups['Unassigned'].push(profile);
+            }
+        });
+        Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
+        return groups;
+    }, [manpowerProfiles, plantAssignments]);
 
     const LegendTable = ({ profiles }: { profiles: typeof manpowerProfiles }) => {
         const manDaysCount = useMemo(() => {
@@ -312,7 +328,7 @@ export default function JobRecordSheet() {
                                     </TableCell>
                                     {dayHeaders.map(day => {
                                         const cellKey = `${profile.id}-${day}`;
-                                        const code = localCellValues[cellKey] ?? employeeRecord[day] ?? '';
+                                        const code = localCellValues[cellKey] ?? '';
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         return (
                                             <TableCell key={day} className="p-0 text-center">
@@ -320,22 +336,22 @@ export default function JobRecordSheet() {
                                                     <PopoverTrigger asChild>
                                                         <Input
                                                             value={code}
-                                                            onChange={(e) => {
-                                                                const newCode = e.target.value.toUpperCase();
-                                                                setLocalCellValues(prev => ({...prev, [cellKey]: newCode}));
-                                                            }}
-                                                            onBlur={(e) => {
-                                                                handleStatusChange(profile.id, day, e.target.value.toUpperCase());
-                                                            }}
-                                                            onClick={() => setActiveCell({ profileId: profile.id, day })}
-                                                            className={cn("w-full h-full p-2 text-center font-bold border-b border-dashed focus-visible:ring-1 focus-visible:ring-ring bg-transparent rounded-none", colorInfo.bg, colorInfo.text)}
+                                                            onChange={(e) => handleLocalChange(cellKey, e.target.value.toUpperCase())}
+                                                            onBlur={() => handleStatusChange(profile.id, day, code)}
+                                                            className={cn(
+                                                                "w-full h-full p-2 text-center font-bold focus-visible:ring-1 focus-visible:ring-ring rounded-none",
+                                                                "border-b border-dashed",
+                                                                code ? colorInfo.bg : 'bg-transparent',
+                                                                code ? colorInfo.text : '',
+                                                                !code && 'border-gray-300 dark:border-gray-700'
+                                                            )}
                                                         />
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0">
                                                         <JobCodePicker 
                                                             onSelect={(newCode) => {
+                                                                handleLocalChange(cellKey, newCode);
                                                                 handleStatusChange(profile.id, day, newCode);
-                                                                setActiveCell(null);
                                                             }} 
                                                             onOpenChange={(open) => setActiveCell(open ? {profileId: profile.id, day} : null)}
                                                         />
