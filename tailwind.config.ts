@@ -17,18 +17,19 @@ export default {
         code: ['monospace'],
       },
       colors: {
-        'job-code-red-light': '#ff0000', 
-        'job-code-blue': '#bde2ff', 
+        'job-code-red-light': '#ff0000',
+        'job-code-blue': '#bde2ff',
         'job-code-violet': '#8A2BE2',
         'job-code-bright-blue': '#0000FF',
         'job-code-fluorescent-blue': '#00BFFF',
         'job-code-dark-orange': '#FF8C00',
-        'job-code-sandal': '#FFDAB9',
+        'job-code-sandal': '#f5deb3', // Lighter shade for KD
         'job-code-pink': '#FFC0CB',
-        'job-code-dark-blue': '#6495ED',
-        'job-code-dark-green': '#3CB371',
+        'job-code-dark-blue': '#87ceeb', // Lighter shade for EP
+        'job-code-dark-green': '#90ee90', // Lighter shade for PH
         'job-code-dark-gray': '#A9A9A9',
         'job-code-fluorescent-green': '#00FF00',
+        'job-code-yellow': '#FFFF00', // Fluorescent Yellow for ML
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
