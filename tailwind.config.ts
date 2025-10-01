@@ -25,8 +25,11 @@ export default {
         'job-code-dark-orange': '#FF8C00',
         'job-code-sandal': '#E5A1AD',
         'job-code-pink': '#DB7093',
+        'job-code-light-pink': '#FFB6C1', // Lighter Pink
         'job-code-dark-blue': '#add8e6',
+        'job-code-light-blue': '#B0C4DE', // Lighter Blue
         'job-code-dark-green': '#98FB98',
+        'job-code-green': '#22C55E', // Standard Green
         'job-code-dark-gray': '#A9A9A9',
         'job-code-fluorescent-green': '#00FF00',
         'job-code-yellow': '#FFFF00',
