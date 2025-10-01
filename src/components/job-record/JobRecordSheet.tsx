@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { Label } from '../ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { cn } from '@/lib/utils';
 
 
 const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
@@ -253,12 +254,12 @@ export default function JobRecordSheet() {
                                     </TableCell>
                                     {dayHeaders.map(day => {
                                         const code = employeeRecord[day] || '';
-                                        const colorClass = JOB_CODE_COLORS[code] || 'bg-transparent';
+                                        const colorInfo = JOB_CODE_COLORS[code] || { bg: 'bg-transparent' };
                                         return (
                                             <TableCell key={day} className="p-0 text-center">
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button variant="ghost" className={`w-full h-full rounded-none font-bold ${colorClass}`}>
+                                                        <Button variant="ghost" className={cn('w-full h-full rounded-none font-bold', colorInfo.bg, colorInfo.text)}>
                                                             {code || '-'}
                                                         </Button>
                                                     </PopoverTrigger>
