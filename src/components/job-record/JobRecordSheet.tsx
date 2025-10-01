@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -118,7 +119,7 @@ export default function JobRecordSheet() {
                     </TableHeader>
                     <TableBody>
                         {filteredProfiles.map((profile, index) => {
-                            const currentMonthRecords = jobRecords && jobRecords[monthKey] ? jobRecords[monthKey] : { records: {} };
+                            const currentMonthRecords = (jobRecords && jobRecords[monthKey]) ? jobRecords[monthKey] : { records: {} };
                             const employeeRecord = currentMonthRecords.records?.[profile.id]?.days || {};
                              const summary = dayHeaders.reduce((acc, day) => {
                                  const code = employeeRecord[day];
