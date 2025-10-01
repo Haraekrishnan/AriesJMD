@@ -105,20 +105,27 @@ export default function JobRecordSheet() {
 
             profiles.forEach((profile, index) => {
                 const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                
+                const offCodes = ['OFF', 'PH', 'OS'];
+                const leaveCodes = ['L', 'X', 'NWS'];
+                const standbyCodes = ['S', 'ST', 'TR', 'EP', 'PD', 'Q'];
+                const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                
                 const summary = dayHeaders.reduce((acc, day) => {
                     const code = employeeRecord[day];
-                    if (code === 'OFF' || code === 'PH') acc.offDays++;
-                    if (code === 'L') acc.leaveDays++;
+                    if (offCodes.includes(code)) acc.offDays++;
+                    if (leaveCodes.includes(code)) acc.leaveDays++;
                     if (code === 'ML') acc.medicalLeave++;
-                    if (['S', 'ST', 'Q', 'NWS'].includes(code)) acc.standbyTraining++;
+                    if (standbyCodes.includes(code)) acc.standbyTraining++;
                     if (code === 'R') acc.reptOffice++;
-                    if (code && !['OFF', 'PH', 'L', 'ML'].includes(code)) acc.workDays++;
+                    if (workCodes.includes(code)) acc.workDays++;
                     if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
                         acc.sundayDuty++;
                     }
                     return acc;
                 }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, sundayDuty: 0 });
-                 const salaryDays = daysInMonth - summary.leaveDays;
+
+                const salaryDays = summary.sundayDuty + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
                 const row: (string | number)[] = [index + 1, profile.name];
                 dayHeaders.forEach(day => {
@@ -210,21 +217,27 @@ export default function JobRecordSheet() {
                     <TableBody>
                         {profiles.map((profile, index) => {
                             const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
+                            
+                            const offCodes = ['OFF', 'PH', 'OS'];
+                            const leaveCodes = ['L', 'X', 'NWS'];
+                            const standbyCodes = ['S', 'ST', 'TR', 'EP', 'PD', 'Q'];
+                            const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                            
                             const summary = dayHeaders.reduce((acc, day) => {
                                 const code = employeeRecord[day];
-                                if (code === 'OFF' || code === 'PH') acc.offDays++;
-                                if (code === 'L') acc.leaveDays++;
+                                if (offCodes.includes(code)) acc.offDays++;
+                                if (leaveCodes.includes(code)) acc.leaveDays++;
                                 if (code === 'ML') acc.medicalLeave++;
-                                if (['S', 'ST', 'Q', 'NWS'].includes(code)) acc.standbyTraining++;
+                                if (standbyCodes.includes(code)) acc.standbyTraining++;
                                 if (code === 'R') acc.reptOffice++;
-                                if (code && !['OFF', 'PH', 'L', 'ML'].includes(code)) acc.workDays++;
+                                if (workCodes.includes(code)) acc.workDays++;
                                 if (isSunday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) && code && !['OFF', 'PH', 'L', 'ML'].includes(code)) {
                                     acc.sundayDuty++;
                                 }
                                 return acc;
                             }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, sundayDuty: 0 });
 
-                            const salaryDays = daysInMonth - summary.leaveDays;
+                            const salaryDays = summary.sundayDuty + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
                             return (
                                 <TableRow key={profile.id}>
