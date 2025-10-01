@@ -389,6 +389,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
+  useEffect(() => {
+    let fixApplied = localStorage.getItem('adminFixApplied_v1');
+    if (user?.role === 'Admin' && roles.length > 0 && !fixApplied) {
+        const adminRole = roles.find(r => r.name === 'Admin');
+        if (adminRole && adminRole.permissions.length !== ALL_PERMISSIONS.length) {
+            console.log("Admin permissions are incorrect, applying fix...");
+            update(ref(rtdb, `roles/${adminRole.id}/permissions`), [...ALL_PERMISSIONS]);
+            localStorage.setItem('adminFixApplied_v1', 'true');
+            toast({
+                title: 'Permissions Corrected',
+                description: 'Admin permissions have been restored to default.',
+            });
+        }
+    }
+  }, [user, roles, toast]);
+
   // Listen for status changes on the current user
   useEffect(() => {
     if (user && user.id) {
@@ -3199,19 +3215,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
-
-
-
-
-  
-
-    
-
-
-
-
-
-
-
