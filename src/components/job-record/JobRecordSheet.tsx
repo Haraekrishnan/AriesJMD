@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -50,9 +51,9 @@ export default function JobRecordSheet() {
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? 0 : parseInt(value, 10);
         if (!isNaN(days) && days >= 0) {
-            saveJobRecord(monthKey, employeeId, days, '', 'sundayDuty');
+            saveJobRecord(monthKey, employeeId, 0, days, 'sundayDuty');
         } else if (value === '') {
-            saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
+            saveJobRecord(monthKey, employeeId, 0, 0, 'sundayDuty');
         }
     };
 
@@ -390,17 +391,12 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
     };
 
     const handleCodeButtonClick = (newCode: string) => {
-        setCode(newCode);
+        onSave(newCode, overtime);
+        setPopoverOpen(false);
     };
 
     const handleCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newCode = e.target.value.toUpperCase();
-        setCode(newCode);
-        const codeExists = JOB_CODES.some(jc => jc.code === newCode);
-        if (codeExists) {
-            onSave(newCode, overtime);
-            setPopoverOpen(false);
-        }
+        setCode(e.target.value.toUpperCase());
     };
     
     return (
@@ -414,30 +410,37 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
                             onChange={handleCodeInputChange}
                             onBlur={() => onSave(code, overtime)}
                             className={cn(
-                                'w-16 h-10 text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
+                                'w-full h-full text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
                                 code ? colorInfo.bg : 'bg-transparent',
                                 code ? colorInfo.text : 'text-foreground'
                             )}
                         />
-                        {initialOvertime && (
+                        {(initialOvertime && initialOvertime > 0) && (
                             <div className="absolute bottom-0 right-0 h-3 w-3" title={`${initialOvertime} hours OT`}>
                                 <Clock className="h-full w-full text-blue-500" />
                             </div>
                         )}
                         <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-4 p-0 rounded-none">
-                                <MoreVertical className="h-3 w-3" />
+                            <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-6 p-0 rounded-none">
+                                <MoreVertical className="h-4 w-4" />
                             </Button>
                         </PopoverTrigger>
                     </div>
                 </TooltipTrigger>
-                {initialOvertime && <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>}
+                {(initialOvertime && initialOvertime > 0) && <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>}
             </Tooltip>
 
             <PopoverContent className="w-auto p-4" onOpenAutoFocus={(e) => e.preventDefault()}>
                  <div className="space-y-4 w-80">
                      <div>
                         <Label>Job Code</Label>
+                         <Input 
+                            type="text"
+                            placeholder="Type code..."
+                            value={code}
+                            onChange={handleCodeInputChange}
+                            className="mt-1"
+                        />
                         <div className="grid grid-cols-5 gap-1 mt-2">
                             {JOB_CODES.map(jc => (
                                 <Button
