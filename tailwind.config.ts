@@ -23,13 +23,13 @@ export default {
         'job-code-bright-blue': '#0000FF',
         'job-code-fluorescent-blue': '#00BFFF',
         'job-code-dark-orange': '#FF8C00',
-        'job-code-sandal': '#f5deb3', // Lighter shade for KD
-        'job-code-pink': '#FFC0CB',
-        'job-code-dark-blue': '#87ceeb', // Lighter shade for EP
-        'job-code-dark-green': '#90ee90', // Lighter shade for PH
+        'job-code-sandal': '#E5A1AD',
+        'job-code-pink': '#DB7093',
+        'job-code-dark-blue': '#add8e6',
+        'job-code-dark-green': '#98FB98',
         'job-code-dark-gray': '#A9A9A9',
         'job-code-fluorescent-green': '#00FF00',
-        'job-code-yellow': '#FFFF00', // Fluorescent Yellow for ML
+        'job-code-yellow': '#FFFF00',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
@@ -38,35 +37,22 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
     
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-    // Apply colors
     ws_data.forEach((row, r) => {
-        if (r < 4) return; // Skip headers
+        if (r < 3) return; // Skip title and header rows
         row.forEach((cell, c) => {
-            const code = typeof cell === 'string' ? cell : '';
+            const code = typeof cell === 'string' ? cell : String(cell);
             const colorInfo = JOB_CODE_COLORS[code];
-            if (colorInfo && (colorInfo.excelFill || colorInfo.text)) {
+            if (colorInfo && colorInfo.excelFill) {
                 const cellAddress = XLSX.utils.encode_cell({ r, c });
                 if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
                 
-                const style: { fill?: any, font?: any } = {};
-
-                if (colorInfo.excelFill) {
-                    style.fill = colorInfo.excelFill;
-                }
-                if (colorInfo.text) {
-                    // Extract color from Tailwind class e.g. text-red-500 -> red-500
-                    const textColorClass = colorInfo.text.split('-').slice(1).join('-');
-                    const colorMap: { [key: string]: string } = {
-                        'red-500': 'FFFF0000',
-                        'black': 'FF000000',
-                    };
-                    const colorHex = colorMap[textColorClass];
-                    if(colorHex) {
-                       style.font = { color: { rgb: colorHex } };
-                    }
-                }
-                
-                ws[cellAddress].s = style;
+                ws[cellAddress].s = {
+                    fill: {
+                        patternType: "solid",
+                        fgColor: colorInfo.excelFill.fgColor,
+                    },
+                    ...colorInfo.excelFill.font && { font: colorInfo.excelFill.font }
+                };
             }
         });
     });
