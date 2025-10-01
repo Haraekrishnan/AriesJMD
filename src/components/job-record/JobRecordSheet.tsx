@@ -57,11 +57,7 @@ export default function JobRecordSheet() {
     };
 
     const plantProjects = useMemo(() => {
-      const plants = new Set<string>();
-      projects.forEach(p => {
-        if (p.isPlant) plants.add(p.name);
-      });
-      return Array.from(plants).sort();
+      return projects.filter(p => p.isPlant).map(p => p.name).sort();
     }, [projects]);
 
     const handleAddPlant = () => {
@@ -205,6 +201,8 @@ export default function JobRecordSheet() {
         return groups;
     }, [manpowerProfiles, plantProjects]);
     
+    const allTabs = Array.from(new Set([...plantProjects, "Unassigned"])).sort();
+    
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
          if (profiles.length === 0) {
@@ -287,7 +285,7 @@ export default function JobRecordSheet() {
                                         <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
-                                                {[...plantProjects, 'Unassigned'].map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </TableCell>
@@ -297,36 +295,12 @@ export default function JobRecordSheet() {
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         return (
                                           <TableCell key={day} className="p-0 text-center relative">
-                                            <Popover>
-                                              <PopoverTrigger asChild>
-                                                <div
-                                                  className={cn(
-                                                    'w-16 h-10 flex items-center justify-center font-bold cursor-pointer relative',
-                                                    code ? colorInfo.bg : 'bg-transparent',
-                                                    code ? colorInfo.text : 'text-foreground'
-                                                  )}
-                                                >
-                                                  {code}
-                                                  {overtimeForDay && (
-                                                    <Tooltip>
-                                                      <TooltipTrigger asChild>
-                                                        <div className="absolute bottom-0 right-0 h-3 w-3">
-                                                            <Clock className="h-full w-full text-blue-500" />
-                                                        </div>
-                                                      </TooltipTrigger>
-                                                      <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                    </Tooltip>
-                                                  )}
-                                                </div>
-                                              </PopoverTrigger>
-                                              <PopoverContent className="w-auto p-0">
-                                                <DailyRecordEditor
-                                                  initialCode={code}
-                                                  initialOvertime={overtimeForDay}
-                                                  onSave={(newCode, newOvertime) => handleStatusChange(profile.id, day, newCode, newOvertime)}
-                                                />
-                                              </PopoverContent>
-                                            </Popover>
+                                            <DailyRecordEditor
+                                              initialCode={code}
+                                              initialOvertime={overtimeForDay}
+                                              onSave={(newCode, newOvertime) => handleStatusChange(profile.id, day, newCode, newOvertime)}
+                                              colorInfo={colorInfo}
+                                            />
                                           </TableCell>
                                         );
                                       })}
@@ -355,8 +329,6 @@ export default function JobRecordSheet() {
             </div>
         );
     }
-
-    const allTabs = Array.from(new Set([...plantProjects, "Unassigned"])).sort();
 
     return (
         <TooltipProvider>
@@ -399,12 +371,13 @@ interface DailyRecordEditorProps {
     initialCode: string;
     initialOvertime?: number;
     onSave: (code: string, overtime?: number) => void;
+    colorInfo: { bg?: string; text?: string };
 }
 
-function DailyRecordEditor({ initialCode, initialOvertime, onSave }: DailyRecordEditorProps) {
+function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: DailyRecordEditorProps) {
+    const [popoverOpen, setPopoverOpen] = useState(false);
     const [code, setCode] = useState(initialCode);
     const [overtime, setOvertime] = useState(initialOvertime);
-    const [popoverOpen, setPopoverOpen] = useState(true);
 
     const handleSave = () => {
         onSave(code.toUpperCase(), overtime);
@@ -412,24 +385,35 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave }: DailyRecord
     };
 
     const handleCodeButtonClick = (newCode: string) => {
-        setCode(newCode);
-        // We'll save and close when "Set" is clicked, or they can click a new button
         onSave(newCode, overtime);
         setPopoverOpen(false);
-    };
-    
-    // This wrapper is needed to prevent the Popover from closing when interacting with its content
-    const handleWrapperClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
     };
 
     return (
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
-                <span></span> 
+                <div
+                    className={cn(
+                        'w-16 h-10 flex items-center justify-center font-bold cursor-pointer relative',
+                        code ? colorInfo.bg : 'bg-transparent',
+                        code ? colorInfo.text : 'text-foreground'
+                    )}
+                >
+                    {code}
+                    {initialOvertime && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="absolute bottom-0 right-0 h-3 w-3">
+                                    <Clock className="h-full w-full text-blue-500" />
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>
+                        </Tooltip>
+                    )}
+                </div>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-4" onClick={handleWrapperClick}>
-                 <div className="space-y-4">
+            <PopoverContent className="w-auto p-4" onOpenAutoFocus={(e) => e.preventDefault()}>
+                 <div className="space-y-4 w-80">
                      <div>
                         <Label>Job Code</Label>
                         <Input 

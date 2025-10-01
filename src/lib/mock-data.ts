@@ -104,14 +104,14 @@ export const ROLES: RoleDefinition[] = [
 ];
 
 export const PROJECTS: Project[] = [
-    { id: 'proj-1', name: 'SEZ' },
-    { id: 'proj-2', name: 'DTA' },
-    { id: 'proj-3', name: 'MTF' },
-    { id: 'proj-4', name: 'JPC' },
-    { id: 'proj-5', name: 'SOLAR' },
-    { id: 'proj-6', name: 'Head Office' },
-    { id: 'proj-7', name: 'Pass Section' },
-    { id: 'proj-8', name: 'Unassigned' },
+    { id: 'proj-1', name: 'SEZ', isPlant: true },
+    { id: 'proj-2', name: 'DTA', isPlant: true },
+    { id: 'proj-3', name: 'MTF', isPlant: true },
+    { id: 'proj-4', name: 'JPC', isPlant: true },
+    { id: 'proj-5', name: 'SOLAR', isPlant: true },
+    { id: 'proj-6', name: 'Head Office', isPlant: false },
+    { id: 'proj-7', name: 'Pass Section', isPlant: false },
+    { id: 'proj-8', name: 'Unassigned', isPlant: false },
 ];
 
 export const USERS: User[] = [
