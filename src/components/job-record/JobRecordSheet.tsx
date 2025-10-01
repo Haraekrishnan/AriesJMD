@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -320,7 +319,7 @@ export default function JobRecordSheet() {
                                                             onChange={(e) => handleLocalChange(cellKey, e.target.value.toUpperCase())}
                                                             onBlur={() => handleStatusChange(profile.id, day, code)}
                                                             className={cn(
-                                                                "w-12 h-10 text-center font-bold border-0 focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative",
+                                                                "w-12 h-10 text-center font-bold border-0 focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative rounded-none",
                                                                 code ? colorInfo.bg : 'bg-transparent',
                                                                 code ? colorInfo.text : 'text-foreground'
                                                             )}
