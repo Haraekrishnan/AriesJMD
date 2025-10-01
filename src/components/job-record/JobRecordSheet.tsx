@@ -108,7 +108,7 @@ export default function JobRecordSheet() {
                 
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
-                const standbyCodes = ['S', 'ST', 'TR', 'EP', 'PD', 'Q'];
+                const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
                 const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
                 
                 const summary = dayHeaders.reduce((acc, day) => {
@@ -220,7 +220,7 @@ export default function JobRecordSheet() {
                             
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
-                            const standbyCodes = ['S', 'ST', 'TR', 'EP', 'PD', 'Q'];
+                            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
                             const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
                             
                             const summary = dayHeaders.reduce((acc, day) => {
