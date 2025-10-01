@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -7,6 +8,7 @@ export type Broadcast = {
   expiryDate: string; // ISO String
   recipientUserIds: string[];
   recipientRoles: string[];
+  dismissedBy: string[];
 };
 
 export type JobRecord = {

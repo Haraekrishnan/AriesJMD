@@ -142,7 +142,7 @@ type AppContextType = {
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
-  addProject: (projectName: string) => void;
+  addProject: (projectName: string, isPlant?: boolean) => void;
   updateProject: (project: Project) => void;
   deleteProject: (projectId: string) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
@@ -250,7 +250,7 @@ type AppContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number, codeOrPlant: string, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number, codeOrPlant: string | number, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -1415,11 +1415,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, roles, addActivityLog]);
 
-  const addProject = useCallback((projectName: string) => {
+  const addProject = useCallback((projectName: string, isPlant = false) => {
     const projectsRef = ref(rtdb, 'projects');
     const newProjectRef = push(projectsRef);
-    set(newProjectRef, { name: projectName });
-    addActivityLog(user?.id || 'system', 'Project Added', `Added project: ${projectName}`);
+    set(newProjectRef, { name: projectName, isPlant });
+    addActivityLog(user?.id || 'system', 'Project/Plant Added', `Added: ${projectName}`);
   }, [user, addActivityLog]);
 
   const updateProject = useCallback((updatedProject: Project) => {
@@ -2928,17 +2928,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number, codeOrPlant: string | number, type: 'status' | 'plant' | 'overtime' | 'sundayDuty') => {
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number, codeOrPlantOrHours: string | number, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
     if (type === 'status') {
-      const day = dayOrValue as number;
-      const code = codeOrPlant as string;
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day]: code });
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [dayOrValue]: codeOrPlantOrHours });
     } else if (type === 'plant') {
-      const plant = codeOrPlant as string;
-      update(ref(rtdb, `jobRecords/${monthKey}/plantAssignments`), { [employeeId]: plant });
-    } else if (type === 'overtime') {
-      const hours = codeOrPlant as number;
-      update(ref(rtdb, `jobRecords/${monthKey}/overtime`), { [employeeId]: hours });
+      update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant: codeOrPlantOrHours });
+    } else if (type === 'dailyOvertime') {
+      const day = dayOrValue as number;
+      const hours = codeOrPlantOrHours as number;
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime`), { [day]: hours });
     } else if (type === 'sundayDuty') {
       const sundayDuty = dayOrValue as number;
       update(ref(rtdb, `jobRecords/${monthKey}/additionalSundayDuty`), { [employeeId]: sundayDuty });

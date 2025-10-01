@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, getDaySuffix } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,10 +22,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject, projects } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
-    const [localCellValues, setLocalCellValues] = useState<Record<string, string>>({});
     
     const monthKey = format(currentMonth, 'yyyy-MM');
 
@@ -38,51 +36,11 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    useEffect(() => {
-        const newLocalCellValues: Record<string, string> = {};
-        manpowerProfiles.forEach(profile => {
-            const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
-            dayHeaders.forEach(day => {
-                const cellKey = `${profile.id}-${day}`;
-                newLocalCellValues[cellKey] = employeeRecord[day] || '';
-            });
-        });
-        setLocalCellValues(newLocalCellValues);
-    }, [currentMonth, jobRecordForMonth, manpowerProfiles, dayHeaders]);
-
-
-    const handleLocalChange = (cellKey: string, value: string) => {
-        setLocalCellValues(prev => ({ ...prev, [cellKey]: value.toUpperCase() }));
-    };
-
-    const handleStatusChange = (employeeId: string, day: number, code: string) => {
-        let finalCode = code.toUpperCase();
-
-        if (code.includes('+')) {
-            const otResponse = prompt(`Enter overtime hours for ${day}${getDaySuffix(day)}:`);
-            if (otResponse !== null) {
-                const overtimeHours = parseFloat(otResponse);
-                if (!isNaN(overtimeHours) && overtimeHours > 0) {
-                    saveJobRecord(monthKey, employeeId, day, overtimeHours, 'dailyOvertime');
-                    toast({ title: "Overtime Added", description: `${overtimeHours} hours logged for day ${day}.` });
-                } else if (overtimeHours <= 0) {
-                     saveJobRecord(monthKey, employeeId, day, 0, 'dailyOvertime');
-                } else {
-                    toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a valid number for overtime.' });
-                }
-            }
-            finalCode = code.replace('+', '');
-        } else {
-            // If the code is changed to not include '+', clear any existing overtime for that day
-            const existingOvertime = jobRecordForMonth[employeeId]?.dailyOvertime?.[day];
-            if (existingOvertime) {
-                saveJobRecord(monthKey, employeeId, day, 0, 'dailyOvertime');
-            }
+    const handleStatusChange = (employeeId: string, day: number, code: string, overtimeHours?: number) => {
+        saveJobRecord(monthKey, employeeId, day, code, 'status');
+        if (overtimeHours !== undefined) {
+             saveJobRecord(monthKey, employeeId, day, overtimeHours, 'dailyOvertime');
         }
-
-        const cellKey = `${employeeId}-${day}`;
-        setLocalCellValues(prev => ({...prev, [cellKey]: finalCode}));
-        saveJobRecord(monthKey, employeeId, day, finalCode, 'status');
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -90,38 +48,26 @@ export default function JobRecordSheet() {
     }
     
     const handleSundayDutySave = (employeeId: string, value: string) => {
-        const days = parseInt(value, 10);
+        const days = value === '' ? 0 : parseInt(value, 10);
         if (!isNaN(days) && days >= 0) {
             saveJobRecord(monthKey, employeeId, days, '', 'sundayDuty');
-        } else if (value === '' || value === undefined) {
-             saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
-        }
-    };
-    
-    const getDaySuffix = (day: number) => {
-        if (day > 3 && day < 21) return 'th';
-        switch (day % 10) {
-            case 1: return "st";
-            case 2: return "nd";
-            case 3: return "rd";
-            default: return "th";
         }
     };
 
     const plantProjects = useMemo(() => {
-        return manpowerProfiles.reduce((acc, profile) => {
-            if (profile.plant) {
-                acc.add(profile.plant);
-            }
-            return acc;
-        }, new Set<string>());
-    }, [manpowerProfiles]);
+      const plants = new Set<string>();
+      projects.forEach(p => {
+        if (p.isPlant) plants.add(p.name);
+      });
+      manpowerProfiles.forEach(profile => {
+        if (profile.plant) plants.add(profile.plant);
+      });
+      return Array.from(plants).sort();
+    }, [projects, manpowerProfiles]);
 
     const handleAddPlant = () => {
         const newPlantName = prompt("Enter new plant name:");
-        if (newPlantName) {
-            // Although we don't use the projects context for plants anymore,
-            // adding it here ensures consistency if it's used elsewhere.
+        if (newPlantName && newPlantName.trim() !== '') {
             addProject(newPlantName, true);
             toast({ title: "Plant Added", description: `You can now assign employees to ${newPlantName}.`});
         }
@@ -136,7 +82,7 @@ export default function JobRecordSheet() {
         const wb = XLSX.utils.book_new();
 
         const profiles = groupedProfiles[plant];
-        if (profiles.length === 0) {
+        if (!profiles || profiles.length === 0) {
             toast({ variant: 'destructive', title: 'No Data', description: `No employees assigned to ${plant} to export.` });
             return;
         }
@@ -244,14 +190,16 @@ export default function JobRecordSheet() {
             if (groups[plant]) {
                 groups[plant].push(profile);
             } else {
+                if (!groups['Unassigned']) groups['Unassigned'] = [];
                 groups['Unassigned'].push(profile);
             }
         });
-        Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
+        Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
     }, [manpowerProfiles, plantProjects]);
     
-    const renderTableForPlant = (plantName: string, profiles: typeof manpowerProfiles) => {
+    const renderTableForPlant = (plantName: string) => {
+         const profiles = groupedProfiles[plantName] || [];
          if (profiles.length === 0) {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
         }
@@ -338,58 +286,44 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
-                                        const cellKey = `${profile.id}-${day}`;
-                                        const code = localCellValues[cellKey] ?? '';
+                                        const code = employeeRecord[day] || '';
+                                        const overtimeForDay = dailyOvertime[day];
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
-                                        const overtimeForDay = record.dailyOvertime?.[day];
-
                                         return (
-                                            <TableCell key={day} className="p-0 text-center relative">
-                                                <div className="relative">
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Input
-                                                            type="text"
-                                                            value={code}
-                                                            onChange={(e) => handleLocalChange(cellKey, e.target.value)}
-                                                            onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase())}
-                                                            className={cn(
-                                                                "w-16 h-10 text-center font-bold border-b-2 border-dotted focus-visible:ring-1 focus-visible:ring-ring focus:z-10 relative rounded-none",
-                                                                code ? colorInfo.bg : 'bg-transparent',
-                                                                code ? colorInfo.text : 'text-foreground',
-                                                                !code && 'border-gray-300 dark:border-gray-700'
-                                                            )}
-                                                        />
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-2">
-                                                        <ScrollArea className="h-48">
-                                                            <div className="grid grid-cols-5 gap-1">
-                                                                {JOB_CODES.map(jobCode => (
-                                                                    <Button
-                                                                        key={jobCode.code}
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="h-8"
-                                                                        onMouseDown={(e) => {
-                                                                            e.preventDefault();
-                                                                            handleStatusChange(profile.id, day, jobCode.code);
-                                                                            document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
-                                                                        }}
-                                                                    >
-                                                                        {jobCode.code}
-                                                                    </Button>
-                                                                ))}
-                                                            </div>
-                                                        </ScrollArea>
-                                                    </PopoverContent>
-                                                </Popover>
-                                                {overtimeForDay && (
-                                                    <Tooltip><TooltipTrigger asChild><Clock className="absolute bottom-0 right-0 h-3 w-3 text-blue-500"/></TooltipTrigger><TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent></Tooltip>
-                                                )}
+                                          <TableCell key={day} className="p-0 text-center relative">
+                                            <Popover>
+                                              <PopoverTrigger asChild>
+                                                <div
+                                                  className={cn(
+                                                    'w-16 h-10 flex items-center justify-center font-bold cursor-pointer relative',
+                                                    code ? colorInfo.bg : 'bg-transparent',
+                                                    code ? colorInfo.text : 'text-foreground'
+                                                  )}
+                                                >
+                                                  {code}
+                                                  {overtimeForDay && (
+                                                    <Tooltip>
+                                                      <TooltipTrigger asChild>
+                                                        <div className="absolute bottom-0 right-0 h-3 w-3">
+                                                            <Clock className="h-full w-full text-blue-500" />
+                                                        </div>
+                                                      </TooltipTrigger>
+                                                      <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                    </Tooltip>
+                                                  )}
                                                 </div>
-                                            </TableCell>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-2">
+                                                <DailyRecordEditor
+                                                  initialCode={code}
+                                                  initialOvertime={overtimeForDay}
+                                                  onSave={(newCode, newOvertime) => handleStatusChange(profile.id, day, newCode, newOvertime)}
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
+                                          </TableCell>
                                         );
-                                    })}
+                                      })}
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
@@ -417,6 +351,9 @@ export default function JobRecordSheet() {
         );
     }
 
+    const defaultTabs = ["SEZ", "DTA", "MTF", "JPC", "SOLAR", "Unassigned"];
+    const allTabs = Array.from(new Set([...defaultTabs, ...plantProjects])).sort();
+
     return (
         <TooltipProvider>
             <div>
@@ -435,22 +372,823 @@ export default function JobRecordSheet() {
                     )}
                 </div>
 
-                <Tabs defaultValue="DTA" className="w-full">
+                <Tabs defaultValue={allTabs[0]} className="w-full">
                     <TabsList>
-                        {Array.from(plantProjects).sort().map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                        <TabsTrigger value="Unassigned">Unassigned</TabsTrigger>
+                        {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
                     </TabsList>
-                    {Array.from(plantProjects).sort().map(plant => (
+                    {allTabs.map(plant => (
                         <TabsContent key={plant} value={plant}>
                             <Button onClick={() => exportToExcel(plant)} className="m-4"><Download className="mr-2 h-4 w-4"/>Export {plant} Sheet</Button>
-                            {renderTableForPlant(plant, groupedProfiles[plant])}
+                            {renderTableForPlant(plant)}
                         </TabsContent>
                     ))}
-                    <TabsContent value="Unassigned">
-                        {renderTableForPlant('Unassigned', groupedProfiles['Unassigned'])}
-                    </TabsContent>
                 </Tabs>
             </div>
         </TooltipProvider>
     );
 }
+
+
+interface DailyRecordEditorProps {
+    initialCode: string;
+    initialOvertime?: number;
+    onSave: (code: string, overtime?: number) => void;
+}
+
+function DailyRecordEditor({ initialCode, initialOvertime, onSave }: DailyRecordEditorProps) {
+    const [code, setCode] = useState(initialCode);
+    const [overtime, setOvertime] = useState(initialOvertime);
+
+    const handleSave = () => {
+        onSave(code.toUpperCase(), overtime);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <Label>Job Code</Label>
+                <div className="grid grid-cols-5 gap-1">
+                    {JOB_CODES.map(jc => (
+                        <Button
+                            key={jc.code}
+                            variant={code === jc.code ? "default" : "outline"}
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setCode(jc.code)}
+                        >
+                            {jc.code}
+                        </Button>
+                    ))}
+                </div>
+            </div>
+            <div>
+                <Label>Overtime Hours (Optional)</Label>
+                <Input 
+                    type="number" 
+                    value={overtime || ''}
+                    onChange={(e) => setOvertime(Number(e.target.value))}
+                    placeholder="e.g., 2.5"
+                />
+            </div>
+            <Button onClick={handleSave} className="w-full">Set</Button>
+        </div>
+    );
+}
+
+```
+  </change>
+  <change>
+    <file>src/lib/types.ts</file>
+    <content><![CDATA[
+
+export type Broadcast = {
+  id: string;
+  message: string;
+  creatorId: string;
+  createdAt: string; // ISO String
+  expiryDate: string; // ISO String
+  recipientUserIds: string[];
+  recipientRoles: string[];
+  dismissedBy: string[];
+};
+
+export type JobRecord = {
+  id: string; // YYYY-MM
+  records: {
+    [employeeId: string]: {
+      days: { [day: number]: string }; // day: 1-31, value: code
+      dailyOvertime?: { [day: number]: number }; // New field for daily OT
+    };
+  };
+  additionalSundayDuty?: { [employeeId: string]: number };
+};
+
+export type PpeInwardRecord = {
+  id: string;
+  date: string; // ISO string
+  ppeType: 'Coverall' | 'Safety Shoes';
+  sizes?: { [size: string]: number };
+  quantity?: number;
+  addedByUserId: string;
+};
+
+export type IgpOgpItem = {
+  id: string;
+  itemName: string;
+  quantity: number;
+  uom: string;
+};
+
+export type IgpOgpRecord = {
+  id: string;
+  type: 'IGP' | 'OGP';
+  mrnNumber: string;
+  date: string; // ISO String
+  location: string;
+  materialInBy?: string;
+  materialOutBy?: string;
+  items: IgpOgpItem[];
+  creatorId: string;
+};
+
+export type Vendor = {
+  id: string;
+  name: string;
+  category?: string;
+  ownerId?: string;
+  totalSpend?: number;
+  last30Days?: number;
+  nextPaymentAmount?: number;
+  nextPaymentDate?: string; // ISO String
+  frequency?: 'Monthly' | 'Rolling' | 'Annual';
+  ownerDept?: string;
+  icon?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  gstNumber?: string;
+};
+
+export type PaymentStatus = 'Pending' | 'Approved' | 'Rejected' | 'Paid' | 'Cancelled' | 'Email Sent' | 'Amount Listed Out';
+
+export type Payment = {
+    id: string;
+    requesterId: string;
+    approverId?: string;
+    vendorId: string;
+    amount: number;
+    date: string; // ISO String
+    durationFrom?: string; // ISO String
+    durationTo?: string; // ISO String
+    emailSentDate?: string; // ISO String
+    status: PaymentStatus;
+    remarks?: string;
+    comments: Comment[];
+    purchaseRegisterId?: string;
+};
+
+export type PurchaseItem = {
+    id: string;
+    name: string;
+    uom: string;
+    unitRate: number;
+    quantity: number;
+    tax: number;
+};
+
+export type PurchaseRegister = {
+    id: string;
+    vendorId: string;
+    creatorId: string;
+    date: string; // ISO String
+    items: PurchaseItem[];
+    subTotal: number;
+    totalTax: number;
+    grandTotal: number;
+    durationFrom: string | null;
+    durationTo: string | null;
+    emailSentDate: string | null;
+    poNumber?: string;
+};
+
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: Role;
+  status?: 'active' | 'locked' | 'deactivated';
+  password?: string;
+  supervisorId?: string;
+  projectId?: string;
+  planningScore?: number;
+};
+
+export type PasswordResetRequest = {
+  id: string;
+  userId: string;
+  email: string;
+  date: string; // ISO String
+  status: 'pending' | 'handled';
+  resetCode?: string;
+};
+
+export type UnlockRequest = {
+  id: string;
+  userId: string;
+  userName: string;
+  date: string; // ISO String
+  status: 'pending' | 'resolved';
+};
+
+export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pending Approval' | 'Overdue' | 'Completed';
+export type Priority = 'Low' | 'Medium' | 'High';
+export type ApprovalState = 'none' | 'pending' | 'approved' | 'returned';
+
+export type Subtask = {
+    userId: string;
+    status: TaskStatus;
+    updatedAt: string; // ISO String
+};
+
+export type Task = {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  assigneeId: string; // DEPRECATED in favor of assigneeIds
+  assigneeIds: string[];
+  subtasks?: { [userId: string]: Subtask };
+  creatorId: string;
+  dueDate: string; // ISO String
+  priority: Priority;
+  comments: Comment[];
+  participants?: string[];
+  lastUpdated?: string;
+  viewedBy?: { [key: string]: boolean };
+  requiresAttachmentForCompletion?: boolean;
+  attachment?: {
+    name: string;
+    url: string; 
+  };
+  approvalState: ApprovalState;
+  approverId?: string;
+  pendingStatus?: TaskStatus | null;
+  previousStatus?: TaskStatus | null;
+  completionDate?: string;
+  pendingAssigneeId?: string | null;
+  viewedByApprover?: boolean;
+  isViewedByAssignee?: boolean;
+  viewedByRequester?: boolean;
+};
+
+export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
+
+export type PlannerEvent = {
+  id: string;
+  title: string;
+  description?: string;
+  date: string; // ISO String of the start date
+  userId: string; // Who the event is for
+  creatorId: string; // Who created the event
+  frequency: Frequency;
+  comments: Comment[];
+};
+
+
+export type AchievementStatus = 'pending' | 'approved' | 'rejected';
+
+export type Achievement = {
+  id: string;
+  userId: string;
+  title: string;
+  description:string;
+  points: number;
+  date: string; // YYYY-MM-DD
+  type: 'system' | 'manual';
+  status: AchievementStatus;
+  awardedById?: string; // Manager's user ID for manual awards
+};
+
+
+export const ALL_PERMISSIONS = [
+  'manage_users',
+  'manage_roles',
+  'manage_projects',
+  'manage_branding',
+  'manage_tasks',
+  'manage_planner',
+  'manage_incidents',
+  'manage_achievements',
+  'manage_vehicles',
+  'manage_manpower',
+  'manage_manpower_list',
+  'approve_store_requests',
+  'manage_inventory',
+  'manage_equipment_status',
+  'manage_announcements',
+  'view_performance_reports',
+  'view_activity_logs',
+  'manage_accommodation',
+  'log_manpower',
+  'manage_job_schedule',
+  'prepare_master_schedule',
+  'manage_ppe_stock',
+  'view_ppe_requests',
+  'manage_ppe_request',
+  'view_internal_store_request',
+  'manage_store_requests',
+  'manage_vendors',
+  'manage_payments',
+  'manage_purchase_register',
+  'manage_password_resets',
+  'manage_igp_ogp',
+  'manage_feedback',
+  'manage_user_lock_status',
+  'create_broadcast',
+] as const;
+
+export type Permission = (typeof ALL_PERMISSIONS)[number];
+
+export type Role = string;
+
+export type RoleDefinition = {
+  id: string;
+  name: string;
+  permissions: readonly Permission[] | Permission[];
+  isEditable?: boolean;
+};
+
+export type Project = {
+  id: string;
+  name: string;
+  isPlant?: boolean; // New field to distinguish job record plants
+};
+
+export type ActivityLog = {
+  id: string;
+  userId: string;
+  action: string;
+  timestamp: string; // ISO string
+  details?: string;
+};
+
+export type Vehicle = {
+  id:string;
+  vehicleNumber: string;
+  driverId: string;
+  vendorName?: string;
+  seatingCapacity: number;
+  vapAccess?: string[];
+  vapValidity?: string; // YYYY-MM-DD
+  insuranceValidity?: string; // YYYY-MM-DD
+  fitnessValidity?: string; // YYYY-MM-DD
+  taxValidity?: string; // YYYY-MM-DD
+  puccValidity?: string; // YYYY-MM-DD
+};
+
+export type Driver = {
+  id: string;
+  name: string;
+  photo: string;
+  licenseNumber: string;
+  epNumber?: string;
+  sdpNumber?: string;
+  epExpiry?: string;
+  medicalExpiry?: string;
+  safetyExpiry?: string;
+  sdpExpiry?: string;
+  woExpiry?: string;
+  labourContractExpiry?: string;
+  wcPolicyExpiry?: string;
+  licenseExpiry?: string;
+};
+
+export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Pending' | 'Resolved' | 'Closed';
+
+export type Comment = {
+  id: string;
+  userId: string;
+  text: string;
+  date: string; // ISO String
+  isRead?: boolean;
+};
+
+export type IncidentReport = {
+    id: string;
+    reporterId: string;
+    reportTime: string; // ISO string
+    incidentTime: string; // ISO string
+    projectId: string;
+    unitArea: string;
+    incidentDetails: string;
+    status: IncidentStatus;
+    reportedToUserIds: string[];
+    isPublished: boolean;
+    comments: Comment[];
+    lastUpdated: string; // ISO string
+    viewedBy: { [key: string]: boolean }; // Object of user IDs
+};
+
+
+export type ManpowerTrade = {
+  id: string;
+  name: string;
+  trade: string;
+  company: string;
+};
+
+export type Trade = string;
+export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
+export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
+
+export type MemoRecord = {
+    id: string;
+    type: 'Memo' | 'Warning Letter';
+    date: string; // ISO String
+    reason: string;
+    issuedBy: string;
+};
+
+export type PpeHistoryRecord = {
+  id: string;
+  ppeType: 'Coverall' | 'Safety Shoes';
+  size: string;
+  quantity?: number;
+  issueDate: string; // ISO String
+  requestType: 'New' | 'Replacement';
+  remarks?: string;
+  storeComment?: string;
+  requestId?: string;
+  issuedById?: string;
+  approverId?: string;
+};
+
+export type ManpowerProfile = {
+  id: string;
+  name: string;
+  trade: Trade;
+  status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated' | 'Left the Project';
+  photo?: string;
+  
+  // Personal Details
+  mobileNumber?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  dob?: string; // Date of Birth
+  aadharNumber?: string;
+  uanNumber?: string;
+  coverallSize?: string;
+  shoeSize?: string;
+
+  // Identifiers
+  hardCopyFileNo?: string;
+  documentFolderUrl?: string;
+  
+  // Work Details
+  workOrderNumber?: string;
+  labourLicenseNo?: string;
+  eic?: string; 
+  joiningDate?: string; // ISO
+  plant?: string; // New field for job record plant assignment
+
+  // Policy & Card Details
+  wcPolicyNumber?: string;
+  cardCategory?: string;
+  cardType?: string;
+  epNumber?: string;
+  
+  // Documents and Skills
+  documents: ManpowerDocument[];
+  skills?: Skill[];
+
+  // Validity Dates
+  passIssueDate?: string; // ISO
+  workOrderExpiryDate?: string; // ISO, replaces woValidity
+  wcPolicyExpiryDate?: string; // ISO, replaces wcPolicyValidity
+  labourLicenseExpiryDate?: string; // ISO, new
+  medicalExpiryDate?: string; // ISO
+  safetyExpiryDate?: string; // ISO
+  irataValidity?: string; // ISO
+  firstAidExpiryDate?: string; // ISO
+  contractValidity?: string; // ISO
+  
+  // Leave and Termination
+  leaveHistory?: { [key: string]: LeaveRecord };
+  memoHistory?: MemoRecord[];
+  ppeHistory?: { [key: string]: PpeHistoryRecord };
+
+  terminationDate?: string; // ISO
+  resignationDate?: string; // ISO
+  feedback?: string;
+
+  // Remarks
+  remarks?: string;
+};
+
+export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received';
+
+export type ManpowerDocument = {
+    name: string;
+    details?: string;
+    status: DocumentStatus;
+};
+
+export type LeaveRecord = {
+    id: string;
+    leaveType?: 'Emergency' | 'Annual';
+    leaveStartDate: string; // ISO String
+    plannedEndDate?: string; // ISO String
+    leaveEndDate?: string; // ISO String
+    rejoinedDate?: string; // ISO String
+    remarks?: string;
+};
+
+export type Skill = {
+    name: string;
+    details: string;
+    link?: string;
+    validity?: string; // ISO String
+};
+
+export type ManpowerLog = {
+  id: string;
+  projectId: string;
+  date: string; // YYYY-MM-DD
+  countIn: number;
+  personInName?: string;
+  countOut: number;
+  personOutName?: string;
+  countOnLeave: number;
+  personOnLeaveName?: string;
+  reason: string;
+  updatedBy: string;
+  yesterdayCount: number;
+  total: number;
+};
+
+export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Partially Issued' | 'Disputed' | 'Partially Approved';
+export type InternalRequestItem = {
+    id: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    remarks: string;
+    status: 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+};
+export type InternalRequest = {
+  id: string;
+  requesterId: string;
+  date: string; // YYYY-MM-DD
+  items: InternalRequestItem[];
+  status: InternalRequestStatus; // This will now be a summary status
+  approverId?: string;
+  comments: Comment[];
+  viewedByRequester: boolean;
+  acknowledgedByRequester?: boolean;
+};
+
+export type ManagementRequestStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export type ManagementRequest = {
+    id: string;
+    requesterId: string;
+    recipientId: string;
+    approverId?: string;
+    date: string;
+    subject: string;
+    body: string;
+    status: ManagementRequestStatus;
+    comments: Comment[];
+    viewedByRequester: boolean;
+}
+
+export type PpeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Disputed';
+
+export type PpeRequest = {
+  id: string;
+  requesterId: string;
+  manpowerId: string;
+  ppeType: 'Coverall' | 'Safety Shoes';
+  size: string;
+  quantity?: number;
+  requestType: 'New' | 'Replacement';
+  remarks?: string;
+  date: string; // ISO
+  status: PpeRequestStatus;
+  approverId?: string;
+  issuedById?: string;
+  comments: Comment[];
+  viewedByRequester: boolean;
+  attachmentUrl?: string;
+  eligibility?: {
+    eligible: boolean;
+    reason: string;
+  } | null;
+  newRequestJustification?: string;
+};
+
+
+export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired';
+
+export type InventoryItem = {
+  id: string;
+  name: string;
+  serialNumber: string;
+  ariesId?: string;
+  chestCrollNo?: string;
+  status: InventoryItemStatus;
+  projectId: string;
+  inspectionDate?: string; // ISO string
+  inspectionDueDate?: string; // ISO string
+  tpInspectionDueDate?: string; // ISO string
+  lastUpdated: string; // ISO string
+  remarks?: string;
+};
+
+export type UTMachine = {
+  id: string;
+  machineName: string;
+  serialNumber: string;
+  projectId: string;
+  unit: string;
+  calibrationDueDate: string; // ISO String
+  probeDetails: string;
+  cableDetails: string;
+  status: string;
+};
+
+export type DftMachine = {
+    id: string;
+    machineName: string;
+    serialNumber: string;
+    projectId: string;
+    unit: string;
+    calibrationDueDate: string; // ISO String
+    probeDetails: string;
+    cableDetails: string;
+    status: string;
+};
+
+export type DigitalCamera = {
+  id: string;
+  make: string;
+  model: string;
+  serialNumber: string;
+  allottedTo: string; // User ID
+  status: string;
+  projectId: string;
+  remarks?: string;
+};
+
+export type Anemometer = {
+  id: string;
+  make: string;
+  model: string;
+  serialNumber: string;
+  allottedTo: string; // User ID
+  status: string;
+  projectId: string;
+  calibrationDueDate?: string; // ISO String
+  remarks?: string;
+};
+
+export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
+
+export type MobileSim = {
+  id: string;
+  type: 'Mobile' | 'SIM';
+  provider: string;
+  number: string;
+  allottedToUserId: string;
+  allotmentDate: string; // ISO string
+  projectId: string;
+  status: MobileSimStatus;
+  remarks?: string;
+};
+
+export type LaptopDesktop = {
+    id: string;
+    make: string;
+    model: string;
+    serialNumber: string;
+    allottedTo: string; // User ID
+    ariesId?: string;
+    password?: string;
+    remarks?: string;
+};
+
+export type OtherEquipment = {
+    id: string;
+    equipmentName: string;
+    serialNumber: string;
+    allottedTo: string; // User ID
+    remarks?: string;
+};
+
+export type MachineLog = {
+    id: string;
+    machineId: string;
+    userName: string;
+    loggedByUserId: string;
+    date: string; // YYYY-MM-DD
+    fromTime: string; // HH:mm
+    toTime: string; // HH:mm
+    location: string;
+    jobDescription: string;
+    status: 'Active' | 'Idle';
+    reason?: string;
+    attachmentUrl?: string;
+    startingKm?: number;
+    endingKm?: number;
+};
+
+export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';
+export type CertificateRequestStatus = 'Pending' | 'Completed' | 'Rejected';
+
+export type CertificateRequest = {
+  id: string;
+  requesterId: string;
+  requestType: CertificateRequestType;
+  itemId?: string; // For InventoryItem
+  utMachineId?: string; // For UTMachine
+  dftMachineId?: string; // For DftMachine
+  status: CertificateRequestStatus;
+  requestDate: string; // ISO String
+  completionDate?: string; // ISO String
+  remarks?: string;
+  comments: Comment[];
+  viewedByRequester?: boolean;
+};
+
+export type AnnouncementStatus = 'pending' | 'approved' | 'rejected' | 'returned';
+
+export type Announcement = {
+  id: string;
+  title: string;
+  content: string;
+  creatorId: string;
+  approverId: string;
+  status: AnnouncementStatus;
+  createdAt: string; // ISO String
+  comments: {
+    userId: string;
+    text: string;
+    date: string;
+  }[];
+  dismissedBy?: string[];
+  notifyAll?: boolean;
+};
+
+export type DailyPlannerComment = {
+  id: string; // composite key: `${YYYY-MM-DD}_${plannerUserId}`
+  plannerUserId: string; // The user whose planner this comment belongs to
+  day: string; // YYYY-MM-DD
+  comments: Comment[];
+  lastUpdated: string;
+  viewedBy: { [key: string]: boolean };
+};
+
+export type Bed = {
+  id: string;
+  bedNumber: string;
+  bedType: 'Bunk' | 'Single';
+  occupantId?: string; // ManpowerProfile ID
+};
+
+export type Room = {
+  id: string;
+  roomNumber: string;
+  beds: Bed[];
+};
+
+export type Building = {
+  id: string;
+  buildingNumber: string;
+  rooms: Room[];
+};
+
+export type JobScheduleItem = {
+  id: string;
+  manpowerIds: string[];
+  jobType: string;
+  jobNo: string;
+  projectVesselName: string;
+  location: string;
+  reportingTime: string; // HH:mm
+  clientContact: string;
+  vehicleId?: string;
+  remarks?: string;
+};
+
+export type JobSchedule = {
+  id: string; // composite key: `${projectId}_${YYYY-MM-DD}`
+  projectId: string;
+  date: string; // YYYY-MM-DD
+  supervisorId: string;
+  items: JobScheduleItem[];
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
+  isLocked?: boolean;
+};
+
+export type PpeStock = {
+  id: 'coveralls' | 'safetyShoes';
+  name: string;
+  sizes?: { [size: string]: number }; // For coveralls
+  quantity?: number; // For safety shoes
+  lastUpdated: string; // ISO
+};
+
+export type FeedbackStatus = 'New' | 'In Progress' | 'Resolved';
+
+export type Feedback = {
+  id: string;
+  userId: string;
+  subject: string;
+  message: string;
+  date: string; // ISO String
+  status: FeedbackStatus;
+  viewedBy?: { [key: string]: boolean };
+};
