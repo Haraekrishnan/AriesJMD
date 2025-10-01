@@ -10,7 +10,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-admin',
     name: 'Admin',
     permissions: [...ALL_PERMISSIONS],
-    isEditable: false,
+    isEditable: true,
   },
   {
     id: 'role-manager',
