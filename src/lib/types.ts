@@ -1,8 +1,4 @@
 
-
-
-
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -18,12 +14,9 @@ export type JobRecord = {
   records: {
     [employeeId: string]: {
       days: { [day: number]: string }; // day: 1-31, value: code
+      dailyOvertime?: { [day: number]: number }; // New field for daily OT
     };
   };
-  plantAssignments?: {
-    [employeeId: string]: 'DTA' | 'SEZ' | 'DTA-JPC' | 'MTF';
-  };
-  overtime?: { [employeeId: string]: number };
   additionalSundayDuty?: { [employeeId: string]: number };
 };
 
@@ -268,6 +261,7 @@ export type RoleDefinition = {
 export type Project = {
   id: string;
   name: string;
+  isPlant?: boolean; // New field to distinguish job record plants
 };
 
 export type ActivityLog = {
@@ -394,6 +388,7 @@ export type ManpowerProfile = {
   labourLicenseNo?: string;
   eic?: string; 
   joiningDate?: string; // ISO
+  plant?: string; // New field for job record plant assignment
 
   // Policy & Card Details
   wcPolicyNumber?: string;

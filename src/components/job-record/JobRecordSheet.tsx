@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -8,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSunday } from 'date-fns';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle } from 'lucide-react';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,55 +19,25 @@ import { Label } from '../ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
-const PLANT_OPTIONS = ['DTA', 'SEZ', 'DTA-JPC', 'MTF'];
 
 export default function JobRecordSheet() {
-    const { manpowerProfiles, jobRecords, saveJobRecord } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const { toast } = useToast();
     const [localCellValues, setLocalCellValues] = useState<Record<string, string>>({});
     
     const monthKey = format(currentMonth, 'yyyy-MM');
-    
+
     const dayHeaders = useMemo(() => 
         Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), 
     [currentMonth]);
 
-    const plantAssignments = useMemo(() => {
-        return jobRecords[monthKey]?.plantAssignments || {};
-    }, [jobRecords, monthKey]);
-    
-    const overtimeData = useMemo(() => {
-        return jobRecords[monthKey]?.overtime || {};
-    }, [jobRecords, monthKey]);
-
-    const additionalSundayDutyData = useMemo(() => {
-        return jobRecords[monthKey]?.additionalSundayDuty || {};
-    }, [jobRecords, monthKey]);
-    
-    const [tempOvertime, setTempOvertime] = useState<{[key: string]: string}>({});
-    const [tempSundayDuty, setTempSundayDuty] = useState<{[key: string]: string}>({});
-    
     const jobRecordForMonth = useMemo(() => {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    useEffect(() => {
-        const initialTempOvertime: {[key: string]: string} = {};
-        for (const profileId in overtimeData) {
-            initialTempOvertime[profileId] = String(overtimeData[profileId]);
-        }
-        setTempOvertime(initialTempOvertime);
-
-        const initialTempSundayDuty: {[key: string]: string} = {};
-        for (const profileId in additionalSundayDutyData) {
-            initialTempSundayDuty[profileId] = String(additionalSundayDutyData[profileId]);
-        }
-        setTempSundayDuty(initialTempSundayDuty);
-
-    }, [overtimeData, additionalSundayDutyData]);
-    
     useEffect(() => {
         const newLocalCellValues: Record<string, string> = {};
         manpowerProfiles.forEach(profile => {
@@ -87,23 +56,28 @@ export default function JobRecordSheet() {
     };
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
-        let finalCode = code;
+        let finalCode = code.toUpperCase();
 
         if (code.includes('+')) {
             const otResponse = prompt(`Enter overtime hours for ${day}${getDaySuffix(day)}:`);
             if (otResponse !== null) {
                 const overtimeHours = parseFloat(otResponse);
                 if (!isNaN(overtimeHours) && overtimeHours > 0) {
-                    const currentTotal = parseFloat(tempOvertime[employeeId] || '0');
-                    const newTotal = currentTotal + overtimeHours;
-                    handleOvertimeChange(employeeId, String(newTotal));
-                    handleOvertimeSave(employeeId, String(newTotal)); // Save immediately
-                    toast({ title: "Overtime Added", description: `${overtimeHours} hours added to total.` });
+                    saveJobRecord(monthKey, employeeId, day, overtimeHours, 'dailyOvertime');
+                    toast({ title: "Overtime Added", description: `${overtimeHours} hours logged for day ${day}.` });
+                } else if (overtimeHours <= 0) {
+                     saveJobRecord(monthKey, employeeId, day, 0, 'dailyOvertime');
                 } else {
                     toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter a valid number for overtime.' });
                 }
             }
             finalCode = code.replace('+', '');
+        } else {
+            // If the code is changed to not include '+', clear any existing overtime for that day
+            const existingOvertime = jobRecordForMonth[employeeId]?.dailyOvertime?.[day];
+            if (existingOvertime) {
+                saveJobRecord(monthKey, employeeId, day, 0, 'dailyOvertime');
+            }
         }
 
         const cellKey = `${employeeId}-${day}`;
@@ -114,30 +88,13 @@ export default function JobRecordSheet() {
     const handlePlantChange = (employeeId: string, plant: string) => {
         saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
     }
-
-    const handleOvertimeChange = (employeeId: string, value: string) => {
-        setTempOvertime(prev => ({ ...prev, [employeeId]: value }));
-    };
-
-    const handleOvertimeSave = (employeeId: string, value: string) => {
-        const hours = parseFloat(value);
-        if (!isNaN(hours) && hours >= 0) {
-            saveJobRecord(monthKey, employeeId, 0, hours, 'overtime');
-        } else if (value === '' || value === undefined) {
-             saveJobRecord(monthKey, employeeId, 0, 0, 'overtime');
-        }
-    };
     
-    const handleSundayDutyChange = (employeeId: string, value: string) => {
-        setTempSundayDuty(prev => ({ ...prev, [employeeId]: value }));
-    };
-
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = parseInt(value, 10);
         if (!isNaN(days) && days >= 0) {
             saveJobRecord(monthKey, employeeId, days, '', 'sundayDuty');
         } else if (value === '' || value === undefined) {
-            saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
+             saveJobRecord(monthKey, employeeId, 0, '', 'sundayDuty');
         }
     };
     
@@ -151,98 +108,139 @@ export default function JobRecordSheet() {
         }
     };
 
-    const exportToExcel = () => {
+    const plantProjects = useMemo(() => {
+        return manpowerProfiles.reduce((acc, profile) => {
+            if (profile.plant) {
+                acc.add(profile.plant);
+            }
+            return acc;
+        }, new Set<string>());
+    }, [manpowerProfiles]);
+
+    const handleAddPlant = () => {
+        const newPlantName = prompt("Enter new plant name:");
+        if (newPlantName) {
+            // Although we don't use the projects context for plants anymore,
+            // adding it here ensures consistency if it's used elsewhere.
+            addProject(newPlantName, true);
+            toast({ title: "Plant Added", description: `You can now assign employees to ${newPlantName}.`});
+        }
+    };
+
+    const handleRemoveFromPlant = (employeeId: string) => {
+        saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
+        toast({ title: 'Employee Unassigned', description: 'The employee has been moved to the Unassigned group.' });
+    };
+
+    const exportToExcel = (plant: string) => {
         const wb = XLSX.utils.book_new();
 
-        [...PLANT_OPTIONS, 'Unassigned'].forEach(plant => {
-            const profiles = groupedProfiles[plant];
-            if (profiles.length === 0) return;
+        const profiles = groupedProfiles[plant];
+        if (profiles.length === 0) {
+            toast({ variant: 'destructive', title: 'No Data', description: `No employees assigned to ${plant} to export.` });
+            return;
+        }
 
-            const sheetData: (string|number)[][] = [];
-            sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
-            sheetData.push([]); 
+        const sheetData: (string|number)[][] = [];
+        sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
+        sheetData.push([]); 
 
-            const header = [
-                'S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training',
-                'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'
-            ];
-            sheetData.push(header);
+        const header = [
+            'S.No', 'Name', ...dayHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training',
+            'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'
+        ];
+        sheetData.push(header);
 
-            profiles.forEach((profile, index) => {
-                const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
-                
-                const offCodes = ['OFF', 'PH', 'OS'];
-                const leaveCodes = ['L', 'X', 'NWS'];
-                const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
-                
-                const summary = dayHeaders.reduce((acc, day) => {
-                    const code = employeeRecord[day];
-                    if (offCodes.includes(code)) acc.offDays++;
-                    if (leaveCodes.includes(code)) acc.leaveDays++;
-                    if (code === 'ML') acc.medicalLeave++;
-                    if (standbyCodes.includes(code)) acc.standbyTraining++;
-                    if (code === 'R') acc.reptOffice++;
-                    if (workCodes.includes(code)) acc.workDays++;
-                    return acc;
-                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
-
-                const totalOvertime = overtimeData[profile.id] || 0;
-                const additionalSundays = additionalSundayDutyData[profile.id] || 0;
-                const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-                
-                const row: (string | number)[] = [index + 1, profile.name];
-                dayHeaders.forEach(day => {
-                    row.push(employeeRecord[day] || '');
-                });
-                row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
-                sheetData.push(row);
-            });
+        profiles.forEach((profile, index) => {
+            const record = jobRecordForMonth[profile.id] || {};
+            const employeeRecord = record.days || {};
+            const dailyOvertime = record.dailyOvertime || {};
             
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-            ws['!cols'] = [{ wch: 5 }, { wch: 25 }];
-            dayHeaders.forEach(() => ws['!cols']?.push({ wch: 5 }));
-            header.slice(3 + dayHeaders.length).forEach(() => ws['!cols']?.push({ wch: 10 }));
+            const offCodes = ['OFF', 'PH', 'OS'];
+            const leaveCodes = ['L', 'X', 'NWS'];
+            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
+            const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
             
-            profiles.forEach((profile, rIndex) => {
-                const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
-                dayHeaders.forEach((day, cIndex) => {
-                    const code = employeeRecord[day] || '';
-                    const colorInfo = JOB_CODE_COLORS[code];
-                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
-                    
-                    if (colorInfo?.excelFill) {
-                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                         ws[cellAddress].s = {
-                            fill: {
-                                patternType: "solid",
-                                fgColor: colorInfo.excelFill.fgColor,
-                            },
-                            font: colorInfo.excelFill.font ? colorInfo.excelFill.font : {}
-                        };
-                    } else {
-                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                    }
-                });
-            });
+            const summary = dayHeaders.reduce((acc, day) => {
+                const code = employeeRecord[day];
+                if (offCodes.includes(code)) acc.offDays++;
+                if (leaveCodes.includes(code)) acc.leaveDays++;
+                if (code === 'ML') acc.medicalLeave++;
+                if (standbyCodes.includes(code)) acc.standbyTraining++;
+                if (code === 'R') acc.reptOffice++;
+                if (workCodes.includes(code)) acc.workDays++;
+                return acc;
+            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-            XLSX.utils.book_append_sheet(wb, ws, plant);
+            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+            const additionalSundays = jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || 0;
+            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+            
+            const row: (string | number)[] = [index + 1, profile.name];
+            dayHeaders.forEach(day => {
+                row.push(employeeRecord[day] || '');
+            });
+            row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
+            sheetData.push(row);
         });
 
-        const legendData = [['CODE', 'JOB DETAILS'], ...JOB_CODES.map(jc => [jc.code, jc.details])];
-        const legendWs = XLSX.utils.aoa_to_sheet(legendData);
-        XLSX.utils.book_append_sheet(wb, legendWs, 'Legend');
+        // Add legend and man-days count
+        sheetData.push([]);
+        sheetData.push(['Job Code Legend & Man-Days Count']);
+        sheetData.push(['Code', 'Job Details', 'Man-Days']);
+        
+        const manDaysCount = JOB_CODES.reduce((acc, jc) => {
+            acc[jc.code] = 0;
+            return acc;
+        }, {} as {[key: string]: number});
+        
+        profiles.forEach(p => {
+            const days = jobRecordForMonth[p.id]?.days || {};
+            Object.values(days).forEach(code => {
+                if (manDaysCount.hasOwnProperty(code)) {
+                    manDaysCount[code]++;
+                }
+            });
+        });
 
-        XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
+        JOB_CODES.forEach(jc => {
+            sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
+        });
+        
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+        ws['!cols'] = [{ wch: 5 }, { wch: 25 }];
+        dayHeaders.forEach(() => ws['!cols']?.push({ wch: 5 }));
+        header.slice(3 + dayHeaders.length).forEach(() => ws['!cols']?.push({ wch: 10 }));
+        
+        profiles.forEach((profile, rIndex) => {
+            const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
+            dayHeaders.forEach((day, cIndex) => {
+                const code = employeeRecord[day] || '';
+                const colorInfo = JOB_CODE_COLORS[code];
+                const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                
+                if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+                
+                if (colorInfo?.excelFill) {
+                     ws[cellAddress].s = {
+                        fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
+                        font: colorInfo.excelFill.font || {}
+                    };
+                }
+            });
+        });
+
+        XLSX.utils.book_append_sheet(wb, ws, plant);
+        XLSX.writeFile(wb, `JobRecord_${plant}_${monthKey}.xlsx`);
     };
 
     const groupedProfiles = useMemo(() => {
-        const groups: { [key: string]: typeof manpowerProfiles } = {
-            'DTA': [], 'SEZ': [], 'DTA-JPC': [], 'MTF': [], 'Unassigned': []
-        };
+        const groups: { [key: string]: typeof manpowerProfiles } = { 'Unassigned': [] };
+        plantProjects.forEach(p => groups[p] = []);
+
         manpowerProfiles.forEach(profile => {
-            const plant = plantAssignments[profile.id] || 'Unassigned';
+            const plant = profile.plant || 'Unassigned';
             if (groups[plant]) {
                 groups[plant].push(profile);
             } else {
@@ -251,52 +249,11 @@ export default function JobRecordSheet() {
         });
         Object.values(groups).forEach(group => group.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
-    }, [manpowerProfiles, plantAssignments]);
-
-    const LegendTable = ({ profiles }: { profiles: typeof manpowerProfiles }) => {
-        const manDaysCount = useMemo(() => {
-            const counts: { [code: string]: number } = {};
-            JOB_CODES.forEach(jc => counts[jc.code] = 0);
-    
-            profiles.forEach(profile => {
-                const employeeRecord = jobRecords[monthKey]?.records?.[profile.id]?.days || {};
-                dayHeaders.forEach(day => {
-                    const code = employeeRecord[day];
-                    if (code && counts.hasOwnProperty(code)) {
-                        counts[code]++;
-                    }
-                });
-            });
-            return counts;
-        }, [profiles, monthKey, jobRecords, dayHeaders]);
-    
-        return (
-            <div className="mt-4">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Code</TableHead>
-                            <TableHead>Job Details</TableHead>
-                            <TableHead className="text-right">Man-Days Count</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {JOB_CODES.map(jc => (
-                            <TableRow key={jc.code}>
-                                <TableCell className="font-bold">{jc.code}</TableCell>
-                                <TableCell>{jc.details}</TableCell>
-                                <TableCell className="text-right font-bold">{manDaysCount[jc.code] || 0}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        );
-    };
+    }, [manpowerProfiles, plantProjects]);
     
     const renderTableForPlant = (plantName: string, profiles: typeof manpowerProfiles) => {
          if (profiles.length === 0) {
-            return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant for this month.</div>
+            return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
         }
         return (
             <>
@@ -323,7 +280,9 @@ export default function JobRecordSheet() {
                     </TableHeader>
                     <TableBody>
                         {profiles.map((profile, index) => {
-                            const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
+                            const record = jobRecordForMonth[profile.id] || {};
+                            const employeeRecord = record.days || {};
+                            const dailyOvertime = record.dailyOvertime || {};
                             
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
@@ -341,19 +300,40 @@ export default function JobRecordSheet() {
                                 return acc;
                             }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                            const totalOvertime = overtimeData[profile.id] || 0;
-                            const additionalSundays = additionalSundayDutyData[profile.id] || 0;
+                            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                            const additionalSundays = jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || 0;
                             const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
                             return (
                                 <TableRow key={profile.id}>
                                     <TableCell className="sticky left-0 bg-card z-10">{index + 1}</TableCell>
-                                    <TableCell className="sticky left-[50px] bg-card z-10 font-medium">{profile.name}</TableCell>
+                                    <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                            {profile.name}
+                                            {user?.role === 'Admin' && plantName !== 'Unassigned' && (
+                                                 <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10"><UserX className="h-4 w-4"/></Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
+                                                            <AlertDialogDescription>This will move the employee to the "Unassigned" group for all months.</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleRemoveFromPlant(profile.id)}>Confirm</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            )}
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={plantAssignments[profile.id]} onValueChange={(value) => handlePlantChange(profile.id, value)}>
+                                        <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
-                                                {[...PLANT_OPTIONS, 'Unassigned'].map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                {[...plantProjects, 'Unassigned'].map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </TableCell>
@@ -361,9 +341,11 @@ export default function JobRecordSheet() {
                                         const cellKey = `${profile.id}-${day}`;
                                         const code = localCellValues[cellKey] ?? '';
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
+                                        const overtimeForDay = record.dailyOvertime?.[day];
 
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative">
+                                                <div className="relative">
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <Input
@@ -401,22 +383,17 @@ export default function JobRecordSheet() {
                                                         </ScrollArea>
                                                     </PopoverContent>
                                                 </Popover>
+                                                {overtimeForDay && (
+                                                    <Tooltip><TooltipTrigger asChild><Clock className="absolute bottom-0 right-0 h-3 w-3 text-blue-500"/></TooltipTrigger><TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent></Tooltip>
+                                                )}
+                                                </div>
                                             </TableCell>
                                         );
                                     })}
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                    <TableCell className="text-center">
-                                      <Input
-                                          type="text"
-                                          value={tempOvertime[profile.id] ?? ''}
-                                          onChange={(e) => handleOvertimeChange(profile.id, e.target.value)}
-                                          onBlur={(e) => handleOvertimeSave(profile.id, e.target.value)}
-                                          className="w-20 h-8 text-center"
-                                          placeholder="0"
-                                      />
-                                    </TableCell>
+                                    <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
                                     <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
@@ -424,8 +401,7 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center">
                                         <Input
                                             type="text"
-                                            value={tempSundayDuty[profile.id] ?? ''}
-                                            onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
+                                            defaultValue={jobRecords[monthKey]?.additionalSundayDuty?.[profile.id] || ''}
                                             onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                             className="w-16 h-8 text-center"
                                             placeholder="0"
@@ -437,14 +413,6 @@ export default function JobRecordSheet() {
                     </TableBody>
                 </Table>
             </div>
-             <Accordion type="single" collapsible className="w-full mt-4">
-                <AccordionItem value="item-1">
-                    <AccordionTrigger className="font-semibold">Job Code Legend & Man-Days Count</AccordionTrigger>
-                    <AccordionContent>
-                        <LegendTable profiles={profiles} />
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
             </>
         );
     }
@@ -462,19 +430,19 @@ export default function JobRecordSheet() {
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
-                    <Button onClick={exportToExcel}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export Excel
-                    </Button>
+                     {user?.role === 'Admin' && (
+                        <Button onClick={handleAddPlant} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                    )}
                 </div>
 
                 <Tabs defaultValue="DTA" className="w-full">
                     <TabsList>
-                        {PLANT_OPTIONS.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                        {Array.from(plantProjects).sort().map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
                         <TabsTrigger value="Unassigned">Unassigned</TabsTrigger>
                     </TabsList>
-                    {PLANT_OPTIONS.map(plant => (
+                    {Array.from(plantProjects).sort().map(plant => (
                         <TabsContent key={plant} value={plant}>
+                            <Button onClick={() => exportToExcel(plant)} className="m-4"><Download className="mr-2 h-4 w-4"/>Export {plant} Sheet</Button>
                             {renderTableForPlant(plant, groupedProfiles[plant])}
                         </TabsContent>
                     ))}

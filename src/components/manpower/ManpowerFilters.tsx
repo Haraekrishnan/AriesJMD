@@ -65,7 +65,7 @@ export default function ManpowerFilters({ onApplyFilters }: ManpowerFiltersProps
                 <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Filter by plant..." /></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Plants</SelectItem>
-                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    {projects.filter(p => p.isPlant).map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
                 </SelectContent>
             </Select>
             
