@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, MoreVertical } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -221,13 +221,13 @@ export default function JobRecordSheet() {
                             ))}
                             <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
                             <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
-                             <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
-                             <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
-                             <TableHead className="text-center min-w-[150px]">Total Standby/Training</TableHead>
-                             <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
-                             <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
-                             <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
-                             <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
+                            <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Total Standby/Training</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
+                            <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -379,50 +379,66 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
     const [code, setCode] = useState(initialCode);
     const [overtime, setOvertime] = useState(initialOvertime);
 
+    useEffect(() => {
+        setCode(initialCode);
+        setOvertime(initialOvertime);
+    }, [initialCode, initialOvertime, popoverOpen]);
+
     const handleSave = () => {
         onSave(code.toUpperCase(), overtime);
         setPopoverOpen(false);
     };
 
     const handleCodeButtonClick = (newCode: string) => {
-        onSave(newCode, overtime);
-        setPopoverOpen(false);
+        setCode(newCode);
     };
 
+    const handleCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newCode = e.target.value.toUpperCase();
+        setCode(newCode);
+        const codeExists = JOB_CODES.some(jc => jc.code === newCode);
+        if (codeExists) {
+            onSave(newCode, overtime);
+            setPopoverOpen(false);
+        }
+    };
+    
     return (
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-            <PopoverTrigger asChild>
-                <div
-                    className={cn(
-                        'w-16 h-10 flex items-center justify-center font-bold cursor-pointer relative',
-                        code ? colorInfo.bg : 'bg-transparent',
-                        code ? colorInfo.text : 'text-foreground'
-                    )}
-                >
-                    {code}
-                    {initialOvertime && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="absolute bottom-0 right-0 h-3 w-3">
-                                    <Clock className="h-full w-full text-blue-500" />
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>
-                        </Tooltip>
-                    )}
-                </div>
-            </PopoverTrigger>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="relative h-10 flex items-center justify-center">
+                        <Input
+                            type="text"
+                            value={code}
+                            onChange={handleCodeInputChange}
+                            onBlur={() => onSave(code, overtime)}
+                            className={cn(
+                                'w-16 h-10 text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
+                                code ? colorInfo.bg : 'bg-transparent',
+                                code ? colorInfo.text : 'text-foreground'
+                            )}
+                        />
+                        {initialOvertime && (
+                            <div className="absolute bottom-0 right-0 h-3 w-3" title={`${initialOvertime} hours OT`}>
+                                <Clock className="h-full w-full text-blue-500" />
+                            </div>
+                        )}
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-4 p-0 rounded-none">
+                                <MoreVertical className="h-3 w-3" />
+                            </Button>
+                        </PopoverTrigger>
+                    </div>
+                </TooltipTrigger>
+                {initialOvertime && <TooltipContent><p>{initialOvertime} hours OT</p></TooltipContent>}
+            </Tooltip>
+
             <PopoverContent className="w-auto p-4" onOpenAutoFocus={(e) => e.preventDefault()}>
                  <div className="space-y-4 w-80">
                      <div>
                         <Label>Job Code</Label>
-                        <Input 
-                            value={code}
-                            onChange={(e) => setCode(e.target.value.toUpperCase())}
-                            placeholder="Type code..."
-                            className="mb-2"
-                        />
-                        <div className="grid grid-cols-5 gap-1">
+                        <div className="grid grid-cols-5 gap-1 mt-2">
                             {JOB_CODES.map(jc => (
                                 <Button
                                     key={jc.code}
@@ -438,10 +454,10 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
                     </div>
                     <div>
                         <Label>Overtime Hours (Optional)</Label>
-                        <Input 
-                            type="number" 
+                        <Input
+                            type="number"
                             value={overtime || ''}
-                            onChange={(e) => setOvertime(Number(e.target.value) || undefined)}
+                            onChange={(e) => setOvertime(e.target.value === '' ? undefined : Number(e.target.value))}
                             placeholder="e.g., 2.5"
                         />
                     </div>
@@ -451,3 +467,4 @@ function DailyRecordEditor({ initialCode, initialOvertime, onSave, colorInfo }: 
         </Popover>
     );
 }
+
