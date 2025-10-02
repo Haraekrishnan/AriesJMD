@@ -13,6 +13,7 @@ import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { uploadFile } from '@/lib/storage';
 import { createAndSendNotification } from '@/app/actions/sendNotificationEmail';
+import { JOB_CODES } from '@/lib/job-codes';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -252,7 +253,7 @@ type AppContextType = {
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
   addJobRecordPlant: (plantName: string) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number, codeOrPlantOrHours: string | number, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number | null, codeOrPlantOrHours: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -1430,7 +1431,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addJobRecordPlant = useCallback((plantName: string) => {
     const newRef = push(ref(rtdb, 'jobRecordPlants'));
     set(newRef, { name: plantName, id: newRef.key });
-  }, []);
+    addActivityLog(user?.id || 'system', 'Job Record Plant Added', `Added: ${plantName}`);
+  }, [user, addActivityLog]);
 
   const updateProject = useCallback((updatedProject: Project) => {
     const { id, ...data } = updatedProject;
@@ -2577,7 +2579,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `mobileSims/${id}`), data);
     addActivityLog(user.id, 'Mobile/SIM Updated', item.number);
   }, [user, addActivityLog]);
-  
+
   const deleteMobileSim = useCallback((itemId: string) => {
     if (!user) return;
     const item = mobileSims.find(i => i.id === itemId);
@@ -2938,25 +2940,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number, codeOrPlantOrHours: string | number, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number | null, codeOrPlantOrHours: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
     if (type === 'status') {
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [dayOrValue]: codeOrPlantOrHours });
+      const code = (codeOrPlantOrHours as string)?.toUpperCase();
+      const isValidCode = JOB_CODES.some(jc => jc.code === code);
+      if (!isValidCode && code !== '') {
+          toast({
+              title: "Invalid Job Code",
+              description: `The code "${code}" is not a valid job code.`,
+              variant: "destructive"
+          });
+          return;
+      }
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [dayOrValue!]: code || null });
     } else if (type === 'plant') {
       update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant: codeOrPlantOrHours });
     } else if (type === 'dailyOvertime') {
       const day = dayOrValue as number;
-      const hours = codeOrPlantOrHours as number;
+      const hours = codeOrPlantOrHours as (number | null);
       const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${day}`;
-      if (hours > 0) {
+      if (hours && hours > 0) {
         set(ref(rtdb, path), hours);
       } else {
         set(ref(rtdb, path), null);
       }
     } else if (type === 'sundayDuty') {
-      const sundayDuty = dayOrValue as number;
+      const sundayDuty = dayOrValue;
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { additionalSundayDuty: sundayDuty });
     }
-  }, []);
+  }, [toast]);
 
   const lockJobSchedule = useCallback((date: string) => {
     const updates: { [key: string]: any } = {};

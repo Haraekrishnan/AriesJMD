@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, MoreVertical, ChevronsUpDown, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, MoreVertical, ChevronsUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -20,12 +21,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
-
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject, jobRecordPlants, projects } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, addJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [activePopover, setActivePopover] = useState<string | null>(null);
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -49,26 +50,25 @@ export default function JobRecordSheet() {
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
-        update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant });
+       saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
     }
     
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? null : parseInt(value, 10);
-        if (!isNaN(days as number) && (days as number) >= 0) {
-            saveJobRecord(monthKey, employeeId, days as number, 'sundayDuty', 'sundayDuty');
+        if (days !== null && !isNaN(days) && days >= 0) {
+            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
         } else if (value === '') {
-            saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
+             saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
         }
     };
     
-     const plantProjects = useMemo(() => {
-        const plantsFromProjects = projects.filter(p => p.isPlant).map(p => p.name);
+    const plantProjects = useMemo(() => {
         const plantsFromJobRecords = jobRecordPlants.map(p => p.name);
-        return Array.from(new Set([...plantsFromProjects, ...plantsFromJobRecords])).sort();
-    }, [projects, jobRecordPlants]);
+        return Array.from(new Set([...plantsFromJobRecords])).sort();
+    }, [jobRecordPlants]);
 
     const handleRemoveFromPlant = (employeeId: string) => {
-        update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant: 'Unassigned' });
+        saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
         toast({ title: 'Employee Unassigned', description: 'The employee has been moved to the Unassigned group.' });
     };
 
@@ -242,139 +242,165 @@ export default function JobRecordSheet() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                            {profiles.map((profile, index) => {
-                                const record = jobRecordForMonth[profile.id] || {};
-                                const employeeRecord = record.days || {};
-                                const dailyOvertime = record.dailyOvertime || {};
-                                
-                                const offCodes = ['OFF', 'PH', 'OS'];
-                                const leaveCodes = ['L', 'X', 'NWS'];
-                                const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                                const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
-                                
-                                const summary = dayHeaders.reduce((acc, day) => {
-                                    const code = employeeRecord[day];
-                                    if (offCodes.includes(code)) acc.offDays++;
-                                    if (leaveCodes.includes(code)) acc.leaveDays++;
-                                    if (code === 'ML') acc.medicalLeave++;
-                                    if (standbyCodes.includes(code)) acc.standbyTraining++;
-                                    if (code === 'R') acc.reptOffice++;
-                                    if (workCodes.includes(code)) acc.workDays++;
-                                    return acc;
-                                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+                        {profiles.map((profile, index) => {
+                            const record = jobRecordForMonth[profile.id] || {};
+                            const employeeRecord = record.days || {};
+                            const dailyOvertime = record.dailyOvertime || {};
+                            
+                            const offCodes = ['OFF', 'PH', 'OS'];
+                            const leaveCodes = ['L', 'X', 'NWS'];
+                            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
+                            const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                            
+                            const summary = dayHeaders.reduce((acc, day) => {
+                                const code = employeeRecord[day];
+                                if (offCodes.includes(code)) acc.offDays++;
+                                if (leaveCodes.includes(code)) acc.leaveDays++;
+                                if (code === 'ML') acc.medicalLeave++;
+                                if (standbyCodes.includes(code)) acc.standbyTraining++;
+                                if (code === 'R') acc.reptOffice++;
+                                if (workCodes.includes(code)) acc.workDays++;
+                                return acc;
+                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                                const additionalSundays = record.additionalSundayDuty || 0;
-                                const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-                                const isExpanded = expandedRows.has(profile.id);
+                            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                            const additionalSundays = record.additionalSundayDuty || 0;
+                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                            const isExpanded = expandedRows.has(profile.id);
 
-                                return (
-                                    <React.Fragment key={profile.id}>
-                                    <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-10">
-                                            <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
-                                                {index + 1}
-                                                <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200 ml-2", isExpanded && "rotate-180")} />
-                                            </Button>
-                                        </TableCell>
-                                        <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                {profile.name}
-                                                {user?.role === 'Admin' && plantName !== 'Unassigned' && (
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10"><UserX className="h-4 w-4"/></Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
-                                                                <AlertDialogDescription>This will move the employee to the "Unassigned" group for all months.</AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleRemoveFromPlant(profile.id)}>Confirm</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
+                            return (
+                                <React.Fragment key={profile.id}>
+                                <TableRow>
+                                    <TableCell className="sticky left-0 bg-card z-10">
+                                         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
+                                            {index + 1}
+                                            {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                            {profile.name}
+                                            {user?.role === 'Admin' && plantName !== 'Unassigned' && (
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10"><UserX className="h-4 w-4"/></Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
+                                                            <AlertDialogDescription>This will move the employee to the "Unassigned" group for all months.</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleRemoveFromPlant(profile.id)}>Confirm</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="sticky left-[250px] bg-card z-10">
+                                        <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
+                                            <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    {dayHeaders.map(day => {
+                                        const code = employeeRecord[day] || '';
+                                        const overtimeForDay = dailyOvertime[day] || 0;
+                                        const colorInfo = JOB_CODE_COLORS[code] || {};
+                                        const cellId = `${profile.id}-${day}`;
+                                        return (
+                                        <TableCell key={day} className="p-0 text-center relative w-[70px] min-w-[70px]">
+                                            <div className="relative h-10 flex items-center justify-center">
+                                            <Input
+                                                type="text"
+                                                defaultValue={code}
+                                                onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase())}
+                                                className={cn(
+                                                    'w-full h-full text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
+                                                    code ? colorInfo.bg : 'bg-transparent',
+                                                    code ? colorInfo.text : 'text-foreground'
                                                 )}
+                                            />
+                                            {overtimeForDay > 0 && (
+                                                <Tooltip>
+                                                <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
+                                                    <Clock className="h-full w-full text-blue-500" />
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                </Tooltip>
+                                            )}
+                                            <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="absolute left-0 top-0 h-full w-4 opacity-0 hover:opacity-100 bg-black/10">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-80">
+                                                    <div className="grid grid-cols-4 gap-1">
+                                                        {JOB_CODES.map(jc => (
+                                                            <Button
+                                                                key={jc.code}
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    handleStatusChange(profile.id, day, jc.code);
+                                                                    setActivePopover(null);
+                                                                }}
+                                                            >
+                                                                {jc.code}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky left-[250px] bg-card z-10">
-                                            <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
-                                                <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
-                                                <SelectContent>
-                                                    {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        {dayHeaders.map(day => {
-                                            const code = employeeRecord[day] || '';
-                                            const overtimeForDay = dailyOvertime[day] || 0;
-                                            const colorInfo = JOB_CODE_COLORS[code] || {};
-                                            return (
-                                            <TableCell key={day} className="p-0 text-center relative w-[70px] min-w-[70px]">
-                                                <div className="relative h-10 flex items-center justify-center">
+                                        );
+                                    })}
+                                    <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
+                                    <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
+                                    <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
+                                    <TableCell className="text-center font-bold">{salaryDays}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Input
+                                            type="number"
+                                            defaultValue={record.additionalSundayDuty || ''}
+                                            onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
+                                            className="w-16 h-8 text-center"
+                                            placeholder="0"
+                                        />
+                                    </TableCell>
+                                </TableRow>
+                                {isExpanded && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
+                                        {dayHeaders.map(day => (
+                                            <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
                                                 <Input
-                                                    type="text"
-                                                    defaultValue={code}
-                                                    onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase())}
-                                                    className={cn(
-                                                        'w-full h-full text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
-                                                        code ? colorInfo.bg : 'bg-transparent',
-                                                        code ? colorInfo.text : 'text-foreground'
-                                                    )}
+                                                    type="number"
+                                                    placeholder="0"
+                                                    defaultValue={dailyOvertime[day] || ''}
+                                                    onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                    className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                 />
-                                                {overtimeForDay > 0 && (
-                                                    <Tooltip>
-                                                    <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                        <Clock className="h-full w-full text-blue-500" />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                    </Tooltip>
-                                                )}
-                                                </div>
                                             </TableCell>
-                                            );
-                                        })}
-                                        <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
-                                        <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
-                                        <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                        <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
-                                        <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
-                                        <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
-                                        <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
-                                        <TableCell className="text-center font-bold">{salaryDays}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Input
-                                                type="number"
-                                                defaultValue={record.additionalSundayDuty || ''}
-                                                onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                                className="w-16 h-8 text-center"
-                                                placeholder="0"
-                                            />
-                                        </TableCell>
+                                        ))}
+                                        <TableCell colSpan={9} className="bg-muted/50"></TableCell>
                                     </TableRow>
-                                    {isExpanded && (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
-                                            {dayHeaders.map(day => (
-                                                <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
-                                                    <Input
-                                                        type="number"
-                                                        placeholder="0"
-                                                        defaultValue={dailyOvertime[day] || ''}
-                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                    />
-                                                </TableCell>
-                                            ))}
-                                            <TableCell colSpan={9} className="bg-muted/50"></TableCell>
-                                        </TableRow>
-                                    )}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </TableBody>
+                                )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </TableBody>
                 </Table>
             </div>
         );
