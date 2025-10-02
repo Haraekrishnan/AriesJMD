@@ -230,10 +230,9 @@ export default function JobRecordSheet() {
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
 
     const manDaysCountByCode = useMemo(() => {
+        if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
-        if (jobCodes) {
-            jobCodes.forEach(jc => counts[jc.code] = 0);
-        }
+        jobCodes.forEach(jc => counts[jc.code] = 0);
 
         manpowerProfiles.forEach(p => {
             const days = jobRecordForMonth[p.id]?.days || {};
@@ -355,7 +354,7 @@ export default function JobRecordSheet() {
                                                         defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value, code)}
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none border-x-0 border-y-0 pr-6',
+                                                            'w-full h-full text-center font-bold rounded-none border-x-0 border-y-0',
                                                             code ? colorInfo.bg : 'bg-transparent',
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
