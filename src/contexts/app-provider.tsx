@@ -12,7 +12,7 @@ import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { uploadFile } from '@/lib/storage';
 import { createAndSendNotification } from '@/app/actions/sendNotificationEmail';
-import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
+import { JOB_CODES as INITIAL_JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -428,6 +428,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
   
+    // Seed initial data if it doesn't exist
+    const seedData = async () => {
+        const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
+        if (!jobCodesSnapshot.exists()) {
+            const updates: { [key: string]: any } = {};
+            INITIAL_JOB_CODES.forEach(jc => {
+                const newRef = push(ref(rtdb, 'jobCodes'));
+                updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
+            });
+            await update(ref(rtdb), updates);
+        }
+    };
+    seedData();
+
     if (!user) {
       setLoading(false);
       // Clear all state when user logs out
