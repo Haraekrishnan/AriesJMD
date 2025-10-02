@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -53,7 +53,6 @@ export default function JobRecordSheet() {
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert the input value to the original
             e.target.value = originalCode;
         }
     };
@@ -241,7 +240,7 @@ export default function JobRecordSheet() {
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center w-[90px] min-w-[90px]">
+                                <TableHead key={day} className="text-center w-[100px] min-w-[100px]">
                                     {day}
                                 </TableHead>
                             ))}
@@ -328,17 +327,18 @@ export default function JobRecordSheet() {
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         const cellId = `${profile.id}-${day}`;
                                         return (
-                                            <TableCell key={day} className="p-0 text-center relative w-[90px] min-w-[90px]">
+                                            <TableCell key={day} className="p-0 text-center relative w-[100px] min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
                                                     <Input
                                                         type="text"
                                                         defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(e, profile.id, day)}
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border-input border',
+                                                            'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border-input border pr-6',
                                                             code ? colorInfo.bg : 'bg-transparent',
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
+                                                        style={{borderColor: 'hsl(var(--border))'}}
                                                     />
                                                      {overtimeForDay > 0 && (
                                                         <Tooltip>
@@ -350,8 +350,8 @@ export default function JobRecordSheet() {
                                                     )}
                                                     <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
                                                         <PopoverTrigger asChild>
-                                                          <Button variant="ghost" size="icon" className="absolute left-0 top-0 h-full w-6">
-                                                                <GripVertical className="h-4 w-4" />
+                                                          <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-6">
+                                                                <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-80">
@@ -362,7 +362,7 @@ export default function JobRecordSheet() {
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={(e) => {
-                                                                            const target = e.currentTarget.parentElement?.parentElement?.parentElement?.parentElement?.previousSibling?.querySelector('input');
+                                                                            const target = e.currentTarget.closest('.relative')?.querySelector('input');
                                                                             if (target) {
                                                                                 target.value = jc.code;
                                                                                 target.dispatchEvent(new Event('blur', { bubbles: true }));
