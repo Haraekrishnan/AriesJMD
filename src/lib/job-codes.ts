@@ -1,6 +1,5 @@
 
 export const JOB_CODES = [
-    { code: 'ZE', details: 'SEZ COKER- ELECTRICAL / LIGHT FIXING', jobNo: 'IRA 1454' },
     { code: 'ZCU', details: 'SEZ PLANT - CUI JOB', jobNo: 'IRA 1434' },
     { code: 'ZPB', details: 'SEZ FCC-PP BAR INSTALATION', jobNo: 'IRA1390' },
     { code: 'ZI', details: 'SEZ REFINERY AREA - INSULATION REPAIR JOB', jobNo: 'IRA 1337' },
@@ -36,6 +35,7 @@ export const JOB_CODES = [
     { code: 'MTF', details: 'MTF PLANT - FOAM POURER CHAMBER RELATED JOBS', jobNo: 'IRA 1288' },
     { code: 'MTS', details: 'MTF PLANT - SPRINKLER SPOOL REPLACEMENT', jobNo: 'IRA 1287' },
     { code: 'MTC', details: 'MTF-CRYOGENIC- Corroded Scaffolding Removal Job.', jobNo: 'IRA1438' },
+    { code: 'ZE', details: 'SEZ COKER- ELECTRICAL / LIGHT FIXING', jobNo: 'IRA 1454' },
     { code: 'X', details: 'MISS PUNCH - NO PUNCHING / LATE PUNCHING', jobNo: '' },
     { code: 'KD', details: 'KITCHEN DUTY', jobNo: '' },
     { code: 'Q', details: 'QUARANTINE', jobNo: '' },
