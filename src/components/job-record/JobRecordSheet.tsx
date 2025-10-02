@@ -41,18 +41,20 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
 
     const handleStatusChange = (employeeId: string, day: number, code: string, originalValue: string) => {
-        if (code === originalValue) return; // No change
+        const upperCaseCode = code.toUpperCase();
+        if (upperCaseCode === originalValue) return; // No change
 
-        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode) || upperCaseCode === '';
         
         if (isValidCode) {
-            saveJobRecord(monthKey, employeeId, day, code, 'status');
+            saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
         } else {
             toast({
                 title: "Invalid Job Code",
-                description: `The code "${code}" is not a valid job code.`,
+                description: `The code "${upperCaseCode}" is not a valid job code.`,
                 variant: "destructive"
             });
+            // Revert the input visually
             const inputEl = document.getElementById(`jobcode-${employeeId}-${day}`) as HTMLInputElement | null;
             if (inputEl) inputEl.value = originalValue;
         }
@@ -228,9 +230,10 @@ export default function JobRecordSheet() {
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
 
     const manDaysCountByCode = useMemo(() => {
-        if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
-        jobCodes.forEach(jc => counts[jc.code] = 0);
+        if (jobCodes) {
+            jobCodes.forEach(jc => counts[jc.code] = 0);
+        }
 
         manpowerProfiles.forEach(p => {
             const days = jobRecordForMonth[p.id]?.days || {};
@@ -253,11 +256,11 @@ export default function JobRecordSheet() {
                 <Table className="min-w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-10 w-[50px]">S.No</TableHead>
+                            <TableHead className="sticky left-0 bg-card z-10 w-[50px]"></TableHead>
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center w-[100px] min-w-[100px]">
+                                <TableHead key={day} className="text-center min-w-[100px]">
                                     {day}
                                 </TableHead>
                             ))}
@@ -344,15 +347,15 @@ export default function JobRecordSheet() {
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         const cellId = `${profile.id}-${day}`;
                                         return (
-                                            <TableCell key={day} className="p-0 text-center relative w-[100px] min-w-[100px]">
+                                            <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
                                                     <Input
                                                         id={`jobcode-${profile.id}-${day}`}
                                                         type="text"
                                                         defaultValue={code}
-                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase(), code)}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value, code)}
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none border pr-6',
+                                                            'w-full h-full text-center font-bold rounded-none border-x-0 border-y-0 pr-6',
                                                             code ? colorInfo.bg : 'bg-transparent',
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
@@ -481,7 +484,7 @@ export default function JobRecordSheet() {
                         </AccordionTrigger>
                         <AccordionContent>
                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                            {jobCodes.map(jc => (
+                            {jobCodes && jobCodes.map(jc => (
                                 <div key={jc.code} className="flex items-start gap-4 text-xs">
                                     <div className="font-bold w-12">{jc.code}</div>
                                     <div className="flex-1">
