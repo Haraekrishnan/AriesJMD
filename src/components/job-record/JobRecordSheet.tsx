@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,7 @@ export default function JobRecordSheet() {
         }
     };
     
-    const plantProjects = useMemo(() => {
+     const plantProjects = useMemo(() => {
         const plantsFromProjects = projects.filter(p => p.isPlant).map(p => p.name);
         const plantsFromJobRecords = jobRecordPlants.map(p => p.name);
         return Array.from(new Set([...plantsFromProjects, ...plantsFromJobRecords])).sort();
@@ -299,7 +299,7 @@ export default function JobRecordSheet() {
                                         </TableCell>
                                         {dayHeaders.map(day => {
                                             const code = employeeRecord[day] || '';
-                                            const overtimeForDay = dailyOvertime[day];
+                                            const overtimeForDay = dailyOvertime[day] || 0;
                                             const colorInfo = JOB_CODE_COLORS[code] || {};
                                             return (
                                             <TableCell key={day} className="p-0 text-center relative w-[70px] min-w-[70px]">
@@ -344,23 +344,21 @@ export default function JobRecordSheet() {
                                             />
                                         </TableCell>
                                     </TableRow>
-                                    <AccordionContent asChild>
-                                        <TableRow className={cn(!expandedRows.includes(profile.id) && 'hidden')}>
-                                            <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
-                                            {dayHeaders.map(day => (
-                                                <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
-                                                    <Input
-                                                        type="number"
-                                                        placeholder="0"
-                                                        defaultValue={dailyOvertime[day] || ''}
-                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                    />
-                                                </TableCell>
-                                            ))}
-                                            <TableCell colSpan={9} className="bg-muted/50"></TableCell>
-                                        </TableRow>
-                                    </AccordionContent>
+                                    <TableRow className={cn(!expandedRows.includes(profile.id) && 'hidden')}>
+                                        <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
+                                        {dayHeaders.map(day => (
+                                            <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
+                                                <Input
+                                                    type="number"
+                                                    placeholder="0"
+                                                    defaultValue={dailyOvertime[day] || ''}
+                                                    onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                    className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                />
+                                            </TableCell>
+                                        ))}
+                                        <TableCell colSpan={9} className="bg-muted/50"></TableCell>
+                                    </TableRow>
                                     </React.Fragment>
                                 );
                             })}
@@ -407,5 +405,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
 
     
