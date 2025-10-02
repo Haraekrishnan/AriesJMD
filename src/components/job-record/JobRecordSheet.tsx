@@ -228,6 +228,7 @@ export default function JobRecordSheet() {
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
 
     const manDaysCountByCode = useMemo(() => {
+        if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
         jobCodes.forEach(jc => counts[jc.code] = 0);
 
@@ -351,7 +352,7 @@ export default function JobRecordSheet() {
                                                         defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase(), code)}
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border pr-6',
+                                                            'w-full h-full text-center font-bold rounded-none border pr-6',
                                                             code ? colorInfo.bg : 'bg-transparent',
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
