@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -19,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS } = useAppContext();
@@ -375,7 +375,7 @@ export default function JobRecordSheet() {
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-80">
                                                             <div className="grid grid-cols-4 gap-1">
-                                                                {jobCodes.map(jc => (
+                                                                {jobCodes && jobCodes.map(jc => (
                                                                     <Button
                                                                         key={jc.code}
                                                                         variant="outline"
