@@ -23,7 +23,7 @@ import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject, jobRecordPlants } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, addJobRecordPlant, jobRecordPlants, projects } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const { toast } = useToast();
@@ -42,8 +42,9 @@ export default function JobRecordSheet() {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
     };
     
-    const handleOvertimeChange = (employeeId: string, day: number, hours: number) => {
-        saveJobRecord(monthKey, employeeId, day, hours, 'dailyOvertime');
+    const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
+        const numericHours = Number(hours);
+        saveJobRecord(monthKey, employeeId, day, isNaN(numericHours) ? 0 : numericHours, 'dailyOvertime');
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -212,7 +213,7 @@ export default function JobRecordSheet() {
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center min-w-[60px] w-[60px]">
+                                <TableHead key={day} className="text-center w-[60px] min-w-[60px]">
                                     {day}
                                 </TableHead>
                             ))}
@@ -348,7 +349,7 @@ export default function JobRecordSheet() {
                                                             type="number"
                                                             placeholder="0"
                                                             defaultValue={dailyOvertime[day] || ''}
-                                                            onBlur={(e) => handleOvertimeChange(profile.id, day, Number(e.target.value) || 0)}
+                                                            onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                             className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                         />
                                                     </TableCell>
