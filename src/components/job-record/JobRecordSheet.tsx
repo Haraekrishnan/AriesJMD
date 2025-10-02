@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
-import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
@@ -20,11 +19,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import AddJobCodeDialog from './AddJobCodeDialog';
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
+    const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activePopover, setActivePopover] = useState<string | null>(null);
     const { toast } = useToast();
@@ -42,7 +43,7 @@ export default function JobRecordSheet() {
     const handleStatusChange = (employeeId: string, day: number, code: string, originalValue: string) => {
         if (code === originalValue) return; // No change
 
-        const isValidCode = JOB_CODES.some(jc => jc.code === code) || code === '';
+        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
         
         if (isValidCode) {
             saveJobRecord(monthKey, employeeId, day, code, 'status');
@@ -125,7 +126,7 @@ export default function JobRecordSheet() {
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                const workCodes = jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code);
                 
                 const summary = dayHeaders.reduce((acc, day) => {
                     const code = employeeRecord[day];
@@ -155,7 +156,7 @@ export default function JobRecordSheet() {
             sheetData.push(['Job Code Legend & Man-Days Count']);
             sheetData.push(['Code', 'Job Details', 'Man-Days']);
             
-            const manDaysCount = JOB_CODES.reduce((acc, jc) => {
+            const manDaysCount = jobCodes.reduce((acc, jc) => {
                 acc[jc.code] = 0;
                 return acc;
             }, {} as {[key: string]: number});
@@ -169,7 +170,7 @@ export default function JobRecordSheet() {
                 });
             });
 
-            JOB_CODES.forEach(jc => {
+            jobCodes.forEach(jc => {
                 sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
             });
             
@@ -228,7 +229,7 @@ export default function JobRecordSheet() {
 
     const manDaysCountByCode = useMemo(() => {
         const counts: { [key: string]: number } = {};
-        JOB_CODES.forEach(jc => counts[jc.code] = 0);
+        jobCodes.forEach(jc => counts[jc.code] = 0);
 
         manpowerProfiles.forEach(p => {
             const days = jobRecordForMonth[p.id]?.days || {};
@@ -239,7 +240,7 @@ export default function JobRecordSheet() {
             });
         });
         return counts;
-    }, [jobRecordForMonth, manpowerProfiles]);
+    }, [jobRecordForMonth, manpowerProfiles, jobCodes]);
     
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
@@ -279,7 +280,7 @@ export default function JobRecordSheet() {
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
                             const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                            const workCodes = JOB_CODES.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code);
+                            const workCodes = jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code);
                             
                             const summary = dayHeaders.reduce((acc, day) => {
                                 const code = employeeRecord[day];
@@ -350,7 +351,7 @@ export default function JobRecordSheet() {
                                                         defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase(), code)}
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border-input border pr-6',
+                                                            'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border pr-6',
                                                             code ? colorInfo.bg : 'bg-transparent',
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
@@ -372,7 +373,7 @@ export default function JobRecordSheet() {
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-80">
                                                             <div className="grid grid-cols-4 gap-1">
-                                                                {JOB_CODES.map(jc => (
+                                                                {jobCodes.map(jc => (
                                                                     <Button
                                                                         key={jc.code}
                                                                         variant="outline"
@@ -454,7 +455,10 @@ export default function JobRecordSheet() {
                      <div className="flex items-center gap-2">
                         <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
                         {user?.role === 'Admin' && (
-                            <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                            <>
+                                <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
+                                <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                            </>
                         )}
                     </div>
                 </div>
@@ -476,7 +480,7 @@ export default function JobRecordSheet() {
                         </AccordionTrigger>
                         <AccordionContent>
                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                            {JOB_CODES.map(jc => (
+                            {jobCodes.map(jc => (
                                 <div key={jc.code} className="flex items-start gap-4 text-xs">
                                     <div className="font-bold w-12">{jc.code}</div>
                                     <div className="flex-1">
@@ -492,6 +496,7 @@ export default function JobRecordSheet() {
                 </Accordion>
             </div>
             <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
+            <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
         </TooltipProvider>
     );
 }

@@ -1,5 +1,6 @@
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -10,6 +11,13 @@ export type Broadcast = {
   recipientUserIds: string[];
   dismissedBy: string[];
   emailTarget: 'none' | 'roles' | 'individuals';
+};
+
+export type JobCode = {
+  id: string;
+  code: string;
+  details: string;
+  jobNo: string;
 };
 
 export type JobRecord = {
@@ -264,6 +272,7 @@ export type RoleDefinition = {
 export type Project = {
   id: string;
   name: string;
+  isPlant?: boolean;
 };
 
 export type ActivityLog = {
