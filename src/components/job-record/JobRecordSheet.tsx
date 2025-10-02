@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import AddJobCodeDialog from './AddJobCodeDialog';
 
 export default function JobRecordSheet() {
@@ -40,11 +39,11 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    const handleStatusChange = (employeeId: string, day: number, code: string, originalValue: string) => {
+    const handleStatusChange = useCallback((employeeId: string, day: number, code: string, originalValue: string) => {
         const upperCaseCode = code.toUpperCase();
         if (upperCaseCode === originalValue) return; // No change
 
-        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode) || upperCaseCode === '';
+        const isValidCode = (jobCodes && jobCodes.some(jc => jc.code === upperCaseCode)) || upperCaseCode === '';
         
         if (isValidCode) {
             saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
@@ -58,7 +57,7 @@ export default function JobRecordSheet() {
             const inputEl = document.getElementById(`jobcode-${employeeId}-${day}`) as HTMLInputElement | null;
             if (inputEl) inputEl.value = originalValue;
         }
-    };
+    }, [jobCodes, monthKey, saveJobRecord, toast]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const numericHours = Number(hours);
@@ -354,7 +353,7 @@ export default function JobRecordSheet() {
                                                         defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value, code)}
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none border-x-0 border-y-0',
+                                                            'w-full h-full text-center font-bold rounded-none border border-input focus-visible:ring-1 focus-visible:ring-ring',
                                                             code ? colorInfo.bg : 'bg-transparent',
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
