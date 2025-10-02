@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -23,10 +22,10 @@ import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, addJobRecordPlant, jobRecordPlants, projects } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject, jobRecordPlants, projects } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
-    const [expandedRows, setExpandedRows] = useState<string[]>([]);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -40,24 +39,25 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
 
     const handleStatusChange = (employeeId: string, day: number, code: string) => {
-        saveJobRecord(monthKey, employeeId, day, code, 'status');
+        saveJobRecord(monthKey, employeeId, day, code.toUpperCase(), 'status');
     };
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const numericHours = Number(hours);
-        saveJobRecord(monthKey, employeeId, day, isNaN(numericHours) ? 0 : numericHours, 'dailyOvertime');
+        const finalHours = isNaN(numericHours) || numericHours <= 0 ? null : numericHours;
+        saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
-        saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
+        update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant });
     }
     
     const handleSundayDutySave = (employeeId: string, value: string) => {
-        const days = value === '' ? 0 : parseInt(value, 10);
-        if (!isNaN(days) && days >= 0) {
-            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
+        const days = value === '' ? null : parseInt(value, 10);
+        if (!isNaN(days as number) && (days as number) >= 0) {
+            saveJobRecord(monthKey, employeeId, days as number, 'sundayDuty', 'sundayDuty');
         } else if (value === '') {
-            saveJobRecord(monthKey, employeeId, 0, 'sundayDuty', 'sundayDuty');
+            saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
         }
     };
     
@@ -68,8 +68,20 @@ export default function JobRecordSheet() {
     }, [projects, jobRecordPlants]);
 
     const handleRemoveFromPlant = (employeeId: string) => {
-        saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
+        update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant: 'Unassigned' });
         toast({ title: 'Employee Unassigned', description: 'The employee has been moved to the Unassigned group.' });
+    };
+
+    const toggleRow = (profileId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(profileId)) {
+                newSet.delete(profileId);
+            } else {
+                newSet.add(profileId);
+            }
+            return newSet;
+        });
     };
 
     const exportToExcel = () => {
@@ -137,7 +149,7 @@ export default function JobRecordSheet() {
             profiles.forEach(p => {
                 const days = jobRecordForMonth[p.id]?.days || {};
                 Object.values(days).forEach(code => {
-                    if (manDaysCount.hasOwnProperty(code)) {
+                    if (manDaysCount.hasOwnProperty(code as string)) {
                         manDaysCount[code as string]++;
                     }
                 });
@@ -207,7 +219,6 @@ export default function JobRecordSheet() {
         }
         return (
             <div className="overflow-x-auto">
-                <Accordion type="multiple" value={expandedRows} onValueChange={setExpandedRows} asChild>
                 <Table className="min-w-full">
                     <TableHeader>
                         <TableRow>
@@ -255,17 +266,16 @@ export default function JobRecordSheet() {
                                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                                 const additionalSundays = record.additionalSundayDuty || 0;
                                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                                const isExpanded = expandedRows.has(profile.id);
 
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow>
                                         <TableCell className="sticky left-0 bg-card z-10">
-                                            <AccordionTrigger value={profile.id} asChild>
-                                                <Button variant="ghost" size="sm" className="w-full justify-start">
-                                                    {index + 1}
-                                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-2" />
-                                                </Button>
-                                            </AccordionTrigger>
+                                            <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
+                                                {index + 1}
+                                                <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200 ml-2", isExpanded && "rotate-180")} />
+                                            </Button>
                                         </TableCell>
                                         <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
                                             <div className="flex items-center gap-2">
@@ -344,27 +354,28 @@ export default function JobRecordSheet() {
                                             />
                                         </TableCell>
                                     </TableRow>
-                                    <TableRow className={cn(!expandedRows.includes(profile.id) && 'hidden')}>
-                                        <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
-                                        {dayHeaders.map(day => (
-                                            <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
-                                                <Input
-                                                    type="number"
-                                                    placeholder="0"
-                                                    defaultValue={dailyOvertime[day] || ''}
-                                                    onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                    className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                />
-                                            </TableCell>
-                                        ))}
-                                        <TableCell colSpan={9} className="bg-muted/50"></TableCell>
-                                    </TableRow>
+                                    {isExpanded && (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
+                                            {dayHeaders.map(day => (
+                                                <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        defaultValue={dailyOvertime[day] || ''}
+                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                    />
+                                                </TableCell>
+                                            ))}
+                                            <TableCell colSpan={9} className="bg-muted/50"></TableCell>
+                                        </TableRow>
+                                    )}
                                     </React.Fragment>
                                 );
                             })}
                         </TableBody>
                 </Table>
-                </Accordion>
             </div>
         );
     }
@@ -406,6 +417,3 @@ export default function JobRecordSheet() {
     );
 }
 
-    
-
-    
