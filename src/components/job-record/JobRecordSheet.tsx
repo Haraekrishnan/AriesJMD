@@ -53,7 +53,7 @@ export default function JobRecordSheet() {
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            e.target.value = originalCode;
+            e.target.value = originalCode; // Revert the input value
         }
     };
     
@@ -362,10 +362,10 @@ export default function JobRecordSheet() {
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={(e) => {
-                                                                            const target = e.currentTarget.closest('.relative')?.querySelector('input');
-                                                                            if (target) {
-                                                                                target.value = jc.code;
-                                                                                target.dispatchEvent(new Event('blur', { bubbles: true }));
+                                                                            const inputEl = (e.currentTarget.closest('td') as HTMLElement)?.querySelector('input');
+                                                                            if (inputEl) {
+                                                                                inputEl.value = jc.code;
+                                                                                saveJobRecord(monthKey, profile.id, day, jc.code, 'status');
                                                                             }
                                                                             setActivePopover(null);
                                                                         }}
