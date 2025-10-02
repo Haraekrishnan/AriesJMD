@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -19,9 +19,10 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, addJobRecordPlant } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -38,10 +39,8 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    const handleStatusChange = (e: React.FocusEvent<HTMLInputElement>, employeeId: string, day: number) => {
-        const code = e.target.value.toUpperCase();
-        const originalCode = jobRecordForMonth[employeeId]?.days?.[day] || '';
-        if (code === originalCode) return; // No change
+    const handleStatusChange = (employeeId: string, day: number, code: string, originalValue: string) => {
+        if (code === originalValue) return; // No change
 
         const isValidCode = JOB_CODES.some(jc => jc.code === code) || code === '';
         
@@ -53,7 +52,8 @@ export default function JobRecordSheet() {
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            e.target.value = originalCode; // Revert the input value
+            const inputEl = document.getElementById(`jobcode-${employeeId}-${day}`) as HTMLInputElement | null;
+            if (inputEl) inputEl.value = originalValue;
         }
     };
     
@@ -225,6 +225,21 @@ export default function JobRecordSheet() {
     }, [manpowerProfiles, plantProjects]);
     
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
+
+    const manDaysCountByCode = useMemo(() => {
+        const counts: { [key: string]: number } = {};
+        JOB_CODES.forEach(jc => counts[jc.code] = 0);
+
+        manpowerProfiles.forEach(p => {
+            const days = jobRecordForMonth[p.id]?.days || {};
+            Object.values(days).forEach(code => {
+                if (counts.hasOwnProperty(code as string)) {
+                    counts[code as string]++;
+                }
+            });
+        });
+        return counts;
+    }, [jobRecordForMonth, manpowerProfiles]);
     
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
@@ -264,7 +279,7 @@ export default function JobRecordSheet() {
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
                             const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                            const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                            const workCodes = JOB_CODES.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code);
                             
                             const summary = dayHeaders.reduce((acc, day) => {
                                 const code = employeeRecord[day];
@@ -330,9 +345,10 @@ export default function JobRecordSheet() {
                                             <TableCell key={day} className="p-0 text-center relative w-[100px] min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
                                                     <Input
+                                                        id={`jobcode-${profile.id}-${day}`}
                                                         type="text"
                                                         defaultValue={code}
-                                                        onBlur={(e) => handleStatusChange(e, profile.id, day)}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase(), code)}
                                                         className={cn(
                                                             'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border-input border pr-6',
                                                             code ? colorInfo.bg : 'bg-transparent',
@@ -348,7 +364,7 @@ export default function JobRecordSheet() {
                                                         <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
                                                         </Tooltip>
                                                     )}
-                                                    <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
+                                                     <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
                                                         <PopoverTrigger asChild>
                                                           <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-6">
                                                                 <MoreHorizontal className="h-4 w-4" />
@@ -361,12 +377,10 @@ export default function JobRecordSheet() {
                                                                         key={jc.code}
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        onClick={(e) => {
-                                                                            const inputEl = (e.currentTarget.closest('td') as HTMLElement)?.querySelector('input');
-                                                                            if (inputEl) {
-                                                                                inputEl.value = jc.code;
-                                                                                saveJobRecord(monthKey, profile.id, day, jc.code, 'status');
-                                                                            }
+                                                                        onClick={() => {
+                                                                            handleStatusChange(profile.id, day, jc.code, code);
+                                                                            const inputEl = document.getElementById(`jobcode-${profile.id}-${day}`) as HTMLInputElement | null;
+                                                                            if (inputEl) inputEl.value = jc.code;
                                                                             setActivePopover(null);
                                                                         }}
                                                                     >
@@ -455,9 +469,29 @@ export default function JobRecordSheet() {
                         </TabsContent>
                     ))}
                 </Tabs>
+                <Accordion type="single" collapsible className="w-full mt-4">
+                    <AccordionItem value="item-1">
+                        <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
+                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {format(currentMonth, 'MMMM')}</div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                           <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                            {JOB_CODES.map(jc => (
+                                <div key={jc.code} className="flex items-start gap-4 text-xs">
+                                    <div className="font-bold w-12">{jc.code}</div>
+                                    <div className="flex-1">
+                                        <p>{jc.details}</p>
+                                        {jc.jobNo && <p className="text-muted-foreground">Job No: {jc.jobNo}</p>}
+                                    </div>
+                                    <div className="font-semibold">{manDaysCountByCode[jc.code] || 0}</div>
+                                </div>
+                            ))}
+                           </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </div>
             <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
         </TooltipProvider>
     );
 }
-
