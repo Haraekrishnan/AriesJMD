@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, MoreVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, MoreVertical, ChevronsUpDown } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -16,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -24,7 +23,7 @@ import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, addJobRecordPlant, jobRecordPlants } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, addProject, jobRecordPlants } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const { toast } = useToast();
@@ -39,11 +38,12 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    const handleStatusChange = (employeeId: string, day: number, code: string, overtimeHours?: number) => {
+    const handleStatusChange = (employeeId: string, day: number, code: string) => {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
-        if (overtimeHours !== undefined) {
-             saveJobRecord(monthKey, employeeId, day, overtimeHours, 'dailyOvertime');
-        }
+    };
+    
+    const handleOvertimeChange = (employeeId: string, day: number, hours: number) => {
+        saveJobRecord(monthKey, employeeId, day, hours, 'dailyOvertime');
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -58,10 +58,12 @@ export default function JobRecordSheet() {
             saveJobRecord(monthKey, employeeId, 0, 'sundayDuty', 'sundayDuty');
         }
     };
-
+    
     const plantProjects = useMemo(() => {
-      return (jobRecordPlants || []).map(p => p.name).sort();
-    }, [jobRecordPlants]);
+        const plantsFromProjects = projects.filter(p => p.isPlant).map(p => p.name);
+        const plantsFromJobRecords = jobRecordPlants.map(p => p.name);
+        return Array.from(new Set([...plantsFromProjects, ...plantsFromJobRecords])).sort();
+    }, [projects, jobRecordPlants]);
 
     const handleRemoveFromPlant = (employeeId: string) => {
         saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
@@ -194,7 +196,7 @@ export default function JobRecordSheet() {
         return groups;
     }, [manpowerProfiles, plantProjects]);
     
-    const allTabs = Array.from(new Set([...plantProjects, "Unassigned"])).sort();
+    const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
     
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
@@ -210,7 +212,7 @@ export default function JobRecordSheet() {
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center min-w-[70px] w-[70px]">
+                                <TableHead key={day} className="text-center min-w-[60px] w-[60px]">
                                     {day}
                                 </TableHead>
                             ))}
@@ -225,103 +227,140 @@ export default function JobRecordSheet() {
                             <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody>
-                        {profiles.map((profile, index) => {
-                            const record = jobRecordForMonth[profile.id] || {};
-                            const employeeRecord = record.days || {};
-                            const dailyOvertime = record.dailyOvertime || {};
-                            
-                            const offCodes = ['OFF', 'PH', 'OS'];
-                            const leaveCodes = ['L', 'X', 'NWS'];
-                            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                            const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
-                            
-                            const summary = dayHeaders.reduce((acc, day) => {
-                                const code = employeeRecord[day];
-                                if (offCodes.includes(code)) acc.offDays++;
-                                if (leaveCodes.includes(code)) acc.leaveDays++;
-                                if (code === 'ML') acc.medicalLeave++;
-                                if (standbyCodes.includes(code)) acc.standbyTraining++;
-                                if (code === 'R') acc.reptOffice++;
-                                if (workCodes.includes(code)) acc.workDays++;
-                                return acc;
-                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+                    <Accordion type="multiple" asChild>
+                        <TableBody>
+                            {profiles.map((profile, index) => {
+                                const record = jobRecordForMonth[profile.id] || {};
+                                const employeeRecord = record.days || {};
+                                const dailyOvertime = record.dailyOvertime || {};
+                                
+                                const offCodes = ['OFF', 'PH', 'OS'];
+                                const leaveCodes = ['L', 'X', 'NWS'];
+                                const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
+                                const workCodes = ["MTP","ZPT","ZE","MCT","ZCU","ZRS","ZPB","Z","RGR","ZC","ZP","DC","DRS","SP","DCR","SWS","DD","RRT","DA","ZPS","C2L","DP","SWR","SWP","NT","C2C","DR","2CL","C2M","IIR","PVS","MTM","MTB","MTT","MTF","MTS","KD","ZI","ZS","ZB","DRR","MTJ", "MTC", "CRY", "MTI", "MTL", "SWB"];
+                                
+                                const summary = dayHeaders.reduce((acc, day) => {
+                                    const code = employeeRecord[day];
+                                    if (offCodes.includes(code)) acc.offDays++;
+                                    if (leaveCodes.includes(code)) acc.leaveDays++;
+                                    if (code === 'ML') acc.medicalLeave++;
+                                    if (standbyCodes.includes(code)) acc.standbyTraining++;
+                                    if (code === 'R') acc.reptOffice++;
+                                    if (workCodes.includes(code)) acc.workDays++;
+                                    return acc;
+                                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                            const additionalSundays = record.additionalSundayDuty || 0;
-                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                                const additionalSundays = record.additionalSundayDuty || 0;
+                                const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
-                            return (
-                                <TableRow key={profile.id}>
-                                    <TableCell className="sticky left-0 bg-card z-10">{index + 1}</TableCell>
-                                    <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            {profile.name}
-                                            {user?.role === 'Admin' && plantName !== 'Unassigned' && (
-                                                 <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10"><UserX className="h-4 w-4"/></Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
-                                                            <AlertDialogDescription>This will move the employee to the "Unassigned" group for all months.</AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleRemoveFromPlant(profile.id)}>Confirm</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
-                                            <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </TableCell>
-                                    {dayHeaders.map(day => {
-                                        const code = employeeRecord[day] || '';
-                                        const overtimeForDay = dailyOvertime[day];
-                                        const colorInfo = JOB_CODE_COLORS[code] || {};
-                                        return (
-                                          <TableCell key={day} className="p-0 text-center relative w-[70px] min-w-[70px]">
-                                            <DailyRecordEditor
-                                              employeeId={profile.id}
-                                              day={day}
-                                              initialCode={code}
-                                              initialOvertime={overtimeForDay}
-                                              onSave={(newCode, newOvertime) => handleStatusChange(profile.id, day, newCode, newOvertime)}
-                                              colorInfo={colorInfo}
-                                            />
-                                          </TableCell>
-                                        );
-                                      })}
-                                    <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                    <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
-                                    <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
-                                    <TableCell className="text-center font-bold">{salaryDays}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Input
-                                            type="number"
-                                            defaultValue={record.additionalSundayDuty || ''}
-                                            onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                            className="w-16 h-8 text-center"
-                                            placeholder="0"
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
+                                return (
+                                    <AccordionItem value={profile.id} key={profile.id} className="border-none">
+                                        <TableRow>
+                                            <TableCell className="sticky left-0 bg-card z-10">
+                                                 <AccordionTrigger>
+                                                    {index + 1}
+                                                </AccordionTrigger>
+                                            </TableCell>
+                                            <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    {profile.name}
+                                                    {user?.role === 'Admin' && plantName !== 'Unassigned' && (
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10"><UserX className="h-4 w-4"/></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>This will move the employee to the "Unassigned" group for all months.</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleRemoveFromPlant(profile.id)}>Confirm</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="sticky left-[250px] bg-card z-10">
+                                                <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
+                                                    <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            {dayHeaders.map(day => {
+                                                const code = employeeRecord[day] || '';
+                                                const overtimeForDay = dailyOvertime[day];
+                                                const colorInfo = JOB_CODE_COLORS[code] || {};
+                                                return (
+                                                <TableCell key={day} className="p-0 text-center relative w-[60px] min-w-[60px]">
+                                                    <div className="relative h-10 flex items-center justify-center">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={code}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase())}
+                                                        className={cn(
+                                                            'w-full h-full text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
+                                                            code ? colorInfo.bg : 'bg-transparent',
+                                                            code ? colorInfo.text : 'text-foreground'
+                                                        )}
+                                                    />
+                                                    {overtimeForDay > 0 && (
+                                                        <Tooltip>
+                                                        <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
+                                                            <Clock className="h-full w-full text-blue-500" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                    </div>
+                                                </TableCell>
+                                                );
+                                            })}
+                                            <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
+                                            <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
+                                            <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
+                                            <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
+                                            <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
+                                            <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
+                                            <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
+                                            <TableCell className="text-center font-bold">{salaryDays}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Input
+                                                    type="number"
+                                                    defaultValue={record.additionalSundayDuty || ''}
+                                                    onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
+                                                    className="w-16 h-8 text-center"
+                                                    placeholder="0"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                        <AccordionContent asChild>
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
+                                                {dayHeaders.map(day => (
+                                                    <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="0"
+                                                            defaultValue={dailyOvertime[day] || ''}
+                                                            onBlur={(e) => handleOvertimeChange(profile.id, day, Number(e.target.value) || 0)}
+                                                            className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                        />
+                                                    </TableCell>
+                                                ))}
+                                                <TableCell colSpan={9} className="bg-muted/50"></TableCell>
+                                            </TableRow>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                );
+                            })}
+                        </TableBody>
+                    </Accordion>
                 </Table>
             </div>
         );
@@ -363,106 +402,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-
-interface DailyRecordEditorProps {
-    employeeId: string;
-    day: number;
-    initialCode: string;
-    initialOvertime?: number;
-    onSave: (code: string, overtime?: number) => void;
-    colorInfo: { bg?: string; text?: string };
-}
-
-function DailyRecordEditor({ employeeId, day, initialCode, initialOvertime, onSave, colorInfo }: DailyRecordEditorProps) {
-    const [popoverOpen, setPopoverOpen] = useState(false);
-    const [code, setCode] = useState(initialCode);
-    const [overtime, setOvertime] = useState(initialOvertime);
-
-    useEffect(() => {
-        setCode(initialCode);
-        setOvertime(initialOvertime);
-    }, [initialCode, initialOvertime, popoverOpen]);
-
-    const handleSave = () => {
-        onSave(code.toUpperCase(), overtime);
-        setPopoverOpen(false);
-    };
-
-    const handleCodeButtonClick = (newCode: string) => {
-        setCode(newCode);
-        onSave(newCode, overtime);
-        setPopoverOpen(false);
-    };
-
-    const handleCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setCode(e.target.value.toUpperCase());
-    };
-    
-    return (
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div className="relative h-10 flex items-center justify-center">
-                        <Input
-                            type="text"
-                            value={code}
-                            onChange={handleCodeInputChange}
-                            onBlur={() => onSave(code, overtime)}
-                            className={cn(
-                                'w-full h-full text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
-                                code ? colorInfo.bg : 'bg-transparent',
-                                code ? colorInfo.text : 'text-foreground'
-                            )}
-                        />
-                         <div className="absolute right-0 top-0 h-full flex items-center">
-                            {overtime && overtime > 0 && (
-                                <div className="h-4 w-4 mr-1">
-                                    <Clock className="h-full w-full text-blue-500" />
-                                </div>
-                            )}
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-full w-6 p-0 rounded-none">
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </PopoverTrigger>
-                         </div>
-                    </div>
-                </TooltipTrigger>
-                {(overtime && overtime > 0) && <TooltipContent><p>{overtime} hours OT</p></TooltipContent>}
-            </Tooltip>
-
-            <PopoverContent className="w-auto p-4" onOpenAutoFocus={(e) => e.preventDefault()}>
-                 <div className="space-y-4 w-80">
-                     <div>
-                        <Label>Job Code</Label>
-                        <div className="grid grid-cols-5 gap-1 mt-2">
-                            {JOB_CODES.map(jc => (
-                                <Button
-                                    key={jc.code}
-                                    variant={code === jc.code ? "default" : "outline"}
-                                    size="sm"
-                                    className="h-8"
-                                    onClick={() => handleCodeButtonClick(jc.code)}
-                                >
-                                    {jc.code}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <Label>Overtime Hours (Optional)</Label>
-                        <Input
-                            type="number"
-                            value={overtime || ''}
-                            onChange={(e) => setOvertime(e.target.value === '' ? undefined : Number(e.target.value))}
-                            placeholder="e.g., 2.5"
-                        />
-                    </div>
-                    <Button onClick={handleSave} className="w-full">Set</Button>
-                </div>
-            </PopoverContent>
-        </Popover>
-    );
-}
-
