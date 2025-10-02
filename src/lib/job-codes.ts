@@ -6,7 +6,7 @@ export const JOB_CODES = [
     { code: 'ZI', details: 'SEZ REFINERY AREA - INSULATION REPAIR JOB', jobNo: 'IRA 1337' },
     { code: 'ZS', details: 'SEZ PLANT AREA - SHEET REPAIR & MAINTENNACE JOB', jobNo: 'IRA 1286' },
     { code: 'ZB', details: 'SEZ PLANT AREA - BULL PLUG INSPECTION', jobNo: 'IRA 1255' },
-    { code: 'Z', details: 'SEZ - UT INSPECTION JON', jobNo: 'IRA 1211' },
+    { code: 'Z', details: 'SEZ - UT INSPECTION JOB', jobNo: 'IRA 1211' },
     { code: 'ZC', details: 'SEZ - CABLE LAYING JOB', jobNo: 'IRA 1313' },
     { code: 'ZP', details: 'SEZ - PAINTING JOB', jobNo: 'IRA 1336' },
     { code: 'DP', details: 'DTA PAINTING JOB', jobNo: 'IRA 1477' },
@@ -71,3 +71,5 @@ export const JOB_CODE_COLORS: { [key: string]: { bg: string, text?: string, exce
     'RST': { bg: 'bg-job-code-pink', text: 'text-black', excelFill: { fgColor: { rgb: 'FFDB7093' } } },
     'R':   { bg: 'bg-yellow-400', text: 'text-black', excelFill: { fgColor: { rgb: 'FFFFFF00' } } },
 };
+
+    
