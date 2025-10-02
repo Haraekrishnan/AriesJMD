@@ -128,7 +128,7 @@ export default function JobRecordSheet() {
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                const workCodes = jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code);
+                const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                 
                 const summary = dayHeaders.reduce((acc, day) => {
                     const code = employeeRecord[day];
@@ -284,7 +284,7 @@ export default function JobRecordSheet() {
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
                             const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                            const workCodes = jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code);
+                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                             
                             const summary = dayHeaders.reduce((acc, day) => {
                                 const code = employeeRecord[day];
