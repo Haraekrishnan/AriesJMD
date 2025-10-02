@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -2943,14 +2942,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number | null, codeOrPlantOrHours: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
     if (type === 'status') {
       const code = (codeOrPlantOrHours as string)?.toUpperCase();
-      const isValidCode = JOB_CODES.some(jc => jc.code === code);
-      if (!isValidCode && code !== '') {
-          toast({
-              title: "Invalid Job Code",
-              description: `The code "${code}" is not a valid job code.`,
-              variant: "destructive"
-          });
-          return;
+      const isValidCode = JOB_CODES.some(jc => jc.code === code) || code === '';
+      if (!isValidCode) {
+        toast({
+            title: "Invalid Job Code",
+            description: `The code "${code}" is not a valid job code.`,
+            variant: "destructive"
+        });
+        return;
       }
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [dayOrValue!]: code || null });
     } else if (type === 'plant') {
@@ -2962,7 +2961,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (hours && hours > 0) {
         set(ref(rtdb, path), hours);
       } else {
-        set(ref(rtdb, path), null);
+        remove(ref(rtdb, path));
       }
     } else if (type === 'sundayDuty') {
       const sundayDuty = dayOrValue;

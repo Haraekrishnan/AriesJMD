@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, MoreVertical, ChevronsUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, GripVertical } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as XLSX from 'xlsx';
@@ -39,8 +38,24 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    const handleStatusChange = (employeeId: string, day: number, code: string) => {
-        saveJobRecord(monthKey, employeeId, day, code.toUpperCase(), 'status');
+    const handleStatusChange = (e: React.FocusEvent<HTMLInputElement>, employeeId: string, day: number) => {
+        const code = e.target.value.toUpperCase();
+        const originalCode = jobRecordForMonth[employeeId]?.days?.[day] || '';
+        if (code === originalCode) return; // No change
+
+        const isValidCode = JOB_CODES.some(jc => jc.code === code) || code === '';
+        
+        if (isValidCode) {
+            saveJobRecord(monthKey, employeeId, day, code, 'status');
+        } else {
+            toast({
+                title: "Invalid Job Code",
+                description: `The code "${code}" is not a valid job code.`,
+                variant: "destructive"
+            });
+            // Revert the input value to the original
+            e.target.value = originalCode;
+        }
     };
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
@@ -226,7 +241,7 @@ export default function JobRecordSheet() {
                             <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
                             <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center w-[70px] min-w-[70px]">
+                                <TableHead key={day} className="text-center w-[90px] min-w-[90px]">
                                     {day}
                                 </TableHead>
                             ))}
@@ -313,53 +328,56 @@ export default function JobRecordSheet() {
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
                                         const cellId = `${profile.id}-${day}`;
                                         return (
-                                        <TableCell key={day} className="p-0 text-center relative w-[70px] min-w-[70px]">
-                                            <div className="relative h-10 flex items-center justify-center">
-                                            <Input
-                                                type="text"
-                                                defaultValue={code}
-                                                onBlur={(e) => handleStatusChange(profile.id, day, e.target.value.toUpperCase())}
-                                                className={cn(
-                                                    'w-full h-full text-center font-bold border-0 rounded-none focus-visible:ring-1 focus-visible:ring-ring',
-                                                    code ? colorInfo.bg : 'bg-transparent',
-                                                    code ? colorInfo.text : 'text-foreground'
-                                                )}
-                                            />
-                                            {overtimeForDay > 0 && (
-                                                <Tooltip>
-                                                <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                    <Clock className="h-full w-full text-blue-500" />
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                </Tooltip>
-                                            )}
-                                            <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="absolute left-0 top-0 h-full w-4 opacity-0 hover:opacity-100 bg-black/10">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-80">
-                                                    <div className="grid grid-cols-4 gap-1">
-                                                        {JOB_CODES.map(jc => (
-                                                            <Button
-                                                                key={jc.code}
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    handleStatusChange(profile.id, day, jc.code);
-                                                                    setActivePopover(null);
-                                                                }}
-                                                            >
-                                                                {jc.code}
+                                            <TableCell key={day} className="p-0 text-center relative w-[90px] min-w-[90px]">
+                                                <div className="relative h-10 flex items-center justify-center">
+                                                    <Input
+                                                        type="text"
+                                                        defaultValue={code}
+                                                        onBlur={(e) => handleStatusChange(e, profile.id, day)}
+                                                        className={cn(
+                                                            'w-full h-full text-center font-bold rounded-none focus-visible:ring-1 focus-visible:ring-ring border-input border',
+                                                            code ? colorInfo.bg : 'bg-transparent',
+                                                            code ? colorInfo.text : 'text-foreground'
+                                                        )}
+                                                    />
+                                                     {overtimeForDay > 0 && (
+                                                        <Tooltip>
+                                                        <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
+                                                            <Clock className="h-full w-full text-blue-500" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                    <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
+                                                        <PopoverTrigger asChild>
+                                                          <Button variant="ghost" size="icon" className="absolute left-0 top-0 h-full w-6">
+                                                                <GripVertical className="h-4 w-4" />
                                                             </Button>
-                                                        ))}
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
-
-                                            </div>
-                                        </TableCell>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-80">
+                                                            <div className="grid grid-cols-4 gap-1">
+                                                                {JOB_CODES.map(jc => (
+                                                                    <Button
+                                                                        key={jc.code}
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={(e) => {
+                                                                            const target = e.currentTarget.parentElement?.parentElement?.parentElement?.parentElement?.previousSibling?.querySelector('input');
+                                                                            if (target) {
+                                                                                target.value = jc.code;
+                                                                                target.dispatchEvent(new Event('blur', { bubbles: true }));
+                                                                            }
+                                                                            setActivePopover(null);
+                                                                        }}
+                                                                    >
+                                                                        {jc.code}
+                                                                    </Button>
+                                                                ))}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                            </TableCell>
                                         );
                                     })}
                                     <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
