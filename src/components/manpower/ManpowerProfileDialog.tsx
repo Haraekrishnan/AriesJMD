@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -431,160 +432,157 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl h-full max-h-[95vh] flex flex-col">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
-            <DialogHeader>
-              <DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle>
-            </DialogHeader>
-            <div className="flex-1 overflow-hidden">
-              <ScrollArea className="h-full pr-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
-                      
-                      <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
-                          <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
-                          <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
-                          <div>
-                              <Label>Trade</Label>
-                              <Controller control={form.control} name="trade" render={({field}) => (
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger><SelectValue placeholder="Select trade..."/></SelectTrigger>
-                                  <SelectContent>
-                                      {TRADES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                  </SelectContent>
-                                  </Select>
-                              )}/>
-                          </div>
-                          {watchTrade === 'Others' && (
-                              <div><Label>Specify Trade</Label><Input {...form.register('otherTrade')} />{form.formState.errors.otherTrade && <p className="text-xs text-destructive">{form.formState.errors.otherTrade.message}</p>}</div>
-                          )}
-                          <div><Label>Status</Label>
-                              <Controller control={form.control} name="status" render={({ field }) => (
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
-                                  <SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                                  </Select>
-                              )}/>
-                          </div>
-                          <div><Label>Mobile Number</Label><Input {...form.register('mobileNumber')} /></div>
-                          <div><Label>Gender</Label>
-                              <Controller control={form.control} name="gender" render={({ field }) => (
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                      <SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="Male">Male</SelectItem>
-                                          <SelectItem value="Female">Female</SelectItem>
-                                          <SelectItem value="Other">Other</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                              )}/>
-                          </div>
-                          <div><Label>Date of Birth</Label><DatePickerController name="dob" control={form.control} /></div>
-                          <div><Label>Aadhar Number</Label><Input {...form.register('aadharNumber')} /></div>
-                          <div><Label>UAN Number</Label><Input {...form.register('uanNumber')} /></div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div><Label>Coverall Size</Label><Input {...form.register('coverallSize')} /></div>
-                            <div><Label>Safety Shoe Size</Label><Input {...form.register('shoeSize')} /></div>
-                          </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
-                          <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
-                          <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
-                          <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
-                          <div><Label>EP Number</Label><Input {...form.register('epNumber')} /></div>
-                          <Separator className="my-4" />
-                          <div><Label>Joining Date</Label><DatePickerController name="joiningDate" control={form.control} /></div>
-                          <div><Label>Pass Issue Date</Label><DatePickerController name="passIssueDate" control={form.control} /></div>
-                          <div><Label>Work Order Expiry Date</Label><DatePickerController name="workOrderExpiryDate" control={form.control} /></div>
-                          <div><Label>Labour License Expiry Date</Label><DatePickerController name="labourLicenseExpiryDate" control={form.control} /></div>
-                          <Separator className="my-4" />
-                          <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
-                          <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
-                          <div><Label>Medical Expiry Date</Label><DatePickerController name="medicalExpiryDate" control={form.control} /></div>
-                          <div><Label>Safety Expiry Date</Label><DatePickerController name="safetyExpiryDate" control={form.control} /></div>
+        <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1 pr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
+                    
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
+                        <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
+                        <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
+                        <div>
+                            <Label>Trade</Label>
+                            <Controller control={form.control} name="trade" render={({field}) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select trade..."/></SelectTrigger>
+                                <SelectContent>
+                                    {TRADES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                            )}/>
+                        </div>
+                        {watchTrade === 'Others' && (
+                             <div><Label>Specify Trade</Label><Input {...form.register('otherTrade')} />{form.formState.errors.otherTrade && <p className="text-xs text-destructive">{form.formState.errors.otherTrade.message}</p>}</div>
+                        )}
+                         <div><Label>Status</Label>
+                            <Controller control={form.control} name="status" render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
+                                <SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                </Select>
+                            )}/>
+                        </div>
+                        <div><Label>Mobile Number</Label><Input {...form.register('mobileNumber')} /></div>
+                        <div><Label>Gender</Label>
+                            <Controller control={form.control} name="gender" render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Male">Male</SelectItem>
+                                        <SelectItem value="Female">Female</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}/>
+                        </div>
+                        <div><Label>Date of Birth</Label><DatePickerController name="dob" control={form.control} /></div>
+                        <div><Label>Aadhar Number</Label><Input {...form.register('aadharNumber')} /></div>
+                        <div><Label>UAN Number</Label><Input {...form.register('uanNumber')} /></div>
+                        <div className="grid grid-cols-2 gap-2">
+                           <div><Label>Coverall Size</Label><Input {...form.register('coverallSize')} /></div>
+                           <div><Label>Safety Shoe Size</Label><Input {...form.register('shoeSize')} /></div>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
+                        <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
+                        <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
+                        <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
+                        <div><Label>EP Number</Label><Input {...form.register('epNumber')} /></div>
+                        <Separator className="my-4" />
+                        <div><Label>Joining Date</Label><DatePickerController name="joiningDate" control={form.control} /></div>
+                        <div><Label>Pass Issue Date</Label><DatePickerController name="passIssueDate" control={form.control} /></div>
+                        <div><Label>Work Order Expiry Date</Label><DatePickerController name="workOrderExpiryDate" control={form.control} /></div>
+                        <div><Label>Labour License Expiry Date</Label><DatePickerController name="labourLicenseExpiryDate" control={form.control} /></div>
+                        <Separator className="my-4" />
+                        <div><Label>WC Policy Number</Label><Input {...form.register('wcPolicyNumber')} /></div>
+                        <div><Label>WC Policy Expiry Date</Label><DatePickerController name="wcPolicyExpiryDate" control={form.control} /></div>
+                        <div><Label>Medical Expiry Date</Label><DatePickerController name="medicalExpiryDate" control={form.control} /></div>
+                        <div><Label>Safety Expiry Date</Label><DatePickerController name="safetyExpiryDate" control={form.control} /></div>
 
-                          {RA_TRADES.includes(watchTrade) && (
-                              <>
-                                  <div><Label>IRATA Expiry Date</Label><DatePickerController name="irataValidity" control={form.control} /></div>
-                                  <div><Label>First Aid Certificate Expiry Date</Label><DatePickerController name="firstAidExpiryDate" control={form.control} />{form.formState.errors.firstAidExpiryDate && <p className="text-xs text-destructive">{form.formState.errors.firstAidExpiryDate.message}</p>}</div>
-                              </>
-                          )}
-                          <div><Label>Card Category</Label><Input {...form.register('cardCategory')} /></div>
-                          <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                          <h3 className="text-lg font-semibold border-b pb-2">Document Status</h3>
-                          <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
-                          <Separator />
-                          {documentFields.map((field, index) => (
-                            <div key={field.id}>
-                              <Label>{field.name}</Label>
-                              <div className="flex gap-2">
-                                  <Controller
-                                      name={`documents.${index}.status`}
-                                      control={form.control}
-                                      render={({ field: selectField }) => (
-                                          <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                              {documentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                          </SelectContent>
-                                          </Select>
-                                      )}
-                                  />
-                                  <Input placeholder="Doc No. / Details" {...form.register(`documents.${index}.details`)} />
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-
-                      <div className="space-y-4 md:col-span-3">
+                        {RA_TRADES.includes(watchTrade) && (
+                            <>
+                                <div><Label>IRATA Expiry Date</Label><DatePickerController name="irataValidity" control={form.control} /></div>
+                                <div><Label>First Aid Certificate Expiry Date</Label><DatePickerController name="firstAidExpiryDate" control={form.control} />{form.formState.errors.firstAidExpiryDate && <p className="text-xs text-destructive">{form.formState.errors.firstAidExpiryDate.message}</p>}</div>
+                            </>
+                        )}
+                        <div><Label>Card Category</Label><Input {...form.register('cardCategory')} /></div>
+                        <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold border-b pb-2">Document Status</h3>
+                        <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
                         <Separator />
-                        <h3 className="text-lg font-semibold border-b pb-2">Skills</h3>
-                        {skillFields.map((field, index) => (
-                            <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 p-2 border rounded-md">
-                                <div className="md:col-span-3"><Label>Skill Name</Label><Input {...form.register(`skills.${index}.name`)} /></div>
-                                <div className="md:col-span-3"><Label>Details (Cert No.)</Label><Input {...form.register(`skills.${index}.details`)} /></div>
-                                <div className="md:col-span-3"><Label>Link (Optional)</Label><Input {...form.register(`skills.${index}.link`)} /></div>
-                                <div className="md:col-span-2"><Label>Validity</Label><DatePickerController name={`skills.${index}.validity`} control={form.control} /></div>
-                                <div className="md:col-span-1 flex items-end"><Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+                         {documentFields.map((field, index) => (
+                          <div key={field.id}>
+                            <Label>{field.name}</Label>
+                            <div className="flex gap-2">
+                                <Controller
+                                    name={`documents.${index}.status`}
+                                    control={form.control}
+                                    render={({ field: selectField }) => (
+                                        <Select onValueChange={selectField.onChange} value={selectField.value}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {documentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                        </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                <Input placeholder="Doc No. / Details" {...form.register(`documents.${index}.details`)} />
                             </div>
+                          </div>
                         ))}
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendSkill({ name: '', details: '', link: ''})}><PlusCircle className="mr-2 h-4 w-4"/>Add Skill</Button>
-                      </div>
+                    </div>
 
-                      {(watchStatus === 'Resigned' || watchStatus === 'Terminated' || watchStatus === 'Left the Project') && (
-                          <div className="space-y-4 md:col-span-2 lg:col-span-3">
-                            <Separator />
-                            <h3 className="text-lg font-semibold border-b pb-2">{watchStatus} Details</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label>{watchStatus} Date</Label>
-                                    <DatePickerController name={watchStatus === 'Resigned' ? 'resignationDate' : 'terminationDate'} control={form.control} />
-                                </div>
-                                <div className='col-span-2'>
-                                    <Label>Reason / Feedback</Label>
-                                    <Textarea {...form.register('feedback')} />
-                                </div>
+                    <div className="space-y-4 md:col-span-3">
+                       <Separator />
+                       <h3 className="text-lg font-semibold border-b pb-2">Skills</h3>
+                       {skillFields.map((field, index) => (
+                           <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 p-2 border rounded-md">
+                               <div className="md:col-span-3"><Label>Skill Name</Label><Input {...form.register(`skills.${index}.name`)} /></div>
+                               <div className="md:col-span-3"><Label>Details (Cert No.)</Label><Input {...form.register(`skills.${index}.details`)} /></div>
+                               <div className="md:col-span-3"><Label>Link (Optional)</Label><Input {...form.register(`skills.${index}.link`)} /></div>
+                               <div className="md:col-span-2"><Label>Validity</Label><DatePickerController name={`skills.${index}.validity`} control={form.control} /></div>
+                               <div className="md:col-span-1 flex items-end"><Button type="button" variant="ghost" size="icon" onClick={() => removeSkill(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+                           </div>
+                       ))}
+                       <Button type="button" variant="outline" size="sm" onClick={() => appendSkill({ name: '', details: '', link: ''})}><PlusCircle className="mr-2 h-4 w-4"/>Add Skill</Button>
+                    </div>
+
+                    {(watchStatus === 'Resigned' || watchStatus === 'Terminated' || watchStatus === 'Left the Project') && (
+                        <div className="space-y-4 md:col-span-2 lg:col-span-3">
+                           <Separator />
+                           <h3 className="text-lg font-semibold border-b pb-2">{watchStatus} Details</h3>
+                           <div className="grid grid-cols-2 gap-4">
+                               <div>
+                                  <Label>{watchStatus} Date</Label>
+                                  <DatePickerController name={watchStatus === 'Resigned' ? 'resignationDate' : 'terminationDate'} control={form.control} />
+                               </div>
+                               <div className='col-span-2'>
+                                  <Label>Reason / Feedback</Label>
+                                  <Textarea {...form.register('feedback')} />
+                               </div>
+                           </div>
+                        </div>
+                    )}
+                    {watchStatus === 'On Leave' && (
+                        <div className="space-y-4 md:col-span-2 lg:col-span-3">
+                           <Separator />
+                           <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                               <div><Label>Leave Type</Label><Controller name="currentLeave.leaveType" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Annual">Annual</SelectItem><SelectItem value="Emergency">Emergency</SelectItem></SelectContent></Select>)}/></div>
+                               <div><Label>Leave Period</Label><Controller name="currentLeave.dateRange" control={form.control} render={({ field }) => (<DateRangePicker date={field.value} onDateChange={field.onChange}/>)}/></div>
+                               <div><Label>Actual Rejoining Date</Label><DatePickerController name="currentLeave.rejoinedDate" control={form.control}/></div>
+                               <div className="col-span-3"><Label>Remarks</Label><Textarea {...form.register('currentLeave.remarks')}/></div>
                             </div>
-                          </div>
-                      )}
-                      {watchStatus === 'On Leave' && (
-                          <div className="space-y-4 md:col-span-2 lg:col-span-3">
-                            <Separator />
-                            <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div><Label>Leave Type</Label><Controller name="currentLeave.leaveType" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Annual">Annual</SelectItem><SelectItem value="Emergency">Emergency</SelectItem></SelectContent></Select>)}/></div>
-                                <div><Label>Leave Period</Label><Controller name="currentLeave.dateRange" control={form.control} render={({ field }) => (<DateRangePicker date={field.value} onDateChange={field.onChange}/>)}/></div>
-                                <div><Label>Actual Rejoining Date</Label><DatePickerController name="currentLeave.rejoinedDate" control={form.control}/></div>
-                                <div className="col-span-3"><Label>Remarks</Label><Textarea {...form.register('currentLeave.remarks')}/></div>
-                              </div>
-                              {form.formState.errors.currentLeave?.dateRange && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.dateRange.message}</p>}
-                          </div>
-                      )}
-                      {profile && (
+                            {form.formState.errors.currentLeave?.dateRange && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.dateRange.message}</p>}
+                        </div>
+                    )}
+                    {profile && (
                           <div className="space-y-4 md:col-span-3">
                             <Separator />
                             <h3 className="text-lg font-semibold border-b pb-2">PPE Issue History</h3>
@@ -633,90 +631,90 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             {canAddPpe && <PpeHistoryForm profile={profile} />}
                           </div>
                         )}
-                      {(liveProfile?.leaveHistory || []).length > 0 && (
-                          <div className="space-y-4 md:col-span-3">
-                              <Separator />
-                              <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
-                              <Table>
-                                  <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
-                                  <TableBody>
-                                      {liveProfile?.leaveHistory?.map(leave => (
-                                          <TableRow key={leave.id}>
-                                              <TableCell>{leave.leaveType}</TableCell>
-                                              <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                                              <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                                              <TableCell>{leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                                              {user?.role === 'Admin' && (
-                                                  <TableCell className="text-right">
-                                                      <AlertDialog>
-                                                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                                          </AlertDialogTrigger>
-                                                          <AlertDialogContent>
-                                                              <AlertDialogHeader>
-                                                                  <AlertDialogTitle>Delete Leave Record?</AlertDialogTitle>
-                                                                  <AlertDialogDescription>This will permanently delete this leave entry. This cannot be undone.</AlertDialogDescription>
-                                                              </AlertDialogHeader>
-                                                              <AlertDialogFooter>
-                                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                  <AlertDialogAction onClick={() => handleDeleteLeave(leave.id)}>Delete</AlertDialogAction>
-                                                              </AlertDialogFooter>
-                                                          </AlertDialogContent>
-                                                      </AlertDialog>
-                                                  </TableCell>
-                                              )}
-                                          </TableRow>
-                                      ))}
-                                  </TableBody>
-                              </Table>
-                          </div>
-                      )}
-                      {(liveProfile?.memoHistory || []).length > 0 && (
-                          <div className="space-y-4 md:col-span-3">
-                              <Separator />
-                              <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
-                              <Table>
-                                  <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
-                                  <TableBody>
-                                      {liveProfile?.memoHistory?.map(memo => (
-                                          <TableRow key={memo.id}>
-                                              <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
-                                              <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
-                                              <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
-                                              <TableCell>{memo.issuedBy || 'N/A'}</TableCell>
-                                              {user?.role === 'Admin' && (
-                                                  <TableCell className="text-right">
-                                                      <AlertDialog>
-                                                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMemo(memo)}><Edit className="h-4 w-4"/></Button>
-                                                          <AlertDialogTrigger asChild>
-                                                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                                          </AlertDialogTrigger>
-                                                          <AlertDialogContent>
-                                                              <AlertDialogHeader>
-                                                                  <AlertDialogTitle>Delete Record?</AlertDialogTitle>
-                                                                  <AlertDialogDescription>This will permanently delete this record. This cannot be undone.</AlertDialogDescription>
-                                                              </AlertDialogHeader>
-                                                              <AlertDialogFooter>
-                                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                  <AlertDialogAction onClick={() => handleDeleteMemo(memo.id)}>Delete</AlertDialogAction>
-                                                              </AlertDialogFooter>
-                                                          </AlertDialogContent>
-                                                      </AlertDialog>
-                                                  </TableCell>
-                                              )}
-                                          </TableRow>
-                                      ))}
-                                  </TableBody>
-                              </Table>
-                          </div>
-                      )}
+                     {(liveProfile?.leaveHistory || []).length > 0 && (
+                        <div className="space-y-4 md:col-span-3">
+                            <Separator />
+                            <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
+                                <TableBody>
+                                    {liveProfile?.leaveHistory?.map(leave => (
+                                        <TableRow key={leave.id}>
+                                            <TableCell>{leave.leaveType}</TableCell>
+                                            <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                            <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                            <TableCell>{leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                            {user?.role === 'Admin' && (
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Leave Record?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This will permanently delete this leave entry. This cannot be undone.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteLeave(leave.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                     )}
+                    {(liveProfile?.memoHistory || []).length > 0 && (
+                        <div className="space-y-4 md:col-span-3">
+                            <Separator />
+                            <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
+                             <Table>
+                                <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
+                                <TableBody>
+                                    {liveProfile?.memoHistory?.map(memo => (
+                                        <TableRow key={memo.id}>
+                                            <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
+                                            <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
+                                            <TableCell>{memo.issuedBy || 'N/A'}</TableCell>
+                                             {user?.role === 'Admin' && (
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditMemo(memo)}><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Record?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This will permanently delete this record. This cannot be undone.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteMemo(memo.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
                   </div>
               </ScrollArea>
             </div>
             <DialogFooter className="mt-auto pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">{profile ? 'Save Changes' : 'Add Profile'}</Button>
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit">{profile ? 'Save Changes' : 'Add Profile'}</Button>
             </DialogFooter>
         </form>
       </DialogContent>
