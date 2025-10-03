@@ -86,7 +86,7 @@ const profileSchema = z.object({
   terminationDate: z.date().optional().nullable(),
   feedback: z.string().optional(),
   currentLeave: leaveSchema.optional(),
-  leaveHistory: z.array(z.any()).optional(), // Use `any` for display, not form validation
+  leaveHistory: z.array(z.any()).optional(), 
   ppeHistory: z.array(z.any()).optional(),
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
@@ -228,6 +228,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
             otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
             leaveHistory: liveProfile.leaveHistory || [],
+            memoHistory: liveProfile.memoHistory || [],
+            ppeHistory: liveProfile.ppeHistory || [],
         } : {
             documents: getInitialDocs(), 
             skills: [], 
@@ -259,7 +261,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const onSubmit = (data: ProfileFormValues) => {
     const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
     const currentProfile = liveProfile;
-    let finalLeaveHistory = currentProfile?.leaveHistory ? [...currentProfile.leaveHistory] : [];
+    let finalLeaveHistory = currentProfile?.leaveHistory ? (Array.isArray(currentProfile.leaveHistory) ? [...currentProfile.leaveHistory] : Object.values(currentProfile.leaveHistory)) : [];
     
     const originalStatus = currentProfile?.status;
     const newStatus = data.status;
@@ -552,14 +554,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         {canAddPpe && <Button type="button" onClick={() => setIsAddPpeOpen(true)} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Add PPE History</Button>}
                       </div>
                     )}
-                   {(liveProfile?.leaveHistory || []).length > 0 && (
+                   {(Array.isArray(liveProfile?.leaveHistory) ? liveProfile.leaveHistory : (liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory) : [])).length > 0 && (
                       <div className="space-y-4 md:col-span-3">
                           <Separator />
                           <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
                           <Table>
                               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                               <TableBody>
-                                  {liveProfile?.leaveHistory?.map(leave => (
+                                  {(Array.isArray(liveProfile?.leaveHistory) ? liveProfile.leaveHistory : (liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory) : [])).map(leave => (
                                       <TableRow key={leave.id}>
                                           <TableCell>{leave.leaveType}</TableCell>
                                           <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
@@ -591,14 +593,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </Table>
                       </div>
                    )}
-                  {(liveProfile?.memoHistory || []).length > 0 && (
+                  {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).length > 0 && (
                       <div className="space-y-4 md:col-span-3">
                           <Separator />
                           <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
                            <Table>
                               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                               <TableBody>
-                                  {liveProfile?.memoHistory?.map(memo => (
+                                  {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).map(memo => (
                                       <TableRow key={memo.id}>
                                           <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
                                           <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
@@ -665,4 +667,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
