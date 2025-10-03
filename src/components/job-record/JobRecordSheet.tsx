@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2 } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,14 +20,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import type { JobCode } from '@/lib/types';
+import EditJobCodeDialog from './EditJobCodeDialog';
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
+    const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activePopover, setActivePopover] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('Unassigned');
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -80,9 +84,15 @@ export default function JobRecordSheet() {
     };
     
     const plantProjects = useMemo(() => {
-        const plantsFromJobRecords = jobRecordPlants.map(p => p.name);
+        const plantsFromJobRecords = (jobRecordPlants || []).map(p => p.name);
         return Array.from(new Set([...plantsFromJobRecords])).sort();
     }, [jobRecordPlants]);
+
+    useEffect(() => {
+        if (plantProjects.length > 0) {
+            setActiveTab(plantProjects[0]);
+        }
+    }, [plantProjects]);
 
     const handleRemoveFromPlant = (employeeId: string) => {
         saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
@@ -230,13 +240,14 @@ export default function JobRecordSheet() {
     }, [manpowerProfiles, plantProjects]);
     
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
-
-    const manDaysCountByCode = useMemo(() => {
+    
+    const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
         jobCodes.forEach(jc => counts[jc.code] = 0);
 
-        manpowerProfiles.forEach(p => {
+        const profilesInTab = groupedProfiles[activeTab] || [];
+        profilesInTab.forEach(p => {
             const days = jobRecordForMonth[p.id]?.days || {};
             Object.values(days).forEach(code => {
                 if (counts.hasOwnProperty(code as string)) {
@@ -245,7 +256,7 @@ export default function JobRecordSheet() {
             });
         });
         return counts;
-    }, [jobRecordForMonth, manpowerProfiles, jobCodes]);
+    }, [jobRecordForMonth, activeTab, jobCodes, groupedProfiles]);
     
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
@@ -443,6 +454,11 @@ export default function JobRecordSheet() {
             </div>
         );
     }
+    
+    const handleDeleteJobCode = (id: string) => {
+        deleteJobCode(id);
+        toast({ title: 'Job Code Deleted', variant: 'destructive' });
+    }
 
     return (
         <TooltipProvider>
@@ -468,7 +484,7 @@ export default function JobRecordSheet() {
                     </div>
                 </div>
 
-                <Tabs defaultValue={allTabs[0]} className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList>
                         {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
                     </TabsList>
@@ -481,7 +497,7 @@ export default function JobRecordSheet() {
                 <Accordion type="single" collapsible className="w-full mt-4">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {format(currentMonth, 'MMMM')}</div>
+                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {activeTab}</div>
                         </AccordionTrigger>
                         <AccordionContent>
                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
@@ -492,7 +508,27 @@ export default function JobRecordSheet() {
                                         <p>{jc.details}</p>
                                         {jc.jobNo && <p className="text-muted-foreground">Job No: {jc.jobNo}</p>}
                                     </div>
-                                    <div className="font-semibold">{manDaysCountByCode[jc.code] || 0}</div>
+                                    <div className="font-semibold">{manDaysCountByCodeForCurrentTab[jc.code] || 0}</div>
+                                    {user?.role === 'Admin' && (
+                                        <div className="flex">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingJobCode(jc)}><Edit className="h-3 w-3"/></Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle>
+                                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                            </div>
@@ -502,6 +538,7 @@ export default function JobRecordSheet() {
             </div>
             <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
             <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
+            {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
         </TooltipProvider>
     );
 }
