@@ -85,7 +85,7 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number) => {
         const inputKey = `${employeeId}-${day}`;
-        const upperCaseCode = (inputValues[inputKey] || '').toUpperCase();
+        const upperCaseCode = (inputValues[inputKey] ?? '').toUpperCase();
 
         if (upperCaseCode === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'status');
