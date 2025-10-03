@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -21,7 +22,13 @@ export default function AnnouncementFeed() {
     const visibleAnnouncements = useMemo(() => {
         if (!user) return [];
         return announcements
-            .filter(a => a.status === 'approved' && !(a.dismissedBy || []).includes(user.id))
+            .filter(a => {
+                if (a.status !== 'approved') return false;
+                // Admins see all approved announcements, regardless of dismissal status
+                if (user.role === 'Admin') return true;
+                // Other users see announcements they haven't dismissed
+                return !(a.dismissedBy || []).includes(user.id);
+            })
             .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [announcements, user]);
 
