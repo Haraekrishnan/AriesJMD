@@ -1,6 +1,7 @@
 
 
-import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant } from './types';
+
+import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant, JobCode } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
 
@@ -36,7 +37,8 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
-      'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests'
+      'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
+      'manage_job_record'
     ],
     isEditable: false,
   },
@@ -44,7 +46,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-supervisor',
     name: 'Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record'
     ],
     isEditable: false,
   },
@@ -59,7 +61,7 @@ export const ROLES: RoleDefinition[] = [
   {
     id: 'role-jr-supervisor',
     name: 'Junior Supervisor',
-    permissions: ['view_performance_reports', 'log_manpower'],
+    permissions: ['view_performance_reports', 'log_manpower', 'manage_job_record'],
     isEditable: false,
   },
   {
@@ -123,6 +125,7 @@ export const JOB_RECORD_PLANTS: JobRecordPlant[] = [
     { id: 'plant-4', name: 'MTF' },
 ];
 
+export const JOB_CODES: JobCode[] = [];
 
 export const USERS: User[] = [
   { id: '1', name: 'Harirkrishnan P S', email: 'satanin2013@gmail.com', password: 'password', role: 'Admin', avatar: 'https://i.pravatar.cc/150?u=1', projectId: 'proj-6', planningScore: 0 },

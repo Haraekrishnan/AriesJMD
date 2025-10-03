@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +24,7 @@ import type { JobCode } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, addJobRecordPlant } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
@@ -34,6 +34,16 @@ export default function JobRecordSheet() {
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
+
+    const isCurrentSheetLocked = useMemo(() => {
+        return jobRecords[monthKey]?.isLocked || false;
+    }, [jobRecords, monthKey]);
+
+    const canEditSheet = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'Admin') return true;
+        return can.manage_job_record && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     const dayHeaders = useMemo(() => 
         Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), 
@@ -353,7 +363,7 @@ export default function JobRecordSheet() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)}>
+                                        <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
                                                 {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
@@ -380,6 +390,7 @@ export default function JobRecordSheet() {
                                                             code ? colorInfo.text : 'text-foreground'
                                                         )}
                                                         style={{ boxShadow: 'none' }}
+                                                        disabled={!canEditSheet}
                                                     />
                                                      {overtimeForDay > 0 && (
                                                         <Tooltip>
@@ -408,6 +419,7 @@ export default function JobRecordSheet() {
                                             onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                             className="w-16 h-8 text-center"
                                             placeholder="0"
+                                            disabled={!canEditSheet}
                                         />
                                     </TableCell>
                                 </TableRow>
@@ -422,6 +434,7 @@ export default function JobRecordSheet() {
                                                     defaultValue={dailyOvertime[day] || ''}
                                                     onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                     className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                    disabled={!canEditSheet}
                                                 />
                                             </TableCell>
                                         ))}
@@ -450,12 +463,15 @@ export default function JobRecordSheet() {
                 ))}
             </datalist>
             <div>
-                <div className="flex justify-between items-center p-4">
+                <div className="flex flex-wrap justify-between items-center p-4 gap-4">
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
+                        <span className="text-lg font-semibold flex items-center gap-2">
+                            {format(currentMonth, 'MMMM yyyy')}
+                            {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                        </span>
                         <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -467,6 +483,18 @@ export default function JobRecordSheet() {
                                 <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
                                 <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                             </>
+                        )}
+                        {can.manage_job_record && !isCurrentSheetLocked && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                         {user?.role === 'Admin' && isCurrentSheetLocked && (
+                            <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}><Unlock className="mr-2 h-4 w-4" /> Unlock Sheet</Button>
                         )}
                     </div>
                 </div>

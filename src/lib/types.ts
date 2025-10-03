@@ -1,6 +1,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -22,6 +23,7 @@ export type JobCode = {
 
 export type JobRecord = {
   id: string; // YYYY-MM
+  isLocked?: boolean;
   records: {
     [employeeId: string]: {
       days: { [day: number]: string }; // day: 1-31, value: code
@@ -132,6 +134,7 @@ export type User = {
   supervisorId?: string;
   projectId?: string;
   planningScore?: number;
+  permissions?: Permission[];
 };
 
 export type PasswordResetRequest = {
@@ -256,6 +259,7 @@ export const ALL_PERMISSIONS = [
   'manage_feedback',
   'manage_user_lock_status',
   'create_broadcast',
+  'manage_job_record',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
