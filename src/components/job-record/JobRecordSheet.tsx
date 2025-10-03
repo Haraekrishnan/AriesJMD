@@ -8,8 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
@@ -40,6 +40,7 @@ export default function JobRecordSheet() {
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
     const [optimisticJobRecords, setOptimisticJobRecords] = useState(jobRecords);
+    const [invalidCodeCell, setInvalidCodeCell] = useState<string | null>(null);
 
     useEffect(() => {
         setOptimisticJobRecords(jobRecords);
@@ -79,19 +80,24 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const code = (value || '').toUpperCase();
+        const cellId = `${employeeId}-${day}`;
+
+        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+
+        if (!isValidCode) {
+            setInvalidCodeCell(cellId);
+        } else {
+            setInvalidCodeCell(prev => prev === cellId ? null : prev);
+        }
         
         handleOptimisticUpdate(monthKey, employeeId, day, 'status', code);
-
-        if (code === '') {
-            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
-        }
-
         saveJobRecord(monthKey, employeeId, day, code, 'status');
     
         if (code === '') {
+            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
         }
-    }, [monthKey, saveJobRecord, handleOptimisticUpdate]);
+    }, [monthKey, saveJobRecord, jobCodes]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const record = jobRecordForMonth.records?.[employeeId] || {};
@@ -178,7 +184,6 @@ export default function JobRecordSheet() {
 
         availablePlants.forEach(p => groups[p] = []);
 
-        // First, assign all profiles to their respective groups for the current month
         manpowerProfiles.forEach(profile => {
             const plantForCurrentMonth = jobRecordForMonth.records?.[profile.id]?.plant;
             const plantForPrevMonth = prevJobRecordForMonth.records?.[profile.id]?.plant;
@@ -191,7 +196,6 @@ export default function JobRecordSheet() {
             }
         });
 
-        // Then, sort each group based on the saved order
         Object.keys(groups).forEach(plantName => {
             const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
             const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
@@ -199,24 +203,11 @@ export default function JobRecordSheet() {
 
             if (order && Array.isArray(order)) {
                 const profileMap = new Map(groups[plantName].map(p => [p.id, p]));
-                
-                // Start with profiles that are in the saved order
-                const orderedProfiles = order
-                    .map(id => profileMap.get(id))
-                    .filter((p): p is ManpowerProfile => !!p);
-
+                const orderedProfiles = order.map(id => profileMap.get(id)).filter((p): p is ManpowerProfile => !!p);
                 const orderedIds = new Set(order);
-                
-                // Find profiles that are in the group but not in the saved order
                 const remainingProfiles = groups[plantName].filter(p => !orderedIds.has(p.id));
-
-                // Alphabetically sort ONLY the remaining profiles that don't have a saved order
-                remainingProfiles.sort((a, b) => a.name.localeCompare(b.name));
-                
-                // Combine the ordered profiles with the newly added (and sorted) ones
                 groups[plantName] = [...orderedProfiles, ...remainingProfiles];
             } else {
-                // If no order exists at all, sort the whole group alphabetically
                 groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
             }
         });
@@ -230,16 +221,20 @@ export default function JobRecordSheet() {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
       return isAfter(firstDayOfCurrentMonth, implementationStartDate);
     }, [currentMonth]);
+    
+    const canGoToNextMonth = useMemo(() => !isSameMonth(currentMonth, new Date()), [currentMonth]);
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
     }, [jobRecords, monthKey]);
 
+    const isEditableMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
+    
     const canEditSheet = useMemo(() => {
-        if (!user) return true;
+        if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+        return can.manage_job_record && !isCurrentSheetLocked && isEditableMonth;
+    }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -395,9 +390,9 @@ export default function JobRecordSheet() {
                 <Table className="min-w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-10 w-[80px]"></TableHead>
-                            <TableHead className="sticky left-[80px] bg-card z-10 min-w-[200px]">Name</TableHead>
-                            <TableHead className="sticky left-[280px] bg-card z-10 min-w-[150px]">Plant</TableHead>
+                            <TableHead className="sticky left-0 bg-card z-10 w-[120px]">S.No / Actions</TableHead>
+                            <TableHead className="sticky left-[120px] bg-card z-10 min-w-[200px]">Name</TableHead>
+                            <TableHead className="sticky left-[320px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
                                 <TableHead key={day} className="text-center min-w-[100px]">
                                     {day}
@@ -449,18 +444,8 @@ export default function JobRecordSheet() {
                                             {index + 1}
                                             {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
                                         </Button>
-                                        {canEditSheet && (
-                                            <div className="flex flex-col">
-                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
-                                                    <ArrowUp className="h-3 w-3" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
-                                                    <ArrowDown className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        )}
                                     </TableCell>
-                                    <TableCell className="sticky left-[80px] bg-card z-10 font-medium whitespace-nowrap">
+                                    <TableCell className="sticky left-[120px] bg-card z-10 font-medium whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             {profile.name}
                                             {user?.role === 'Admin' && plantName !== 'Unassigned' && (
@@ -482,7 +467,7 @@ export default function JobRecordSheet() {
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="sticky left-[280px] bg-card z-10">
+                                    <TableCell className="sticky left-[320px] bg-card z-10">
                                         <Select value={jobRecordForMonth.records?.[profile.id]?.plant || prevJobRecordForMonth.records?.[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
@@ -494,6 +479,7 @@ export default function JobRecordSheet() {
                                         const code = employeeRecord[day] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code as string] || {};
+                                        const isInvalid = invalidCodeCell === `${profile.id}-${day}`;
 
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
@@ -504,11 +490,18 @@ export default function JobRecordSheet() {
                                                         list="jobcodes-datalist"
                                                         value={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                        onChange={(e) => handleOptimisticUpdate(monthKey, profile.id, day, 'status', e.target.value.toUpperCase())}
+                                                        onChange={(e) => {
+                                                            const newCode = e.target.value.toUpperCase();
+                                                            handleOptimisticUpdate(monthKey, profile.id, day, 'status', newCode)
+                                                            if (invalidCodeCell === `${profile.id}-${day}` && (jobCodes.some(jc => jc.code === newCode) || newCode === '')) {
+                                                                setInvalidCodeCell(null);
+                                                            }
+                                                        }}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
-                                                            code ? colorInfo.text : 'text-foreground'
+                                                            code ? colorInfo.text : 'text-foreground',
+                                                            isInvalid && 'ring-2 ring-destructive'
                                                         )}
                                                         style={{ boxShadow: 'none' }}
                                                         disabled={!canEditSheet}
@@ -597,7 +590,7 @@ export default function JobRecordSheet() {
                             {format(currentMonth, 'MMMM yyyy')}
                             {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                         </span>
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={canGoToNextMonth}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
@@ -609,7 +602,7 @@ export default function JobRecordSheet() {
                                 <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                             </>
                         )}
-                        {can.manage_job_record && !isCurrentSheetLocked && (
+                        {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
                             <AlertDialog>
                                 <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                 <AlertDialogContent>
@@ -676,6 +669,29 @@ export default function JobRecordSheet() {
                            </div>
                         </AccordionContent>
                     </AccordionItem>
+                     <AccordionItem value="item-2">
+                        <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
+                            <div className="flex items-center gap-2"><Settings className="h-4 w-4"/>Reorder Rows</div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4">
+                           <p className="text-sm text-muted-foreground mb-2">Use the arrows next to the serial number to reorder employees within the currently selected plant.</p>
+                             <div className="grid grid-cols-2 gap-4">
+                                {groupedProfiles[activeTab]?.map((profile, index) => (
+                                    <div key={profile.id} className="flex items-center gap-2 p-2 border rounded-md">
+                                        <span className="font-medium text-sm flex-1">{index + 1}. {profile.name}</span>
+                                        <div className="flex">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
+                                                <ArrowUp className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === groupedProfiles[activeTab].length - 1}>
+                                                <ArrowDown className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                             </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
             </div>
             <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
@@ -684,8 +700,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-
-  
-
-    
