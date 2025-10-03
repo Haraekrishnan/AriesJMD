@@ -435,6 +435,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
               <ScrollArea className="flex-1 pr-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
+                    
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                         <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
@@ -449,7 +450,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                 </SelectContent>
                                 </Select>
                             )}/>
-                            {form.formState.errors.trade && <p className="text-xs text-destructive">{form.formState.errors.trade.message}</p>}
+                             {form.formState.errors.trade && <p className="text-xs text-destructive">{form.formState.errors.trade.message}</p>}
                         </div>
                         {watchTrade === 'Others' && (
                              <div><Label>Specify Trade</Label><Input {...form.register('otherTrade')} />{form.formState.errors.otherTrade && <p className="text-xs text-destructive">{form.formState.errors.otherTrade.message}</p>}</div>
