@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -26,7 +27,7 @@ import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 const implementationStartDate = new Date(2024, 9, 1); // October 2024 (Month is 0-indexed)
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday() < implementationStartDate ? implementationStartDate : startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
@@ -85,14 +86,16 @@ export default function JobRecordSheet() {
         const code = (value || '').toUpperCase();
         const key = `${employeeId}-${day}-status`;
 
+        // If value is undefined (from onBlur on an empty input), treat it as an empty string
         if (value === undefined) {
-             setInputValues(prev => ({ ...prev, [key]: '' }));
-             saveJobRecord(monthKey, employeeId, day, '', 'status');
-             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-             setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
-             return;
+            setInputValues(prev => ({ ...prev, [key]: '' }));
+            saveJobRecord(monthKey, employeeId, day, '', 'status');
+            // Also clear overtime
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
+            return;
         }
-
+    
         setInputValues(prev => ({ ...prev, [key]: code }));
       
         if (code && !jobCodes.some(jc => jc.code === code)) {
@@ -101,6 +104,7 @@ export default function JobRecordSheet() {
             description: `The code "${code}" is not a valid job code.`,
             variant: "destructive"
           });
+          // Revert the input value to the last known valid state
           const originalCode = jobRecordForMonth.records?.[employeeId]?.days?.[day] || '';
           setInputValues(prev => ({...prev, [key]: originalCode}));
           return;
@@ -109,6 +113,7 @@ export default function JobRecordSheet() {
         saveJobRecord(monthKey, employeeId, day, code, 'status');
     
         if (code === '') {
+            // If the code is cleared, also clear the overtime
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
             setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
         }
@@ -358,22 +363,19 @@ export default function JobRecordSheet() {
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
         const currentProfiles = groupedProfiles[activeTab];
         if (!currentProfiles) return;
-        
-        const index = currentProfiles.findIndex(p => p.id === profileId);
 
+        const index = currentProfiles.findIndex(p => p.id === profileId);
         if (index === -1) return;
-        if (direction === 'up' && index === 0) return;
-        if (direction === 'down' && index === currentProfiles.length - 1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= currentProfiles.length) return;
 
         const newOrder = [...currentProfiles];
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        
-        [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+        const [movedItem] = newOrder.splice(index, 1);
+        newOrder.splice(targetIndex, 0, movedItem);
 
         const newOrderIds = newOrder.map(p => p.id);
-        
-        // Pass the array of IDs directly
-        saveJobRecord(monthKey, newOrderIds.join(','), null, activeTab, 'order');
+        savePlantOrder(monthKey, activeTab, newOrderIds);
     };
 
     const renderTableForPlant = (plantName: string) => {
@@ -676,4 +678,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 

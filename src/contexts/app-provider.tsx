@@ -258,7 +258,10 @@ type AppContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, dayOrValue: number | null, codeOrPlantOrHours: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrPlant: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
+  savePlantOrder: (monthKey: string, plantName: string, orderedIds: string[]) => void;
+  lockJobSchedule: (date: string) => void;
+  unlockJobSchedule: (date: string, projectId: string) => void;
   lockJobRecordSheet: (monthKey: string) => void;
   unlockJobRecordSheet: (monthKey: string) => void;
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
@@ -2983,9 +2986,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, dayOrValue: number | null, codeOrPlantOrHours: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrPlant: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
     if (type === 'status') {
-      const code = (codeOrPlantOrHours as string)?.toUpperCase();
+      const code = (codeOrPlant as string)?.toUpperCase();
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
       if (!isValidCode) {
         toast({
@@ -2995,12 +2998,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [dayOrValue!]: code || null });
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day!]: code || null });
     } else if (type === 'plant') {
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { plant: codeOrPlantOrHours });
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { plant: codeOrPlant });
     } else if (type === 'dailyOvertime') {
-      const day = dayOrValue as number;
-      const hours = codeOrPlantOrHours as (number | null);
+      const day = day as number;
+      const hours = codeOrPlant as (number | null);
       const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${day}`;
       if (hours && hours > 0) {
         set(ref(rtdb, path), hours);
@@ -3008,10 +3011,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, path));
       }
     } else if (type === 'sundayDuty') {
-      const sundayDuty = dayOrValue;
+      const sundayDuty = day;
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { additionalSundayDuty: sundayDuty });
     }
   }, [jobCodes, toast]);
+  
+  const savePlantOrder = useCallback((monthKey: string, plantName: string, orderedIds: string[]) => {
+      update(ref(rtdb, `jobRecords/${monthKey}/plantsOrder`), { [plantName]: orderedIds });
+  }, []);
 
   const lockJobSchedule = useCallback((date: string) => {
     const updates: { [key: string]: any } = {};
@@ -3269,7 +3276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
     ...computedValue,
   };
 
