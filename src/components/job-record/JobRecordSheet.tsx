@@ -59,8 +59,17 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
         const upperCaseCode = code.toUpperCase();
+        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode) || upperCaseCode === '';
+        if (!isValidCode) {
+            toast({
+                title: "Invalid Job Code",
+                description: `The code "${upperCaseCode}" is not a valid job code.`,
+                variant: "destructive"
+            });
+            return;
+        }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-    }, [monthKey, saveJobRecord]);
+    }, [monthKey, saveJobRecord, jobCodes, toast]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const numericHours = Number(hours);
@@ -205,11 +214,41 @@ export default function JobRecordSheet() {
                 row.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(row);
             });
+            
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-            // Add legend and man-days count
-            sheetData.push([]);
-            sheetData.push(['Job Code Legend & Man-Days Count']);
-            sheetData.push(['Code', 'Job Details', 'Man-Days']);
+            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
+            
+            profiles.forEach((profile, rIndex) => {
+                const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
+                const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
+                dayHeaders.forEach((day, cIndex) => {
+                    const code = employeeRecord[day] || '';
+                    const colorInfo = JOB_CODE_COLORS[code];
+                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                    
+                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+                    
+                    if (colorInfo?.excelFill) {
+                         ws[cellAddress].s = {
+                            fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
+                            font: colorInfo.excelFill.font || {}
+                        };
+                    }
+
+                    const overtimeForDay = dailyOvertime[day];
+                    if (overtimeForDay && overtimeForDay > 0) {
+                        if (!ws[cellAddress].c) ws[cellAddress].c = [];
+                        ws[cellAddress].c.push({ a: "SheetJS", t: `Overtime Hours: ${overtimeForDay}` });
+                    }
+                });
+            });
+
+            // Add legend and man-days count after all data rows
+            const legendStartRow = sheetData.length + 2;
+            XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); // Spacer row
+            XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
+            XLSX.utils.sheet_add_aoa(ws, [['Code', 'Job Details', 'Man-Days']], { origin: -1 });
             
             if (jobCodes) {
               const manDaysCount = jobCodes.reduce((acc, jc) => {
@@ -227,31 +266,9 @@ export default function JobRecordSheet() {
               });
 
               jobCodes.forEach(jc => {
-                  sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
+                 XLSX.utils.sheet_add_aoa(ws, [[jc.code, jc.details, manDaysCount[jc.code] || 0]], { origin: -1 });
               });
             }
-            
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
-            
-            profiles.forEach((profile, rIndex) => {
-                const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
-                dayHeaders.forEach((day, cIndex) => {
-                    const code = employeeRecord[day] || '';
-                    const colorInfo = JOB_CODE_COLORS[code];
-                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
-                    
-                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                    
-                    if (colorInfo?.excelFill) {
-                         ws[cellAddress].s = {
-                            fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
-                            font: colorInfo.excelFill.font || {}
-                        };
-                    }
-                });
-            });
 
             XLSX.utils.book_append_sheet(wb, ws, plant);
         });
