@@ -61,7 +61,7 @@ export default function JobRecordSheet() {
                 employeeRecord.days[day] = value as string;
             } else if (type === 'dailyOvertime') {
                 employeeRecord.dailyOvertime = employeeRecord.dailyOvertime || {};
-                if (value === null) {
+                if (value === null || value === '' || isNaN(Number(value))) {
                     delete employeeRecord.dailyOvertime[day];
                 } else {
                     employeeRecord.dailyOvertime[day] = value as number;
@@ -95,7 +95,6 @@ export default function JobRecordSheet() {
     }, [monthKey, saveJobRecord, handleOptimisticUpdate]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
-        const hours = Number(value);
         const record = jobRecordForMonth.records?.[employeeId] || {};
         const jobCodeForDay = record.days?.[day]?.toUpperCase();
         
@@ -121,7 +120,8 @@ export default function JobRecordSheet() {
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
             return;
         }
-
+        
+        const hours = Number(value);
         const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
         handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', finalHours);
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
@@ -198,19 +198,17 @@ export default function JobRecordSheet() {
             const order = currentOrder || prevOrder;
 
             if (order && Array.isArray(order)) {
-                const orderedGroup: typeof manpowerProfiles = [];
                 const profileMap = new Map(groups[plantName].map(p => [p.id, p]));
-
-                order.forEach(id => {
-                    if (profileMap.has(id)) {
-                        orderedGroup.push(profileMap.get(id)!);
-                        profileMap.delete(id);
-                    }
-                });
+                const orderedGroup = order
+                    .map(id => profileMap.get(id))
+                    .filter((p): p is ManpowerProfile => !!p);
                 
-                // Add any newly assigned employees (not in the saved order) to the end
-                orderedGroup.push(...Array.from(profileMap.values()));
-                groups[plantName] = orderedGroup;
+                const orderedIds = new Set(order);
+                const remainingProfiles = groups[plantName]
+                    .filter(p => !orderedIds.has(p.id))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                
+                groups[plantName] = [...orderedGroup, ...remainingProfiles];
             } else {
                 groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
             }
@@ -680,3 +678,5 @@ export default function JobRecordSheet() {
     );
 }
 
+
+  
