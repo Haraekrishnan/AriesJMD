@@ -90,6 +90,10 @@ export default function JobRecordSheet() {
         if (upperCaseCode === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'status');
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime
+            const inputRef = inputRefs.current[`ot-${employeeId}-${day}`];
+            if (inputRef) {
+                inputRef.value = '';
+            }
             return;
         }
 
