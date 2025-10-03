@@ -2988,7 +2988,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrPlant: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
     if (type === 'status') {
-      const code = (codeOrPlant as string)?.toUpperCase();
+      const code = (codeOrPlant as string)?.toUpperCase() ?? '';
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
       if (!isValidCode) {
         toast({
@@ -3002,9 +3002,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (type === 'plant') {
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { plant: codeOrPlant });
     } else if (type === 'dailyOvertime') {
-      const day = day as number;
+      const overtimeDay = day as number;
       const hours = codeOrPlant as (number | null);
-      const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${day}`;
+      const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${overtimeDay}`;
       if (hours && hours > 0) {
         set(ref(rtdb, path), hours);
       } else {
@@ -3292,3 +3292,4 @@ export const useAppContext = (): AppContextType => {
 };
 
     
+
