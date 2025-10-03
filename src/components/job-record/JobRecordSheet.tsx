@@ -357,22 +357,33 @@ export default function JobRecordSheet() {
                                         const code = employeeRecord[day] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
-                                        const cellId = `${profile.id}-${day}`;
+
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
-                                                    <Input
-                                                        id={`jobcode-${profile.id}-${day}`}
-                                                        type="text"
-                                                        defaultValue={code}
-                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value, code)}
+                                                    <Select
+                                                      value={code}
+                                                      onValueChange={(value) => handleStatusChange(profile.id, day, value, code)}
+                                                    >
+                                                      <SelectTrigger
                                                         className={cn(
-                                                            'w-full h-full text-center font-bold rounded-none border border-input focus-visible:ring-1 focus-visible:ring-ring',
-                                                            code ? colorInfo.bg : 'bg-transparent',
-                                                            code ? colorInfo.text : 'text-foreground'
+                                                          "w-full h-full text-center font-bold rounded-none border-0 focus:ring-0 focus:ring-offset-0",
+                                                          code ? colorInfo.bg : 'bg-transparent',
+                                                          code ? colorInfo.text : 'text-foreground'
                                                         )}
-                                                        style={{borderColor: 'hsl(var(--border))'}}
-                                                    />
+                                                        style={{boxShadow: 'none'}}
+                                                      >
+                                                        <SelectValue placeholder="..." />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        <SelectItem value="">Clear</SelectItem>
+                                                        {jobCodes && jobCodes.map(jc => (
+                                                          <SelectItem key={jc.id} value={jc.code}>
+                                                            {jc.code} - {jc.details}
+                                                          </SelectItem>
+                                                        ))}
+                                                      </SelectContent>
+                                                    </Select>
                                                      {overtimeForDay > 0 && (
                                                         <Tooltip>
                                                         <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
@@ -381,32 +392,6 @@ export default function JobRecordSheet() {
                                                         <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
                                                         </Tooltip>
                                                     )}
-                                                     <Popover onOpenChange={(open) => setActivePopover(open ? cellId : null)} open={activePopover === cellId}>
-                                                        <PopoverTrigger asChild>
-                                                          <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-6">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-80">
-                                                            <div className="grid grid-cols-4 gap-1">
-                                                                {jobCodes && jobCodes.map(jc => (
-                                                                    <Button
-                                                                        key={jc.id}
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            handleStatusChange(profile.id, day, jc.code, code);
-                                                                            const inputEl = document.getElementById(`jobcode-${profile.id}-${day}`) as HTMLInputElement | null;
-                                                                            if (inputEl) inputEl.value = jc.code;
-                                                                            setActivePopover(null);
-                                                                        }}
-                                                                    >
-                                                                        {jc.code}
-                                                                    </Button>
-                                                                ))}
-                                                            </div>
-                                                        </PopoverContent>
-                                                    </Popover>
                                                 </div>
                                             </TableCell>
                                         );
