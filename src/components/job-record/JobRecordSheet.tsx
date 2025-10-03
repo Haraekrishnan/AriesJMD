@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import type { JobCode } from '@/lib/types';
+import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
@@ -39,7 +39,6 @@ export default function JobRecordSheet() {
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
-    // Optimistic state for immediate UI feedback
     const [optimisticJobRecords, setOptimisticJobRecords] = useState(jobRecords);
 
     useEffect(() => {
@@ -173,16 +172,16 @@ export default function JobRecordSheet() {
     }, [jobRecords, prevMonthKey]);
 
     const groupedProfiles = useMemo(() => {
-        const groups: { [key: string]: typeof manpowerProfiles } = {};
+        const groups: { [key: string]: ManpowerProfile[] } = {};
         const availablePlants = new Set(plantProjects);
         availablePlants.add('Unassigned');
 
         availablePlants.forEach(p => groups[p] = []);
 
+        // First, assign all profiles to their respective groups for the current month
         manpowerProfiles.forEach(profile => {
             const plantForCurrentMonth = jobRecordForMonth.records?.[profile.id]?.plant;
             const plantForPrevMonth = prevJobRecordForMonth.records?.[profile.id]?.plant;
-            
             const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
 
             if (groups[plantAssignment]) {
@@ -191,7 +190,8 @@ export default function JobRecordSheet() {
                 groups['Unassigned'].push(profile);
             }
         });
-        
+
+        // Then, sort each group based on the saved order
         Object.keys(groups).forEach(plantName => {
             const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
             const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
@@ -199,17 +199,24 @@ export default function JobRecordSheet() {
 
             if (order && Array.isArray(order)) {
                 const profileMap = new Map(groups[plantName].map(p => [p.id, p]));
-                const orderedGroup = order
+                
+                // Start with profiles that are in the saved order
+                const orderedProfiles = order
                     .map(id => profileMap.get(id))
                     .filter((p): p is ManpowerProfile => !!p);
-                
+
                 const orderedIds = new Set(order);
-                const remainingProfiles = groups[plantName]
-                    .filter(p => !orderedIds.has(p.id))
-                    .sort((a, b) => a.name.localeCompare(b.name));
                 
-                groups[plantName] = [...orderedGroup, ...remainingProfiles];
+                // Find profiles that are in the group but not in the saved order
+                const remainingProfiles = groups[plantName].filter(p => !orderedIds.has(p.id));
+
+                // Alphabetically sort ONLY the remaining profiles that don't have a saved order
+                remainingProfiles.sort((a, b) => a.name.localeCompare(b.name));
+                
+                // Combine the ordered profiles with the newly added (and sorted) ones
+                groups[plantName] = [...orderedProfiles, ...remainingProfiles];
             } else {
+                // If no order exists at all, sort the whole group alphabetically
                 groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
             }
         });
@@ -680,3 +687,5 @@ export default function JobRecordSheet() {
 
 
   
+
+    
