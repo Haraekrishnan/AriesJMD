@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -34,6 +33,7 @@ export default function JobRecordSheet() {
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
+    const [inputValues, setInputValues] = useState<Record<string, string>>({});
     const { toast } = useToast();
     const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
     
@@ -67,13 +67,30 @@ export default function JobRecordSheet() {
     const prevJobRecordForMonth = useMemo(() => {
         return jobRecords[prevMonthKey]?.records || {};
     }, [jobRecords, prevMonthKey]);
+    
+    useEffect(() => {
+        const initialValues: Record<string, string> = {};
+        Object.entries(jobRecordForMonth).forEach(([employeeId, record]) => {
+            if (record.days) {
+                Object.entries(record.days).forEach(([day, code]) => {
+                    if (code) {
+                        initialValues[`${employeeId}-${day}`] = code;
+                    }
+                });
+            }
+        });
+        setInputValues(initialValues);
+    }, [jobRecordForMonth]);
 
-    const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
-        const upperCaseCode = code.toUpperCase();
+
+    const handleStatusChange = useCallback((employeeId: string, day: number) => {
+        const inputKey = `${employeeId}-${day}`;
+        const upperCaseCode = (inputValues[inputKey] || '').toUpperCase();
+
         if (upperCaseCode === '') {
-          saveJobRecord(monthKey, employeeId, day, null, 'status');
-          saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime when code is removed
-          return;
+            saveJobRecord(monthKey, employeeId, day, null, 'status');
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime
+            return;
         }
 
         const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode);
@@ -83,16 +100,14 @@ export default function JobRecordSheet() {
                 description: `The code "${upperCaseCode}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert the input value
-            const inputRef = inputRefs.current[`${employeeId}-${day}`];
-            if (inputRef) {
-                const previousValue = jobRecordForMonth[employeeId]?.days?.[day] || '';
-                inputRef.value = previousValue;
-            }
+            setInputValues(prev => ({
+                ...prev,
+                [inputKey]: jobRecordForMonth[employeeId]?.days?.[day] || ''
+            }));
             return;
         }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-    }, [monthKey, saveJobRecord, toast, jobCodes, jobRecordForMonth]);
+    }, [monthKey, saveJobRecord, toast, jobCodes, jobRecordForMonth, inputValues]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const employeeRecord = jobRecordForMonth[employeeId] || {};
@@ -402,7 +417,8 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
-                                        const code = employeeRecord[day] || '';
+                                        const inputKey = `${profile.id}-${day}`;
+                                        const code = inputValues[inputKey] ?? '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code] || {};
 
@@ -412,9 +428,9 @@ export default function JobRecordSheet() {
                                                     <Input
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        defaultValue={code}
-                                                        ref={el => inputRefs.current[`${profile.id}-${day}`] = el}
-                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                        value={code}
+                                                        onChange={(e) => setInputValues(prev => ({ ...prev, [inputKey]: e.target.value }))}
+                                                        onBlur={() => handleStatusChange(profile.id, day)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
@@ -591,5 +607,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
