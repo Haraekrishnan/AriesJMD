@@ -1,17 +1,21 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Megaphone, X } from 'lucide-react';
+import { Megaphone, X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 
 export default function AnnouncementFeed() {
-    const { user, announcements, dismissAnnouncement } = useAppContext();
+    const { user, announcements, dismissAnnouncement, deleteAnnouncement } = useAppContext();
 
     const handleHide = (id: string) => {
         dismissAnnouncement(id);
+    };
+
+    const handleDelete = (id: string) => {
+        deleteAnnouncement(id);
     };
     
     const visibleAnnouncements = useMemo(() => {
@@ -36,14 +40,37 @@ export default function AnnouncementFeed() {
                             </div>
                         </div>
                     </div>
-                    <Button 
-                        size="icon" 
-                        variant="ghost"
-                        className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
-                        onClick={() => handleHide(announcement.id)}
-                    >
-                        <X className="h-4 w-4 text-black dark:text-white" />
-                    </Button>
+                    <div className="absolute top-2 right-2 flex items-center">
+                        {user?.role === 'Admin' && (
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-destructive">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete this announcement?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete the announcement for all users. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(announcement.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                        <Button 
+                            size="icon" 
+                            variant="ghost"
+                            className="h-6 w-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+                            onClick={() => handleHide(announcement.id)}
+                        >
+                            <X className="h-4 w-4 text-black dark:text-white" />
+                        </Button>
+                    </div>
                 </div>
             ))}
         </div>
