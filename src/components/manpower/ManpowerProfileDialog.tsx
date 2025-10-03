@@ -37,7 +37,7 @@ const skillSchema = z.object({
     name: z.string().min(1, "Skill name is required"),
     details: z.string().optional(),
     link: z.string().url().optional().or(z.literal('')),
-    validity: z.date().optional(),
+    validity: z.date().optional().nullable(),
 });
 
 const leaveSchema = z.object({
@@ -59,7 +59,7 @@ const profileSchema = z.object({
   status: z.enum(['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project']),
   mobileNumber: z.string().optional(),
   gender: z.enum(['Male', 'Female', 'Other']).optional(),
-  dob: z.date().optional(),
+  dob: z.date().optional().nullable(),
   aadharNumber: z.string().optional(),
   uanNumber: z.string().optional(),
   coverallSize: z.string().optional(),
@@ -67,23 +67,23 @@ const profileSchema = z.object({
   workOrderNumber: z.string().optional(),
   labourLicenseNo: z.string().optional(),
   eic: z.string().optional(),
-  joiningDate: z.date().optional(),
-  passIssueDate: z.date().optional(),
-  workOrderExpiryDate: z.date().optional(),
-  labourLicenseExpiryDate: z.date().optional(),
+  joiningDate: z.date().optional().nullable(),
+  passIssueDate: z.date().optional().nullable(),
+  workOrderExpiryDate: z.date().optional().nullable(),
+  labourLicenseExpiryDate: z.date().optional().nullable(),
   wcPolicyNumber: z.string().optional(),
-  wcPolicyExpiryDate: z.date().optional(),
-  medicalExpiryDate: z.date().optional(),
-  safetyExpiryDate: z.date().optional(),
-  irataValidity: z.date().optional(),
-  firstAidExpiryDate: z.date().optional(),
+  wcPolicyExpiryDate: z.date().optional().nullable(),
+  medicalExpiryDate: z.date().optional().nullable(),
+  safetyExpiryDate: z.date().optional().nullable(),
+  irataValidity: z.date().optional().nullable(),
+  firstAidExpiryDate: z.date().optional().nullable(),
   cardCategory: z.string().optional(),
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
   documents: z.array(documentSchema).optional(),
   skills: z.array(skillSchema).optional(),
-  resignationDate: z.date().optional(),
-  terminationDate: z.date().optional(),
+  resignationDate: z.date().optional().nullable(),
+  terminationDate: z.date().optional().nullable(),
   feedback: z.string().optional(),
   currentLeave: leaveSchema.optional(),
   leaveHistory: z.array(z.any()).optional(), // Use `any` for display, not form validation
@@ -174,9 +174,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     return allowedRoles.includes(user.role);
   }, [user]);
 
-  const parseDate = (dateString?: string): Date | undefined => {
+  const parseDate = (dateString?: string | null): Date | undefined => {
     if (!dateString) return undefined;
-    const date = new Date(dateString);
+    const date = parseISO(dateString);
     return isValid(date) ? date : undefined;
   };
 
@@ -666,4 +666,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   );
 }
 
-    
