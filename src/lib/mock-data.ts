@@ -1,6 +1,5 @@
 
 
-
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant, JobCode } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
@@ -100,7 +99,8 @@ export const ROLES: RoleDefinition[] = [
     name: 'Document Controller',
     permissions: [
         'manage_manpower_list', 'manage_tasks', 'log_manpower',
-        'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests'
+        'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
+        'manage_job_record'
     ],
     isEditable: true,
   }

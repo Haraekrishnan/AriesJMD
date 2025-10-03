@@ -9,19 +9,8 @@ import { AlertTriangle } from 'lucide-react';
 export default function JobRecordPage() {
     const { can } = useAppContext();
 
-    if (!can.manage_job_schedule) {
-        return (
-            <Card className="w-full max-w-md mx-auto mt-20">
-                <CardHeader className="text-center items-center">
-                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
-                        <AlertTriangle className="h-10 w-10 text-destructive" />
-                    </div>
-                    <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to view the job record sheet.</CardDescription>
-                </CardHeader>
-            </Card>
-        );
-    }
+    // The page is viewable by everyone, so we no longer need a hard access block.
+    // The JobRecordSheet component will handle disabling editing based on permissions.
     
     return (
         <div className="space-y-8">
