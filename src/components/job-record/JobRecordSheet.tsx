@@ -38,33 +38,61 @@ export default function JobRecordSheet() {
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
+    
+    // Optimistic state for immediate UI feedback
+    const [optimisticJobRecords, setOptimisticJobRecords] = useState(jobRecords);
+
+    useEffect(() => {
+        setOptimisticJobRecords(jobRecords);
+    }, [jobRecords]);
 
     const jobRecordForMonth = useMemo(() => {
-        return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
-    }, [jobRecords, monthKey]);
+        return optimisticJobRecords[monthKey] || { records: {}, plantsOrder: {} };
+    }, [optimisticJobRecords, monthKey]);
+
+    const handleOptimisticUpdate = (month: string, employeeId: string, day: number, type: 'status' | 'dailyOvertime', value: string | number | null) => {
+        setOptimisticJobRecords(prevRecords => {
+            const newRecords = JSON.parse(JSON.stringify(prevRecords));
+            const monthRecord = newRecords[month] || { records: {}, plantsOrder: {} };
+            const employeeRecord = monthRecord.records[employeeId] || { days: {}, dailyOvertime: {} };
+    
+            if (type === 'status') {
+                employeeRecord.days = employeeRecord.days || {};
+                employeeRecord.days[day] = value as string;
+            } else if (type === 'dailyOvertime') {
+                employeeRecord.dailyOvertime = employeeRecord.dailyOvertime || {};
+                if (value === null) {
+                    delete employeeRecord.dailyOvertime[day];
+                } else {
+                    employeeRecord.dailyOvertime[day] = value as number;
+                }
+            }
+    
+            monthRecord.records[employeeId] = employeeRecord;
+            newRecords[month] = monthRecord;
+            return newRecords;
+        });
+    };
 
     const dayHeaders = useMemo(() => 
         Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), 
     [currentMonth]);
 
-    const handleStatusChange = useCallback((employeeId: string, day: number, value: string | undefined) => {
+    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const code = (value || '').toUpperCase();
         
-        if (code && !jobCodes.some(jc => jc.code === code)) {
-          toast({
-            title: "Invalid Job Code",
-            description: `The code "${code}" is not a valid job code.`,
-            variant: "destructive"
-          });
-          return;
+        handleOptimisticUpdate(monthKey, employeeId, day, 'status', code);
+
+        if (code === '') {
+            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
         }
 
         saveJobRecord(monthKey, employeeId, day, code, 'status');
     
-        if (value === '') {
+        if (code === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
         }
-    }, [monthKey, saveJobRecord, jobCodes, toast]);
+    }, [monthKey, saveJobRecord, handleOptimisticUpdate]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const hours = Number(value);
@@ -78,7 +106,8 @@ export default function JobRecordSheet() {
                 description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
                 variant: "destructive"
             });
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Force clear it
+            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
             return;
         }
 
@@ -88,11 +117,13 @@ export default function JobRecordSheet() {
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Force clear it
+            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
             return;
         }
 
         const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
+        handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', finalHours);
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
     };
     
@@ -167,21 +198,19 @@ export default function JobRecordSheet() {
             const order = currentOrder || prevOrder;
 
             if (order && Array.isArray(order)) {
-                groups[plantName].sort((a, b) => {
-                    const indexA = order.indexOf(a.id);
-                    const indexB = order.indexOf(b.id);
+                const orderedGroup: typeof manpowerProfiles = [];
+                const profileMap = new Map(groups[plantName].map(p => [p.id, p]));
 
-                    if (indexA !== -1 && indexB !== -1) {
-                        return indexA - indexB; // Both are in the order array, sort by it
+                order.forEach(id => {
+                    if (profileMap.has(id)) {
+                        orderedGroup.push(profileMap.get(id)!);
+                        profileMap.delete(id);
                     }
-                    if (indexA !== -1) {
-                        return -1; // A is in the order, B is not; A comes first
-                    }
-                    if (indexB !== -1) {
-                        return 1; // B is in the order, A is not; B comes first
-                    }
-                    return 0; // Neither are in the order, maintain original relative order (effectively append)
                 });
+                
+                // Add any newly assigned employees (not in the saved order) to the end
+                orderedGroup.push(...Array.from(profileMap.values()));
+                groups[plantName] = orderedGroup;
             } else {
                 groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
             }
@@ -468,8 +497,9 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        defaultValue={code}
+                                                        value={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                        onChange={(e) => handleOptimisticUpdate(monthKey, profile.id, day, 'status', e.target.value.toUpperCase())}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
@@ -519,8 +549,9 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}-overtime`}
                                                         type="number"
                                                         placeholder="0"
-                                                        defaultValue={dailyOvertime[day] || ''}
+                                                        value={dailyOvertime[day] || ''}
                                                         onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                        onChange={(e) => handleOptimisticUpdate(monthKey, profile.id, day, 'dailyOvertime', e.target.value)}
                                                         className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                         disabled={!canEditSheet}
                                                     />
