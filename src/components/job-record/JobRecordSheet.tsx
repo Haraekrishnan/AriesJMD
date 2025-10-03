@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ export default function JobRecordSheet() {
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
     const { toast } = useToast();
+    const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -82,10 +83,16 @@ export default function JobRecordSheet() {
                 description: `The code "${upperCaseCode}" is not a valid job code.`,
                 variant: "destructive"
             });
+            // Revert the input value
+            const inputRef = inputRefs.current[`${employeeId}-${day}`];
+            if (inputRef) {
+                const previousValue = jobRecordForMonth[employeeId]?.days?.[day] || '';
+                inputRef.value = previousValue;
+            }
             return;
         }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-    }, [monthKey, saveJobRecord, toast, jobCodes]);
+    }, [monthKey, saveJobRecord, toast, jobCodes, jobRecordForMonth]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const employeeRecord = jobRecordForMonth[employeeId] || {};
@@ -97,6 +104,11 @@ export default function JobRecordSheet() {
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
+            // Revert the input value if overtime is entered without a job code
+            const inputRef = inputRefs.current[`ot-${employeeId}-${day}`];
+            if (inputRef) {
+                inputRef.value = '';
+            }
             return;
         }
 
@@ -157,7 +169,7 @@ export default function JobRecordSheet() {
             const plantForCurrentMonth = jobRecordForMonth[profile.id]?.plant;
             const plantForPrevMonth = prevJobRecordForMonth[profile.id]?.plant;
             
-            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? profile.plant ?? 'Unassigned';
+            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
 
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
@@ -226,7 +238,13 @@ export default function JobRecordSheet() {
                 const rowData: any[] = [rIndex + 1, profile.name];
                 dayHeaders.forEach(day => {
                     const code = employeeRecord[day] || '';
-                    rowData.push(code);
+                    const overtimeForDay = dailyOvertime[day];
+
+                    if (code && overtimeForDay && overtimeForDay > 0) {
+                        rowData.push({ v: code, c: [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }] });
+                    } else {
+                        rowData.push(code);
+                    }
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 ws_data.push(rowData);
@@ -234,29 +252,22 @@ export default function JobRecordSheet() {
     
             const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
             
-            profiles.forEach((profile, rIndex) => {
-                const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
-                const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
-
-                dayHeaders.forEach((day, dIndex) => {
-                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
-
-                    const code = employeeRecord[day] || '';
-                    const colorInfo = JOB_CODE_COLORS[code];
-                    if (colorInfo?.excelFill) {
-                        ws[cellAddress].s = {
-                           fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
-                           font: colorInfo.excelFill.font || {}
-                       };
-                    }
-
-                    const overtimeForDay = dailyOvertime[day];
-                    if (code && overtimeForDay && overtimeForDay > 0) {
-                        if (!ws[cellAddress].c) ws[cellAddress].c = [];
-                        ws[cellAddress].c.push({ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true });
-                    }
-                });
+            ws_data.forEach((row, r) => {
+              if (r < 3) return; // Skip title and header
+              row.forEach((cellData, c) => {
+                  if (c >= 2 && c < dayHeaders.length + 2) {
+                      const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
+                      const colorInfo = JOB_CODE_COLORS[code];
+                      if (colorInfo?.excelFill) {
+                          const cellAddress = XLSX.utils.encode_cell({ r, c });
+                          if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+                          ws[cellAddress].s = {
+                             fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
+                             font: colorInfo.excelFill.font || {}
+                         };
+                      }
+                  }
+              });
             });
             
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
@@ -402,6 +413,7 @@ export default function JobRecordSheet() {
                                                         type="text"
                                                         list="jobcodes-datalist"
                                                         defaultValue={code}
+                                                        ref={el => inputRefs.current[`${profile.id}-${day}`] = el}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
@@ -451,6 +463,7 @@ export default function JobRecordSheet() {
                                                     type="number"
                                                     placeholder="0"
                                                     defaultValue={dailyOvertime[day] || ''}
+                                                    ref={el => inputRefs.current[`ot-${profile.id}-${day}`] = el}
                                                     onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                     className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                     disabled={!canEditSheet}
