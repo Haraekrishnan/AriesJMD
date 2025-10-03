@@ -40,78 +40,56 @@ export default function JobRecordSheet() {
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
-    const [optimisticJobRecords, setOptimisticJobRecords] = useState(jobRecords);
-    const [invalidCodeCell, setInvalidCodeCell] = useState<string | null>(null);
+    const [cellStates, setCellStates] = useState<Record<string, string>>({});
     
-    const dayHeaders = useMemo(() => {
-        const daysInMonth = getDaysInMonth(currentMonth);
-        return Array.from({ length: daysInMonth }, (_, i) => i + 1);
-    }, [currentMonth]);
-
+    const jobRecordForMonth = useMemo(() => {
+        return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
+    }, [jobRecords, monthKey]);
+    
     useEffect(() => {
-        setOptimisticJobRecords(jobRecords);
-    }, [jobRecords]);
-    
+        const newStates: Record<string, string> = {};
+        if (jobRecordForMonth.records) {
+            for (const profileId in jobRecordForMonth.records) {
+                const record = jobRecordForMonth.records[profileId];
+                if (record.days) {
+                    for (const day in record.days) {
+                        newStates[`${profileId}-${day}`] = record.days[day];
+                    }
+                }
+            }
+        }
+        setCellStates(newStates);
+    }, [jobRecordForMonth]);
+
     useEffect(() => {
         if (isBefore(currentMonth, implementationStartDate)) {
             setCurrentMonth(implementationStartDate);
         }
     }, [currentMonth]);
 
-    const jobRecordForMonth = useMemo(() => {
-        return optimisticJobRecords[monthKey] || { records: {}, plantsOrder: {} };
-    }, [optimisticJobRecords, monthKey]);
-
-    const handleOptimisticUpdate = (month: string, employeeId: string, day: number, type: 'status' | 'dailyOvertime', value: string | number | null) => {
-        setOptimisticJobRecords(prevRecords => {
-            const newRecords = JSON.parse(JSON.stringify(prevRecords));
-            const monthRecord = newRecords[month] || { records: {}, plantsOrder: {} };
-            const employeeRecord = monthRecord.records[employeeId] || { days: {}, dailyOvertime: {} };
-    
-            if (type === 'status') {
-                employeeRecord.days = employeeRecord.days || {};
-                employeeRecord.days[day] = value as string;
-            } else if (type === 'dailyOvertime') {
-                employeeRecord.dailyOvertime = employeeRecord.dailyOvertime || {};
-                if (value === null || value === '' || isNaN(Number(value))) {
-                    delete employeeRecord.dailyOvertime[day];
-                } else {
-                    employeeRecord.dailyOvertime[day] = value as number;
-                }
-            }
-    
-            monthRecord.records[employeeId] = employeeRecord;
-            newRecords[month] = monthRecord;
-            return newRecords;
-        });
-    };
-
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const code = (value || '').toUpperCase();
         const cellId = `${employeeId}-${day}`;
-        const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+
+        setCellStates(prev => ({...prev, [cellId]: code }));
 
         const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
 
         if (!isValidCode && code !== '') {
-            setInvalidCodeCell(cellId);
             toast({
                 title: "Invalid Job Code",
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert the optimistic update to the previous valid state
-            handleOptimisticUpdate(monthKey, employeeId, day, 'status', previousCode);
+            // Revert the cell state
+            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+            setCellStates(prev => ({...prev, [cellId]: previousCode}));
             return;
-        } else {
-            setInvalidCodeCell(prev => prev === cellId ? null : prev);
         }
         
-        handleOptimisticUpdate(monthKey, employeeId, day, 'status', code);
         saveJobRecord(monthKey, employeeId, day, code, 'status');
     
         if (code === '') {
-            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
         }
     }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
@@ -127,7 +105,6 @@ export default function JobRecordSheet() {
                 description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
                 variant: "destructive"
             });
-            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
             return;
         }
@@ -138,14 +115,12 @@ export default function JobRecordSheet() {
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
-            handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
             return;
         }
         
         const hours = Number(value);
         const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
-        handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', finalHours);
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
     };
     
@@ -297,6 +272,7 @@ export default function JobRecordSheet() {
             const ws_data: any[][] = [];
             ws_data.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             ws_data.push([]);
+            const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
             const header = ['S.No', 'Name', ...dayHeaders.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             ws_data.push(header);
     
@@ -418,6 +394,7 @@ export default function JobRecordSheet() {
          if (profiles.length === 0) {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
         }
+        const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
         return (
             <div className="overflow-x-auto">
                 <Table className="min-w-full">
@@ -519,10 +496,9 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
-                                        const code = employeeRecord[day] || '';
+                                        const code = cellStates[`${profile.id}-${day}`] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code as string] || {};
-                                        const isInvalid = invalidCodeCell === `${profile.id}-${day}`;
 
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
@@ -531,13 +507,13 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        defaultValue={code}
+                                                        value={code}
+                                                        onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
-                                                            code ? colorInfo.text : 'text-foreground',
-                                                            isInvalid && 'ring-2 ring-destructive'
+                                                            code ? colorInfo.text : 'text-foreground'
                                                         )}
                                                         style={{ boxShadow: 'none' }}
                                                         disabled={!canEditSheet}
@@ -720,5 +696,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
