@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
@@ -137,7 +137,7 @@ export default function JobRecordSheet() {
             const plantForCurrentMonth = jobRecordForMonth[profile.id]?.plant;
             const plantForPrevMonth = prevMonthRecord[profile.id]?.plant;
             
-            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
+            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? profile.plant ?? 'Unassigned';
 
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
@@ -183,7 +183,7 @@ export default function JobRecordSheet() {
             const header = ['S.No', 'Name', ...dateHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             sheetData.push(header);
 
-            const comments: any[] = [];
+            const comments: {ref: string; comment: {a: string; t:string}}[] = [];
 
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
@@ -211,33 +211,29 @@ export default function JobRecordSheet() {
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
                 const rowData: (string | number)[] = [rIndex + 1, profile.name];
-                dayHeaders.forEach(day => {
-                    rowData.push(employeeRecord[day] || '');
+                dayHeaders.forEach((day, dIndex) => {
+                    const code = employeeRecord[day] || '';
+                    rowData.push(code);
+
+                    const overtimeForDay = dailyOvertime[day];
+                    if (overtimeForDay && overtimeForDay > 0) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
+                        comments.push({
+                            ref: cellAddress,
+                            comment: { t: `Overtime Hours: ${overtimeForDay}`, a: "Overtime" }
+                        });
+                    }
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(rowData);
             });
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            ws['!comments'] = [];
             
-            profiles.forEach((profile, rIndex) => {
-                const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
-                dayHeaders.forEach((day, dIndex) => {
-                    const overtimeForDay = dailyOvertime[day];
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                         ws['!comments'].push({
-                            ref: cellAddress,
-                            comment: {
-                                text: `Overtime Hours: ${overtimeForDay}`,
-                                author: "System"
-                            }
-                        });
-                    }
-                });
-            });
-
+            if (comments.length > 0) {
+                ws['!comments'] = comments;
+            }
+            
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
             
             profiles.forEach((profile, rIndex) => {
@@ -575,10 +571,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-
-
-
-
-
 
