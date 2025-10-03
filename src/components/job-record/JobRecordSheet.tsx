@@ -37,7 +37,12 @@ export default function JobRecordSheet() {
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
-    const canGoToPreviousMonth = isAfter(currentMonth, implementationStartDate);
+    
+    const canGoToPreviousMonth = useMemo(() => {
+      const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+      return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+    }, [currentMonth]);
+
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
@@ -239,7 +244,7 @@ export default function JobRecordSheet() {
                     const overtimeForDay = dailyOvertime[day];
                     if (overtimeForDay && overtimeForDay > 0) {
                         if (!ws[cellAddress].c) ws[cellAddress].c = [];
-                        ws[cellAddress].c.push({ a: "SheetJS", t: `Overtime Hours: ${overtimeForDay}` });
+                         ws[cellAddress].c.push({ a: "SheetJS", t: `Overtime Hours: ${overtimeForDay}` });
                     }
                 });
             });
