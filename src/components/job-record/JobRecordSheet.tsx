@@ -28,7 +28,7 @@ const implementationStartDate = new Date(2024, 9, 1); // October 2024 (Month is 
 
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
-    const [currentMonth, setCurrentMonth] = useState(startOfToday() < implementationStartDate ? implementationStartDate : startOfToday());
+    const [currentMonth, setCurrentMonth] = useState(new Date());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
@@ -44,6 +44,10 @@ export default function JobRecordSheet() {
     
     const jobRecordForMonth = useMemo(() => {
         return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
+    }, [jobRecords, monthKey]);
+
+    const isCurrentSheetLocked = useMemo(() => {
+        return jobRecords[monthKey]?.isLocked || false;
     }, [jobRecords, monthKey]);
     
     useEffect(() => {
@@ -202,7 +206,6 @@ export default function JobRecordSheet() {
                 const plantForB_prev = prevJobRecordForMonth.records?.[b.id]?.plant;
                 const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
                 
-                // Sort new employees to the bottom
                 if (a_isNew && !b_isNew) return 1;
                 if (!a_isNew && b_isNew) return -1;
                 
@@ -213,7 +216,6 @@ export default function JobRecordSheet() {
                     if (indexA !== -1) return -1;
                     if (indexB !== -1) return 1;
                 }
-                 // If both are new or neither has an order, maintain original/database order.
                 const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
                 const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
                 return originalAIndex - originalBIndex;
@@ -231,10 +233,6 @@ export default function JobRecordSheet() {
     }, [currentMonth]);
     
     const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfMonth(new Date())), [currentMonth]);
-
-    const isCurrentSheetLocked = useMemo(() => {
-        return jobRecords[monthKey]?.isLocked || false;
-    }, [jobRecords, monthKey]);
 
     const isEditableMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
     
@@ -272,8 +270,8 @@ export default function JobRecordSheet() {
             const ws_data: any[][] = [];
             ws_data.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             ws_data.push([]);
-            const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
-            const header = ['S.No', 'Name', ...dayHeaders.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
+            const dayHeadersExcel = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+            const header = ['S.No', 'Name', ...dayHeadersExcel.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             ws_data.push(header);
     
             profiles.forEach((profile, rIndex) => {
@@ -284,7 +282,7 @@ export default function JobRecordSheet() {
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
                 const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
-                const summary = dayHeaders.reduce((acc, day) => {
+                const summary = dayHeadersExcel.reduce((acc, day) => {
                     const code = employeeRecord[day];
                     if (offCodes.includes(code)) acc.offDays++;
                     if (leaveCodes.includes(code)) acc.leaveDays++;
@@ -299,7 +297,7 @@ export default function JobRecordSheet() {
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
     
                 const rowData: any[] = [rIndex + 1, profile.name];
-                dayHeaders.forEach(day => {
+                dayHeadersExcel.forEach(day => {
                     const code = employeeRecord[day] || '';
                     const overtimeForDay = dailyOvertime[day];
                     const cell: {v: string, c?: any[]} = { v: code };
@@ -318,7 +316,7 @@ export default function JobRecordSheet() {
             ws_data.forEach((row, r) => {
               if (r < 3) return; // Skip title and header
               row.forEach((cellData, c) => {
-                  if (c >= 2 && c < dayHeaders.length + 2) {
+                  if (c >= 2 && c < dayHeadersExcel.length + 2) {
                       const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
                       const cellAddress = XLSX.utils.encode_cell({ r, c });
                       if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
@@ -334,7 +332,7 @@ export default function JobRecordSheet() {
               });
             });
             
-            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
+            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeadersExcel.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     
             const legendStartRow = ws_data.length + 2;
             XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
@@ -696,3 +694,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
