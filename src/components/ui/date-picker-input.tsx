@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { format, parse, isValid } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,9 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const str = e.target.value;
     setTextValue(str);
-    if (str.length === 10) {
+    if (str.length === 0) {
+      onChange(undefined);
+    } else if (str.length === 10) {
       const parsedDate = parse(str, 'dd-MM-yyyy', new Date());
       if (isValid(parsedDate)) {
         onChange(parsedDate);
@@ -40,6 +42,12 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     if (date) {
         setTextValue(format(date, 'dd-MM-yyyy'));
     }
+  };
+  
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange(undefined);
+    setTextValue('');
   };
 
   return (
@@ -60,7 +68,11 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
             className={cn('absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2', disabled && 'hidden')}
             disabled={disabled}
           >
-            <CalendarIcon className="h-4 w-4" />
+            {value ? (
+              <X className="h-4 w-4" onClick={handleClear} />
+            ) : (
+              <CalendarIcon className="h-4 w-4" />
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0">
