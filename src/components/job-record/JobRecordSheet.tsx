@@ -227,7 +227,7 @@ export default function JobRecordSheet() {
                         const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
                         ws['!comments'].push({
                             ref: cellAddress,
-                            text: {t: `Overtime Hours: ${overtimeForDay}`}
+                            text: { t: `Overtime Hours: ${overtimeForDay}` }
                         });
                     }
                 });
