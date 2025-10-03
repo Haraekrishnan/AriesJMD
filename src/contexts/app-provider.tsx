@@ -1762,81 +1762,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMultipleManpowerProfiles = useCallback((profilesData: any[]): number => {
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
-  
-    profilesData.forEach((p, index) => {
-      // Check if p is an array and has a minimum length
-      if (!Array.isArray(p) || p.length < 13) {
-        console.warn(`Skipping row ${index + 2}: insufficient data.`);
-        return;
-      }
-      
-      const hardCopyFileNo = p[19]?.toString().trim();
-      if (!hardCopyFileNo) {
-        console.warn(`Skipping row ${index + 2}: Hard Copy File No. is required for import.`);
-        return;
-      }
-  
-      const existingProfile = manpowerProfiles.find(mp => mp.hardCopyFileNo === hardCopyFileNo);
 
-      const parseExcelDate = (date: any): string | undefined => {
-          if (!date) return undefined;
-          if (date instanceof Date && isValid(date)) {
-              return date.toISOString();
-          }
-          if (typeof date === 'string') {
-              const parsed = parse(date, 'yyyy-MM-dd', new Date());
-              if (isValid(parsed)) return parsed.toISOString();
-              const parsed2 = parseISO(date);
-              if (isValid(parsed2)) return parsed2.toISOString();
-          }
-          return undefined;
-      };
-      
-      const profileData: Partial<ManpowerProfile> = {
-          name: p[0] || 'No Name Provided',
-          mobileNumber: p[1]?.toString() || '',
-          gender: p[2],
-          workOrderNumber: p[3]?.toString(),
-          labourLicenseNo: p[4]?.toString(),
-          eic: p[5]?.toString(),
-          workOrderExpiryDate: parseExcelDate(p[6]),
-          labourLicenseExpiryDate: parseExcelDate(p[7]),
-          joiningDate: parseExcelDate(p[8]),
-          epNumber: p[9]?.toString(),
-          aadharNumber: p[10]?.toString(),
-          dob: parseExcelDate(p[11]),
-          uanNumber: p[12]?.toString(),
-          wcPolicyNumber: p[13]?.toString(),
-          wcPolicyExpiryDate: parseExcelDate(p[14]),
-          cardCategory: p[15]?.toString(),
-          cardType: p[16]?.toString(),
-          hardCopyFileNo: hardCopyFileNo,
-      };
-  
-      const profileId = existingProfile ? existingProfile.id : push(ref(rtdb)).key;
-      if (!profileId) return;
-  
-      const finalData = existingProfile 
-          ? { ...existingProfile, ...profileData }
-          : { 
-              status: 'Working' as const, 
-              trade: 'Others', 
-              documents: [], 
-              ...profileData 
-            };
-  
-      updates[`manpowerProfiles/${profileId}`] = finalData;
-      importedCount++;
+    profilesData.forEach((p, index) => {
+        if (!Array.isArray(p) || p.length < 13) {
+            console.warn(`Skipping row ${index + 2}: insufficient data.`);
+            return;
+        }
+        
+        const hardCopyFileNo = p[19]?.toString().trim();
+        if (!hardCopyFileNo) {
+            console.warn(`Skipping row ${index + 2}: Hard Copy File No. is required for import.`);
+            return;
+        }
+
+        const existingProfile = manpowerProfiles.find(mp => mp.hardCopyFileNo === hardCopyFileNo);
+
+        const parseExcelDate = (date: any): string | undefined => {
+            if (!date) return undefined;
+            if (date instanceof Date && isValid(date)) {
+                return date.toISOString();
+            }
+            if (typeof date === 'string') {
+                const parsed = parse(date, 'yyyy-MM-dd', new Date());
+                if (isValid(parsed)) return parsed.toISOString();
+                const parsed2 = parseISO(date);
+                if (isValid(parsed2)) return parsed2.toISOString();
+            }
+            return undefined;
+        };
+        
+        const profileData: Partial<Omit<ManpowerProfile, 'id'>> = {
+            name: p[0] || 'No Name Provided',
+            mobileNumber: p[1]?.toString() || '',
+            gender: p[2],
+            workOrderNumber: p[3]?.toString(),
+            labourLicenseNo: p[4]?.toString(),
+            eic: p[5]?.toString(),
+            workOrderExpiryDate: parseExcelDate(p[6]),
+            labourLicenseExpiryDate: parseExcelDate(p[7]),
+            joiningDate: parseExcelDate(p[8]),
+            epNumber: p[9]?.toString(),
+            aadharNumber: p[10]?.toString(),
+            dob: parseExcelDate(p[11]),
+            uanNumber: p[12]?.toString(),
+            wcPolicyNumber: p[13]?.toString(),
+            wcPolicyExpiryDate: parseExcelDate(p[14]),
+            cardCategory: p[15]?.toString(),
+            cardType: p[16]?.toString(),
+            hardCopyFileNo: hardCopyFileNo,
+            status: 'Working',
+            trade: 'Others',
+            documents: [],
+        };
+
+        const profileId = existingProfile ? existingProfile.id : push(ref(rtdb)).key;
+        if (!profileId) return;
+
+        const finalData = existingProfile 
+            ? { ...existingProfile, ...profileData }
+            : profileData;
+
+        updates[`manpowerProfiles/${profileId}`] = finalData;
+        importedCount++;
     });
-  
+
     if (Object.keys(updates).length > 0) {
-      update(ref(rtdb), updates);
-      if (user) addActivityLog(user.id, 'Bulk Manpower Import', `Imported/updated ${importedCount} profiles.`);
+        update(ref(rtdb), updates);
+        if (user) addActivityLog(user.id, 'Bulk Manpower Import', `Imported/updated ${importedCount} profiles.`);
     }
     
     return importedCount;
 }, [user, manpowerProfiles, addActivityLog]);
-  
 
   const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
     const { id, ...data } = profile;
@@ -2166,7 +2162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -3002,7 +2998,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (type === 'plant') {
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { plant: codeOrPlant });
     } else if (type === 'dailyOvertime') {
-      const overtimeDay = day as number;
+      const overtimeDay = day!;
       const hours = codeOrPlant as (number | null);
       const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${overtimeDay}`;
       if (hours && hours > 0) {
@@ -3290,6 +3286,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
 
