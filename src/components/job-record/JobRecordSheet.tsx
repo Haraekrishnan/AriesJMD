@@ -218,7 +218,6 @@ export default function JobRecordSheet() {
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
             
-            // Add comments for overtime
             ws['!comments'] = [];
             profiles.forEach((profile, rIndex) => {
                 const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
