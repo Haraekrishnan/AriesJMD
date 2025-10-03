@@ -78,6 +78,18 @@ export default function JobRecordSheet() {
     }, [monthKey, saveJobRecord, toast, jobCodes]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
+        const employeeRecord = jobRecordForMonth[employeeId] || {};
+        const jobCodeForDay = employeeRecord.days?.[day];
+    
+        if (!jobCodeForDay) {
+            toast({
+                title: "Cannot Add Overtime",
+                description: "Overtime can only be added to a day with a valid job code.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         const numericHours = Number(hours);
         const finalHours = isNaN(numericHours) || numericHours <= 0 ? null : numericHours;
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
@@ -170,28 +182,28 @@ export default function JobRecordSheet() {
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
-    
+
         allTabs.forEach(plant => {
             const profiles = groupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
-    
+
+            const ws = XLSX.utils.aoa_to_sheet([]);
+            ws['!comments'] = [];
+
             const sheetData: any[][] = [];
             sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             sheetData.push([]);
-    
             const header = ['S.No', 'Name', ...dayHeaders.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             sheetData.push(header);
-    
+
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
-                
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
                 const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
-                
                 const summary = dayHeaders.reduce((acc, day) => {
                     const code = employeeRecord[day];
                     if (offCodes.includes(code)) acc.offDays++;
@@ -202,28 +214,28 @@ export default function JobRecordSheet() {
                     if (workCodes.includes(code)) acc.workDays++;
                     return acc;
                 }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
-    
                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                 const additionalSundays = record.additionalSundayDuty || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-                
+
                 const rowData: any[] = [rIndex + 1, profile.name];
-                dayHeaders.forEach((day) => {
+                dayHeaders.forEach((day, dIndex) => {
                     const code = employeeRecord[day] || '';
                     const overtimeForDay = dailyOvertime[day];
                     const cell: { v: string; c?: any[] } = { v: code };
 
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        cell.c = [{ a: 'Overtime', t: `Hours: ${overtimeForDay}`, hidden: true }];
+                    if (code && overtimeForDay && overtimeForDay > 0) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
+                        ws['!comments'].push({ ref: cellAddress, text: `Overtime Hours: ${overtimeForDay}` });
                     }
                     rowData.push(cell);
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(rowData);
             });
+
+            XLSX.utils.sheet_add_aoa(ws, sheetData, { origin: 'A1' });
             
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    
             // Style cells with job code colors
             profiles.forEach((profile, rIndex) => {
                 const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
@@ -242,7 +254,7 @@ export default function JobRecordSheet() {
             });
             
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
-    
+
             const legendStartRow = sheetData.length + 2;
             XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
             XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
@@ -266,10 +278,10 @@ export default function JobRecordSheet() {
                  XLSX.utils.sheet_add_aoa(ws, [[jc.code, jc.details, manDaysCount[jc.code] || 0]], { origin: -1 });
               });
             }
-    
+
             XLSX.utils.book_append_sheet(wb, ws, plant);
         });
-    
+
         if(wb.SheetNames.length > 0) {
             XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
         } else {
@@ -560,3 +572,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
