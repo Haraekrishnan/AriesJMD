@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1837,11 +1836,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
     const { id, ...data } = profile;
     const cleanData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [key, value === undefined ? null : value])
+        Object.entries(data).map(([key, value]) => {
+            if (key === 'ppeHistory' && (!value || typeof value !== 'object')) {
+                return [key, null];
+            }
+            return [key, value === undefined ? null : value];
+        })
     );
+
     update(ref(rtdb, `manpowerProfiles/${id}`), cleanData);
     if (user) addActivityLog(user.id, 'Manpower Profile Updated', profile.name);
-  }, [user, addActivityLog]);
+}, [user, addActivityLog]);
 
   const deleteManpowerProfile = useCallback((profileId: string) => {
     const profile = manpowerProfiles.find(p => p.id === profileId);
@@ -3287,3 +3292,5 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
 
+
+    

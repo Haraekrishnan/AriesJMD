@@ -235,7 +235,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             documentFolderUrl: '',
             leaveHistory: [],
             memoHistory: [],
-            ppeHistory: {},
+            ppeHistory: [],
         };
         form.reset(defaultValues as any);
     }
@@ -633,8 +633,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
               </div>
             </ScrollArea>
             <DialogFooter className="mt-auto pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">{profile ? 'Save Changes' : 'Add Profile'}</Button>
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit">{profile ? 'Save Changes' : 'Add Profile'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -665,3 +665,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
+    
