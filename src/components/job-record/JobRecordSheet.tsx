@@ -24,11 +24,11 @@ import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
-const implementationStartDate = new Date(2024, 9, 1); // October 2024 (Month is 0-indexed)
+const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [currentMonth, setCurrentMonth] = useState(startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
@@ -387,12 +387,14 @@ export default function JobRecordSheet() {
         savePlantOrder(monthKey, activeTab, newOrderIds);
     };
 
+    const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
          if (profiles.length === 0) {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
         }
-        const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+
         return (
             <div className="overflow-x-auto">
                 <Table className="min-w-full">
