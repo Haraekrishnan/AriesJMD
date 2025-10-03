@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +34,6 @@ export default function JobRecordSheet() {
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
     const { toast } = useToast();
-    const [draggedItem, setDraggedItem] = useState<string | null>(null);
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -43,7 +42,6 @@ export default function JobRecordSheet() {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
       return isAfter(firstDayOfCurrentMonth, implementationStartDate);
     }, [currentMonth]);
-
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
@@ -66,17 +64,26 @@ export default function JobRecordSheet() {
     const prevJobRecordForMonth = useMemo(() => {
         return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
     }, [jobRecords, prevMonthKey]);
-
     
-    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
+    const handleStatusChange = useCallback((employeeId: string, day: number, value: string | undefined) => {
         const upperCaseCode = (value || '').toUpperCase();
-        
+      
+        if (upperCaseCode && !jobCodes.some(jc => jc.code === upperCaseCode)) {
+          toast({
+            title: "Invalid Job Code",
+            description: `The code "${upperCaseCode}" is not a valid job code.`,
+            variant: "destructive"
+          });
+          // Revert the UI by not saving the invalid state
+          return;
+        }
+
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
     
         if (upperCaseCode === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
         }
-    }, [monthKey, saveJobRecord]);
+    }, [monthKey, saveJobRecord, jobCodes, toast]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const hours = Number(value);
@@ -317,28 +324,20 @@ export default function JobRecordSheet() {
         }
     };
     
-    const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, profileId: string) => {
-        setDraggedItem(profileId);
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
-        e.preventDefault();
-    };
-
-    const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetProfileId: string) => {
-        if (!draggedItem || draggedItem === targetProfileId) return;
-
+    const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
         const currentProfiles = groupedProfiles[activeTab];
-        const draggedIndex = currentProfiles.findIndex(p => p.id === draggedItem);
-        const targetIndex = currentProfiles.findIndex(p => p.id === targetProfileId);
+        const index = currentProfiles.findIndex(p => p.id === profileId);
 
-        let newOrder = [...currentProfiles];
-        const [removed] = newOrder.splice(draggedIndex, 1);
-        newOrder.splice(targetIndex, 0, removed);
+        if (index === -1) return;
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === currentProfiles.length - 1) return;
+
+        const newOrder = [...currentProfiles];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        
+        [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
 
         saveJobRecord(monthKey, newOrder.map(p => p.id).join(','), 0, activeTab, 'order');
-        setDraggedItem(null);
     };
 
     const renderTableForPlant = (plantName: string) => {
@@ -399,19 +398,22 @@ export default function JobRecordSheet() {
 
                             return (
                                 <React.Fragment key={profile.id}>
-                                <TableRow 
-                                    draggable={canEditSheet}
-                                    onDragStart={(e) => handleDragStart(e, profile.id)}
-                                    onDragOver={handleDragOver}
-                                    onDrop={(e) => handleDrop(e, profile.id)}
-                                    className={cn(canEditSheet && "cursor-move", draggedItem === profile.id && "opacity-50 bg-blue-100")}
-                                >
-                                    <TableCell className="sticky left-0 bg-card z-10">
+                                <TableRow>
+                                    <TableCell className="sticky left-0 bg-card z-10 flex items-center">
                                          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
-                                            <GripVertical className="h-4 w-4 mr-2 text-muted-foreground"/>
                                             {index + 1}
                                             {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
                                         </Button>
+                                        {canEditSheet && (
+                                            <div className="flex flex-col">
+                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
+                                                    <ArrowUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
+                                                    <ArrowDown className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </TableCell>
                                     <TableCell className="sticky left-[80px] bg-card z-10 font-medium whitespace-nowrap">
                                         <div className="flex items-center gap-2">
