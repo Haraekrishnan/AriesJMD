@@ -62,6 +62,10 @@ export default function JobRecordSheet() {
     const jobRecordForMonth = useMemo(() => {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
+    
+    const prevJobRecordForMonth = useMemo(() => {
+        return jobRecords[prevMonthKey]?.records || {};
+    }, [jobRecords, prevMonthKey]);
 
     const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
         const upperCaseCode = code.toUpperCase();
@@ -151,8 +155,9 @@ export default function JobRecordSheet() {
 
         manpowerProfiles.forEach(profile => {
             const plantForCurrentMonth = jobRecordForMonth[profile.id]?.plant;
+            const plantForPrevMonth = prevJobRecordForMonth[profile.id]?.plant;
             
-            const plantAssignment = plantForCurrentMonth ?? profile.plant ?? 'Unassigned';
+            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? profile.plant ?? 'Unassigned';
 
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
@@ -162,7 +167,7 @@ export default function JobRecordSheet() {
         });
         Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
-    }, [manpowerProfiles, plantProjects, jobRecordForMonth]);
+    }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevJobRecordForMonth]);
     
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
     
@@ -190,13 +195,11 @@ export default function JobRecordSheet() {
             const profiles = groupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
     
-            const ws = XLSX.utils.aoa_to_sheet([]);
-    
-            const sheetData: any[][] = [];
-            sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
-            sheetData.push([]);
+            const ws_data: any[][] = [];
+            ws_data.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
+            ws_data.push([]);
             const header = ['S.No', 'Name', ...dayHeaders.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
-            sheetData.push(header);
+            ws_data.push(header);
     
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
@@ -221,42 +224,44 @@ export default function JobRecordSheet() {
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
     
                 const rowData: any[] = [rIndex + 1, profile.name];
-                dayHeaders.forEach((day, dIndex) => {
+                dayHeaders.forEach(day => {
                     const code = employeeRecord[day] || '';
-                    const overtimeForDay = dailyOvertime[day];
-                    const cell: { v: string; c?: any[] } = { v: code };
-
-                    if (code && overtimeForDay && overtimeForDay > 0) {
-                        cell.c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, h: true }];
-                    }
-                    rowData.push(cell);
+                    rowData.push(code);
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
-                sheetData.push(rowData);
+                ws_data.push(rowData);
             });
     
-            XLSX.utils.sheet_add_aoa(ws, sheetData, { origin: 'A1' });
+            const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
             
-            // Style cells with job code colors
             profiles.forEach((profile, rIndex) => {
                 const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
+                const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
+
                 dayHeaders.forEach((day, dIndex) => {
+                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
+                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
+
                     const code = employeeRecord[day] || '';
                     const colorInfo = JOB_CODE_COLORS[code];
                     if (colorInfo?.excelFill) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                         if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                         ws[cellAddress].s = {
-                            fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
-                            font: colorInfo.excelFill.font || {}
-                        };
+                        ws[cellAddress].s = {
+                           fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
+                           font: colorInfo.excelFill.font || {}
+                       };
+                    }
+
+                    const overtimeForDay = dailyOvertime[day];
+                    if (code && overtimeForDay && overtimeForDay > 0) {
+                        if (!ws[cellAddress].c) ws[cellAddress].c = [];
+                        ws[cellAddress].c.push({ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true });
                     }
                 });
             });
             
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     
-            const legendStartRow = sheetData.length + 2;
+            const legendStartRow = ws_data.length + 2;
             XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
             XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
             XLSX.utils.sheet_add_aoa(ws, [['Code', 'Job Details', 'Man-Days']], { origin: -1 });
@@ -378,7 +383,7 @@ export default function JobRecordSheet() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={jobRecordForMonth[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                        <Select value={jobRecordForMonth[profile.id]?.plant || prevJobRecordForMonth[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
                                                 {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
