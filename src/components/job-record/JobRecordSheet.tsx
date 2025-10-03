@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
@@ -23,9 +23,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import type { JobCode } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 
+const implementationStartDate = new Date(2024, 9, 1); // October 2024 (Month is 0-indexed)
+
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
-    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const [currentMonth, setCurrentMonth] = useState(startOfToday() < implementationStartDate ? implementationStartDate : startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
@@ -35,6 +37,7 @@ export default function JobRecordSheet() {
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
+    const canGoToPreviousMonth = isAfter(currentMonth, implementationStartDate);
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
@@ -364,7 +367,6 @@ export default function JobRecordSheet() {
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
                                                     <Input
-                                                        id={`jobcode-${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
                                                         defaultValue={code}
@@ -450,7 +452,7 @@ export default function JobRecordSheet() {
             <div>
                 <div className="flex flex-wrap justify-between items-center p-4 gap-4">
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <span className="text-lg font-semibold flex items-center gap-2">
