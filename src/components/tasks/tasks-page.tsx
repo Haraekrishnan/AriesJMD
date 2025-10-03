@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -19,17 +18,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
-import { Badge } from '../ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO } from 'date-fns';
 
 export default function TasksPage() {
-  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can } = useAppContext();
+  const { user, users, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, can, getVisibleUsers } = useAppContext();
   
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
     priority: 'all',
     assigneeId: 'all',
     dateRange: undefined,
+    month: 'all', // Default to all months
     showMyTasksOnly: false,
   });
 
@@ -48,49 +48,45 @@ export default function TasksPage() {
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        return task.assigneeId === user.id && (task.status === 'Pending Approval' || task.approvalState === 'returned');
+        const isMySubmittedTask = task.assigneeIds?.includes(user.id) && task.status === 'Pending Approval';
+        const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
+        return isMySubmittedTask || isReturnedToMe;
     });
   }, [tasks, user]);
 
+  const visibleTasks = useMemo(() => {
+    if (!user) return [];
+    if (user.role === 'Manager' || user.role === 'Admin') {
+        return tasks;
+    }
+    const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
+    return tasks.filter(task => {
+      // Show a task if any of its assignees are visible to the current user
+      return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
+    });
+  }, [tasks, user, getVisibleUsers]);
 
   const filteredTasks = useMemo(() => {
-    if (!user) return [];
-
-    const mySubordinateIds = new Set(users.filter(u => u.supervisorId === user.id).map(u => u.id));
-    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-
-    return tasks.filter(task => {
-      // Don't show pending tasks on the main board
+    return visibleTasks.filter(task => {
       if (task.status === 'Pending Approval') {
         return false;
       }
       
-      const { status, priority, dateRange, showMyTasksOnly, assigneeId } = filters;
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
 
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
         return false;
       }
 
       if (showMyTasksOnly) {
-          if (!task.assigneeIds?.includes(user.id)) return false;
-      } else {
-        if (assigneeId === 'all') { // Only apply visibility logic if not filtering by a specific assignee
-          const isMyTask = task.assigneeIds?.includes(user.id);
-          const isMySubordinatesTask = task.assigneeIds?.some(id => mySubordinateIds.has(id));
-          
-          if (!isMyTask && !isMySubordinatesTask && !privilegedRoles.includes(user.role)) {
-              return false;
-          }
-        }
+          if (!user || !task.assigneeIds?.includes(user.id)) return false;
       }
       
       let statusMatch = status === 'all' || task.status === status;
-      if (status === 'Completed' && task.status !== 'Done') {
-          statusMatch = false;
-      } else if (status !== 'all' && status !== 'Completed' && task.status !== status) {
+      if (status !== 'all' && task.status !== status) {
           statusMatch = false;
       }
-
+      
       const priorityMatch = priority === 'all' || task.priority === priority;
       
       let dateMatch = true;
@@ -100,10 +96,43 @@ export default function TasksPage() {
         const toDate = dateRange.to || new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate(), 23, 59, 59);
         dateMatch = taskDate >= fromDate && taskDate <= toDate;
       }
+      
+      let monthMatch = true;
+      if(month !== 'all') {
+        const taskDate = new Date(task.dueDate);
+        const taskMonth = getMonth(taskDate) + 1;
+        const taskYear = getYear(taskDate);
+        const currentYear = getYear(new Date());
 
-      return statusMatch && priorityMatch && dateMatch;
+        // For completed tasks, they must be in the selected month
+        if(task.status === 'Done') {
+            if(task.completionDate) {
+              const completionDate = parseISO(task.completionDate);
+              monthMatch = (getMonth(completionDate) + 1).toString() === month;
+            } else {
+               monthMatch = false;
+            }
+        }
+        // For other tasks, they are always included regardless of month, unless a date range filter is also active
+        else if (!dateRange?.from) {
+            monthMatch = true;
+        } else {
+             monthMatch = (getMonth(taskDate) + 1).toString() === month && taskYear === currentYear;
+        }
+      }
+
+      // Final logic adjustment: if a date range is picked, it overrides the month filter for non-completed tasks
+      if (dateRange?.from && task.status !== 'Done') {
+          monthMatch = true; // Date range takes precedence
+      } else if (task.status !== 'Done') {
+          monthMatch = true; // Always show active tasks unless filtered by date range
+      }
+
+
+      return statusMatch && priorityMatch && dateMatch && monthMatch;
     });
-  }, [tasks, filters, user, users]);
+  }, [visibleTasks, filters, user]);
+
 
   const kanbanTasks = useMemo(() => {
       const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
@@ -124,37 +153,37 @@ export default function TasksPage() {
             <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
             <p className="text-muted-foreground">Drag and drop tasks to change their status, or use filters to generate a report.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
-              {myPendingTaskRequestCount > 0 && (
-                <Button variant="outline" onClick={() => setIsMyRequestsDialogOpen(true)}>
-                    <History className="mr-2 h-4 w-4" />
-                    My Requests
+              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)}>
+                  <History className="mr-2 h-4 w-4" />
+                  My Requests
+                  {myPendingTaskRequestCount > 0 && (
                     <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
                         {myPendingTaskRequestCount}
                     </span>
-                </Button>
-              )}
-              {pendingTaskApprovalCount > 0 && (
-                <Button variant="outline" onClick={() => setIsPendingApprovalDialogOpen(true)}>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Pending Approvals
+                  )}
+              </Button>
+              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)}>
+                  <Bell className="mr-2 h-4 w-4" />
+                  Pending Approvals
+                  {pendingTaskApprovalCount > 0 && (
                     <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
                         {pendingTaskApprovalCount}
                     </span>
-                </Button>
-              )}
+                  )}
+              </Button>
               {can.manage_tasks && <CreateTaskDialog />}
           </div>
         </div>
         <div className='mb-4'>
-          <TaskFilters onApplyFilters={setFilters} initialFilters={filters}/>
+          <TaskFilters onFiltersChange={setFilters} initialFilters={filters} />
         </div>
         <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
       </div>
       
       <Dialog open={isPendingApprovalDialogOpen} onOpenChange={setIsPendingApprovalDialogOpen}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-xl">
             <DialogHeader>
                 <DialogTitle>Tasks Awaiting Your Approval</DialogTitle>
                 <DialogDescription>
@@ -162,12 +191,25 @@ export default function TasksPage() {
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] p-1">
-                <div className="p-4 space-y-4">
-                    {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => (
-                        <div key={task.id} className="border p-4 rounded-lg">
-                           <EditTaskDialog isOpen={true} setIsOpen={() => {}} task={task} />
-                        </div>
-                    )) : <p className="text-muted-foreground text-center">No tasks are awaiting your approval.</p>}
+                 <div className="p-4 space-y-4">
+                    {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
+                       const assignee = users.find(u => u.id === task.assigneeId);
+                       const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
+                       return (
+                         <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
+                           <div>
+                               <p className="font-semibold">{task.title}</p>
+                               <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Badge>From: {assignee?.name}</Badge>
+                                {lastComment && (
+                                   <span className='text-xs'>- {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
+                                )}
+                               </div>
+                           </div>
+                           <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>
+                         </div>
+                       )
+                    }) : <p className="text-muted-foreground text-center py-8">No tasks are awaiting your approval.</p>}
                 </div>
             </ScrollArea>
         </DialogContent>
@@ -185,6 +227,7 @@ export default function TasksPage() {
                 <div className="p-4 space-y-4">
                     {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => {
                         const approver = users.find(u => u.id === task.approverId);
+                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                         return (
                           <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
                             <div>
@@ -192,7 +235,9 @@ export default function TasksPage() {
                                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                                 {task.approvalState === 'returned' ? <Badge variant="destructive">Returned</Badge> : <Badge>Pending</Badge>}
                                 <span>with {approver?.name || 'approver'}</span>
-                                <span className='text-xs'>- {formatDistanceToNow(new Date(task.comments[task.comments.length-1]?.date), { addSuffix: true })}</span>
+                                {lastComment && (
+                                    <span className='text-xs'>- {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
+                                )}
                                 </div>
                             </div>
                             <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>

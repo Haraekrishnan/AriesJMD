@@ -63,7 +63,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
         priority: 'all',
         assigneeId: 'all',
         dateRange: undefined,
-        showMyTasksOnly: user?.role !== 'Manager',
+        showMyTasksOnly: false,
         month: 'all',
     } as const;
     setFilters(clearedFilters);
