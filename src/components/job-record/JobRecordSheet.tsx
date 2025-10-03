@@ -34,6 +34,7 @@ export default function JobRecordSheet() {
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
+    const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
@@ -53,33 +54,10 @@ export default function JobRecordSheet() {
         return jobRecords[monthKey]?.records || {};
     }, [jobRecords, monthKey]);
 
-    const handleStatusChange = useCallback((employeeId: string, day: number, code: string, originalValue: string) => {
+    const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
         const upperCaseCode = code.toUpperCase();
-        if (upperCaseCode === originalValue && code === upperCaseCode) return;
-
-        const valueToSave = upperCaseCode;
-        
-        const isValidCode = (jobCodes && jobCodes.some(jc => jc.code === valueToSave)) || valueToSave === '';
-        
-        if (isValidCode) {
-            saveJobRecord(monthKey, employeeId, day, valueToSave, 'status');
-        } else {
-            toast({
-                title: "Invalid Job Code",
-                description: `The code "${valueToSave}" is not a valid job code.`,
-                variant: "destructive"
-            });
-        }
-        
-        const inputEl = document.getElementById(`jobcode-${employeeId}-${day}`) as HTMLInputElement | null;
-        if (inputEl) {
-            if (isValidCode) {
-                inputEl.value = valueToSave; // Ensure UI reflects uppercase value
-            } else {
-                inputEl.value = originalValue; // Revert on error
-            }
-        }
-    }, [jobCodes, monthKey, saveJobRecord, toast]);
+        saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
+    }, [monthKey, saveJobRecord]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const numericHours = Number(hours);
@@ -135,17 +113,24 @@ export default function JobRecordSheet() {
 
         availablePlants.forEach(p => groups[p] = []);
 
+        const prevMonthRecord = jobRecords[prevMonthKey]?.records || {};
+
         manpowerProfiles.forEach(profile => {
-            const plantForMonth = jobRecordForMonth[profile.id]?.plant || 'Unassigned';
-            if (groups[plantForMonth]) {
-                groups[plantForMonth].push(profile);
+            const plantForCurrentMonth = jobRecordForMonth[profile.id]?.plant;
+            const plantForPrevMonth = prevMonthRecord[profile.id]?.plant;
+            const defaultPlant = profile.plant;
+            
+            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? defaultPlant ?? 'Unassigned';
+
+            if (groups[plantAssignment]) {
+                groups[plantAssignment].push(profile);
             } else {
                 groups['Unassigned'].push(profile);
             }
         });
         Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
-    }, [manpowerProfiles, plantProjects, jobRecordForMonth]);
+    }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevMonthKey, jobRecords]);
     
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
     
@@ -363,7 +348,7 @@ export default function JobRecordSheet() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                        <Select value={jobRecordForMonth[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
                                                 {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
@@ -383,7 +368,7 @@ export default function JobRecordSheet() {
                                                         type="text"
                                                         list="jobcodes-datalist"
                                                         defaultValue={code}
-                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value, code)}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
