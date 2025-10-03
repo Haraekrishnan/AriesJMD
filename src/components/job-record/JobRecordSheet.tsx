@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -17,7 +18,7 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
+import AddJobRecordPlantDialog from './AddJobCodeDialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { JobCode } from '@/lib/types';
@@ -244,7 +245,7 @@ export default function JobRecordSheet() {
                     const overtimeForDay = dailyOvertime[day];
                     if (overtimeForDay && overtimeForDay > 0) {
                         if (!ws[cellAddress].c) ws[cellAddress].c = [];
-                         ws[cellAddress].c.push({ a: "SheetJS", t: `Overtime Hours: ${overtimeForDay}` });
+                         ws[cellAddress].c.push({ t: `Overtime Hours: ${overtimeForDay}` });
                     }
                 });
             });
@@ -568,4 +569,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
