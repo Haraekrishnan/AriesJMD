@@ -81,18 +81,23 @@ export default function JobRecordSheet() {
         });
     };
 
-    const dayHeaders = useMemo(() => 
-        Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), 
-    [currentMonth]);
-
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const code = (value || '').toUpperCase();
         const cellId = `${employeeId}-${day}`;
+        const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
 
         const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
 
         if (!isValidCode) {
             setInvalidCodeCell(cellId);
+            toast({
+                title: "Invalid Job Code",
+                description: `The code "${code}" is not a valid job code.`,
+                variant: "destructive"
+            });
+            // Revert the optimistic update to the previous valid state
+            handleOptimisticUpdate(monthKey, employeeId, day, 'status', previousCode);
+            return;
         } else {
             setInvalidCodeCell(prev => prev === cellId ? null : prev);
         }
@@ -104,7 +109,7 @@ export default function JobRecordSheet() {
             handleOptimisticUpdate(monthKey, employeeId, day, 'dailyOvertime', null);
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
         }
-    }, [monthKey, saveJobRecord, jobCodes]);
+    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const record = jobRecordForMonth.records?.[employeeId] || {};
@@ -229,7 +234,6 @@ export default function JobRecordSheet() {
                     if (indexB !== -1) return 1;
                 }
                  // If both are new or neither has an order, maintain original/database order.
-                // Assuming manpowerProfiles are somewhat consistently ordered (e.g., by dbIndex if available)
                 const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
                 const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
                 return originalAIndex - originalBIndex;
@@ -522,15 +526,8 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        value={code}
+                                                        defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                        onChange={(e) => {
-                                                            const newCode = e.target.value.toUpperCase();
-                                                            handleOptimisticUpdate(monthKey, profile.id, day, 'status', newCode)
-                                                            if (invalidCodeCell === `${profile.id}-${day}` && (jobCodes.some(jc => jc.code === newCode) || newCode === '')) {
-                                                                setInvalidCodeCell(null);
-                                                            }
-                                                        }}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
@@ -581,9 +578,8 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}-overtime`}
                                                         type="number"
                                                         placeholder="0"
-                                                        value={dailyOvertime[day] || ''}
+                                                        defaultValue={dailyOvertime[day] || ''}
                                                         onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                        onChange={(e) => handleOptimisticUpdate(monthKey, profile.id, day, 'dailyOvertime', e.target.value)}
                                                         className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                         disabled={!canEditSheet}
                                                     />
@@ -719,3 +715,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
