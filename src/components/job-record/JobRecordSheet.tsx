@@ -468,23 +468,6 @@ export default function JobRecordSheet() {
                                                 </div>
                                             )}
                                             {profile.name}
-                                            {user?.role === 'Admin' && plantName !== 'Unassigned' && (
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10"><UserX className="h-4 w-4"/></Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
-                                                            <AlertDialogDescription>This will move the employee to the "Unassigned" group for this month only.</AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleRemoveFromPlant(profile.id)}>Confirm</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="sticky left-[320px] bg-card z-10">
