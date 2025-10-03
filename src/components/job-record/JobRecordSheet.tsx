@@ -86,8 +86,9 @@ export default function JobRecordSheet() {
     const handleStatusChange = useCallback((employeeId: string, day: number) => {
         const inputKey = `${employeeId}-${day}`;
         const upperCaseCode = (inputValues[inputKey] ?? '').toUpperCase();
-
+    
         if (upperCaseCode === '') {
+            setInputValues(prev => ({...prev, [inputKey]: ''}));
             saveJobRecord(monthKey, employeeId, day, null, 'status');
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime
             const inputRef = inputRefs.current[`ot-${employeeId}-${day}`];
@@ -96,7 +97,7 @@ export default function JobRecordSheet() {
             }
             return;
         }
-
+    
         const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode);
         if (!isValidCode) {
             toast({
@@ -104,7 +105,6 @@ export default function JobRecordSheet() {
                 description: `The code "${upperCaseCode}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert the local state to the saved value
             setInputValues(prev => ({
                 ...prev,
                 [inputKey]: jobRecordForMonth[employeeId]?.days?.[day] || ''
@@ -116,7 +116,7 @@ export default function JobRecordSheet() {
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const employeeRecord = jobRecordForMonth[employeeId] || {};
-        const jobCodeForDay = employeeRecord.days?.[day];
+        const jobCodeForDay = (inputValues[`${employeeId}-${day}`] || employeeRecord.days?.[day])?.toUpperCase();
     
         if (!jobCodeForDay) {
             toast({
@@ -124,7 +124,6 @@ export default function JobRecordSheet() {
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
-            // Revert the input value if overtime is entered without a job code
             const inputRef = inputRefs.current[`ot-${employeeId}-${day}`];
             if (inputRef) {
                 inputRef.value = '';
@@ -271,7 +270,14 @@ export default function JobRecordSheet() {
     
                 const rowData: any[] = [rIndex + 1, profile.name];
                 dayHeaders.forEach(day => {
-                    rowData.push(employeeRecord[day] || '');
+                    const code = employeeRecord[day] || '';
+                    const overtimeForDay = dailyOvertime[day];
+                    const cell: {v: string, c?: any[]} = { v: code };
+
+                    if (overtimeForDay && overtimeForDay > 0) {
+                        cell.c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }];
+                    }
+                    rowData.push(cell);
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 ws_data.push(rowData);
@@ -281,22 +287,12 @@ export default function JobRecordSheet() {
             
             ws_data.forEach((row, r) => {
               if (r < 3) return; // Skip title and header
-              const employeeId = profiles[r-3]?.id;
-              if (!employeeId) return;
-
               row.forEach((cellData, c) => {
                   if (c >= 2 && c < dayHeaders.length + 2) {
-                      const day = c - 1;
-                      const overtimeForDay = jobRecordForMonth[employeeId]?.dailyOvertime?.[day];
                       const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
-                      
                       const cellAddress = XLSX.utils.encode_cell({ r, c });
                       if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
 
-                      if (overtimeForDay && overtimeForDay > 0) {
-                          ws[cellAddress].c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }];
-                      }
-                      
                       const colorInfo = JOB_CODE_COLORS[code as string];
                       if (colorInfo?.excelFill) {
                           ws[cellAddress].s = {
@@ -634,3 +630,4 @@ export default function JobRecordSheet() {
     
 
     
+
