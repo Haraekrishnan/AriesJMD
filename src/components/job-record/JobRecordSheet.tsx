@@ -65,15 +65,6 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
         const upperCaseCode = code.toUpperCase();
-        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode) || upperCaseCode === '';
-        if (!isValidCode) {
-            toast({
-                title: "Invalid Job Code",
-                description: `The code "${upperCaseCode}" is not a valid job code.`,
-                variant: "destructive"
-            });
-            return;
-        }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
     }, [monthKey, saveJobRecord, jobCodes, toast]);
     
@@ -244,8 +235,9 @@ export default function JobRecordSheet() {
 
                     const overtimeForDay = dailyOvertime[day];
                     if (overtimeForDay && overtimeForDay > 0) {
+                        const comment = { t: `Overtime Hours: ${overtimeForDay}` };
                         if (!ws[cellAddress].c) ws[cellAddress].c = [];
-                         ws[cellAddress].c.push({ t: `Overtime Hours: ${overtimeForDay}` });
+                        ws[cellAddress].c.push(comment);
                     }
                 });
             });
@@ -569,5 +561,6 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
