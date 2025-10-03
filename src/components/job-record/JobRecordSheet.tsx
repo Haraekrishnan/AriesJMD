@@ -170,19 +170,18 @@ export default function JobRecordSheet() {
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
-
+    
         allTabs.forEach(plant => {
             const profiles = groupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
-
+    
             const sheetData: (string | number)[][] = [];
             sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             sheetData.push([]);
-
-            const dateHeaders = dayHeaders;
-            const header = ['S.No', 'Name', ...dateHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
+    
+            const header = ['S.No', 'Name', ...dayHeaders.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             sheetData.push(header);
-
+    
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
                 const employeeRecord = record.days || {};
@@ -203,7 +202,7 @@ export default function JobRecordSheet() {
                     if (workCodes.includes(code)) acc.workDays++;
                     return acc;
                 }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
-
+    
                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                 const additionalSundays = record.additionalSundayDuty || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
@@ -218,7 +217,7 @@ export default function JobRecordSheet() {
             });
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            
+    
             ws['!comments'] = [];
             profiles.forEach((profile, rIndex) => {
                 const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
@@ -228,7 +227,7 @@ export default function JobRecordSheet() {
                         const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
                         ws['!comments'].push({
                             ref: cellAddress,
-                            text: { a: "Overtime", t: `Hours: ${overtimeForDay}` },
+                            text: { t: `Overtime Hours: ${overtimeForDay}`, a: "Overtime" },
                         });
                     }
                 });
@@ -253,7 +252,7 @@ export default function JobRecordSheet() {
                     }
                 });
             });
-
+    
             const legendStartRow = sheetData.length + 2;
             XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
             XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
@@ -277,10 +276,10 @@ export default function JobRecordSheet() {
                  XLSX.utils.sheet_add_aoa(ws, [[jc.code, jc.details, manDaysCount[jc.code] || 0]], { origin: -1 });
               });
             }
-
+    
             XLSX.utils.book_append_sheet(wb, ws, plant);
         });
-
+    
         if(wb.SheetNames.length > 0) {
             XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
         } else {
@@ -571,5 +570,6 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
