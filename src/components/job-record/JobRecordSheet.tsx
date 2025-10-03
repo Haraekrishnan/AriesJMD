@@ -75,6 +75,10 @@ export default function JobRecordSheet() {
             return;
         }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
+        // If the job code is being removed, also remove the overtime for that day
+        if (upperCaseCode === '') {
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+        }
     }, [monthKey, saveJobRecord, toast, jobCodes]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
@@ -182,20 +186,19 @@ export default function JobRecordSheet() {
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
-
+    
         allTabs.forEach(plant => {
             const profiles = groupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
-
+    
             const ws = XLSX.utils.aoa_to_sheet([]);
-            ws['!comments'] = [];
-
+    
             const sheetData: any[][] = [];
             sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             sheetData.push([]);
             const header = ['S.No', 'Name', ...dayHeaders.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             sheetData.push(header);
-
+    
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
                 const employeeRecord = record.days || {};
@@ -217,7 +220,7 @@ export default function JobRecordSheet() {
                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                 const additionalSundays = record.additionalSundayDuty || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-
+    
                 const rowData: any[] = [rIndex + 1, profile.name];
                 dayHeaders.forEach((day, dIndex) => {
                     const code = employeeRecord[day] || '';
@@ -225,15 +228,14 @@ export default function JobRecordSheet() {
                     const cell: { v: string; c?: any[] } = { v: code };
 
                     if (code && overtimeForDay && overtimeForDay > 0) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                        ws['!comments'].push({ ref: cellAddress, text: `Overtime Hours: ${overtimeForDay}` });
+                        cell.c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, h: true }];
                     }
                     rowData.push(cell);
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(rowData);
             });
-
+    
             XLSX.utils.sheet_add_aoa(ws, sheetData, { origin: 'A1' });
             
             // Style cells with job code colors
@@ -254,7 +256,7 @@ export default function JobRecordSheet() {
             });
             
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
-
+    
             const legendStartRow = sheetData.length + 2;
             XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
             XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
@@ -278,10 +280,10 @@ export default function JobRecordSheet() {
                  XLSX.utils.sheet_add_aoa(ws, [[jc.code, jc.details, manDaysCount[jc.code] || 0]], { origin: -1 });
               });
             }
-
+    
             XLSX.utils.book_append_sheet(wb, ws, plant);
         });
-
+    
         if(wb.SheetNames.length > 0) {
             XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
         } else {
