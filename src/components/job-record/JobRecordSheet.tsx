@@ -46,6 +46,12 @@ export default function JobRecordSheet() {
     useEffect(() => {
         setOptimisticJobRecords(jobRecords);
     }, [jobRecords]);
+    
+    useEffect(() => {
+        if (isBefore(currentMonth, implementationStartDate)) {
+            setCurrentMonth(implementationStartDate);
+        }
+    }, [currentMonth]);
 
     const jobRecordForMonth = useMemo(() => {
         return optimisticJobRecords[monthKey] || { records: {}, plantsOrder: {} };
@@ -223,7 +229,7 @@ export default function JobRecordSheet() {
       return isAfter(firstDayOfCurrentMonth, implementationStartDate);
     }, [currentMonth]);
     
-    const canGoToNextMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
+    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfMonth(new Date())), [currentMonth]);
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
@@ -234,8 +240,8 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+        return can.manage_job_record && !isCurrentSheetLocked && isEditableMonth;
+    }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -601,7 +607,7 @@ export default function JobRecordSheet() {
                             {format(currentMonth, 'MMMM yyyy')}
                             {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                         </span>
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={canGoToNextMonth}>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
