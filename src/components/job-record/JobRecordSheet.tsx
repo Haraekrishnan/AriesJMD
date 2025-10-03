@@ -235,7 +235,7 @@ export default function JobRecordSheet() {
 
                     const overtimeForDay = dailyOvertime[day];
                     if (overtimeForDay && overtimeForDay > 0) {
-                        const comment = { t: `Overtime Hours: ${overtimeForDay}` };
+                        const comment = { a: "Studio", t: `Overtime Hours: ${overtimeForDay}` };
                         if (!ws[cellAddress].c) ws[cellAddress].c = [];
                         ws[cellAddress].c.push(comment);
                     }
@@ -561,6 +561,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
 
