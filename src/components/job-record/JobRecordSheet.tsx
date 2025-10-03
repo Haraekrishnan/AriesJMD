@@ -18,16 +18,16 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import AddJobRecordPlantDialog from './AddJobCodeDialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { JobCode } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
+import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
 const implementationStartDate = new Date(2024, 9, 1); // October 2024 (Month is 0-indexed)
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday() < implementationStartDate ? implementationStartDate : startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function JobRecordSheet() {
     const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
         const upperCaseCode = code.toUpperCase();
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-    }, [monthKey, saveJobRecord, jobCodes, toast]);
+    }, [monthKey, saveJobRecord, toast, jobCodes]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
         const numericHours = Number(hours);
@@ -213,6 +213,8 @@ export default function JobRecordSheet() {
             });
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            
+            ws['!comments'] = [];
 
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
             
@@ -235,9 +237,7 @@ export default function JobRecordSheet() {
 
                     const overtimeForDay = dailyOvertime[day];
                     if (overtimeForDay && overtimeForDay > 0) {
-                        const comment = { a: "Studio", t: `Overtime Hours: ${overtimeForDay}` };
-                        if (!ws[cellAddress].c) ws[cellAddress].c = [];
-                        ws[cellAddress].c.push(comment);
+                        ws['!comments'].push({c: cIndex + 2, r: rIndex + 3, t: `Overtime Hours: ${overtimeForDay}`});
                     }
                 });
             });
@@ -561,6 +561,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
 
