@@ -39,44 +39,9 @@ export default function JobRecordSheet() {
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
 
-    const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
-
     const jobRecordForMonth = useMemo(() => {
         return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
     }, [jobRecords, monthKey]);
-
-    useEffect(() => {
-        const initialValues: {[key: string]: string} = {};
-        manpowerProfiles.forEach(profile => {
-            const record = jobRecordForMonth.records?.[profile.id] || {};
-            const employeeRecord = record.days || {};
-            const dailyOvertime = record.dailyOvertime || {};
-            dayHeaders.forEach(day => {
-                initialValues[`${profile.id}-${day}-status`] = employeeRecord[day] || '';
-                initialValues[`${profile.id}-${day}-overtime`] = dailyOvertime[day]?.toString() || '';
-            });
-        });
-        setInputValues(initialValues);
-    }, [jobRecordForMonth, manpowerProfiles, currentMonth]);
-    
-    const prevJobRecordForMonth = useMemo(() => {
-        return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
-    }, [jobRecords, prevMonthKey]);
-    
-    const canGoToPreviousMonth = useMemo(() => {
-      const firstDayOfCurrentMonth = startOfMonth(currentMonth);
-      return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-    }, [currentMonth]);
-
-    const isCurrentSheetLocked = useMemo(() => {
-        return jobRecords[monthKey]?.isLocked || false;
-    }, [jobRecords, monthKey]);
-
-    const canEditSheet = useMemo(() => {
-        if (!user) return true;
-        if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     const dayHeaders = useMemo(() => 
         Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), 
@@ -84,40 +49,22 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string | undefined) => {
         const code = (value || '').toUpperCase();
-        const key = `${employeeId}-${day}-status`;
-
-        // If value is undefined (from onBlur on an empty input), treat it as an empty string
-        if (value === undefined) {
-            setInputValues(prev => ({ ...prev, [key]: '' }));
-            saveJobRecord(monthKey, employeeId, day, '', 'status');
-            // Also clear overtime
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
-            return;
-        }
-    
-        setInputValues(prev => ({ ...prev, [key]: code }));
-      
+        
         if (code && !jobCodes.some(jc => jc.code === code)) {
           toast({
             title: "Invalid Job Code",
             description: `The code "${code}" is not a valid job code.`,
             variant: "destructive"
           });
-          // Revert the input value to the last known valid state
-          const originalCode = jobRecordForMonth.records?.[employeeId]?.days?.[day] || '';
-          setInputValues(prev => ({...prev, [key]: originalCode}));
           return;
         }
 
         saveJobRecord(monthKey, employeeId, day, code, 'status');
     
-        if (code === '') {
-            // If the code is cleared, also clear the overtime
+        if (value === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
         }
-    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecordForMonth]);
+    }, [monthKey, saveJobRecord, jobCodes, toast]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const hours = Number(value);
@@ -131,7 +78,7 @@ export default function JobRecordSheet() {
                 description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
                 variant: "destructive"
             });
-            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Force clear it
             return;
         }
 
@@ -141,7 +88,7 @@ export default function JobRecordSheet() {
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
-            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Force clear it
             return;
         }
 
@@ -190,6 +137,10 @@ export default function JobRecordSheet() {
         });
     };
     
+    const prevJobRecordForMonth = useMemo(() => {
+        return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
+    }, [jobRecords, prevMonthKey]);
+
     const groupedProfiles = useMemo(() => {
         const groups: { [key: string]: typeof manpowerProfiles } = {};
         const availablePlants = new Set(plantProjects);
@@ -219,10 +170,17 @@ export default function JobRecordSheet() {
                 groups[plantName].sort((a, b) => {
                     const indexA = order.indexOf(a.id);
                     const indexB = order.indexOf(b.id);
-                    if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
-                    if (indexA === -1) return 1;
-                    if (indexB === -1) return -1;
-                    return indexA - indexB;
+
+                    if (indexA !== -1 && indexB !== -1) {
+                        return indexA - indexB; // Both are in the order array, sort by it
+                    }
+                    if (indexA !== -1) {
+                        return -1; // A is in the order, B is not; A comes first
+                    }
+                    if (indexB !== -1) {
+                        return 1; // B is in the order, A is not; B comes first
+                    }
+                    return 0; // Neither are in the order, maintain original relative order (effectively append)
                 });
             } else {
                 groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
@@ -233,6 +191,21 @@ export default function JobRecordSheet() {
     }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevJobRecordForMonth]);
     
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
+    
+    const canGoToPreviousMonth = useMemo(() => {
+      const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+      return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+    }, [currentMonth]);
+
+    const isCurrentSheetLocked = useMemo(() => {
+        return jobRecords[monthKey]?.isLocked || false;
+    }, [jobRecords, monthKey]);
+
+    const canEditSheet = useMemo(() => {
+        if (!user) return true;
+        if (user.role === 'Admin') return true;
+        return can.manage_job_record && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -484,7 +457,7 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
-                                        const code = inputValues[`${profile.id}-${day}-status`] || '';
+                                        const code = employeeRecord[day] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code as string] || {};
 
@@ -495,8 +468,7 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        value={code}
-                                                        onChange={(e) => setInputValues(prev => ({...prev, [`${profile.id}-${day}-status`]: e.target.value}))}
+                                                        defaultValue={code}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
@@ -541,15 +513,13 @@ export default function JobRecordSheet() {
                                     <TableRow>
                                         <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
                                         {dayHeaders.map(day => {
-                                            const overtimeKey = `${profile.id}-${day}-overtime`;
                                             return (
                                                 <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
                                                     <Input
-                                                        id={overtimeKey}
+                                                        id={`${profile.id}-${day}-overtime`}
                                                         type="number"
                                                         placeholder="0"
-                                                        value={inputValues[overtimeKey] || ''}
-                                                        onChange={(e) => setInputValues(prev => ({...prev, [overtimeKey]: e.target.value}))}
+                                                        defaultValue={dailyOvertime[day] || ''}
                                                         onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                         className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                         disabled={!canEditSheet}
@@ -678,5 +648,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
 
