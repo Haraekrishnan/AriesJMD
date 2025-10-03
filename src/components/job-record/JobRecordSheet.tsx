@@ -17,20 +17,19 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import AddJobRecordPlantDialog from './AddJobCodeDialog';
+import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { JobCode } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, addJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-    const [activePopover, setActivePopover] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('Unassigned');
     const { toast } = useToast();
     
@@ -48,7 +47,7 @@ export default function JobRecordSheet() {
         const upperCaseCode = code.toUpperCase();
         if (upperCaseCode === originalValue) return; // No change
 
-        const valueToSave = upperCaseCode === 'NONE' ? '' : upperCaseCode;
+        const valueToSave = upperCaseCode;
         
         const isValidCode = (jobCodes && jobCodes.some(jc => jc.code === valueToSave)) || valueToSave === '';
         
@@ -295,19 +294,19 @@ export default function JobRecordSheet() {
                             const employeeRecord = record.days || {};
                             const dailyOvertime = record.dailyOvertime || {};
                             
+                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
                             const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
-                            
+
                             const summary = dayHeaders.reduce((acc, day) => {
                                 const code = employeeRecord[day];
                                 if (offCodes.includes(code)) acc.offDays++;
-                                if (leaveCodes.includes(code)) acc.leaveDays++;
-                                if (code === 'ML') acc.medicalLeave++;
-                                if (standbyCodes.includes(code)) acc.standbyTraining++;
-                                if (code === 'R') acc.reptOffice++;
-                                if (workCodes.includes(code)) acc.workDays++;
+                                else if (leaveCodes.includes(code)) acc.leaveDays++;
+                                else if (code === 'ML') acc.medicalLeave++;
+                                else if (standbyCodes.includes(code)) acc.standbyTraining++;
+                                else if (code === 'R') acc.reptOffice++;
+                                else if (workCodes.includes(code)) acc.workDays++;
                                 return acc;
                             }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
@@ -363,29 +362,19 @@ export default function JobRecordSheet() {
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
-                                                    <Select
-                                                      value={code}
-                                                      onValueChange={(value) => handleStatusChange(profile.id, day, value, code)}
-                                                    >
-                                                      <SelectTrigger
+                                                    <Input
+                                                        id={`jobcode-${profile.id}-${day}`}
+                                                        type="text"
+                                                        list="jobcodes-datalist"
+                                                        defaultValue={code}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value, code)}
                                                         className={cn(
-                                                          "w-full h-full text-center font-bold rounded-none border-0 focus:ring-0 focus:ring-offset-0",
-                                                          code ? colorInfo.bg : 'bg-transparent',
-                                                          code ? colorInfo.text : 'text-foreground'
+                                                            "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
+                                                            code ? colorInfo.bg : 'bg-transparent',
+                                                            code ? colorInfo.text : 'text-foreground'
                                                         )}
-                                                        style={{boxShadow: 'none'}}
-                                                      >
-                                                        <SelectValue placeholder="..." />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        <SelectItem value="none">Clear</SelectItem>
-                                                        {jobCodes && jobCodes.map(jc => (
-                                                          <SelectItem key={jc.id} value={jc.code}>
-                                                            {jc.code} - {jc.details}
-                                                          </SelectItem>
-                                                        ))}
-                                                      </SelectContent>
-                                                    </Select>
+                                                        style={{ boxShadow: 'none' }}
+                                                    />
                                                      {overtimeForDay > 0 && (
                                                         <Tooltip>
                                                         <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
@@ -449,6 +438,11 @@ export default function JobRecordSheet() {
 
     return (
         <TooltipProvider>
+             <datalist id="jobcodes-datalist">
+                {jobCodes && jobCodes.map(jc => (
+                    <option key={jc.id} value={jc.code} />
+                ))}
+            </datalist>
             <div>
                 <div className="flex justify-between items-center p-4">
                     <div className="flex items-center gap-2">
@@ -523,7 +517,7 @@ export default function JobRecordSheet() {
                     </AccordionItem>
                 </Accordion>
             </div>
-            <AddJobCodeDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
+            <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
             <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
             {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
         </TooltipProvider>
