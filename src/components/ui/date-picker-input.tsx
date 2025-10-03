@@ -19,6 +19,7 @@ interface DatePickerInputProps {
 
 export function DatePickerInput({ value, onChange, disabled }: DatePickerInputProps) {
   const [textValue, setTextValue] = React.useState(value ? format(value, 'dd-MM-yyyy') : '');
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
   React.useEffect(() => {
     setTextValue(value ? format(value, 'dd-MM-yyyy') : '');
@@ -29,7 +30,7 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     setTextValue(str);
     if (str.length === 0) {
       onChange(undefined);
-    } else if (str.length === 10) {
+    } else if (str.length >= 8) { // Allow parsing as user types
       const parsedDate = parse(str, 'dd-MM-yyyy', new Date());
       if (isValid(parsedDate)) {
         onChange(parsedDate);
@@ -41,7 +42,10 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     onChange(date);
     if (date) {
         setTextValue(format(date, 'dd-MM-yyyy'));
+    } else {
+        setTextValue('');
     }
+    setIsCalendarOpen(false);
   };
   
   const handleClear = (e: React.MouseEvent) => {
@@ -60,30 +64,34 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
         disabled={disabled}
         className="pr-10"
       />
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant={'ghost'}
-            size="icon"
-            className={cn('absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2', disabled && 'hidden')}
-            disabled={disabled}
-          >
-            {value ? (
-              <X className="h-4 w-4" onClick={handleClear} />
-            ) : (
-              <CalendarIcon className="h-4 w-4" />
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={handleDateSelect}
-            initialFocus
-          />
-        </PopoverContent>
-      </Popover>
+      <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center">
+        {value && !disabled ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClear}>
+              <X className="h-4 w-4 text-muted-foreground" />
+            </Button>
+        ) : (
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <PopoverTrigger asChild>
+                <Button
+                    variant={'ghost'}
+                    size="icon"
+                    className={cn('h-8 w-8', disabled && 'hidden')}
+                    disabled={disabled}
+                >
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                <Calendar
+                    mode="single"
+                    selected={value}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                />
+                </PopoverContent>
+            </Popover>
+        )}
+      </div>
     </div>
   );
 }
