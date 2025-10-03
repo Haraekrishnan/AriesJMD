@@ -216,7 +216,8 @@ export default function JobRecordSheet() {
                 const plantForB_current = jobRecordForMonth.records?.[b.id]?.plant;
                 const plantForB_prev = prevJobRecordForMonth.records?.[b.id]?.plant;
                 const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
-
+                
+                // Sort new employees to the bottom
                 if (a_isNew && !b_isNew) return 1;
                 if (!a_isNew && b_isNew) return -1;
                 
@@ -227,7 +228,11 @@ export default function JobRecordSheet() {
                     if (indexA !== -1) return -1;
                     if (indexB !== -1) return 1;
                 }
-                return a.name.localeCompare(b.name);
+                 // If both are new or neither has an order, maintain original/database order.
+                // Assuming manpowerProfiles are somewhat consistently ordered (e.g., by dbIndex if available)
+                const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
+                const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
+                return originalAIndex - originalBIndex;
             });
         });
 
