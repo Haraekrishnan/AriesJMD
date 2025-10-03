@@ -45,7 +45,7 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, code: string, originalValue: string) => {
         const upperCaseCode = code.toUpperCase();
-        if (upperCaseCode === originalValue) return; // No change
+        if (upperCaseCode === originalValue && code === upperCaseCode) return;
 
         const valueToSave = upperCaseCode;
         
@@ -59,9 +59,15 @@ export default function JobRecordSheet() {
                 description: `The code "${valueToSave}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert the input visually
-            const inputEl = document.getElementById(`jobcode-${employeeId}-${day}`) as HTMLInputElement | null;
-            if (inputEl) inputEl.value = originalValue;
+        }
+        
+        const inputEl = document.getElementById(`jobcode-${employeeId}-${day}`) as HTMLInputElement | null;
+        if (inputEl) {
+            if (isValidCode) {
+                inputEl.value = valueToSave; // Ensure UI reflects uppercase value
+            } else {
+                inputEl.value = originalValue; // Revert on error
+            }
         }
     }, [jobCodes, monthKey, saveJobRecord, toast]);
     
@@ -523,3 +529,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
