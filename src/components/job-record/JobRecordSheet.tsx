@@ -218,17 +218,18 @@ export default function JobRecordSheet() {
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
             
-            ws['!comments'] = [];
+            // Add comments for overtime
             profiles.forEach((profile, rIndex) => {
                 const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
                 dayHeaders.forEach((day, dIndex) => {
                     const overtimeForDay = dailyOvertime[day];
                     if (overtimeForDay && overtimeForDay > 0) {
                         const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                        ws['!comments'].push({
-                            ref: cellAddress,
-                            text: { t: `Overtime Hours: ${overtimeForDay}` }
-                        });
+                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' }; // Ensure cell exists
+                        
+                        // Correctly add a hidden note
+                        if (!ws[cellAddress].c) ws[cellAddress].c = [];
+                        ws[cellAddress].c.push({ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true });
                     }
                 });
             });
