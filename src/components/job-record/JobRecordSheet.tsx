@@ -183,8 +183,6 @@ export default function JobRecordSheet() {
             const header = ['S.No', 'Name', ...dateHeaders, 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             sheetData.push(header);
 
-            const comments: {ref: string; comment: {a: string; t:string}}[] = [];
-
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecordForMonth[profile.id] || {};
                 const employeeRecord = record.days || {};
@@ -211,18 +209,9 @@ export default function JobRecordSheet() {
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
                 const rowData: (string | number)[] = [rIndex + 1, profile.name];
-                dayHeaders.forEach((day, dIndex) => {
+                dayHeaders.forEach((day) => {
                     const code = employeeRecord[day] || '';
                     rowData.push(code);
-
-                    const overtimeForDay = dailyOvertime[day];
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                        comments.push({
-                            ref: cellAddress,
-                            comment: { t: `Overtime Hours: ${overtimeForDay}`, a: "Overtime" }
-                        });
-                    }
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(rowData);
@@ -230,9 +219,19 @@ export default function JobRecordSheet() {
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
             
-            if (comments.length > 0) {
-                ws['!comments'] = comments;
-            }
+            // Add comments for overtime
+            profiles.forEach((profile, rIndex) => {
+                const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
+                dayHeaders.forEach((day, dIndex) => {
+                    const overtimeForDay = dailyOvertime[day];
+                    if (overtimeForDay && overtimeForDay > 0) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
+                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' }; // Ensure cell exists
+                        if (!ws[cellAddress].c) ws[cellAddress].c = [];
+                        ws[cellAddress].c.push({ a: "Overtime", t: `Hours: ${overtimeForDay}` });
+                    }
+                });
+            });
             
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
             
