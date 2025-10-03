@@ -37,6 +37,30 @@ export default function JobRecordSheet() {
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
+
+    const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
+
+    const jobRecordForMonth = useMemo(() => {
+        return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
+    }, [jobRecords, monthKey]);
+
+    useEffect(() => {
+        const initialValues: {[key: string]: string} = {};
+        manpowerProfiles.forEach(profile => {
+            const record = jobRecordForMonth.records?.[profile.id] || {};
+            const employeeRecord = record.days || {};
+            const dailyOvertime = record.dailyOvertime || {};
+            dayHeaders.forEach(day => {
+                initialValues[`${profile.id}-${day}-status`] = employeeRecord[day] || '';
+                initialValues[`${profile.id}-${day}-overtime`] = dailyOvertime[day]?.toString() || '';
+            });
+        });
+        setInputValues(initialValues);
+    }, [jobRecordForMonth, manpowerProfiles, currentMonth]);
+    
+    const prevJobRecordForMonth = useMemo(() => {
+        return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
+    }, [jobRecords, prevMonthKey]);
     
     const canGoToPreviousMonth = useMemo(() => {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
@@ -57,48 +81,44 @@ export default function JobRecordSheet() {
         Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), 
     [currentMonth]);
 
-    const jobRecordForMonth = useMemo(() => {
-        return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
-    }, [jobRecords, monthKey]);
-    
-    const prevJobRecordForMonth = useMemo(() => {
-        return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
-    }, [jobRecords, prevMonthKey]);
-    
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string | undefined) => {
-        const upperCaseCode = (value || '').toUpperCase();
+        const code = (value || '').toUpperCase();
+        const key = `${employeeId}-${day}-status`;
+
+        if (value === undefined) {
+             setInputValues(prev => ({ ...prev, [key]: '' }));
+             saveJobRecord(monthKey, employeeId, day, '', 'status');
+             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+             setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
+             return;
+        }
+
+        setInputValues(prev => ({ ...prev, [key]: code }));
       
-        if (upperCaseCode && !jobCodes.some(jc => jc.code === upperCaseCode)) {
+        if (code && !jobCodes.some(jc => jc.code === code)) {
           toast({
             title: "Invalid Job Code",
-            description: `The code "${upperCaseCode}" is not a valid job code.`,
+            description: `The code "${code}" is not a valid job code.`,
             variant: "destructive"
           });
-          // Revert the UI by not saving the invalid state
+          const originalCode = jobRecordForMonth.records?.[employeeId]?.days?.[day] || '';
+          setInputValues(prev => ({...prev, [key]: originalCode}));
           return;
         }
 
-        saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
+        saveJobRecord(monthKey, employeeId, day, code, 'status');
     
-        if (upperCaseCode === '') {
+        if (code === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
         }
-    }, [monthKey, saveJobRecord, jobCodes, toast]);
+    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecordForMonth]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const hours = Number(value);
         const record = jobRecordForMonth.records?.[employeeId] || {};
         const jobCodeForDay = record.days?.[day]?.toUpperCase();
-    
-        if (value && !jobCodeForDay) {
-            toast({
-                title: "Cannot Add Overtime",
-                description: "Overtime can only be added to a day with a valid job code.",
-                variant: "destructive"
-            });
-            return;
-        }
-
+        
         const restrictedCodes = ['X','KD','Q','ST','NWS','OS','ML','L','TR','PD','EP','OFF','PH'];
         if (jobCodeForDay && restrictedCodes.includes(jobCodeForDay)) {
             toast({
@@ -106,6 +126,17 @@ export default function JobRecordSheet() {
                 description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
                 variant: "destructive"
             });
+            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
+            return;
+        }
+
+        if (value && !jobCodeForDay) {
+            toast({
+                title: "Cannot Add Overtime",
+                description: "Overtime can only be added to a day with a valid job code.",
+                variant: "destructive"
+            });
+            setInputValues(prev => ({ ...prev, [`${employeeId}-${day}-overtime`]: '' }));
             return;
         }
 
@@ -326,6 +357,8 @@ export default function JobRecordSheet() {
     
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
         const currentProfiles = groupedProfiles[activeTab];
+        if (!currentProfiles) return;
+        
         const index = currentProfiles.findIndex(p => p.id === profileId);
 
         if (index === -1) return;
@@ -337,7 +370,10 @@ export default function JobRecordSheet() {
         
         [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
 
-        saveJobRecord(monthKey, newOrder.map(p => p.id).join(','), 0, activeTab, 'order');
+        const newOrderIds = newOrder.map(p => p.id);
+        
+        // Pass the array of IDs directly
+        saveJobRecord(monthKey, newOrderIds.join(','), null, activeTab, 'order');
     };
 
     const renderTableForPlant = (plantName: string) => {
@@ -446,7 +482,7 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
-                                        const code = employeeRecord[day] || '';
+                                        const code = inputValues[`${profile.id}-${day}-status`] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code as string] || {};
 
@@ -457,7 +493,8 @@ export default function JobRecordSheet() {
                                                         id={`${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        defaultValue={code}
+                                                        value={code}
+                                                        onChange={(e) => setInputValues(prev => ({...prev, [`${profile.id}-${day}-status`]: e.target.value}))}
                                                         onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
@@ -502,14 +539,15 @@ export default function JobRecordSheet() {
                                     <TableRow>
                                         <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
                                         {dayHeaders.map(day => {
-                                            const overtimeForDay = dailyOvertime[day] || '';
+                                            const overtimeKey = `${profile.id}-${day}-overtime`;
                                             return (
                                                 <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
                                                     <Input
-                                                        id={`ot-${profile.id}-${day}`}
+                                                        id={overtimeKey}
                                                         type="number"
                                                         placeholder="0"
-                                                        defaultValue={overtimeForDay}
+                                                        value={inputValues[overtimeKey] || ''}
+                                                        onChange={(e) => setInputValues(prev => ({...prev, [overtimeKey]: e.target.value}))}
                                                         onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                         className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                         disabled={!canEditSheet}
