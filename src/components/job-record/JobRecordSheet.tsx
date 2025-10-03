@@ -26,7 +26,7 @@ import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 const implementationStartDate = new Date(2024, 9, 1); // October 2024 (Month is 0-indexed)
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday() < implementationStartDate ? implementationStartDate : startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
@@ -100,6 +100,7 @@ export default function JobRecordSheet() {
                 description: `The code "${upperCaseCode}" is not a valid job code.`,
                 variant: "destructive"
             });
+            // Revert the local state to the saved value
             setInputValues(prev => ({
                 ...prev,
                 [inputKey]: jobRecordForMonth[employeeId]?.days?.[day] || ''
@@ -252,14 +253,7 @@ export default function JobRecordSheet() {
     
                 const rowData: any[] = [rIndex + 1, profile.name];
                 dayHeaders.forEach(day => {
-                    const code = employeeRecord[day] || '';
-                    const overtimeForDay = dailyOvertime[day];
-
-                    if (code && overtimeForDay && overtimeForDay > 0) {
-                        rowData.push({ v: code, c: [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }] });
-                    } else {
-                        rowData.push(code);
-                    }
+                    rowData.push(employeeRecord[day] || '');
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 ws_data.push(rowData);
@@ -269,13 +263,24 @@ export default function JobRecordSheet() {
             
             ws_data.forEach((row, r) => {
               if (r < 3) return; // Skip title and header
+              const employeeId = profiles[r-3]?.id;
+              if (!employeeId) return;
+
               row.forEach((cellData, c) => {
                   if (c >= 2 && c < dayHeaders.length + 2) {
+                      const day = c - 1;
+                      const overtimeForDay = jobRecordForMonth[employeeId]?.dailyOvertime?.[day];
                       const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
+                      
+                      const cellAddress = XLSX.utils.encode_cell({ r, c });
+                      if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+
+                      if (overtimeForDay && overtimeForDay > 0) {
+                          ws[cellAddress].c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }];
+                      }
+                      
                       const colorInfo = JOB_CODE_COLORS[code];
                       if (colorInfo?.excelFill) {
-                          const cellAddress = XLSX.utils.encode_cell({ r, c });
-                          if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
                           ws[cellAddress].s = {
                              fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
                              font: colorInfo.excelFill.font || {}
@@ -607,3 +612,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
