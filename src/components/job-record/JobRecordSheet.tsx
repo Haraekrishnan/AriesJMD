@@ -158,23 +158,25 @@ export default function JobRecordSheet() {
             sheetData.push(['Job Code Legend & Man-Days Count']);
             sheetData.push(['Code', 'Job Details', 'Man-Days']);
             
-            const manDaysCount = jobCodes.reduce((acc, jc) => {
-                acc[jc.code] = 0;
-                return acc;
-            }, {} as {[key: string]: number});
-            
-            profiles.forEach(p => {
-                const days = jobRecordForMonth[p.id]?.days || {};
-                Object.values(days).forEach(code => {
-                    if (manDaysCount.hasOwnProperty(code as string)) {
-                        manDaysCount[code as string]++;
-                    }
-                });
-            });
+            if (jobCodes) {
+              const manDaysCount = jobCodes.reduce((acc, jc) => {
+                  acc[jc.code] = 0;
+                  return acc;
+              }, {} as {[key: string]: number});
+              
+              profiles.forEach(p => {
+                  const days = jobRecordForMonth[p.id]?.days || {};
+                  Object.values(days).forEach(code => {
+                      if (manDaysCount.hasOwnProperty(code as string)) {
+                          manDaysCount[code as string]++;
+                      }
+                  });
+              });
 
-            jobCodes.forEach(jc => {
-                sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
-            });
+              jobCodes.forEach(jc => {
+                  sheetData.push([jc.code, jc.details, manDaysCount[jc.code] || 0]);
+              });
+            }
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
@@ -378,7 +380,7 @@ export default function JobRecordSheet() {
                                                             <div className="grid grid-cols-4 gap-1">
                                                                 {jobCodes && jobCodes.map(jc => (
                                                                     <Button
-                                                                        key={jc.code}
+                                                                        key={jc.id}
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={() => {
@@ -484,7 +486,7 @@ export default function JobRecordSheet() {
                         <AccordionContent>
                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                             {jobCodes && jobCodes.map(jc => (
-                                <div key={jc.code} className="flex items-start gap-4 text-xs">
+                                <div key={jc.id} className="flex items-start gap-4 text-xs">
                                     <div className="font-bold w-12">{jc.code}</div>
                                     <div className="flex-1">
                                         <p>{jc.details}</p>
