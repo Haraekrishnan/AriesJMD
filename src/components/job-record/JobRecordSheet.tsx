@@ -33,7 +33,6 @@ export default function JobRecordSheet() {
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
-    const [inputValues, setInputValues] = useState<Record<string, string | number>>({});
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -67,36 +66,12 @@ export default function JobRecordSheet() {
         return jobRecords[prevMonthKey]?.records || {};
     }, [jobRecords, prevMonthKey]);
     
-    useEffect(() => {
-        const initialValues: Record<string, string | number> = {};
-        Object.entries(jobRecordForMonth).forEach(([employeeId, record]) => {
-            if (record.days) {
-                Object.entries(record.days).forEach(([day, code]) => {
-                    if (code) {
-                        initialValues[`${employeeId}-${day}`] = code;
-                    }
-                });
-            }
-            if (record.dailyOvertime) {
-                Object.entries(record.dailyOvertime).forEach(([day, hours]) => {
-                    if (hours) {
-                         initialValues[`ot-${employeeId}-${day}`] = hours;
-                    }
-                });
-            }
-        });
-        setInputValues(initialValues);
-    }, [jobRecordForMonth]);
-
-
-    const handleStatusChange = useCallback((employeeId: string, day: number) => {
-        const inputKey = `${employeeId}-${day}`;
-        const upperCaseCode = (inputValues[inputKey] as string ?? '').toUpperCase();
+    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
+        const upperCaseCode = (value || '').toUpperCase();
     
         if (upperCaseCode === '') {
-            setInputValues(prev => ({...prev, [inputKey]: '', [`ot-${inputKey}`]: ''}));
             saveJobRecord(monthKey, employeeId, day, null, 'status');
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime when code is deleted
             return;
         }
     
@@ -107,44 +82,42 @@ export default function JobRecordSheet() {
                 description: `The code "${upperCaseCode}" is not a valid job code.`,
                 variant: "destructive"
             });
-            setInputValues(prev => ({
-                ...prev,
-                [inputKey]: jobRecordForMonth[employeeId]?.days?.[day] || ''
-            }));
+            // Revert UI optimistically
+            const inputEl = document.getElementById(`${employeeId}-${day}`);
+            if (inputEl) (inputEl as HTMLInputElement).value = jobRecordForMonth[employeeId]?.days?.[day] || '';
             return;
         }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-    }, [monthKey, saveJobRecord, toast, jobCodes, jobRecordForMonth, inputValues]);
+    }, [monthKey, saveJobRecord, toast, jobCodes, jobRecordForMonth]);
     
-    const handleOvertimeChange = (employeeId: string, day: number) => {
-        const overtimeKey = `ot-${employeeId}-${day}`;
-        const hours = inputValues[overtimeKey];
-        const jobCodeKey = `${employeeId}-${day}`;
-        const jobCodeForDay = (inputValues[jobCodeKey] as string || jobRecordForMonth[employeeId]?.days?.[day])?.toUpperCase();
+    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
+        const hours = Number(value);
+        const jobCodeForDay = jobRecordForMonth[employeeId]?.days?.[day]?.toUpperCase();
     
-        if (!jobCodeForDay) {
+        if (value && !jobCodeForDay) {
             toast({
                 title: "Cannot Add Overtime",
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
-            setInputValues(prev => ({...prev, [overtimeKey]: ''}));
+            const inputEl = document.getElementById(`ot-${employeeId}-${day}`);
+            if (inputEl) (inputEl as HTMLInputElement).value = '';
             return;
         }
 
         const restrictedCodes = ['X','KD','Q','ST','NWS','OS','ML','L','TR','PD','EP','OFF','PH'];
-        if (restrictedCodes.includes(jobCodeForDay)) {
+        if (jobCodeForDay && restrictedCodes.includes(jobCodeForDay)) {
             toast({
                 title: "Invalid Overtime",
                 description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
                 variant: "destructive"
             });
-            setInputValues(prev => ({...prev, [overtimeKey]: ''}));
+            const inputEl = document.getElementById(`ot-${employeeId}-${day}`);
+            if (inputEl) (inputEl as HTMLInputElement).value = '';
             return;
         }
 
-        const numericHours = Number(hours);
-        const finalHours = isNaN(numericHours) || numericHours <= 0 ? null : numericHours;
+        const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
     };
     
@@ -434,8 +407,7 @@ export default function JobRecordSheet() {
                                         </Select>
                                     </TableCell>
                                     {dayHeaders.map(day => {
-                                        const inputKey = `${profile.id}-${day}`;
-                                        const code = (inputValues[inputKey] as string) || '';
+                                        const code = employeeRecord[day] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
                                         const colorInfo = JOB_CODE_COLORS[code as string] || {};
 
@@ -443,11 +415,11 @@ export default function JobRecordSheet() {
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
                                                 <div className="relative h-10 flex items-center justify-center">
                                                     <Input
+                                                        id={`${profile.id}-${day}`}
                                                         type="text"
                                                         list="jobcodes-datalist"
-                                                        value={code}
-                                                        onChange={(e) => setInputValues(prev => ({ ...prev, [inputKey]: e.target.value }))}
-                                                        onBlur={() => handleStatusChange(profile.id, day)}
+                                                        defaultValue={code}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                             code ? colorInfo.bg : 'bg-transparent',
@@ -491,16 +463,15 @@ export default function JobRecordSheet() {
                                     <TableRow>
                                         <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
                                         {dayHeaders.map(day => {
-                                            const overtimeKey = `ot-${profile.id}-${day}`;
-                                            const otValue = inputValues[overtimeKey] || '';
+                                            const overtimeForDay = dailyOvertime[day] || '';
                                             return (
                                                 <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
                                                     <Input
+                                                        id={`ot-${profile.id}-${day}`}
                                                         type="number"
                                                         placeholder="0"
-                                                        value={otValue}
-                                                        onChange={(e) => setInputValues(prev => ({...prev, [overtimeKey]: e.target.value}))}
-                                                        onBlur={() => handleOvertimeChange(profile.id, day)}
+                                                        defaultValue={overtimeForDay}
+                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                         className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
                                                         disabled={!canEditSheet}
                                                     />
@@ -629,10 +600,3 @@ export default function JobRecordSheet() {
     );
 }
 
-    
-
-    
-
-
-
-  
