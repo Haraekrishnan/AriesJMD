@@ -2996,7 +2996,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [dayOrValue!]: code || null });
     } else if (type === 'plant') {
-      update(ref(rtdb, `manpowerProfiles/${employeeId}`), { plant: codeOrPlantOrHours });
+      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { plant: codeOrPlantOrHours });
     } else if (type === 'dailyOvertime') {
       const day = dayOrValue as number;
       const hours = codeOrPlantOrHours as (number | null);
@@ -3271,3 +3271,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+

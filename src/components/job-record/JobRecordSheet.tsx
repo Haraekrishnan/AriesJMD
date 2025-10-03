@@ -106,10 +106,10 @@ export default function JobRecordSheet() {
     }, [jobRecordPlants]);
 
     useEffect(() => {
-        if (plantProjects.length > 0) {
+        if (plantProjects.length > 0 && !plantProjects.includes(activeTab) && activeTab !== 'Unassigned') {
             setActiveTab(plantProjects[0]);
         }
-    }, [plantProjects]);
+    }, [plantProjects, activeTab]);
 
     const handleRemoveFromPlant = (employeeId: string) => {
         saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
@@ -127,7 +127,45 @@ export default function JobRecordSheet() {
             return newSet;
         });
     };
+    
+    const groupedProfiles = useMemo(() => {
+        const groups: { [key: string]: typeof manpowerProfiles } = {};
+        const availablePlants = new Set(plantProjects);
+        availablePlants.add('Unassigned');
 
+        availablePlants.forEach(p => groups[p] = []);
+
+        manpowerProfiles.forEach(profile => {
+            const plantForMonth = jobRecordForMonth[profile.id]?.plant || 'Unassigned';
+            if (groups[plantForMonth]) {
+                groups[plantForMonth].push(profile);
+            } else {
+                groups['Unassigned'].push(profile);
+            }
+        });
+        Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
+        return groups;
+    }, [manpowerProfiles, plantProjects, jobRecordForMonth]);
+    
+    const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
+    
+    const manDaysCountByCodeForCurrentTab = useMemo(() => {
+        if (!jobCodes) return {};
+        const counts: { [key: string]: number } = {};
+        jobCodes.forEach(jc => counts[jc.code] = 0);
+
+        const profilesInTab = groupedProfiles[activeTab] || [];
+        profilesInTab.forEach(p => {
+            const days = jobRecordForMonth[p.id]?.days || {};
+            Object.values(days).forEach(code => {
+                if (counts.hasOwnProperty(code as string)) {
+                    counts[code as string]++;
+                }
+            });
+        });
+        return counts;
+    }, [jobRecordForMonth, activeTab, jobCodes, groupedProfiles]);
+    
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
 
@@ -236,44 +274,6 @@ export default function JobRecordSheet() {
             toast({ variant: 'destructive', title: 'No Data', description: `No employees assigned to any plant to export.` });
         }
     };
-
-    const groupedProfiles = useMemo(() => {
-        const groups: { [key: string]: typeof manpowerProfiles } = {};
-        const availablePlants = new Set(plantProjects);
-        availablePlants.add('Unassigned');
-
-        availablePlants.forEach(p => groups[p] = []);
-
-        manpowerProfiles.forEach(profile => {
-            const plant = profile.plant || 'Unassigned';
-            if (groups[plant]) {
-                groups[plant].push(profile);
-            } else {
-                groups['Unassigned'].push(profile);
-            }
-        });
-        Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
-        return groups;
-    }, [manpowerProfiles, plantProjects]);
-    
-    const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
-    
-    const manDaysCountByCodeForCurrentTab = useMemo(() => {
-        if (!jobCodes) return {};
-        const counts: { [key: string]: number } = {};
-        jobCodes.forEach(jc => counts[jc.code] = 0);
-
-        const profilesInTab = groupedProfiles[activeTab] || [];
-        profilesInTab.forEach(p => {
-            const days = jobRecordForMonth[p.id]?.days || {};
-            Object.values(days).forEach(code => {
-                if (counts.hasOwnProperty(code as string)) {
-                    counts[code as string]++;
-                }
-            });
-        });
-        return counts;
-    }, [jobRecordForMonth, activeTab, jobCodes, groupedProfiles]);
     
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
@@ -351,7 +351,7 @@ export default function JobRecordSheet() {
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Remove {profile.name} from {plantName}?</AlertDialogTitle>
-                                                            <AlertDialogDescription>This will move the employee to the "Unassigned" group for all months.</AlertDialogDescription>
+                                                            <AlertDialogDescription>This will move the employee to the "Unassigned" group for this month only.</AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -363,7 +363,7 @@ export default function JobRecordSheet() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={profile.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                        <Select value={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
                                                 {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
@@ -494,7 +494,9 @@ export default function JobRecordSheet() {
                             </AlertDialog>
                         )}
                          {user?.role === 'Admin' && isCurrentSheetLocked && (
-                            <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}><Unlock className="mr-2 h-4 w-4" /> Unlock Sheet</Button>
+                            <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
+                                <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
+                            </Button>
                         )}
                     </div>
                 </div>
