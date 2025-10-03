@@ -51,7 +51,7 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
 
     const canEditSheet = useMemo(() => {
-        if (!user) return false;
+        if (!user) return true;
         if (user.role === 'Admin') return true;
         return can.manage_job_record && !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
@@ -121,6 +121,20 @@ export default function JobRecordSheet() {
                 variant: "destructive"
             });
             // Revert the input value if overtime is entered without a job code
+            const inputRef = inputRefs.current[`ot-${employeeId}-${day}`];
+            if (inputRef) {
+                inputRef.value = '';
+            }
+            return;
+        }
+
+        const restrictedCodes = ['X','KD','Q','ST','NWS','OS','ML','L','TR','PD','EP','OFF','PH'];
+        if (restrictedCodes.includes(jobCodeForDay)) {
+            toast({
+                title: "Invalid Overtime",
+                description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
+                variant: "destructive"
+            });
             const inputRef = inputRefs.current[`ot-${employeeId}-${day}`];
             if (inputRef) {
                 inputRef.value = '';
@@ -279,7 +293,7 @@ export default function JobRecordSheet() {
                           ws[cellAddress].c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }];
                       }
                       
-                      const colorInfo = JOB_CODE_COLORS[code];
+                      const colorInfo = JOB_CODE_COLORS[code as string];
                       if (colorInfo?.excelFill) {
                           ws[cellAddress].s = {
                              fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
@@ -423,9 +437,9 @@ export default function JobRecordSheet() {
                                     </TableCell>
                                     {dayHeaders.map(day => {
                                         const inputKey = `${profile.id}-${day}`;
-                                        const code = inputValues[inputKey] ?? '';
+                                        const code = inputValues[inputKey] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
-                                        const colorInfo = JOB_CODE_COLORS[code] || {};
+                                        const colorInfo = JOB_CODE_COLORS[code as string] || {};
 
                                         return (
                                             <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
@@ -612,5 +626,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
 
     
