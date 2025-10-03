@@ -17,7 +17,7 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
+import AddJobRecordPlantDialog from './AddJobCodeDialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { JobCode } from '@/lib/types';
@@ -48,14 +48,16 @@ export default function JobRecordSheet() {
         const upperCaseCode = code.toUpperCase();
         if (upperCaseCode === originalValue) return; // No change
 
-        const isValidCode = (jobCodes && jobCodes.some(jc => jc.code === upperCaseCode)) || upperCaseCode === '';
+        const valueToSave = upperCaseCode === 'NONE' ? '' : upperCaseCode;
+        
+        const isValidCode = (jobCodes && jobCodes.some(jc => jc.code === valueToSave)) || valueToSave === '';
         
         if (isValidCode) {
-            saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
+            saveJobRecord(monthKey, employeeId, day, valueToSave, 'status');
         } else {
             toast({
                 title: "Invalid Job Code",
-                description: `The code "${upperCaseCode}" is not a valid job code.`,
+                description: `The code "${valueToSave}" is not a valid job code.`,
                 variant: "destructive"
             });
             // Revert the input visually
@@ -376,7 +378,7 @@ export default function JobRecordSheet() {
                                                         <SelectValue placeholder="..." />
                                                       </SelectTrigger>
                                                       <SelectContent>
-                                                        <SelectItem value="">Clear</SelectItem>
+                                                        <SelectItem value="none">Clear</SelectItem>
                                                         {jobCodes && jobCodes.map(jc => (
                                                           <SelectItem key={jc.id} value={jc.code}>
                                                             {jc.code} - {jc.details}
@@ -521,7 +523,7 @@ export default function JobRecordSheet() {
                     </AccordionItem>
                 </Accordion>
             </div>
-            <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
+            <AddJobCodeDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
             <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
             {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
         </TooltipProvider>
