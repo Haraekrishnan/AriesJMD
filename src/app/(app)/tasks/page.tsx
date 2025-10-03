@@ -29,8 +29,8 @@ export default function TasksPage() {
     priority: 'all',
     assigneeId: 'all',
     dateRange: undefined,
-    month: 'all', // Default to all months
-    showMyTasksOnly: user?.role !== 'Manager',
+    month: 'all',
+    showMyTasksOnly: false,
   });
 
   const [isPendingApprovalDialogOpen, setIsPendingApprovalDialogOpen] = useState(false);
