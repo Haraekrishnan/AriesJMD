@@ -65,7 +65,13 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, code: string) => {
         const upperCaseCode = code.toUpperCase();
-        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode) || upperCaseCode === '';
+        if (upperCaseCode === '') {
+          saveJobRecord(monthKey, employeeId, day, null, 'status');
+          saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime when code is removed
+          return;
+        }
+
+        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode);
         if (!isValidCode) {
             toast({
                 title: "Invalid Job Code",
@@ -75,10 +81,6 @@ export default function JobRecordSheet() {
             return;
         }
         saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-        // If the job code is being removed, also remove the overtime for that day
-        if (upperCaseCode === '') {
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-        }
     }, [monthKey, saveJobRecord, toast, jobCodes]);
     
     const handleOvertimeChange = (employeeId: string, day: number, hours: number | string) => {
@@ -147,13 +149,10 @@ export default function JobRecordSheet() {
 
         availablePlants.forEach(p => groups[p] = []);
 
-        const prevMonthRecord = jobRecords[prevMonthKey]?.records || {};
-
         manpowerProfiles.forEach(profile => {
             const plantForCurrentMonth = jobRecordForMonth[profile.id]?.plant;
-            const plantForPrevMonth = prevMonthRecord[profile.id]?.plant;
             
-            const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? profile.plant ?? 'Unassigned';
+            const plantAssignment = plantForCurrentMonth ?? profile.plant ?? 'Unassigned';
 
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
@@ -163,7 +162,7 @@ export default function JobRecordSheet() {
         });
         Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
         return groups;
-    }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevMonthKey, jobRecords]);
+    }, [manpowerProfiles, plantProjects, jobRecordForMonth]);
     
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
     
