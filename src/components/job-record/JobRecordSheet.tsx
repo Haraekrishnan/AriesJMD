@@ -208,15 +208,27 @@ export default function JobRecordSheet() {
             const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
             const order = currentOrder || prevOrder;
 
-            if (order && Array.isArray(order)) {
-                const profileMap = new Map(groups[plantName].map(p => [p.id, p]));
-                const orderedProfiles = order.map(id => profileMap.get(id)).filter((p): p is ManpowerProfile => !!p);
-                const orderedIds = new Set(order);
-                const remainingProfiles = groups[plantName].filter(p => !orderedIds.has(p.id));
-                groups[plantName] = [...orderedProfiles, ...remainingProfiles];
-            } else {
-                groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
-            }
+            groups[plantName].sort((a, b) => {
+                const plantForA_current = jobRecordForMonth.records?.[a.id]?.plant;
+                const plantForA_prev = prevJobRecordForMonth.records?.[a.id]?.plant;
+                const a_isNew = plantForA_current && plantForA_current !== plantForA_prev && plantForA_prev !== undefined;
+
+                const plantForB_current = jobRecordForMonth.records?.[b.id]?.plant;
+                const plantForB_prev = prevJobRecordForMonth.records?.[b.id]?.plant;
+                const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
+
+                if (a_isNew && !b_isNew) return 1;
+                if (!a_isNew && b_isNew) return -1;
+                
+                if (order && Array.isArray(order)) {
+                    const indexA = order.indexOf(a.id);
+                    const indexB = order.indexOf(b.id);
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
         });
 
         return groups;
