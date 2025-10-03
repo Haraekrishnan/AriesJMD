@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +34,7 @@ export default function JobRecordSheet() {
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
     const { toast } = useToast();
+    const [draggedItem, setDraggedItem] = useState<string | null>(null);
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -59,40 +60,28 @@ export default function JobRecordSheet() {
     [currentMonth]);
 
     const jobRecordForMonth = useMemo(() => {
-        return jobRecords[monthKey]?.records || {};
+        return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
     }, [jobRecords, monthKey]);
     
     const prevJobRecordForMonth = useMemo(() => {
-        return jobRecords[prevMonthKey]?.records || {};
+        return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
     }, [jobRecords, prevMonthKey]);
+
     
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const upperCaseCode = (value || '').toUpperCase();
+        
+        saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
     
         if (upperCaseCode === '') {
-            saveJobRecord(monthKey, employeeId, day, null, 'status');
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime'); // Clear overtime when code is deleted
-            return;
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
         }
-    
-        const isValidCode = jobCodes.some(jc => jc.code === upperCaseCode);
-        if (!isValidCode) {
-            toast({
-                title: "Invalid Job Code",
-                description: `The code "${upperCaseCode}" is not a valid job code.`,
-                variant: "destructive"
-            });
-            // Revert UI optimistically
-            const inputEl = document.getElementById(`${employeeId}-${day}`);
-            if (inputEl) (inputEl as HTMLInputElement).value = jobRecordForMonth[employeeId]?.days?.[day] || '';
-            return;
-        }
-        saveJobRecord(monthKey, employeeId, day, upperCaseCode, 'status');
-    }, [monthKey, saveJobRecord, toast, jobCodes, jobRecordForMonth]);
+    }, [monthKey, saveJobRecord]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
         const hours = Number(value);
-        const jobCodeForDay = jobRecordForMonth[employeeId]?.days?.[day]?.toUpperCase();
+        const record = jobRecordForMonth.records?.[employeeId] || {};
+        const jobCodeForDay = record.days?.[day]?.toUpperCase();
     
         if (value && !jobCodeForDay) {
             toast({
@@ -100,8 +89,6 @@ export default function JobRecordSheet() {
                 description: "Overtime can only be added to a day with a valid job code.",
                 variant: "destructive"
             });
-            const inputEl = document.getElementById(`ot-${employeeId}-${day}`);
-            if (inputEl) (inputEl as HTMLInputElement).value = '';
             return;
         }
 
@@ -112,8 +99,6 @@ export default function JobRecordSheet() {
                 description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
                 variant: "destructive"
             });
-            const inputEl = document.getElementById(`ot-${employeeId}-${day}`);
-            if (inputEl) (inputEl as HTMLInputElement).value = '';
             return;
         }
 
@@ -170,8 +155,8 @@ export default function JobRecordSheet() {
         availablePlants.forEach(p => groups[p] = []);
 
         manpowerProfiles.forEach(profile => {
-            const plantForCurrentMonth = jobRecordForMonth[profile.id]?.plant;
-            const plantForPrevMonth = prevJobRecordForMonth[profile.id]?.plant;
+            const plantForCurrentMonth = jobRecordForMonth.records?.[profile.id]?.plant;
+            const plantForPrevMonth = prevJobRecordForMonth.records?.[profile.id]?.plant;
             
             const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
 
@@ -181,7 +166,26 @@ export default function JobRecordSheet() {
                 groups['Unassigned'].push(profile);
             }
         });
-        Object.values(groups).forEach(group => group?.sort((a, b) => a.name.localeCompare(b.name)));
+        
+        Object.keys(groups).forEach(plantName => {
+            const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
+            const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
+            const order = currentOrder || prevOrder;
+
+            if (order && Array.isArray(order)) {
+                groups[plantName].sort((a, b) => {
+                    const indexA = order.indexOf(a.id);
+                    const indexB = order.indexOf(b.id);
+                    if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
+            } else {
+                groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
+            }
+        });
+
         return groups;
     }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevJobRecordForMonth]);
     
@@ -194,7 +198,8 @@ export default function JobRecordSheet() {
 
         const profilesInTab = groupedProfiles[activeTab] || [];
         profilesInTab.forEach(p => {
-            const days = jobRecordForMonth[p.id]?.days || {};
+            const record = jobRecordForMonth.records?.[p.id];
+            const days = record?.days || {};
             Object.values(days).forEach(code => {
                 if (counts.hasOwnProperty(code as string)) {
                     counts[code as string]++;
@@ -218,7 +223,7 @@ export default function JobRecordSheet() {
             ws_data.push(header);
     
             profiles.forEach((profile, rIndex) => {
-                const record = jobRecordForMonth[profile.id] || {};
+                const record = jobRecordForMonth.records?.[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
                 const offCodes = ['OFF', 'PH', 'OS'];
@@ -289,7 +294,8 @@ export default function JobRecordSheet() {
               }, {} as {[key: string]: number});
               
               profiles.forEach(p => {
-                  const days = jobRecordForMonth[p.id]?.days || {};
+                  const record = jobRecordForMonth.records?.[p.id];
+                  const days = record?.days || {};
                   Object.values(days).forEach(code => {
                       if (manDaysCount.hasOwnProperty(code as string)) {
                           manDaysCount[code as string]++;
@@ -311,6 +317,30 @@ export default function JobRecordSheet() {
         }
     };
     
+    const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, profileId: string) => {
+        setDraggedItem(profileId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, targetProfileId: string) => {
+        if (!draggedItem || draggedItem === targetProfileId) return;
+
+        const currentProfiles = groupedProfiles[activeTab];
+        const draggedIndex = currentProfiles.findIndex(p => p.id === draggedItem);
+        const targetIndex = currentProfiles.findIndex(p => p.id === targetProfileId);
+
+        let newOrder = [...currentProfiles];
+        const [removed] = newOrder.splice(draggedIndex, 1);
+        newOrder.splice(targetIndex, 0, removed);
+
+        saveJobRecord(monthKey, newOrder.map(p => p.id).join(','), 0, activeTab, 'order');
+        setDraggedItem(null);
+    };
+
     const renderTableForPlant = (plantName: string) => {
          const profiles = groupedProfiles[plantName] || [];
          if (profiles.length === 0) {
@@ -321,9 +351,9 @@ export default function JobRecordSheet() {
                 <Table className="min-w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-10 w-[50px]"></TableHead>
-                            <TableHead className="sticky left-[50px] bg-card z-10 min-w-[200px]">Name</TableHead>
-                            <TableHead className="sticky left-[250px] bg-card z-10 min-w-[150px]">Plant</TableHead>
+                            <TableHead className="sticky left-0 bg-card z-10 w-[80px]"></TableHead>
+                            <TableHead className="sticky left-[80px] bg-card z-10 min-w-[200px]">Name</TableHead>
+                            <TableHead className="sticky left-[280px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
                                 <TableHead key={day} className="text-center min-w-[100px]">
                                     {day}
@@ -342,7 +372,7 @@ export default function JobRecordSheet() {
                     </TableHeader>
                     <TableBody>
                         {profiles.map((profile, index) => {
-                            const record = jobRecordForMonth[profile.id] || {};
+                            const record = jobRecordForMonth.records?.[profile.id] || {};
                             const employeeRecord = record.days || {};
                             const dailyOvertime = record.dailyOvertime || {};
                             
@@ -369,14 +399,21 @@ export default function JobRecordSheet() {
 
                             return (
                                 <React.Fragment key={profile.id}>
-                                <TableRow>
+                                <TableRow 
+                                    draggable={canEditSheet}
+                                    onDragStart={(e) => handleDragStart(e, profile.id)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, profile.id)}
+                                    className={cn(canEditSheet && "cursor-move", draggedItem === profile.id && "opacity-50 bg-blue-100")}
+                                >
                                     <TableCell className="sticky left-0 bg-card z-10">
                                          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
+                                            <GripVertical className="h-4 w-4 mr-2 text-muted-foreground"/>
                                             {index + 1}
                                             {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
                                         </Button>
                                     </TableCell>
-                                    <TableCell className="sticky left-[50px] bg-card z-10 font-medium whitespace-nowrap">
+                                    <TableCell className="sticky left-[80px] bg-card z-10 font-medium whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             {profile.name}
                                             {user?.role === 'Admin' && plantName !== 'Unassigned' && (
@@ -398,8 +435,8 @@ export default function JobRecordSheet() {
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="sticky left-[250px] bg-card z-10">
-                                        <Select value={jobRecordForMonth[profile.id]?.plant || prevJobRecordForMonth[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                    <TableCell className="sticky left-[280px] bg-card z-10">
+                                        <Select value={jobRecordForMonth.records?.[profile.id]?.plant || prevJobRecordForMonth.records?.[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                             <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
                                             <SelectContent>
                                                 {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
