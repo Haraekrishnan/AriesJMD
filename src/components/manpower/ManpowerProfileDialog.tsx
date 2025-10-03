@@ -25,88 +25,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { Badge } from '../ui/badge';
 import EditMemoDialog from './EditMemoDialog';
 import EditPpeHistoryDialog from './EditPpeHistoryDialog';
-
-const ppeHistorySchema = z.object({
-  ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required."}),
-  size: z.string().min(1, 'Size is required'),
-  quantity: z.coerce.number().min(1, 'Quantity must be at least 1').default(1),
-  issueDate: z.date({ required_error: 'Issue date is required' }),
-  requestType: z.enum(['New', 'Replacement']),
-  remarks: z.string().optional(),
-});
-
-type PpeHistoryFormValues = z.infer<typeof ppeHistorySchema>;
-
-const PpeHistoryForm = ({ profile }: { profile: ManpowerProfile }) => {
-    const { user, addPpeHistoryRecord } = useAppContext();
-    const { toast } = useToast();
-    const form = useForm<PpeHistoryFormValues>({
-        resolver: zodResolver(ppeHistorySchema),
-        defaultValues: { requestType: 'New', quantity: 1, issueDate: undefined },
-    });
-    
-    const ppeType = form.watch('ppeType');
-
-    useEffect(() => {
-        if (ppeType) {
-            const size = ppeType === 'Coverall' ? profile.coverallSize : profile.shoeSize;
-            form.setValue('size', size || '');
-        }
-    }, [ppeType, profile, form]);
-
-    const handleAddRecord = (data: PpeHistoryFormValues) => {
-        if (!user) return;
-        addPpeHistoryRecord(profile.id, {
-            ...data,
-            issueDate: data.issueDate.toISOString(),
-            issuedById: user.id,
-        });
-        toast({ title: 'PPE Record Added', description: 'The PPE issue history has been updated.' });
-        form.reset({ requestType: 'New', issueDate: undefined, quantity: 1 });
-    };
-
-    return (
-        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-            <h4 className="font-semibold text-sm">Add New PPE Issue</h4>
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                    <Label>PPE Type</Label>
-                    <Controller name="ppeType" control={form.control} render={({ field }) => ( <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type"/></SelectTrigger><SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent></Select> )}/>
-                    {form.formState.errors.ppeType && <p className="text-xs text-destructive">{form.formState.errors.ppeType.message}</p>}
-                </div>
-                 <div className="space-y-2">
-                    <Label>Size</Label>
-                    <Input {...form.register('size')} />
-                    {form.formState.errors.size && <p className="text-xs text-destructive">{form.formState.errors.size.message}</p>}
-                </div>
-                <div className="space-y-2">
-                    <Label>Quantity</Label>
-                    <Input type="number" {...form.register('quantity')} />
-                    {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
-                </div>
-            </div>
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <div className="space-y-2">
-                    <Label>Request Type</Label>
-                    <Controller name="requestType" control={form.control} render={({ field }) => ( <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="Replacement">Replacement</SelectItem></SelectContent></Select> )}/>
-                </div>
-                <div className="space-y-2">
-                    <Label>Issue Date</Label>
-                    <Controller name="issueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                    {form.formState.errors.issueDate && <p className="text-xs text-destructive">{form.formState.errors.issueDate.message}</p>}
-                </div>
-            </div>
-             <div className="space-y-2">
-                <Label>Remarks</Label>
-                <Textarea {...form.register('remarks')} rows={2} />
-            </div>
-            <div className="flex justify-end">
-                <Button type="button" onClick={form.handleSubmit(handleAddRecord)}>Add Record</Button>
-            </div>
-        </div>
-    );
-};
-
+import AddPpeHistoryDialog from './AddPpeHistoryDialog';
 
 const documentSchema = z.object({
   name: z.string(),
@@ -243,10 +162,11 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, updatePpeHistoryRecord } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
+  const [isAddPpeOpen, setIsAddPpeOpen] = useState(false);
 
   const canAddPpe = useMemo(() => {
     if (!user) return false;
@@ -283,7 +203,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
   const ppeHistoryArray = useMemo(() => {
     if (!liveProfile?.ppeHistory) return [];
-    return Array.isArray(liveProfile.ppeHistory) ? liveProfile.ppeHistory : Object.values(liveProfile.ppeHistory);
+    const history = Array.isArray(liveProfile.ppeHistory) ? liveProfile.ppeHistory : Object.values(liveProfile.ppeHistory);
+    return history.sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
   }, [liveProfile]);
 
   useEffect(() => {
@@ -370,14 +291,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     delete dataToSubmit.otherTrade;
     delete dataToSubmit.currentLeave;
 
-    // Clean up undefined values and convert dates before submitting
     const cleanedData = Object.fromEntries(
         Object.entries(dataToSubmit).map(([key, value]) => {
             if (value instanceof Date) {
                 return [key, value.toISOString()];
             }
             if (value === undefined) {
-                return [key, null]; // Convert undefined to null for Firebase
+                return [key, null]; 
             }
             if (key === 'skills' && Array.isArray(value)) {
                 return [key, value.map(skill => ({
@@ -629,7 +549,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             </TableBody>
                           </Table>
                         ) : <p className="text-sm text-muted-foreground">No PPE history.</p>}
-                        {canAddPpe && <PpeHistoryForm profile={profile} />}
+                        {canAddPpe && <Button type="button" onClick={() => setIsAddPpeOpen(true)} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Add PPE History</Button>}
                       </div>
                     )}
                    {(liveProfile?.leaveHistory || []).length > 0 && (
@@ -732,6 +652,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
               isOpen={!!editingPpeRecord}
               setIsOpen={() => setEditingPpeRecord(null)}
               record={editingPpeRecord}
+              profile={profile}
+          />
+      )}
+      {isAddPpeOpen && profile && (
+          <AddPpeHistoryDialog
+              isOpen={isAddPpeOpen}
+              setIsOpen={setIsAddPpeOpen}
               profile={profile}
           />
       )}
