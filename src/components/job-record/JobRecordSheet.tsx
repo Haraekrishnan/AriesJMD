@@ -42,6 +42,11 @@ export default function JobRecordSheet() {
     
     const [optimisticJobRecords, setOptimisticJobRecords] = useState(jobRecords);
     const [invalidCodeCell, setInvalidCodeCell] = useState<string | null>(null);
+    
+    const dayHeaders = useMemo(() => {
+        const daysInMonth = getDaysInMonth(currentMonth);
+        return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    }, [currentMonth]);
 
     useEffect(() => {
         setOptimisticJobRecords(jobRecords);
@@ -88,7 +93,7 @@ export default function JobRecordSheet() {
 
         const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
 
-        if (!isValidCode) {
+        if (!isValidCode && code !== '') {
             setInvalidCodeCell(cellId);
             toast({
                 title: "Invalid Job Code",
