@@ -218,7 +218,9 @@ export default function JobRecordSheet() {
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
     
-            ws['!comments'] = [];
+            // Initialize comments array
+            if (!ws['!comments']) ws['!comments'] = [];
+            
             profiles.forEach((profile, rIndex) => {
                 const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
                 dayHeaders.forEach((day, dIndex) => {
@@ -227,7 +229,7 @@ export default function JobRecordSheet() {
                         const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
                         ws['!comments'].push({
                             ref: cellAddress,
-                            text: { t: `Overtime Hours: ${overtimeForDay}`, a: "Overtime" },
+                            text: { t: `Overtime Hours: ${overtimeForDay}` }
                         });
                     }
                 });
@@ -570,6 +572,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-
-
