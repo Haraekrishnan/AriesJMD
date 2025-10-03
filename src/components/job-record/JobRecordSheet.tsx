@@ -31,6 +31,7 @@ export default function JobRecordSheet() {
     const [currentMonth, setCurrentMonth] = useState(startOfToday() < implementationStartDate ? implementationStartDate : startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
+    const [isReorderMode, setIsReorderMode] = useState(false);
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
@@ -222,7 +223,7 @@ export default function JobRecordSheet() {
       return isAfter(firstDayOfCurrentMonth, implementationStartDate);
     }, [currentMonth]);
     
-    const canGoToNextMonth = useMemo(() => !isSameMonth(currentMonth, new Date()), [currentMonth]);
+    const canGoToNextMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
 
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
@@ -233,8 +234,8 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked && isEditableMonth;
-    }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
+        return can.manage_job_record && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -447,6 +448,16 @@ export default function JobRecordSheet() {
                                     </TableCell>
                                     <TableCell className="sticky left-[120px] bg-card z-10 font-medium whitespace-nowrap">
                                         <div className="flex items-center gap-2">
+                                            {isReorderMode && canEditSheet && (
+                                                <div className="flex flex-col">
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
+                                                        <ArrowUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
+                                                        <ArrowDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                             {profile.name}
                                             {user?.role === 'Admin' && plantName !== 'Unassigned' && (
                                                 <AlertDialog>
@@ -602,6 +613,14 @@ export default function JobRecordSheet() {
                                 <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                             </>
                         )}
+                        {canEditSheet && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
+                          </Tooltip>
+                        )}
                         {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
                             <AlertDialog>
                                 <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
@@ -667,29 +686,6 @@ export default function JobRecordSheet() {
                                 </div>
                             ))}
                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                     <AccordionItem value="item-2">
-                        <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
-                            <div className="flex items-center gap-2"><Settings className="h-4 w-4"/>Reorder Rows</div>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4">
-                           <p className="text-sm text-muted-foreground mb-2">Use the arrows next to the serial number to reorder employees within the currently selected plant.</p>
-                             <div className="grid grid-cols-2 gap-4">
-                                {groupedProfiles[activeTab]?.map((profile, index) => (
-                                    <div key={profile.id} className="flex items-center gap-2 p-2 border rounded-md">
-                                        <span className="font-medium text-sm flex-1">{index + 1}. {profile.name}</span>
-                                        <div className="flex">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
-                                                <ArrowUp className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === groupedProfiles[activeTab].length - 1}>
-                                                <ArrowDown className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                             </div>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
