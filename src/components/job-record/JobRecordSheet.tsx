@@ -175,7 +175,7 @@ export default function JobRecordSheet() {
             const profiles = groupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
     
-            const sheetData: (string | number)[][] = [];
+            const sheetData: any[][] = [];
             sheetData.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             sheetData.push([]);
     
@@ -207,10 +207,16 @@ export default function JobRecordSheet() {
                 const additionalSundays = record.additionalSundayDuty || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                 
-                const rowData: (string | number)[] = [rIndex + 1, profile.name];
+                const rowData: any[] = [rIndex + 1, profile.name];
                 dayHeaders.forEach((day) => {
                     const code = employeeRecord[day] || '';
-                    rowData.push(code);
+                    const overtimeForDay = dailyOvertime[day];
+                    const cell: { v: string; c?: any[] } = { v: code };
+
+                    if (overtimeForDay && overtimeForDay > 0) {
+                        cell.c = [{ a: 'Overtime', t: `Hours: ${overtimeForDay}`, hidden: true }];
+                    }
+                    rowData.push(cell);
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 sheetData.push(rowData);
@@ -218,35 +224,15 @@ export default function JobRecordSheet() {
             
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
     
-            // Initialize comments array
-            if (!ws['!comments']) ws['!comments'] = [];
-            
-            profiles.forEach((profile, rIndex) => {
-                const dailyOvertime = jobRecordForMonth[profile.id]?.dailyOvertime || {};
-                dayHeaders.forEach((day, dIndex) => {
-                    const overtimeForDay = dailyOvertime[day];
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                        ws['!comments'].push({
-                            ref: cellAddress,
-                            text: { t: `Overtime Hours: ${overtimeForDay}` }
-                        });
-                    }
-                });
-            });
-            
-            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
-            
+            // Style cells with job code colors
             profiles.forEach((profile, rIndex) => {
                 const employeeRecord = jobRecordForMonth[profile.id]?.days || {};
                 dayHeaders.forEach((day, dIndex) => {
                     const code = employeeRecord[day] || '';
                     const colorInfo = JOB_CODE_COLORS[code];
-                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
-                    
-                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                    
                     if (colorInfo?.excelFill) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: dIndex + 2 });
+                         if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
                          ws[cellAddress].s = {
                             fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
                             font: colorInfo.excelFill.font || {}
@@ -254,6 +240,8 @@ export default function JobRecordSheet() {
                     }
                 });
             });
+            
+            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeaders.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     
             const legendStartRow = sheetData.length + 2;
             XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
