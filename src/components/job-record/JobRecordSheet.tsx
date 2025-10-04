@@ -401,7 +401,7 @@ export default function JobRecordSheet() {
                     <TableHeader>
                         <TableRow>
                             <TableHead className="sticky left-0 bg-card z-10 w-[120px]">S.No / Actions</TableHead>
-                            <TableHead className="sticky left-[120px] bg-card z-10 min-w-[200px]">Name</TableHead>
+                            <TableHead className="sticky left-[120px] bg-card z-10 min-w-[200px]">Name / EP No.</TableHead>
                             <TableHead className="sticky left-[320px] bg-card z-10 min-w-[150px]">Plant</TableHead>
                             {dayHeaders.map(day => (
                                 <TableHead key={day} className="text-center min-w-[100px]">
@@ -467,7 +467,10 @@ export default function JobRecordSheet() {
                                                     </Button>
                                                 </div>
                                             )}
-                                            {profile.name}
+                                            <div>
+                                              <p>{profile.name}</p>
+                                              <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="sticky left-[320px] bg-card z-10">
