@@ -58,6 +58,8 @@ const profileSchema = z.object({
   otherTrade: z.string().optional(),
   status: z.enum(['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project']),
   mobileNumber: z.string().optional(),
+  emergencyContactNumber: z.string().optional(),
+  emergencyContactRelation: z.string().optional(),
   gender: z.enum(['Male', 'Female', 'Other']).optional(),
   dob: z.date().optional().nullable(),
   aadharNumber: z.string().optional(),
@@ -387,6 +389,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           )}/>
                       </div>
                       <div><Label>Mobile Number</Label><Input {...form.register('mobileNumber')} /></div>
+                      <div><Label>Emergency Contact Number</Label><Input {...form.register('emergencyContactNumber')} /></div>
+                      <div><Label>Relationship</Label><Input {...form.register('emergencyContactRelation')} /></div>
                       <div><Label>Gender</Label>
                           <Controller control={form.control} name="gender" render={({ field }) => (
                               <Select onValueChange={field.onChange} value={field.value}>

@@ -24,6 +24,8 @@ export default function ManpowerReportDownloads({ profiles }: ManpowerReportDown
           'Trade': p.trade,
           'Status': p.status,
           'Hard Copy File No': p.hardCopyFileNo || 'N/A',
+          'Emergency Contact Number': p.emergencyContactNumber || 'N/A',
+          'Emergency Contact Relation': p.emergencyContactRelation || 'N/A',
           'EP Number': p.epNumber || 'N/A',
           'Plant Name': p.plantName || 'N/A',
           'EIC': p.eic || 'N/A',

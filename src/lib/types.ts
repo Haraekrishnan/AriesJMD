@@ -3,6 +3,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -392,6 +393,8 @@ export type ManpowerProfile = {
   
   // Personal Details
   mobileNumber?: string;
+  emergencyContactNumber?: string;
+  emergencyContactRelation?: string;
   gender?: 'Male' | 'Female' | 'Other';
   dob?: string; // Date of Birth
   aadharNumber?: string;
