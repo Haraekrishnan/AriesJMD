@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { ManpowerProfile, PpeHistoryRecord } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
-import { parseISO } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
 
 const ppeHistorySchema = z.object({
   ppeType: z.enum(['Coverall', 'Safety Shoes'], { required_error: "PPE Type is required."}),
@@ -45,10 +45,11 @@ export default function EditPpeHistoryDialog({ isOpen, setIsOpen, record, profil
 
   useEffect(() => {
     if (record && isOpen) {
-      form.reset({
-        ...record,
-        issueDate: parseISO(record.issueDate),
-      });
+        const parsedDate = parseISO(record.issueDate);
+        form.reset({
+            ...record,
+            issueDate: isValid(parsedDate) ? parsedDate : undefined,
+        });
     }
   }, [record, isOpen, form]);
 
@@ -111,3 +112,4 @@ export default function EditPpeHistoryDialog({ isOpen, setIsOpen, record, profil
     </Dialog>
   );
 }
+

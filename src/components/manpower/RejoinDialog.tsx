@@ -1,19 +1,18 @@
 
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { ChevronsUpDown, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import type { ManpowerProfile } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -27,6 +26,8 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
   const { toast } = useToast();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [rejoinDate, setRejoinDate] = useState<Date | undefined>(new Date());
+  const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
   const onLeaveProfiles = useMemo(() => {
     return manpowerProfiles.filter(p => {
@@ -54,8 +55,6 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
     rejoinFromLeave(selectedProfile.id, activeLeaveRecord.id, rejoinDate);
     toast({ title: 'Status Updated', description: `${selectedProfile.name} has been marked as rejoined.` });
     setIsOpen(false);
-    setSelectedProfileId(null);
-    setRejoinDate(new Date());
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -65,6 +64,11 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
     }
     setIsOpen(open);
   }
+  
+  const handleDateSelect = (date: Date | undefined) => {
+    setRejoinDate(date);
+    setIsCalendarOpen(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -76,7 +80,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
         <div className="space-y-4 py-4 flex-1 overflow-auto">
             <div className="space-y-2">
                 <Label>Employee on Leave</Label>
-                 <Popover>
+                 <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
                       {selectedProfile ? selectedProfile.name : "Select employee..."}
@@ -95,6 +99,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                               value={p.name}
                               onSelect={() => {
                                 setSelectedProfileId(p.id);
+                                setIsManpowerPopoverOpen(false);
                               }}
                             >
                               {p.name}
@@ -109,14 +114,16 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
             {selectedProfile && (
                 <div className="space-y-2">
                     <Label>Rejoining Date</Label>
-                    <Popover>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !rejoinDate && 'text-muted-foreground')}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {rejoinDate ? format(rejoinDate, 'PPP') : <span>Pick a date</span>}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={rejoinDate} onSelect={setRejoinDate} initialFocus /></PopoverContent>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={rejoinDate} onSelect={handleDateSelect} initialFocus />
+                        </PopoverContent>
                     </Popover>
                 </div>
             )}
@@ -129,3 +136,4 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
     </Dialog>
   );
 }
+
