@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -64,7 +65,7 @@ export default function ManpowerListPage() {
                 .filter(l => {
                     if(!l || !l.leaveStartDate) return false;
                     const leaveStartDate = parseISO(l.leaveStartDate);
-                    return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
+                    return !l.rejoinedDate && !l.leaveEndDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
                 })
                 .map(l => ({ profile: p, leave: l }))
         });
@@ -382,3 +383,4 @@ export default function ManpowerListPage() {
 }
 
     
+

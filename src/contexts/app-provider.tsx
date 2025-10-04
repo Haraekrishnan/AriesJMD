@@ -1879,12 +1879,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const rejoinFromLeave = useCallback((manpowerId: string, leaveId: string, rejoinedDate: Date) => {
-    const updates: { [key: string]: any } = {};
-    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/rejoinedDate`] = rejoinedDate.toISOString();
-    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/leaveEndDate`] = rejoinedDate.toISOString();
-    updates[`manpowerProfiles/${manpowerId}/status`] = 'Working';
-    update(ref(rtdb), updates);
-  }, []);
+      const profile = manpowerProfiles.find(p => p.id === manpowerId);
+      if (!profile) return;
+  
+      const leaveHistory = { ...(profile.leaveHistory || {}) };
+      const leaveKey = Object.keys(leaveHistory).find(key => leaveHistory[key]?.id === leaveId);
+      
+      if (!leaveKey) {
+          console.error("Could not find leave record with ID:", leaveId);
+          return;
+      }
+      
+      const updates: { [key: string]: any } = {};
+      updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/rejoinedDate`] = rejoinedDate.toISOString();
+      updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/leaveEndDate`] = rejoinedDate.toISOString();
+      updates[`manpowerProfiles/${manpowerId}/status`] = 'Working';
+      
+      update(ref(rtdb), updates);
+  }, [manpowerProfiles]);
   
   const confirmManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
     const updates: { [key: string]: any } = {};
@@ -1898,12 +1910,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const updateLeaveRecord = useCallback((manpowerId: string, leaveRecord: LeaveRecord) => {
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveRecord.id}`), leaveRecord);
-  }, []);
+    if (!user || user.role !== 'Admin') return;
+    const leaveHistoryRef = ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveRecord.id}`);
+    update(leaveHistoryRef, leaveRecord);
+  }, [user]);
   
   const deleteLeaveRecord = useCallback((manpowerId: string, leaveId: string) => {
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`));
-  }, []);
+    if (!user || user.role !== 'Admin') return;
+    const leaveHistoryRef = ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`);
+    remove(leaveHistoryRef);
+  }, [user]);
 
   const addMemoOrWarning = useCallback((manpowerId: string, memo: Omit<MemoRecord, 'id'>) => {
     const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory`));

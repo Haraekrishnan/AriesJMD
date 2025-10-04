@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -41,14 +42,14 @@ const skillSchema = z.object({
 });
 
 const leaveSchema = z.object({
+  id: z.string(),
   leaveType: z.enum(['Annual', 'Emergency']),
-  dateRange: z.object({
-      from: z.date(),
-      to: z.date().optional(),
-  }),
+  leaveStartDate: z.date(),
+  plannedEndDate: z.date().optional(),
   rejoinedDate: z.date().optional(),
   remarks: z.string().optional(),
 });
+
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -567,18 +568,18 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                               <TableBody>
                                   {(Array.isArray(liveProfile?.leaveHistory) ? liveProfile.leaveHistory : (liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory) : [])).map((leave, index) => (
                                       <TableRow key={`${leave.id}-${index}`}>
-                                          <TableCell>{leave.leaveType}</TableCell>
+                                          <TableCell>{leave.leaveType || 'N/A'}</TableCell>
                                           <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                           <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                           <TableCell>{leave.rejoinedDate ? format(new Date(leave.rejoinedDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                           {user?.role === 'Admin' && (
                                               <TableCell className="text-right">
                                                   <AlertDialog>
-                                                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
-                                                      <AlertDialogTrigger asChild>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7"><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialogTrigger asChild>
                                                           <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                                      </AlertDialogTrigger>
-                                                      <AlertDialogContent>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
                                                           <AlertDialogHeader>
                                                               <AlertDialogTitle>Delete Leave Record?</AlertDialogTitle>
                                                               <AlertDialogDescription>This will permanently delete this leave entry. This cannot be undone.</AlertDialogDescription>
@@ -587,7 +588,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                               <AlertDialogAction onClick={() => handleDeleteLeave(leave.id)}>Delete</AlertDialogAction>
                                                           </AlertDialogFooter>
-                                                      </AlertDialogContent>
+                                                        </AlertDialogContent>
                                                   </AlertDialog>
                                               </TableCell>
                                           )}
