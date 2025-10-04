@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -48,7 +47,7 @@ export default function ManpowerListPage() {
         return manpowerProfiles.flatMap(p => {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
-                .filter(l => l && l.leaveStartDate && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
+                .filter(l => l && l.leaveStartDate && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate && !l.leaveEndDate)
                 .map(l => ({ profile: p, leave: l }));
         });
     }, [manpowerProfiles]);
