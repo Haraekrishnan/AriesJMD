@@ -18,5 +18,5 @@ export const JOB_CODE_COLORS: { [key: string]: { bg: string, text?: string, exce
     'S':   { bg: 'bg-job-code-blue', text: 'text-black', excelFill: { fgColor: { rgb: 'FFbde2ff' } } },
     'CQ':  { bg: 'bg-job-code-blue', text: 'text-black', excelFill: { fgColor: { rgb: 'FFbde2ff' } } },
     'RST': { bg: 'bg-job-code-pink', text: 'text-black', excelFill: { fgColor: { rgb: 'FFDB7093' } } },
-    'R':   { bg: 'bg-yellow-400', text: 'text-black', excelFill: { fgColor: { rgb: 'FFFFFF00' } } },
+    'R':   { bg: 'bg-transparent', text: 'text-black', excelFill: { fgColor: { rgb: 'FFFFFF' } } },
 };
