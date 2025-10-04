@@ -565,8 +565,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           <Table>
                               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Rejoined</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                               <TableBody>
-                                  {(Array.isArray(liveProfile?.leaveHistory) ? liveProfile.leaveHistory : (liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory) : [])).map(leave => (
-                                      <TableRow key={leave.id}>
+                                  {(Array.isArray(liveProfile?.leaveHistory) ? liveProfile.leaveHistory : (liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory) : [])).map((leave, index) => (
+                                      <TableRow key={`${leave.id}-${index}`}>
                                           <TableCell>{leave.leaveType}</TableCell>
                                           <TableCell>{leave.leaveStartDate ? format(new Date(leave.leaveStartDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
                                           <TableCell>{leave.plannedEndDate ? format(new Date(leave.plannedEndDate), 'dd-MM-yyyy') : 'N/A'}</TableCell>
@@ -604,8 +604,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                            <Table>
                               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                               <TableBody>
-                                  {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).map(memo => (
-                                      <TableRow key={memo.id}>
+                                  {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).map((memo, index) => (
+                                      <TableRow key={`${memo.id}-${index}`}>
                                           <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
                                           <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
                                           <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
