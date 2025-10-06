@@ -1842,17 +1842,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
     const { id, ...data } = profile;
     const cleanData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => {
-            if (key === 'ppeHistory' && (!value || typeof value !== 'object')) {
-                return [key, null];
-            }
-            return [key, value === undefined ? null : value];
-        })
+      Object.entries(data).map(([key, value]) => {
+        if (value instanceof Date) {
+          return [key, value.toISOString()];
+        }
+        if (value === undefined) {
+          return [key, null];
+        }
+        return [key, value];
+      })
     );
-
     update(ref(rtdb, `manpowerProfiles/${id}`), cleanData);
-    if (user) addActivityLog(user.id, 'Manpower Profile Updated', profile.name);
-}, [user, addActivityLog]);
+    if(user) addActivityLog(user.id, 'Manpower Profile Updated', profile.name);
+  }, [user, addActivityLog]);
 
   const deleteManpowerProfile = useCallback((profileId: string) => {
     const profile = manpowerProfiles.find(p => p.id === profileId);
@@ -2327,7 +2329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, ppeRequests, users, can.approve_store_requests, updatePpeRequestStatus]);
+  }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
 
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
@@ -3041,19 +3043,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [buildings]);
 
   const saveJobSchedule = useCallback((schedule: JobSchedule) => {
-    const scheduleWithNames = {
-        ...schedule,
-        items: schedule.items.map((item: any) => ({
-            ...item,
-            manpowerIds: item.manpowerIds.map((id: string) => {
-              const mp = manpowerProfiles.find(p => p.id === id);
-              if (mp) return mp.name;
-              const u = users.find(usr => usr.id === id);
-              return u ? u.name : id;
-            }),
-            vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
-        }))
-    };
     set(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
     if (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') {
       const pcs = users.filter(u => u.permissions?.includes('prepare_master_schedule'));
@@ -3363,6 +3352,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     return { importedCount, notFoundCount };
   }, [user, manpowerProfiles, addActivityLog]);
+  
+  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reverse' | 'reissue', comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
+      : `Dispute reversed by ${user.name}. Marked as issued. Comment: ${comment}`;
+    
+    updatePpeRequestStatus(requestId, newStatus, actionComment);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `PPE Dispute Resolved: ${request.ppeType}`,
+        'A dispute you filed has been resolved.',
+        { 
+          'Item': `${request.ppeType} (Size: ${request.size})`,
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
@@ -3390,3 +3408,8 @@ export const useAppContext = (): AppContextType => {
 
 
 
+
+
+    
+
+    

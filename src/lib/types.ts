@@ -5,6 +5,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -397,7 +398,7 @@ export type ManpowerProfile = {
   emergencyContactNumber?: string;
   emergencyContactRelation?: string;
   gender?: 'Male' | 'Female' | 'Other';
-  dob?: string; // Date of Birth
+  dob?: string | null; // Date of Birth
   aadharNumber?: string;
   uanNumber?: string;
   coverallSize?: string;
@@ -411,7 +412,7 @@ export type ManpowerProfile = {
   workOrderNumber?: string;
   labourLicenseNo?: string;
   eic?: string; 
-  joiningDate?: string; // ISO
+  joiningDate?: string | null; // ISO
   plant?: string; // New field for job record plant assignment
 
   // Policy & Card Details
@@ -425,23 +426,23 @@ export type ManpowerProfile = {
   skills?: Skill[];
 
   // Validity Dates
-  passIssueDate?: string; // ISO
-  workOrderExpiryDate?: string; // ISO, replaces woValidity
-  wcPolicyExpiryDate?: string; // ISO, replaces wcPolicyValidity
-  labourLicenseExpiryDate?: string; // ISO, new
-  medicalExpiryDate?: string; // ISO
-  safetyExpiryDate?: string; // ISO
-  irataValidity?: string; // ISO
-  firstAidExpiryDate?: string; // ISO
-  contractValidity?: string; // ISO
+  passIssueDate?: string | null; // ISO
+  workOrderExpiryDate?: string | null; // ISO, replaces woValidity
+  wcPolicyExpiryDate?: string | null; // ISO, replaces wcPolicyValidity
+  labourLicenseExpiryDate?: string | null; // ISO, new
+  medicalExpiryDate?: string | null; // ISO
+  safetyExpiryDate?: string | null; // ISO
+  irataValidity?: string | null; // ISO
+  firstAidExpiryDate?: string | null; // ISO
+  contractValidity?: string | null; // ISO
   
   // Leave and Termination
   leaveHistory?: { [key: string]: LeaveRecord };
   memoHistory?: MemoRecord[];
   ppeHistory?: { [key: string]: PpeHistoryRecord };
 
-  terminationDate?: string; // ISO
-  resignationDate?: string; // ISO
+  terminationDate?: string | null; // ISO
+  resignationDate?: string | null; // ISO
   feedback?: string;
 
   // Remarks
@@ -470,7 +471,7 @@ export type Skill = {
     name: string;
     details: string;
     link?: string;
-    validity?: string; // ISO String
+    validity?: string | null; // ISO String
 };
 
 export type ManpowerLog = {
@@ -778,3 +779,5 @@ export type JobRecordPlant = {
   id: string;
   name: string;
 };
+
+    

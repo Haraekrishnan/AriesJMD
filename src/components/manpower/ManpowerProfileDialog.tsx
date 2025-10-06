@@ -148,15 +148,16 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = [...MANDATORY_DOCS];
-    if (!profileData) {
-      return baseDocs.map(name => ({ name, status: 'Pending' as DocumentStatus, details: '' }));
+    const baseDocs = [...MANDATORY_DOCS].filter(doc => doc !== 'First Aid Certificate');
+    if (profileData?.trade === 'RA Level 3') {
+        baseDocs.push('First Aid Certificate');
     }
-    const profileDocsMap = new Map((profileData.documents || []).map(doc => [doc.name, doc]));
+
+    const profileDocsMap = new Map((profileData?.documents || []).map(doc => [doc.name, doc]));
     const initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
       profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
     );
-    (profileData.documents || []).forEach(doc => {
+    (profileData?.documents || []).forEach(doc => {
       if (!initialDocs.some(d => d.name === doc.name)) {
         initialDocs.push(doc);
       }
@@ -296,23 +297,26 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     delete dataToSubmit.otherTrade;
     delete dataToSubmit.currentLeave;
 
-    const cleanedData = Object.fromEntries(
-        Object.entries(dataToSubmit).map(([key, value]) => {
-            if (value instanceof Date) {
-                return [key, value.toISOString()];
-            }
-            if (value === undefined) {
-                return [key, null]; 
-            }
-            if (key === 'skills' && Array.isArray(value)) {
-                return [key, value.map(skill => ({
-                    ...skill,
-                    validity: skill.validity instanceof Date ? skill.validity.toISOString() : skill.validity,
-                }))];
-            }
-            return [key, value];
-        })
-    );
+    const dateFields: (keyof ProfileFormValues)[] = [
+        'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate', 
+        'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity', 
+        'firstAidExpiryDate', 'resignationDate', 'terminationDate'
+    ];
+
+    const cleanedData: Partial<ManpowerProfile> = { ...dataToSubmit };
+
+    dateFields.forEach(field => {
+        const dateValue = data[field];
+        cleanedData[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+    });
+    
+    if (data.skills) {
+        cleanedData.skills = data.skills.map(skill => ({
+            ...skill,
+            validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
+        }));
+    }
+
   
     if (profile) {
       updateManpowerProfile({ ...profile, ...cleanedData } as ManpowerProfile);
@@ -672,3 +676,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
+    
