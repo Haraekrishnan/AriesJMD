@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -118,7 +118,7 @@ export default function JobRecordSheet() {
         return groups;
 
     }, [manpowerProfiles, jobRecordForMonth, prevJobRecordForMonth, searchTerm, jobRecordPlants]);
-    
+
     // Drag-to-fill state
     const [isDragging, setIsDragging] = useState(false);
     const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
@@ -172,25 +172,21 @@ export default function JobRecordSheet() {
     }, [isDragging, startCell, endCell, fillValue, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
 
     useEffect(() => {
-        const handleSyncScroll = (source: HTMLDivElement, target1: HTMLDivElement | null, target2: HTMLTableSectionElement | null) => {
-            if (target1) {
-                target1.scrollLeft = source.scrollLeft;
-            }
-            if (target2) {
-                target2.scrollLeft = source.scrollLeft;
+        const handleSyncScroll = (source: HTMLDivElement, target: HTMLDivElement | null) => {
+            if (target && target.scrollLeft !== source.scrollLeft) {
+                target.scrollLeft = source.scrollLeft;
             }
         };
-
+    
         const main = mainScrollRef.current;
         const top = topScrollRef.current;
-        const header = tableHeaderRef.current;
-
-        const mainScrollHandler = () => handleSyncScroll(main!, top, header);
-        const topScrollHandler = () => handleSyncScroll(top!, main, header);
-
+    
+        const mainScrollHandler = () => handleSyncScroll(main!, top);
+        const topScrollHandler = () => handleSyncScroll(top!, main);
+    
         main?.addEventListener('scroll', mainScrollHandler);
         top?.addEventListener('scroll', topScrollHandler);
-
+    
         return () => {
             main?.removeEventListener('scroll', mainScrollHandler);
             top?.removeEventListener('scroll', topScrollHandler);
@@ -607,13 +603,13 @@ export default function JobRecordSheet() {
                 </div>
                 
                  {/* Top Scrollbar */}
-                <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar h-4 bg-muted border-b">
+                <div ref={topScrollRef} className="overflow-x-scroll h-4 bg-muted border-b">
                     <div style={{ width: `${380 + (dayHeaders.length * 100) + (9 * 150)}px`, height: '1px' }}></div>
                 </div>
 
-                <div ref={mainScrollRef} className="flex-1 overflow-auto visible-scrollbar">
+                <div ref={mainScrollRef} className="flex-1 overflow-auto">
                     <Table className="min-w-full border-collapse">
-                        <TableHeader ref={tableHeaderRef} className="sticky top-0 bg-background z-10">
+                        <thead ref={tableHeaderRef as any} className="sticky top-0 bg-background z-10">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-background z-20 w-[120px] border-r">S.No / Actions</TableHead>
                                 <TableHead className="sticky left-[120px] bg-background z-20 min-w-[200px] border-r">Name / EP No.</TableHead>
@@ -633,7 +629,7 @@ export default function JobRecordSheet() {
                                 <TableHead className="text-center min-w-[150px] border-r">Salary Days</TableHead>
                                 <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
                             </TableRow>
-                        </TableHeader>
+                        </thead>
                         <TableBody>
                             {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || [])).map((profile, index) => {
                                 const record = jobRecordForMonth.records?.[profile.id] || {};
