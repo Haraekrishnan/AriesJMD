@@ -17,40 +17,16 @@ import { Trash2, Edit, PlusCircle, FileWarning, Shirt } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
-import { DateRangePicker } from '../ui/date-range-picker';
+import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { DatePickerInput } from '../ui/date-picker-input';
 import { Badge } from '../ui/badge';
 import EditMemoDialog from './EditMemoDialog';
 import EditPpeHistoryDialog from './EditPpeHistoryDialog';
 import AddPpeHistoryDialog from './AddPpeHistoryDialog';
 import { rtdb } from '@/lib/rtdb';
 import { ref, push, update } from 'firebase/database';
-
-
-const documentSchema = z.object({
-  name: z.string(),
-  details: z.string().optional(),
-  status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']),
-});
-
-const skillSchema = z.object({
-    name: z.string().min(1, "Skill name is required"),
-    details: z.string().optional(),
-    link: z.string().url().optional().or(z.literal('')),
-    validity: z.date().optional().nullable(),
-});
-
-const leaveSchema = z.object({
-  id: z.string(),
-  leaveType: z.enum(['Annual', 'Emergency']),
-  leaveStartDate: z.date(),
-  plannedEndDate: z.date().optional(),
-  rejoinedDate: z.date().optional(),
-  remarks: z.string().optional(),
-});
 
 
 const profileSchema = z.object({
@@ -85,12 +61,12 @@ const profileSchema = z.object({
   cardCategory: z.string().optional(),
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
-  documents: z.array(documentSchema).optional(),
-  skills: z.array(skillSchema).optional(),
+  documents: z.array(z.object({ name: z.string(), details: z.string().optional(), status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']) })).optional(),
+  skills: z.array(z.object({ name: z.string().min(1, "Skill name is required"), details: z.string().optional(), link: z.string().url().optional().or(z.literal('')), validity: z.date().optional().nullable() })).optional(),
   resignationDate: z.date().optional().nullable(),
   terminationDate: z.date().optional().nullable(),
   feedback: z.string().optional(),
-  currentLeave: leaveSchema.optional(),
+  currentLeave: z.object({ id: z.string(), leaveType: z.enum(['Annual', 'Emergency']), leaveStartDate: z.date(), plannedEndDate: z.date().optional(), rejoinedDate: z.date().optional(), remarks: z.string().optional() }).optional(),
   leaveHistory: z.array(z.any()).optional(), 
   memoHistory: z.array(z.any()).optional(),
   ppeHistory: z.array(z.any()).optional(),
@@ -100,25 +76,6 @@ const profileSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'Please specify the trade',
             path: ['otherTrade'],
-        });
-    }
-    const isTerminalStatus = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
-    if (data.status === 'On Leave' && !isTerminalStatus) {
-        const historyArray = Array.isArray(data.leaveHistory) ? data.leaveHistory : (data.leaveHistory ? Object.values(data.leaveHistory) : []);
-        const hasActiveLeave = historyArray.some(l => l && !l.rejoinedDate && !l.leaveEndDate);
-        if (!hasActiveLeave && !data.currentLeave?.leaveStartDate) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: 'Leave dates are required when setting status to On Leave.',
-                path: ['currentLeave.leaveStartDate'],
-            });
-        }
-    }
-    if (data.trade === 'RA Level 3' && !data.firstAidExpiryDate) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'First Aid Expiry Date is mandatory for RA Level 3.',
-            path: ['firstAidExpiryDate'],
         });
     }
 });
@@ -157,11 +114,11 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
         baseDocs.push('First Aid Certificate');
     }
 
-    const profileDocsMap = new Map((profileData?.documents || []).map(doc => [doc.name, doc]));
+    const profileDocsMap = new Map((Array.isArray(profileData?.documents) ? profileData?.documents : []).map(doc => [doc.name, doc]));
     const initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
       profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
     );
-    (profileData?.documents || []).forEach(doc => {
+    (Array.isArray(profileData?.documents) ? profileData?.documents : []).forEach(doc => {
       if (!initialDocs.some(d => d.name === doc.name)) {
         initialDocs.push(doc);
       }
@@ -186,11 +143,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     if (!dateString) return undefined;
     const date = parseISO(dateString);
     if (isValid(date)) return date;
-    
-    // Fallback for "dd-MM-yyyy" or other formats if needed
-    const parsedFromOtherFormat = parse(dateString, 'dd-MM-yyyy', new Date());
-    if (isValid(parsedFromOtherFormat)) return parsedFromOtherFormat;
-    
     return undefined;
   };
 
@@ -238,12 +190,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             resignationDate: parseDate(liveProfile.resignationDate),
             terminationDate: parseDate(liveProfile.terminationDate),
             documents: getInitialDocs(liveProfile),
-            skills: (liveProfile.skills || []).map(skill => ({...skill, validity: parseDate(skill.validity)})),
+            skills: (Array.isArray(liveProfile.skills) ? liveProfile.skills : []).map(skill => ({...skill, validity: parseDate(skill.validity)})),
             trade: TRADES.includes(liveProfile.trade) ? liveProfile.trade : 'Others',
             otherTrade: TRADES.includes(liveProfile.trade) ? '' : liveProfile.trade,
-            leaveHistory: liveProfile.leaveHistory || [],
-            memoHistory: liveProfile.memoHistory || [],
-            ppeHistory: liveProfile.ppeHistory || [],
+            leaveHistory: Array.isArray(liveProfile.leaveHistory) ? liveProfile.leaveHistory : [],
+            memoHistory: Array.isArray(liveProfile.memoHistory) ? liveProfile.memoHistory : [],
+            ppeHistory: Array.isArray(liveProfile.ppeHistory) ? liveProfile.ppeHistory : [],
         } : {
             documents: getInitialDocs(), 
             skills: [], 
@@ -254,6 +206,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             ppeHistory: [],
         };
         form.reset(defaultValues as any);
+        if (defaultValues.otherTrade) {
+            form.setValue('otherTrade', defaultValues.otherTrade);
+        }
     }
   }, [isOpen, liveProfile, form]);
 
@@ -272,69 +227,66 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   }, [watchTrade, form, appendDocument, removeDocument]);
   
-  const onSubmit = async (data: ProfileFormValues) => {
-    try {
-        const dataToSubmit: { [key: string]: any } = { ...data };
+    const onSubmit = async (data: ProfileFormValues) => {
+        if (!user) return;
+        try {
+            const dataToSubmit: { [key: string]: any } = { ...data };
 
-        if (data.trade === 'Others' && data.otherTrade) {
-            dataToSubmit.trade = data.otherTrade.trim();
-        }
-        delete dataToSubmit.otherTrade;
-
-        const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => l && !l.rejoinedDate && !l.leaveEndDate));
-
-        if (data.status !== 'On Leave' || hasActiveLeave) {
-            delete dataToSubmit.currentLeave;
-        } else if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
-            const leaveRecord: Omit<LeaveRecord, 'id'> = {
-                leaveType: data.currentLeave.leaveType,
-                leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
-                plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
-                remarks: data.currentLeave.remarks,
-            };
-            // This part needs to be handled inside the context function
-            dataToSubmit.newLeaveRecord = leaveRecord;
-            delete dataToSubmit.currentLeave;
-        }
-
-        const dateFields: (keyof ProfileFormValues)[] = [
-            'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
-            'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
-            'firstAidExpiryDate', 'resignationDate', 'terminationDate'
-        ];
-
-        dateFields.forEach(field => {
-            const dateValue = data[field as keyof typeof data];
-            dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
-        });
-
-        if (data.skills) {
-            dataToSubmit.skills = data.skills.map(skill => ({
-                ...skill,
-                validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
-            }));
-        }
-
-        // Clean up undefined/null values before submitting
-        Object.keys(dataToSubmit).forEach(key => {
-            if (dataToSubmit[key] === undefined) {
-                dataToSubmit[key] = null;
+            if (data.trade === 'Others' && data.otherTrade) {
+                dataToSubmit.trade = data.otherTrade.trim();
             }
-        });
+            delete dataToSubmit.otherTrade;
 
-        if (profile) {
-            await updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
-            toast({ title: 'Profile Updated' });
-        } else {
-            await addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
-            toast({ title: 'Profile Added' });
+            const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => l && !l.rejoinedDate && !l.leaveEndDate));
+            if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
+                const leaveRecord: Omit<LeaveRecord, 'id'> = {
+                    leaveType: data.currentLeave.leaveType,
+                    leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
+                    plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
+                    remarks: data.currentLeave.remarks,
+                };
+                const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
+                await set(newLeaveRef, { ...leaveRecord, id: newLeaveRef.key });
+            }
+            delete dataToSubmit.currentLeave;
+
+            const dateFields: (keyof ProfileFormValues)[] = [
+                'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
+                'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
+                'firstAidExpiryDate', 'resignationDate', 'terminationDate'
+            ];
+
+            dateFields.forEach(field => {
+                const dateValue = data[field as keyof typeof data];
+                dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+            });
+
+            if (data.skills) {
+                dataToSubmit.skills = data.skills.map(skill => ({
+                    ...skill,
+                    validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
+                }));
+            }
+
+            Object.keys(dataToSubmit).forEach(key => {
+                if (dataToSubmit[key] === undefined) {
+                    dataToSubmit[key] = null;
+                }
+            });
+
+            if (profile) {
+                await updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
+                toast({ title: 'Profile Updated' });
+            } else {
+                await addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
+                toast({ title: 'Profile Added' });
+            }
+            setIsOpen(false);
+        } catch (err) {
+            console.error("Save failed:", err);
+            toast({ variant: 'destructive', title: 'Failed to save profile', description: (err as Error).message });
         }
-        setIsOpen(false);
-    } catch (err) {
-        console.error("Save failed:", err);
-        toast({ variant: 'destructive', title: 'Failed to save profile', description: 'An unexpected error occurred.' });
-    }
-  };
+    };
   
   const handleDeleteLeave = (leaveId: string) => {
     if (profile) {
@@ -684,5 +636,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
-    
