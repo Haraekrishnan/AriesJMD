@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -176,26 +176,21 @@ export default function JobRecordSheet() {
         }
     };
     
-    // Sync scrollbars
     useEffect(() => {
         const topScroll = topScrollRef.current;
         const tableContainer = tableContainerRef.current;
 
         if (!topScroll || !tableContainer) return;
 
-        const handleTopScroll = () => {
-            if (tableContainer) tableContainer.scrollLeft = topScroll.scrollLeft;
-        };
-        const handleTableScroll = () => {
-            if (topScroll) topScroll.scrollLeft = tableContainer.scrollLeft;
-        };
+        const handleTopScroll = () => tableContainer.scrollLeft = topScroll.scrollLeft;
+        const handleTableScroll = () => topScroll.scrollLeft = tableContainer.scrollLeft;
 
         topScroll.addEventListener('scroll', handleTopScroll);
         tableContainer.addEventListener('scroll', handleTableScroll);
 
         return () => {
-            if (topScroll) topScroll.removeEventListener('scroll', handleTopScroll);
-            if (tableContainer) tableContainer.removeEventListener('scroll', handleTableScroll);
+            topScroll.removeEventListener('scroll', handleTopScroll);
+            tableContainer.removeEventListener('scroll', handleTableScroll);
         };
     }, []);
 
@@ -344,12 +339,13 @@ export default function JobRecordSheet() {
     const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
 
     const isEditableMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
+    const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
     
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !jobRecords[monthKey]?.isLocked;
-    }, [user, can.manage_job_record, jobRecords, monthKey]);
+        return can.manage_job_record && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -513,7 +509,6 @@ export default function JobRecordSheet() {
                 ))}
             </datalist>
             <div className="grid grid-rows-[auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
-                {/* Header Section */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -522,7 +517,7 @@ export default function JobRecordSheet() {
                             </Button>
                             <span className="text-lg font-semibold flex items-center gap-2">
                                 {format(currentMonth, 'MMMM yyyy')}
-                                {jobRecords[monthKey]?.isLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                                {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                             </span>
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
                                 <ChevronRight className="h-4 w-4" />
@@ -553,7 +548,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !jobRecords[monthKey]?.isLocked && isEditableMonth && (
+                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -562,7 +557,7 @@ export default function JobRecordSheet() {
                                     </AlertDialogContent>
                                 </AlertDialog>
                             )}
-                            {user?.role === 'Admin' && jobRecords[monthKey]?.isLocked && (
+                            {user?.role === 'Admin' && isCurrentSheetLocked && (
                                 <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
                                     <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
                                 </Button>
@@ -575,7 +570,7 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
-                 <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b sticky top-[152px] z-20 bg-card">
+                <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b sticky top-[152px] z-20 bg-card">
                     <div style={{ width: `${320 + dayHeaders.length * 100 + 9 * 150}px`, height: '1px' }}></div>
                 </div>
                 
@@ -671,7 +666,7 @@ export default function JobRecordSheet() {
                                                     className="p-0 text-center relative min-w-[100px] border-r"
                                                     onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
-                                                    <div className={cn("relative h-10 flex items-center justify-center", isInSelection && "bg-blue-200/50")}>
+                                                    <div className={cn("relative h-10 w-full flex items-center justify-center", isInSelection && "bg-blue-200/50")}>
                                                         <Input
                                                             id={`${profile.id}-${day}`}
                                                             type="text"
@@ -680,7 +675,7 @@ export default function JobRecordSheet() {
                                                             onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
                                                             onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                             className={cn(
-                                                                "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
+                                                                "absolute inset-0 w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                                 code ? colorInfo.bg : 'bg-transparent',
                                                                 code ? colorInfo.text : 'text-foreground'
                                                             )}
@@ -801,4 +796,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
