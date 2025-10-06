@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +35,7 @@ export default function JobRecordSheet() {
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
+    const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -173,14 +174,18 @@ export default function JobRecordSheet() {
         return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
     }, [jobRecords, prevMonthKey]);
 
-    const groupedProfiles = useMemo(() => {
+    const filteredAndGroupedProfiles = useMemo(() => {
+        const filtered = searchTerm
+            ? manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            : manpowerProfiles;
+        
         const groups: { [key: string]: ManpowerProfile[] } = {};
         const availablePlants = new Set(plantProjects);
         availablePlants.add('Unassigned');
 
         availablePlants.forEach(p => groups[p] = []);
 
-        manpowerProfiles.forEach(profile => {
+        filtered.forEach(profile => {
             const plantForCurrentMonth = jobRecordForMonth.records?.[profile.id]?.plant;
             const plantForPrevMonth = prevJobRecordForMonth.records?.[profile.id]?.plant;
             const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
@@ -192,39 +197,43 @@ export default function JobRecordSheet() {
             }
         });
 
-        Object.keys(groups).forEach(plantName => {
-            const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
-            const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
-            const order = currentOrder || prevOrder;
+        // Only sort if not searching, to preserve search result order
+        if (!searchTerm) {
+            Object.keys(groups).forEach(plantName => {
+                const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
+                const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
+                const order = currentOrder || prevOrder;
 
-            groups[plantName].sort((a, b) => {
-                const plantForA_current = jobRecordForMonth.records?.[a.id]?.plant;
-                const plantForA_prev = prevJobRecordForMonth.records?.[a.id]?.plant;
-                const a_isNew = plantForA_current && plantForA_current !== plantForA_prev && plantForA_prev !== undefined;
+                groups[plantName].sort((a, b) => {
+                    const plantForA_current = jobRecordForMonth.records?.[a.id]?.plant;
+                    const plantForA_prev = prevJobRecordForMonth.records?.[a.id]?.plant;
+                    const a_isNew = plantForA_current && plantForA_current !== plantForA_prev && plantForA_prev !== undefined;
 
-                const plantForB_current = jobRecordForMonth.records?.[b.id]?.plant;
-                const plantForB_prev = prevJobRecordForMonth.records?.[b.id]?.plant;
-                const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
-                
-                if (a_isNew && !b_isNew) return 1;
-                if (!a_isNew && b_isNew) return -1;
-                
-                if (order && Array.isArray(order)) {
-                    const indexA = order.indexOf(a.id);
-                    const indexB = order.indexOf(b.id);
-                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                    if (indexA !== -1) return -1;
-                    if (indexB !== -1) return 1;
-                }
-                const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
-                const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
-                return originalAIndex - originalBIndex;
+                    const plantForB_current = jobRecordForMonth.records?.[b.id]?.plant;
+                    const plantForB_prev = prevJobRecordForMonth.records?.[b.id]?.plant;
+                    const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
+                    
+                    if (a_isNew && !b_isNew) return 1;
+                    if (!a_isNew && b_isNew) return -1;
+                    
+                    if (order && Array.isArray(order)) {
+                        const indexA = order.indexOf(a.id);
+                        const indexB = order.indexOf(b.id);
+                        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                        if (indexA !== -1) return -1;
+                        if (indexB !== -1) return 1;
+                    }
+                    const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
+                    const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
+                    return originalAIndex - originalBIndex;
+                });
             });
-        });
-
+        }
+        
         return groups;
-    }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevJobRecordForMonth]);
-    
+
+    }, [manpowerProfiles, plantProjects, jobRecordForMonth, prevJobRecordForMonth, searchTerm]);
+
     const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
     
     const canGoToPreviousMonth = useMemo(() => {
@@ -247,7 +256,7 @@ export default function JobRecordSheet() {
         const counts: { [key: string]: number } = {};
         jobCodes.forEach(jc => counts[jc.code] = 0);
 
-        const profilesInTab = groupedProfiles[activeTab] || [];
+        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
         profilesInTab.forEach(p => {
             const record = jobRecordForMonth.records?.[p.id];
             const days = record?.days || {};
@@ -258,13 +267,13 @@ export default function JobRecordSheet() {
             });
         });
         return counts;
-    }, [jobRecordForMonth, activeTab, jobCodes, groupedProfiles]);
+    }, [jobRecordForMonth, activeTab, jobCodes, filteredAndGroupedProfiles]);
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
     
         allTabs.forEach(plant => {
-            const profiles = groupedProfiles[plant];
+            const profiles = filteredAndGroupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
     
             const ws_data: any[][] = [];
@@ -370,7 +379,7 @@ export default function JobRecordSheet() {
     };
     
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
-        const currentProfiles = groupedProfiles[activeTab];
+        const currentProfiles = filteredAndGroupedProfiles[activeTab];
         if (!currentProfiles) return;
 
         const index = currentProfiles.findIndex(p => p.id === profileId);
@@ -390,9 +399,12 @@ export default function JobRecordSheet() {
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
 
     const renderTableForPlant = (plantName: string) => {
-         const profiles = groupedProfiles[plantName] || [];
-         if (profiles.length === 0) {
+         const profiles = filteredAndGroupedProfiles[plantName] || [];
+         if (profiles.length === 0 && !searchTerm) {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
+        }
+        if (profiles.length === 0 && searchTerm) {
+            return <div className="text-center p-8 text-muted-foreground">No employees found for "{searchTerm}" in this plant.</div>
         }
 
         return (
@@ -570,6 +582,8 @@ export default function JobRecordSheet() {
         toast({ title: 'Job Code Deleted', variant: 'destructive' });
     }
 
+    const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
+
     return (
         <TooltipProvider>
              <datalist id="jobcodes-datalist">
@@ -590,6 +604,15 @@ export default function JobRecordSheet() {
                         <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
+                         <div className="relative ml-4">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by name..." 
+                                className="pl-9 w-64"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
                      <div className="flex items-center gap-2">
                         <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
@@ -624,20 +647,25 @@ export default function JobRecordSheet() {
                     </div>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList>
-                        {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                    </TabsList>
-                    {allTabs.map(plant => (
-                        <TabsContent key={plant} value={plant}>
-                            {renderTableForPlant(plant)}
-                        </TabsContent>
-                    ))}
-                </Tabs>
+                {searchTerm ? (
+                     renderTableForPlant('Search Results')
+                ) : (
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList>
+                            {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                        </TabsList>
+                        {allTabs.map(plant => (
+                            <TabsContent key={plant} value={plant}>
+                                {renderTableForPlant(plant)}
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                )}
+
                 <Accordion type="single" collapsible className="w-full mt-4">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {activeTab}</div>
+                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
                         </AccordionTrigger>
                         <AccordionContent>
                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
