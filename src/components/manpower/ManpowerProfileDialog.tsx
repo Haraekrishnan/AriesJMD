@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -148,7 +147,7 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate', 'First Aid Certificate'];
+    const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate'];
     if (!profileData) {
       return baseDocs.map(name => ({ name, status: 'Pending' as DocumentStatus, details: '' }));
     }
