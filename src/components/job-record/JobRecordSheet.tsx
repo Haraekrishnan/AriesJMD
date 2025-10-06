@@ -256,7 +256,7 @@ export default function JobRecordSheet() {
         const counts: { [key: string]: number } = {};
         jobCodes.forEach(jc => counts[jc.code] = 0);
 
-        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+        const profilesInTab = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : (filteredAndGroupedProfiles[activeTab] || []);
         profilesInTab.forEach(p => {
             const record = jobRecordForMonth.records?.[p.id];
             const days = record?.days || {};
@@ -267,7 +267,7 @@ export default function JobRecordSheet() {
             });
         });
         return counts;
-    }, [jobRecordForMonth, activeTab, jobCodes, filteredAndGroupedProfiles]);
+    }, [jobRecordForMonth, activeTab, jobCodes, filteredAndGroupedProfiles, searchTerm]);
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
@@ -398,8 +398,7 @@ export default function JobRecordSheet() {
 
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
 
-    const renderTableForPlant = (plantName: string) => {
-         const profiles = filteredAndGroupedProfiles[plantName] || [];
+    const renderTableForPlant = (plantName: string, profiles: ManpowerProfile[]) => {
          if (profiles.length === 0 && !searchTerm) {
             return <div className="text-center p-8 text-muted-foreground">No employees assigned to this plant.</div>
         }
@@ -648,7 +647,7 @@ export default function JobRecordSheet() {
                 </div>
 
                 {searchTerm ? (
-                     renderTableForPlant('Search Results')
+                     renderTableForPlant('Search Results', searchResults)
                 ) : (
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList>
@@ -656,7 +655,7 @@ export default function JobRecordSheet() {
                         </TabsList>
                         {allTabs.map(plant => (
                             <TabsContent key={plant} value={plant}>
-                                {renderTableForPlant(plant)}
+                                {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
                             </TabsContent>
                         ))}
                     </Tabs>
@@ -710,4 +709,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
