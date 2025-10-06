@@ -89,6 +89,7 @@ const profileSchema = z.object({
   feedback: z.string().optional(),
   currentLeave: leaveSchema.optional(),
   leaveHistory: z.array(z.any()).optional(), 
+  memoHistory: z.array(z.any()).optional(),
   ppeHistory: z.array(z.any()).optional(),
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
@@ -101,11 +102,11 @@ const profileSchema = z.object({
     const isTerminalStatus = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
     if (data.status === 'On Leave' && !isTerminalStatus) {
         const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (!hasActiveLeave && !data.currentLeave?.dateRange.from) {
+        if (!hasActiveLeave && !data.currentLeave?.leaveStartDate) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: 'Leave dates are required when setting status to On Leave.',
-                path: ['currentLeave.dateRange'],
+                path: ['currentLeave.leaveStartDate'],
             });
         }
     }
@@ -261,7 +262,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   }, [watchTrade, form, appendDocument, removeDocument]);
   
   const onSubmit = (data: ProfileFormValues) => {
-    const finalTrade = data.trade === 'Others' && data.otherTrade ? data.otherTrade : data.trade;
+    const finalTrade = data.trade === 'Others' && data.otherTrade ? data.otherTrade.trim() : data.trade;
     const currentProfile = liveProfile;
     let finalLeaveHistory = currentProfile?.leaveHistory ? (Array.isArray(currentProfile.leaveHistory) ? [...currentProfile.leaveHistory] : Object.values(currentProfile.leaveHistory)) : [];
     
@@ -278,12 +279,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         }
     } else if (newStatus === 'On Leave') {
         const hasActiveLeave = finalLeaveHistory.some(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (!hasActiveLeave && data.currentLeave?.dateRange.from) {
+        if (!hasActiveLeave && data.currentLeave?.leaveStartDate) {
              const leaveRecord: LeaveRecord = {
                 id: `leave-${Date.now()}`,
                 leaveType: data.currentLeave.leaveType,
-                leaveStartDate: data.currentLeave.dateRange.from.toISOString(),
-                plannedEndDate: data.currentLeave.dateRange.to?.toISOString(),
+                leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
+                plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
                 rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
                 remarks: data.currentLeave.remarks,
             };
@@ -502,11 +503,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                          <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                              <div><Label>Leave Type</Label><Controller name="currentLeave.leaveType" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Annual">Annual</SelectItem><SelectItem value="Emergency">Emergency</SelectItem></SelectContent></Select>)}/></div>
-                             <div><Label>Leave Period</Label><Controller name="currentLeave.dateRange" control={form.control} render={({ field }) => (<DateRangePicker date={field.value} onDateChange={field.onChange}/>)}/></div>
+                             <div><Label>Leave Period</Label><Controller name="currentLeave.leaveStartDate" control={form.control} render={({ field }) => (<DatePickerInput value={field.value} onChange={field.onChange}/>)}/></div>
                              <div><Label>Actual Rejoining Date</Label><DatePickerController name="currentLeave.rejoinedDate" control={form.control}/></div>
                              <div className="col-span-3"><Label>Remarks</Label><Textarea {...form.register('currentLeave.remarks')}/></div>
                           </div>
-                          {form.formState.errors.currentLeave?.dateRange && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.dateRange.message}</p>}
+                          {form.formState.errors.currentLeave?.leaveStartDate && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.leaveStartDate.message}</p>}
                       </div>
                   )}
                   {profile && (
