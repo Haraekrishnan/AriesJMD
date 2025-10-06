@@ -45,18 +45,6 @@ export default function JobRecordSheet() {
     
     const [cellStates, setCellStates] = useState<Record<string, string>>({});
 
-    const jobRecordForMonth = useMemo(() => {
-        return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
-    }, [jobRecords, monthKey]);
-
-    const isCurrentSheetLocked = useMemo(() => {
-        return jobRecords[monthKey]?.isLocked || false;
-    }, [jobRecords, monthKey]);
-    
-    const prevJobRecordForMonth = useMemo(() => {
-        return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
-    }, [jobRecords, prevMonthKey]);
-
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
             ? manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -70,8 +58,8 @@ export default function JobRecordSheet() {
         availablePlants.forEach(p => groups[p] = []);
 
         filtered.forEach(profile => {
-            const plantForCurrentMonth = jobRecordForMonth.records?.[profile.id]?.plant;
-            const plantForPrevMonth = prevJobRecordForMonth.records?.[profile.id]?.plant;
+            const plantForCurrentMonth = jobRecords[monthKey]?.records?.[profile.id]?.plant;
+            const plantForPrevMonth = jobRecords[prevMonthKey]?.records?.[profile.id]?.plant;
             const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
 
             if (groups[plantAssignment]) {
@@ -83,17 +71,17 @@ export default function JobRecordSheet() {
 
         if (!searchTerm) {
             Object.keys(groups).forEach(plantName => {
-                const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
-                const prevOrder = prevJobRecordForMonth.plantsOrder?.[plantName];
+                const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
+                const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
                 const order = currentOrder || prevOrder;
 
                 groups[plantName].sort((a, b) => {
-                    const plantForA_current = jobRecordForMonth.records?.[a.id]?.plant;
-                    const plantForA_prev = prevJobRecordForMonth.records?.[a.id]?.plant;
+                    const plantForA_current = jobRecords[monthKey]?.records?.[a.id]?.plant;
+                    const plantForA_prev = jobRecords[prevMonthKey]?.records?.[a.id]?.plant;
                     const a_isNew = plantForA_current && plantForA_current !== plantForA_prev && plantForA_prev !== undefined;
 
-                    const plantForB_current = jobRecordForMonth.records?.[b.id]?.plant;
-                    const plantForB_prev = prevJobRecordForMonth.records?.[b.id]?.plant;
+                    const plantForB_current = jobRecords[monthKey]?.records?.[b.id]?.plant;
+                    const plantForB_prev = jobRecords[prevMonthKey]?.records?.[b.id]?.plant;
                     const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
                     
                     if (a_isNew && !b_isNew) return 1;
@@ -115,7 +103,7 @@ export default function JobRecordSheet() {
         
         return groups;
 
-    }, [manpowerProfiles, jobRecordForMonth, prevJobRecordForMonth, searchTerm, jobRecordPlants]);
+    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
 
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
@@ -206,16 +194,16 @@ export default function JobRecordSheet() {
         tableContainer.addEventListener('scroll', handleTableScroll);
 
         return () => {
-            topScroll.removeEventListener('scroll', handleTopScroll);
-            tableContainer.removeEventListener('scroll', handleTableScroll);
+            if (topScroll) topScroll.removeEventListener('scroll', handleTopScroll);
+            if (tableContainer) tableContainer.removeEventListener('scroll', handleTableScroll);
         };
     }, []);
 
     useEffect(() => {
         const newStates: Record<string, string> = {};
-        if (jobRecordForMonth.records) {
-            for (const profileId in jobRecordForMonth.records) {
-                const record = jobRecordForMonth.records[profileId];
+        if (jobRecords[monthKey]?.records) {
+            for (const profileId in jobRecords[monthKey].records) {
+                const record = jobRecords[monthKey].records[profileId];
                 if (record.days) {
                     for (const day in record.days) {
                         newStates[`${profileId}-${day}`] = record.days[day];
@@ -224,7 +212,7 @@ export default function JobRecordSheet() {
             }
         }
         setCellStates(newStates);
-    }, [jobRecordForMonth]);
+    }, [jobRecords, monthKey]);
 
     const getSelectionRange = () => {
         if (!isDragging || !startCell || !endCell) return null;
@@ -282,7 +270,7 @@ export default function JobRecordSheet() {
     }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
     
     const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
-        const record = jobRecordForMonth.records?.[employeeId] || {};
+        const record = jobRecords[monthKey]?.records?.[employeeId] || {};
         const jobCodeForDay = record.days?.[day]?.toUpperCase();
         
         const restrictedCodes = ['X','KD','Q','ST','NWS','OS','ML','L','TR','PD','EP','OFF','PH'];
@@ -360,8 +348,8 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+        return can.manage_job_record && !jobRecords[monthKey]?.isLocked;
+    }, [user, can.manage_job_record, jobRecords, monthKey]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -370,7 +358,7 @@ export default function JobRecordSheet() {
 
         const profilesInTab = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : (filteredAndGroupedProfiles[activeTab] || []);
         profilesInTab.forEach(p => {
-            const record = jobRecordForMonth.records?.[p.id];
+            const record = jobRecords[monthKey]?.records?.[p.id];
             const days = record?.days || {};
             Object.values(days).forEach(code => {
                 if (counts.hasOwnProperty(code as string)) {
@@ -379,7 +367,7 @@ export default function JobRecordSheet() {
             });
         });
         return counts;
-    }, [jobRecordForMonth, activeTab, jobCodes, filteredAndGroupedProfiles, searchTerm]);
+    }, [jobRecords, monthKey, activeTab, jobCodes, filteredAndGroupedProfiles, searchTerm]);
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
@@ -396,7 +384,7 @@ export default function JobRecordSheet() {
             ws_data.push(header);
     
             profiles.forEach((profile, rIndex) => {
-                const record = jobRecordForMonth.records?.[profile.id] || {};
+                const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
                 const offCodes = ['OFF', 'PH', 'OS'];
@@ -467,7 +455,7 @@ export default function JobRecordSheet() {
               }, {} as {[key: string]: number});
               
               profiles.forEach(p => {
-                  const record = jobRecordForMonth.records?.[p.id];
+                  const record = jobRecords[monthKey]?.records?.[p.id];
                   const days = record?.days || {};
                   Object.values(days).forEach(code => {
                       if (manDaysCount.hasOwnProperty(code as string)) {
@@ -526,7 +514,7 @@ export default function JobRecordSheet() {
             </datalist>
             <div className="grid grid-rows-[auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
                 {/* Header Section */}
-                <div className="p-4 border-b bg-card shrink-0 space-y-4">
+                <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -534,7 +522,7 @@ export default function JobRecordSheet() {
                             </Button>
                             <span className="text-lg font-semibold flex items-center gap-2">
                                 {format(currentMonth, 'MMMM yyyy')}
-                                {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                                {jobRecords[monthKey]?.isLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                             </span>
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
                                 <ChevronRight className="h-4 w-4" />
@@ -565,7 +553,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
+                             {can.manage_job_record && !jobRecords[monthKey]?.isLocked && isEditableMonth && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -574,7 +562,7 @@ export default function JobRecordSheet() {
                                     </AlertDialogContent>
                                 </AlertDialog>
                             )}
-                            {user?.role === 'Admin' && isCurrentSheetLocked && (
+                            {user?.role === 'Admin' && jobRecords[monthKey]?.isLocked && (
                                 <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
                                     <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
                                 </Button>
@@ -587,7 +575,7 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
-                 <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b">
+                 <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b sticky top-[152px] z-20 bg-card">
                     <div style={{ width: `${320 + dayHeaders.length * 100 + 9 * 150}px`, height: '1px' }}></div>
                 </div>
                 
@@ -616,7 +604,7 @@ export default function JobRecordSheet() {
                         </thead>
                         <TableBody>
                             {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || [])).map((profile, index) => {
-                                const record = jobRecordForMonth.records?.[profile.id] || {};
+                                const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                                 const employeeRecord = record.days || {};
                                 const dailyOvertime = record.dailyOvertime || {};
                                 
