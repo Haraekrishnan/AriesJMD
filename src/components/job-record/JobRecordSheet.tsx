@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
