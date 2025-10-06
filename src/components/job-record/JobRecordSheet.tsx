@@ -406,170 +406,172 @@ export default function JobRecordSheet() {
         }
 
         return (
-            <Table className="min-w-full">
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="sticky left-0 bg-card z-10 w-[120px]">S.No / Actions</TableHead>
-                        <TableHead className="sticky left-[120px] bg-card z-10 min-w-[200px]">Name / EP No.</TableHead>
-                        <TableHead className="sticky left-[320px] bg-card z-10 min-w-[150px]">Plant</TableHead>
-                        {dayHeaders.map(day => (
-                            <TableHead key={day} className="text-center min-w-[100px]">
-                                {day}
-                            </TableHead>
-                        ))}
-                        <TableHead className="text-center min-w-[100px]">Total OFF</TableHead>
-                        <TableHead className="text-center min-w-[100px]">Total Leave</TableHead>
-                        <TableHead className="text-center min-w-[100px]">Total ML</TableHead>
-                        <TableHead className="text-center min-w-[120px]">Over Time</TableHead>
-                        <TableHead className="text-center min-w-[150px]">Total Standby/Training</TableHead>
-                        <TableHead className="text-center min-w-[120px]">Total Working Days</TableHead>
-                        <TableHead className="text-center min-w-[150px]">Total Rept/Office</TableHead>
-                        <TableHead className="text-center min-w-[120px]">Salary Days</TableHead>
-                        <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {profiles.map((profile, index) => {
-                        const record = jobRecordForMonth.records?.[profile.id] || {};
-                        const employeeRecord = record.days || {};
-                        const dailyOvertime = record.dailyOvertime || {};
-                        
-                        const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
-                        const offCodes = ['OFF', 'PH', 'OS'];
-                        const leaveCodes = ['L', 'X', 'NWS'];
-                        const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
+            <div className="overflow-x-auto">
+                <Table className="min-w-full border-collapse">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="sticky left-0 bg-card z-30 w-[120px] border-r">S.No / Actions</TableHead>
+                            <TableHead className="sticky left-[120px] bg-card z-30 min-w-[200px] border-r">Name / EP No.</TableHead>
+                            <TableHead className="sticky left-[320px] bg-card z-30 min-w-[150px] border-r">Plant</TableHead>
+                            {dayHeaders.map(day => (
+                                <TableHead key={day} className="text-center min-w-[100px] border-r">
+                                    {day}
+                                </TableHead>
+                            ))}
+                            <TableHead className="text-center min-w-[100px] border-r">Total OFF</TableHead>
+                            <TableHead className="text-center min-w-[100px] border-r">Total Leave</TableHead>
+                            <TableHead className="text-center min-w-[100px] border-r">Total ML</TableHead>
+                            <TableHead className="text-center min-w-[120px] border-r">Over Time</TableHead>
+                            <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
+                            <TableHead className="text-center min-w-[120px] border-r">Total Working Days</TableHead>
+                            <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
+                            <TableHead className="text-center min-w-[120px] border-r">Salary Days</TableHead>
+                            <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {profiles.map((profile, index) => {
+                            const record = jobRecordForMonth.records?.[profile.id] || {};
+                            const employeeRecord = record.days || {};
+                            const dailyOvertime = record.dailyOvertime || {};
+                            
+                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
+                            const offCodes = ['OFF', 'PH', 'OS'];
+                            const leaveCodes = ['L', 'X', 'NWS'];
+                            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
 
-                        const summary = dayHeaders.reduce((acc, day) => {
-                            const code = employeeRecord[day];
-                            if (offCodes.includes(code)) acc.offDays++;
-                            else if (leaveCodes.includes(code)) acc.leaveDays++;
-                            else if (code === 'ML') acc.medicalLeave++;
-                            else if (standbyCodes.includes(code)) acc.standbyTraining++;
-                            else if (code === 'R') acc.reptOffice++;
-                            else if (workCodes.includes(code)) acc.workDays++;
-                            return acc;
-                        }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+                            const summary = dayHeaders.reduce((acc, day) => {
+                                const code = employeeRecord[day];
+                                if (offCodes.includes(code)) acc.offDays++;
+                                else if (leaveCodes.includes(code)) acc.leaveDays++;
+                                else if (code === 'ML') acc.medicalLeave++;
+                                else if (standbyCodes.includes(code)) acc.standbyTraining++;
+                                else if (code === 'R') acc.reptOffice++;
+                                else if (workCodes.includes(code)) acc.workDays++;
+                                return acc;
+                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                        const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                        const additionalSundays = record.additionalSundayDuty || 0;
-                        const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-                        const isExpanded = expandedRows.has(profile.id);
+                            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                            const additionalSundays = record.additionalSundayDuty || 0;
+                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                            const isExpanded = expandedRows.has(profile.id);
 
-                        return (
-                            <React.Fragment key={profile.id}>
-                            <TableRow>
-                                <TableCell className="sticky left-0 bg-card z-10 flex items-center">
-                                     <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
-                                        {index + 1}
-                                        {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
-                                    </Button>
-                                </TableCell>
-                                <TableCell className="sticky left-[120px] bg-card z-10 font-medium whitespace-nowrap">
-                                    <div className="flex items-center gap-2">
-                                        {isReorderMode && canEditSheet && (
-                                            <div className="flex flex-col">
-                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
-                                                    <ArrowUp className="h-3 w-3" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
-                                                    <ArrowDown className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        )}
-                                        <div>
-                                          <p>{profile.name}</p>
-                                          <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="sticky left-[320px] bg-card z-10">
-                                    <Select value={jobRecordForMonth.records?.[profile.id]?.plant || prevJobRecordForMonth.records?.[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
-                                        <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                                {dayHeaders.map(day => {
-                                    const code = cellStates[`${profile.id}-${day}`] || '';
-                                    const overtimeForDay = dailyOvertime[day] || 0;
-                                    const colorInfo = JOB_CODE_COLORS[code as string] || {};
-
-                                    return (
-                                        <TableCell key={day} className="p-0 text-center relative min-w-[100px]">
-                                            <div className="relative h-10 flex items-center justify-center">
-                                                <Input
-                                                    id={`${profile.id}-${day}`}
-                                                    type="text"
-                                                    list="jobcodes-datalist"
-                                                    value={code}
-                                                    onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
-                                                    onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                    className={cn(
-                                                        "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
-                                                        code ? colorInfo.bg : 'bg-transparent',
-                                                        code ? colorInfo.text : 'text-foreground'
-                                                    )}
-                                                    style={{ boxShadow: 'none' }}
-                                                    disabled={!canEditSheet}
-                                                />
-                                                 {overtimeForDay > 0 && (
-                                                    <Tooltip>
-                                                    <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                        <Clock className="h-full w-full text-blue-500" />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                    </Tooltip>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                    );
-                                })}
-                                <TableCell className="text-center font-bold">{summary.offDays}</TableCell>
-                                <TableCell className="text-center font-bold">{summary.leaveDays}</TableCell>
-                                <TableCell className="text-center font-bold">{summary.medicalLeave}</TableCell>
-                                <TableCell className="text-center font-bold">{totalOvertime}</TableCell>
-                                <TableCell className="text-center font-bold">{summary.standbyTraining}</TableCell>
-                                <TableCell className="text-center font-bold">{summary.workDays}</TableCell>
-                                <TableCell className="text-center font-bold">{summary.reptOffice}</TableCell>
-                                <TableCell className="text-center font-bold">{salaryDays}</TableCell>
-                                <TableCell className="text-center">
-                                    <Input
-                                        type="number"
-                                        defaultValue={record.additionalSundayDuty || ''}
-                                        onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                        className="w-16 h-8 text-center"
-                                        placeholder="0"
-                                        disabled={!canEditSheet}
-                                    />
-                                </TableCell>
-                            </TableRow>
-                            {isExpanded && (
+                            return (
+                                <React.Fragment key={profile.id}>
                                 <TableRow>
-                                    <TableCell colSpan={3} className="bg-muted/50 text-right font-semibold text-xs pr-4">Overtime Hours</TableCell>
+                                    <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r">
+                                        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
+                                            {index + 1}
+                                            {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell className="sticky left-[120px] bg-card z-20 font-medium whitespace-nowrap border-r">
+                                        <div className="flex items-center gap-2">
+                                            {isReorderMode && canEditSheet && (
+                                                <div className="flex flex-col">
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
+                                                        <ArrowUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
+                                                        <ArrowDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            <div>
+                                            <p>{profile.name}</p>
+                                            <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="sticky left-[320px] bg-card z-20 border-r">
+                                        <Select value={jobRecordForMonth.records?.[profile.id]?.plant || prevJobRecordForMonth.records?.[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                            <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
                                     {dayHeaders.map(day => {
+                                        const code = cellStates[`${profile.id}-${day}`] || '';
+                                        const overtimeForDay = dailyOvertime[day] || 0;
+                                        const colorInfo = JOB_CODE_COLORS[code as string] || {};
+
                                         return (
-                                            <TableCell key={`ot-${day}`} className="p-0 bg-muted/50">
-                                                <Input
-                                                    id={`${profile.id}-${day}-overtime`}
-                                                    type="number"
-                                                    placeholder="0"
-                                                    defaultValue={dailyOvertime[day] || ''}
-                                                    onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                    className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                    disabled={!canEditSheet}
-                                                />
+                                            <TableCell key={day} className="p-0 text-center relative min-w-[100px] border-r">
+                                                <div className="relative h-10 flex items-center justify-center">
+                                                    <Input
+                                                        id={`${profile.id}-${day}`}
+                                                        type="text"
+                                                        list="jobcodes-datalist"
+                                                        value={code}
+                                                        onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                        className={cn(
+                                                            "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
+                                                            code ? colorInfo.bg : 'bg-transparent',
+                                                            code ? colorInfo.text : 'text-foreground'
+                                                        )}
+                                                        style={{ boxShadow: 'none' }}
+                                                        disabled={!canEditSheet}
+                                                    />
+                                                    {overtimeForDay > 0 && (
+                                                        <Tooltip>
+                                                        <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
+                                                            <Clock className="h-full w-full text-blue-500" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
                                             </TableCell>
-                                        )
+                                        );
                                     })}
-                                    <TableCell colSpan={9} className="bg-muted/50"></TableCell>
+                                    <TableCell className="text-center font-bold border-r">{summary.offDays}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{summary.leaveDays}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{summary.medicalLeave}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{totalOvertime}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{summary.standbyTraining}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{summary.workDays}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{summary.reptOffice}</TableCell>
+                                    <TableCell className="text-center font-bold border-r">{salaryDays}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Input
+                                            type="number"
+                                            defaultValue={record.additionalSundayDuty || ''}
+                                            onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
+                                            className="w-16 h-8 text-center"
+                                            placeholder="0"
+                                            disabled={!canEditSheet}
+                                        />
+                                    </TableCell>
                                 </TableRow>
-                            )}
-                            </React.Fragment>
-                        );
-                    })}
-                </TableBody>
-            </Table>
+                                {isExpanded && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r">Overtime Hours</TableCell>
+                                        {dayHeaders.map(day => {
+                                            return (
+                                                <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
+                                                    <Input
+                                                        id={`${profile.id}-${day}-overtime`}
+                                                        type="number"
+                                                        placeholder="0"
+                                                        defaultValue={dailyOvertime[day] || ''}
+                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                        disabled={!canEditSheet}
+                                                    />
+                                                </TableCell>
+                                            )
+                                        })}
+                                        <TableCell colSpan={9} className="bg-muted/50"></TableCell>
+                                    </TableRow>
+                                )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </div>
         );
     }
     
@@ -587,7 +589,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div>
+            <div className="space-y-4">
                 <div className="flex flex-wrap justify-between items-center p-4 gap-4">
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
