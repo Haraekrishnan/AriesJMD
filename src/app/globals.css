@@ -79,3 +79,18 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.visible-scrollbar::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 8px;
+}
+
+.visible-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.visible-scrollbar::-webkit-scrollbar-track {
+  background-color: hsl(var(--muted));
+}

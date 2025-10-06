@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
@@ -412,7 +412,7 @@ export default function JobRecordSheet() {
             </datalist>
              <div className="flex flex-col h-full border rounded-lg overflow-hidden">
                 {/* Header Section */}
-                <div className="p-4 border-b bg-card shrink-0 space-y-4">
+                <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -468,9 +468,9 @@ export default function JobRecordSheet() {
                         </div>
                     </div>
                 </div>
-
-                {/* Main Content: Tabs + Table */}
-                <div className="flex-1 overflow-auto">
+                
+                 {/* Main Content: Tabs + Table */}
+                <div className="flex-1 overflow-auto visible-scrollbar">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                         <div className="sticky top-0 z-30 bg-background py-2 px-4 border-b">
                             <TabsList>
