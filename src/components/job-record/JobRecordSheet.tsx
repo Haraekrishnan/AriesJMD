@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -36,6 +36,9 @@ export default function JobRecordSheet() {
     const [activeTab, setActiveTab] = useState('Unassigned');
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
+
+    const topScrollRef = useRef<HTMLDivElement>(null);
+    const tableContainerRef = useRef<HTMLDivElement>(null);
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -184,6 +187,29 @@ export default function JobRecordSheet() {
             dragFillTimeoutRef.current = setTimeout(() => setEndCell({ profileId, day }), 50);
         }
     };
+    
+    // Sync scrollbars
+    useEffect(() => {
+        const topScroll = topScrollRef.current;
+        const tableContainer = tableContainerRef.current;
+
+        if (!topScroll || !tableContainer) return;
+
+        const handleTopScroll = () => {
+            if (tableContainer) tableContainer.scrollLeft = topScroll.scrollLeft;
+        };
+        const handleTableScroll = () => {
+            if (topScroll) topScroll.scrollLeft = tableContainer.scrollLeft;
+        };
+
+        topScroll.addEventListener('scroll', handleTopScroll);
+        tableContainer.addEventListener('scroll', handleTableScroll);
+
+        return () => {
+            topScroll.removeEventListener('scroll', handleTopScroll);
+            tableContainer.removeEventListener('scroll', handleTableScroll);
+        };
+    }, []);
 
     useEffect(() => {
         const newStates: Record<string, string> = {};
@@ -498,9 +524,9 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card">
+            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
                 {/* Header Section */}
-                <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-30">
+                <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -561,8 +587,11 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
+                 <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b">
+                    <div style={{ width: `${320 + dayHeaders.length * 100 + 9 * 150}px`, height: '1px' }}></div>
+                </div>
                 
-                <div className="flex-1 overflow-auto visible-scrollbar">
+                <div ref={tableContainerRef} className="overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
