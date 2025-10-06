@@ -48,7 +48,7 @@ interface EditableJobScheduleProps {
 }
 
 export default function EditableJobSchedule({ schedule, projectId, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
-  const { user, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, users, projects } = useAppContext();
+  const { user, users, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, projects, can } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<ScheduleFormValues>({
@@ -67,12 +67,29 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
     name: 'items',
   });
   
-  const manpowerOptions = useMemo(() => 
-    manpowerProfiles
+  const manpowerOptions = useMemo(() => {
+    const regularManpower = manpowerProfiles
         .filter(p => p.status === 'Working')
-        .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` })),
-    [manpowerProfiles]
-  );
+        .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` }));
+
+    if (can.prepare_master_schedule) {
+        const adminAndManagers = users
+            .filter(u => (u.role === 'Admin' || u.role === 'Manager') && u.status === 'active')
+            .map(u => ({ value: u.id, label: `${u.name} (${u.role})`}));
+        
+        // Combine and remove duplicates, giving precedence to manpowerProfiles entry if exists
+        const combined = [...regularManpower];
+        adminAndManagers.forEach(adminUser => {
+            if (!combined.some(mpUser => mpUser.value === adminUser.value)) {
+                combined.push(adminUser);
+            }
+        });
+        return combined;
+    }
+    
+    return regularManpower;
+  }, [manpowerProfiles, users, can.prepare_master_schedule]);
+
 
   const watchedItems = form.watch('items');
   const currentlyAssignedManpowerIdsInThisForm = useMemo(() => {
@@ -118,12 +135,14 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
   const getAssignmentInfo = (manpowerId: string) => {
     for (const s of jobSchedules) {
       if (s.date === selectedDate) {
-        for (const item of s.items) {
-          if (item.manpowerIds.includes(manpowerId)) {
-            const supervisor = users.find(u => u.id === s.supervisorId);
-            const projectName = projects.find(p => p.id === s.projectId)?.name || 'Unknown Project';
-            return `Assigned to ${projectName} by ${supervisor?.name || 'Unknown'}`;
-          }
+        if (s.items && Array.isArray(s.items)) {
+            for (const item of s.items) {
+              if (item.manpowerIds.includes(manpowerId)) {
+                const supervisor = users.find(u => u.id === s.supervisorId);
+                const projectName = projects.find(p => p.id === s.projectId)?.name || 'Unknown Project';
+                return `Assigned to ${projectName} by ${supervisor?.name || 'Unknown'}`;
+              }
+            }
         }
       }
     }
@@ -163,7 +182,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
                           <div className="flex flex-wrap gap-1">
                             {controllerField.value?.length > 0
                               ? controllerField.value.map(id => (
-                                  <Badge key={id} variant="secondary">{manpowerProfiles.find(p => p.id === id)?.name}</Badge>
+                                  <Badge key={id} variant="secondary">{manpowerOptions.find(p => p.value === id)?.label || id}</Badge>
                                 ))
                               : <span className="text-muted-foreground">Select...</span>}
                           </div>
