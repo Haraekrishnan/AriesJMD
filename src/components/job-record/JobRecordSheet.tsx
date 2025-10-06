@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -56,27 +55,6 @@ export default function JobRecordSheet() {
     const isCurrentSheetLocked = useMemo(() => {
         return jobRecords[monthKey]?.isLocked || false;
     }, [jobRecords, monthKey]);
-    
-    useEffect(() => {
-        const newStates: Record<string, string> = {};
-        if (jobRecordForMonth.records) {
-            for (const profileId in jobRecordForMonth.records) {
-                const record = jobRecordForMonth.records[profileId];
-                if (record.days) {
-                    for (const day in record.days) {
-                        newStates[`${profileId}-${day}`] = record.days[day];
-                    }
-                }
-            }
-        }
-        setCellStates(newStates);
-    }, [jobRecordForMonth]);
-
-    useEffect(() => {
-        if (isBefore(currentMonth, implementationStartDate)) {
-            setCurrentMonth(implementationStartDate);
-        }
-    }, [currentMonth]);
     
     const prevJobRecordForMonth = useMemo(() => {
         return jobRecords[prevMonthKey] || { records: {}, plantsOrder: {} };
@@ -186,6 +164,21 @@ export default function JobRecordSheet() {
         setEndCell(null);
         setFillValue('');
     }, [isDragging, startCell, endCell, fillValue, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
+
+    useEffect(() => {
+        const newStates: Record<string, string> = {};
+        if (jobRecordForMonth.records) {
+            for (const profileId in jobRecordForMonth.records) {
+                const record = jobRecordForMonth.records[profileId];
+                if (record.days) {
+                    for (const day in record.days) {
+                        newStates[`${profileId}-${day}`] = record.days[day];
+                    }
+                }
+            }
+        }
+        setCellStates(newStates);
+    }, [jobRecordForMonth]);
 
     useEffect(() => {
         window.addEventListener('mouseup', handleMouseUp);
@@ -353,8 +346,8 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked && isEditableMonth;
-    }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
+        return can.manage_job_record && !isCurrentSheetLocked; // Allow editing historical if not locked
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -558,7 +551,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                            {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
+                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -803,4 +796,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
