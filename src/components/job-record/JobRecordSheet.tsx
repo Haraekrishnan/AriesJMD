@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -501,6 +500,10 @@ export default function JobRecordSheet() {
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
+    const col1Width = 120;
+    const col2Width = 200;
+    const col3Width = 150;
+
     return (
         <TooltipProvider>
             <datalist id="jobcodes-datalist">
@@ -508,10 +511,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div 
-                className="grid grid-rows-[auto_auto_1fr_auto] h-full border rounded-lg overflow-hidden bg-card"
-                style={{'--col1-width': '120px', '--col2-width': '200px', '--col3-width': '150px'} as React.CSSProperties}
-            >
+            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
                 <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -573,17 +573,18 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
+
                 <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b sticky top-[152px] z-20 bg-card">
-                    <div style={{ width: `${320 + dayHeaders.length * 100 + 9 * 150}px`, height: '1px' }}></div>
+                    <div style={{ width: `${col1Width + col2Width + col3Width + (dayHeaders.length * 100) + (9 * 150)}px`, height: '1px' }}></div>
                 </div>
-                
+
                 <div ref={tableContainerRef} className="overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
-                        <thead className="sticky top-0 bg-background z-10">
+                         <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-30 w-[var(--col1-width)] border-r">S.No / Actions</TableHead>
-                                <TableHead className="sticky left-[var(--col1-width)] bg-card z-30 min-w-[var(--col2-width)] border-r">Name / EP No.</TableHead>
-                                <TableHead className="sticky left-[calc(var(--col1-width)+var(--col2-width))] bg-card z-30 min-w-[var(--col3-width)] border-r">Plant</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-30 border-r" style={{ minWidth: col1Width, width: col1Width }}>S.No / Actions</TableHead>
+                                <TableHead className="sticky bg-card z-30 min-w-[var(--col2-width)] border-r" style={{ left: col1Width, width: col2Width }}>Name / EP No.</TableHead>
+                                <TableHead className="sticky bg-card z-30 min-w-[var(--col3-width)] border-r" style={{ left: col1Width + col2Width, width: col3Width }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
                                     <TableHead key={day} className="text-center min-w-[100px] border-r">
                                         {day}
@@ -620,7 +621,7 @@ export default function JobRecordSheet() {
                                     else if (code === 'R') acc.reptOffice++;
                                     else if (workCodes.includes(code)) acc.workDays++;
                                     return acc;
-                                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+                                }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
 
                                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                                 const additionalSundays = record.additionalSundayDuty || 0;
@@ -630,7 +631,7 @@ export default function JobRecordSheet() {
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: 'var(--col1-width)'}}>
+                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: col1Width}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -644,11 +645,11 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky left-[var(--col1-width)] bg-card z-20 font-medium whitespace-nowrap border-r" style={{width: 'var(--col2-width)'}}>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: col1Width, width: col2Width }}>
                                             <p>{profile.name}</p>
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
-                                        <TableCell className="sticky left-[calc(var(--col1-width)+var(--col2-width))] bg-card z-20 font-medium whitespace-nowrap border-r" style={{width: 'var(--col3-width)'}}>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: col1Width + col2Width, width: col3Width }}>
                                         <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
@@ -694,9 +695,9 @@ export default function JobRecordSheet() {
                                                             </Tooltip>
                                                         )}
                                                         {canEditSheet && (
-                                                            <div 
+                                                             <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
-                                                                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-primary border-2 border-background rounded-full cursor-crosshair z-30"
+                                                                className="absolute bottom-0 right-0 w-4 h-4 cursor-crosshair z-30"
                                                             />
                                                         )}
                                                     </div>
@@ -724,7 +725,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: 'var(--col1-width)'}}>Overtime Hours</TableCell>
+                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: col1Width}}>Overtime Hours</TableCell>
                                             {dayHeaders.map(day => {
                                                 return (
                                                     <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
@@ -799,5 +800,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
 
     
