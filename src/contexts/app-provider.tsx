@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -163,9 +162,9 @@ type AppContextType = {
   markIncidentAsViewed: (incidentId: string) => void;
   addManpowerLog: (log: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate?: Date) => Promise<void>;
   updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => Promise<void>;
-  addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
+  addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => Promise<void>;
   addMultipleManpowerProfiles: (profiles: any[]) => number;
-  updateManpowerProfile: (profile: ManpowerProfile) => void;
+  updateManpowerProfile: (profile: ManpowerProfile) => Promise<void>;
   deleteManpowerProfile: (profileId: string) => void;
   addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date, remarks?: string) => void;
   extendLeave: (manpowerId: string, leaveId: string, newEndDate: Date) => void;
@@ -1759,9 +1758,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addActivityLog(user.id, 'Manpower Log Updated', `Log ID: ${logId}`);
   }, [user, manpowerLogs, addActivityLog]);
 
-  const addManpowerProfile = useCallback((profile: Omit<ManpowerProfile, 'id'>) => {
+  const addManpowerProfile = useCallback(async (profile: Omit<ManpowerProfile, 'id'>) => {
     const newRef = push(ref(rtdb, 'manpowerProfiles'));
-    set(newRef, { ...profile, id: newRef.key });
+    await set(newRef, { ...profile, id: newRef.key });
     if(user) addActivityLog(user.id, 'Manpower Profile Added', profile.name);
   }, [user, addActivityLog]);
   
@@ -1846,21 +1845,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return importedCount;
 }, [user, manpowerProfiles, addActivityLog]);
 
-  const updateManpowerProfile = useCallback((profile: ManpowerProfile) => {
+  const updateManpowerProfile = useCallback(async (profile: ManpowerProfile) => {
     const { id, ...data } = profile;
-    const cleanData = Object.fromEntries(
-      Object.entries(data).map(([key, value]) => {
-        if (value instanceof Date) {
-          return [key, value.toISOString()];
-        }
-        if (value === undefined) {
-          return [key, null];
-        }
-        return [key, value];
-      })
-    );
-    update(ref(rtdb, `manpowerProfiles/${id}`), cleanData);
-    if(user) addActivityLog(user.id, 'Manpower Profile Updated', profile.name);
+    const cleanData: {[key:string]: any} = {};
+  
+    for (const key in data) {
+      const value = data[key as keyof typeof data];
+      if (value instanceof Date) {
+        cleanData[key] = value.toISOString();
+      } else if (value !== undefined) {
+        cleanData[key] = value;
+      } else {
+        cleanData[key] = null;
+      }
+    }
+  
+    await update(ref(rtdb, `manpowerProfiles/${id}`), cleanData);
+    if (user) addActivityLog(user.id, 'Manpower Profile Updated', profile.name);
   }, [user, addActivityLog]);
 
   const deleteManpowerProfile = useCallback((profileId: string) => {
@@ -1899,25 +1900,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Firebase stores array-like objects, so we may need to find the correct key
     const leaveKey = profile.leaveHistory ? Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key].id === leaveId) : undefined;
     
+    if (!leaveKey) {
+        console.error(`Could not find leave with ID ${leaveId} for user ${manpowerId}`);
+        return;
+    }
+    
     const updates: { [key: string]: any } = {};
     updates[`/manpowerProfiles/${manpowerId}/status`] = 'Working';
+    updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/rejoinedDate`] = rejoinedDate.toISOString();
+    updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/leaveEndDate`] = rejoinedDate.toISOString();
     
-    if (leaveKey) {
-        updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/rejoinedDate`] = rejoinedDate.toISOString();
-        updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/leaveEndDate`] = rejoinedDate.toISOString();
-    } else {
-        // Fallback for older data structure or if key isn't found
-        const updatedHistory = Array.isArray(profile.leaveHistory) ? [...profile.leaveHistory] : (profile.leaveHistory ? Object.values(profile.leaveHistory) : []);
-        const leaveIndex = updatedHistory.findIndex(l => l.id === leaveId);
-        if (leaveIndex !== -1) {
-            updatedHistory[leaveIndex].rejoinedDate = rejoinedDate.toISOString();
-            updatedHistory[leaveIndex].leaveEndDate = rejoinedDate.toISOString();
-            updates[`/manpowerProfiles/${manpowerId}/leaveHistory`] = updatedHistory;
-        } else {
-            console.error(`Could not find leave with ID ${leaveId} for user ${manpowerId}`);
-            return;
-        }
-    }
     update(ref(rtdb), updates);
 }, [manpowerProfiles]);
 

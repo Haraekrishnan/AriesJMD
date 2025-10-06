@@ -407,7 +407,7 @@ export type ManpowerProfile = {
   labourLicenseNo?: string;
   eic?: string; 
   joiningDate?: string | null; // ISO
-  plantName?: string; // DEPRECATED in favor of jobRecords
+  plant?: string; 
 
   // Policy & Card Details
   wcPolicyNumber?: string;
@@ -773,4 +773,5 @@ export type JobRecordPlant = {
   id: string;
   name: string;
 };
+
 

@@ -26,6 +26,9 @@ import { Badge } from '../ui/badge';
 import EditMemoDialog from './EditMemoDialog';
 import EditPpeHistoryDialog from './EditPpeHistoryDialog';
 import AddPpeHistoryDialog from './AddPpeHistoryDialog';
+import { rtdb } from '@/lib/rtdb';
+import { ref, push, update } from 'firebase/database';
+
 
 const documentSchema = z.object({
   name: z.string(),
@@ -182,7 +185,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const parseDate = (dateString?: string | null): Date | undefined => {
     if (!dateString) return undefined;
     const date = parseISO(dateString);
-    return isValid(date) ? date : undefined;
+    if (isValid(date)) return date;
+    
+    // Fallback for "dd-MM-yyyy" or other formats if needed
+    const parsedFromOtherFormat = parse(dateString, 'dd-MM-yyyy', new Date());
+    if (isValid(parsedFromOtherFormat)) return parsedFromOtherFormat;
+    
+    return undefined;
   };
 
   const form = useForm<ProfileFormValues>({
@@ -263,68 +272,68 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   }, [watchTrade, form, appendDocument, removeDocument]);
   
-  const onSubmit = (data: ProfileFormValues) => {
-    const dataToSubmit: { [key: string]: any } = { ...data };
+  const onSubmit = async (data: ProfileFormValues) => {
+    try {
+        const dataToSubmit: { [key: string]: any } = { ...data };
 
-    if (data.trade === 'Others' && data.otherTrade) {
-      dataToSubmit.trade = data.otherTrade.trim();
+        if (data.trade === 'Others' && data.otherTrade) {
+            dataToSubmit.trade = data.otherTrade.trim();
+        }
+        delete dataToSubmit.otherTrade;
+
+        const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => l && !l.rejoinedDate && !l.leaveEndDate));
+
+        if (data.status !== 'On Leave' || hasActiveLeave) {
+            delete dataToSubmit.currentLeave;
+        } else if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
+            const leaveRecord: Omit<LeaveRecord, 'id'> = {
+                leaveType: data.currentLeave.leaveType,
+                leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
+                plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
+                remarks: data.currentLeave.remarks,
+            };
+            // This part needs to be handled inside the context function
+            dataToSubmit.newLeaveRecord = leaveRecord;
+            delete dataToSubmit.currentLeave;
+        }
+
+        const dateFields: (keyof ProfileFormValues)[] = [
+            'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
+            'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
+            'firstAidExpiryDate', 'resignationDate', 'terminationDate'
+        ];
+
+        dateFields.forEach(field => {
+            const dateValue = data[field as keyof typeof data];
+            dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+        });
+
+        if (data.skills) {
+            dataToSubmit.skills = data.skills.map(skill => ({
+                ...skill,
+                validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
+            }));
+        }
+
+        // Clean up undefined/null values before submitting
+        Object.keys(dataToSubmit).forEach(key => {
+            if (dataToSubmit[key] === undefined) {
+                dataToSubmit[key] = null;
+            }
+        });
+
+        if (profile) {
+            await updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
+            toast({ title: 'Profile Updated' });
+        } else {
+            await addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
+            toast({ title: 'Profile Added' });
+        }
+        setIsOpen(false);
+    } catch (err) {
+        console.error("Save failed:", err);
+        toast({ variant: 'destructive', title: 'Failed to save profile', description: 'An unexpected error occurred.' });
     }
-    delete dataToSubmit.otherTrade;
-
-    if (data.status !== 'On Leave') {
-      delete dataToSubmit.currentLeave;
-    } else {
-      const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => !l.rejoinedDate && !l.leaveEndDate));
-      if (!hasActiveLeave && data.currentLeave?.leaveStartDate) {
-        const leaveRecord: Omit<LeaveRecord, 'id'> = {
-          leaveType: data.currentLeave.leaveType,
-          leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
-          plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
-          rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
-          remarks: data.currentLeave.remarks,
-        };
-        const newRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
-        dataToSubmit.leaveHistory = {
-          ...dataToSubmit.leaveHistory,
-          [newRef.key!]: { ...leaveRecord, id: newRef.key! }
-        };
-      }
-      delete dataToSubmit.currentLeave;
-    }
-
-    const dateFields: (keyof ProfileFormValues)[] = [
-      'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
-      'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
-      'firstAidExpiryDate', 'resignationDate', 'terminationDate'
-    ];
-
-    dateFields.forEach(field => {
-      const dateValue = data[field as keyof typeof data];
-      dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
-    });
-
-    if (data.skills) {
-      dataToSubmit.skills = data.skills.map(skill => ({
-        ...skill,
-        validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
-      }));
-    }
-
-    // Clean up undefined/null values before submitting
-    Object.keys(dataToSubmit).forEach(key => {
-      if (dataToSubmit[key] === undefined) {
-        dataToSubmit[key] = null;
-      }
-    });
-
-    if (profile) {
-      updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
-      toast({ title: 'Profile Updated' });
-    } else {
-      addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
-      toast({ title: 'Profile Added' });
-    }
-    setIsOpen(false);
   };
   
   const handleDeleteLeave = (leaveId: string) => {
@@ -361,7 +370,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl h-full max-h-[95vh] flex flex-col">
           <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
+          <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("Form validation errors:", errors))} className="flex-1 overflow-hidden flex flex-col">
             <ScrollArea className="flex-1 pr-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
                   
