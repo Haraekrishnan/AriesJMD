@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +17,6 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
@@ -409,8 +407,8 @@ export default function JobRecordSheet() {
             <Table className="min-w-full border-collapse">
                 <TableHeader className="sticky top-0 bg-card z-10">
                     <TableRow>
-                        <TableHead className="sticky left-0 bg-card z-30 w-[120px] border-r">S.No / Actions</TableHead>
-                        <TableHead className="sticky left-[120px] bg-card z-30 min-w-[200px] border-r">Name / EP No.</TableHead>
+                        <TableHead className="sticky left-0 bg-card z-20 w-[120px] border-r">S.No / Actions</TableHead>
+                        <TableHead className="sticky left-[120px] bg-card z-20 min-w-[200px] border-r">Name / EP No.</TableHead>
                         {dayHeaders.map(day => (
                             <TableHead key={day} className="text-center min-w-[100px] border-r">
                                 {day}
@@ -579,7 +577,7 @@ export default function JobRecordSheet() {
                 ))}
             </datalist>
             <div className="space-y-4">
-                <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b">
+                <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -634,24 +632,20 @@ export default function JobRecordSheet() {
                             )}
                         </div>
                     </div>
+                     {!searchTerm && (
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList>
+                                {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                            </TabsList>
+                        </Tabs>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">
                 {searchTerm ? (
                     renderTableForPlant('Search Results', searchResults)
                 ) : (
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <div className="sticky top-[105px] z-30 bg-background py-2">
-                            <TabsList>
-                                {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                            </TabsList>
-                        </div>
-                        {allTabs.map(plant => (
-                            <TabsContent key={plant} value={plant} className="mt-0">
-                                {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
-                            </TabsContent>
-                        ))}
-                    </Tabs>
+                   renderTableForPlant(activeTab, filteredAndGroupedProfiles[activeTab] || [])
                 )}
                 </div>
 
