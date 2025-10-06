@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -100,7 +101,8 @@ const profileSchema = z.object({
     }
     const isTerminalStatus = ['Terminated', 'Resigned', 'Left the Project'].includes(data.status);
     if (data.status === 'On Leave' && !isTerminalStatus) {
-        const hasActiveLeave = data.leaveHistory?.some(l => !l.rejoinedDate && !l.leaveEndDate);
+        const historyArray = Array.isArray(data.leaveHistory) ? data.leaveHistory : (data.leaveHistory ? Object.values(data.leaveHistory) : []);
+        const hasActiveLeave = historyArray.some(l => l && !l.rejoinedDate && !l.leaveEndDate);
         if (!hasActiveLeave && !data.currentLeave?.leaveStartDate) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -262,75 +264,64 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   }, [watchTrade, form, appendDocument, removeDocument]);
   
   const onSubmit = (data: ProfileFormValues) => {
-    const dataToSubmit: Partial<ProfileFormValues> = { ...data };
-    
+    const dataToSubmit: { [key: string]: any } = { ...data };
+
     if (data.trade === 'Others' && data.otherTrade) {
-        dataToSubmit.trade = data.otherTrade.trim();
+      dataToSubmit.trade = data.otherTrade.trim();
     }
     delete dataToSubmit.otherTrade;
 
-    let finalLeaveHistory = liveProfile?.leaveHistory ? (Array.isArray(liveProfile.leaveHistory) ? [...liveProfile.leaveHistory] : Object.values(liveProfile.leaveHistory)) : [];
-    const originalStatus = liveProfile?.status;
-    const newStatus = data.status;
-    
     if (data.status !== 'On Leave') {
-        delete dataToSubmit.currentLeave;
+      delete dataToSubmit.currentLeave;
+    } else {
+      const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => !l.rejoinedDate && !l.leaveEndDate));
+      if (!hasActiveLeave && data.currentLeave?.leaveStartDate) {
+        const leaveRecord: Omit<LeaveRecord, 'id'> = {
+          leaveType: data.currentLeave.leaveType,
+          leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
+          plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
+          rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
+          remarks: data.currentLeave.remarks,
+        };
+        const newRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
+        dataToSubmit.leaveHistory = {
+          ...dataToSubmit.leaveHistory,
+          [newRef.key!]: { ...leaveRecord, id: newRef.key! }
+        };
+      }
+      delete dataToSubmit.currentLeave;
     }
 
-    if (originalStatus === 'On Leave' && ['Terminated', 'Resigned', 'Left the Project'].includes(newStatus)) {
-        const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (activeLeaveIndex > -1) {
-            const endDate = data.terminationDate || data.resignationDate;
-            if (endDate) {
-                finalLeaveHistory[activeLeaveIndex].leaveEndDate = endDate.toISOString();
-            }
-        }
-    } else if (newStatus === 'On Leave') {
-        const hasActiveLeave = finalLeaveHistory.some(l => !l.rejoinedDate && !l.leaveEndDate);
-        if (!hasActiveLeave && data.currentLeave?.leaveStartDate) {
-             const leaveRecord: LeaveRecord = {
-                id: `leave-${Date.now()}`,
-                leaveType: data.currentLeave.leaveType,
-                leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
-                plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
-                rejoinedDate: data.currentLeave.rejoinedDate?.toISOString(),
-                remarks: data.currentLeave.remarks,
-            };
-            finalLeaveHistory.push(leaveRecord);
-        }
-    }
-    dataToSubmit.leaveHistory = finalLeaveHistory;
-    
     const dateFields: (keyof ProfileFormValues)[] = [
-        'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate', 
-        'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity', 
-        'firstAidExpiryDate', 'resignationDate', 'terminationDate'
+      'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
+      'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
+      'firstAidExpiryDate', 'resignationDate', 'terminationDate'
     ];
-    
+
     dateFields.forEach(field => {
-        const dateValue = data[field as keyof typeof data];
-        (dataToSubmit as any)[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+      const dateValue = data[field as keyof typeof data];
+      dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
     });
-    
+
     if (data.skills) {
-        (dataToSubmit as any).skills = data.skills.map(skill => ({
-            ...skill,
-            validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
-        }));
+      dataToSubmit.skills = data.skills.map(skill => ({
+        ...skill,
+        validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
+      }));
     }
 
-    const cleanedData: { [key: string]: any } = { ...dataToSubmit };
-    Object.keys(cleanedData).forEach(key => {
-        if (cleanedData[key] === undefined) {
-            cleanedData[key] = null;
-        }
+    // Clean up undefined/null values before submitting
+    Object.keys(dataToSubmit).forEach(key => {
+      if (dataToSubmit[key] === undefined) {
+        dataToSubmit[key] = null;
+      }
     });
 
     if (profile) {
-      updateManpowerProfile({ ...profile, ...cleanedData } as ManpowerProfile);
+      updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
       toast({ title: 'Profile Updated' });
     } else {
-      addManpowerProfile(cleanedData as Omit<ManpowerProfile, 'id'>);
+      addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
       toast({ title: 'Profile Added' });
     }
     setIsOpen(false);
@@ -684,3 +675,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
+    
