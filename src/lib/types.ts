@@ -4,6 +4,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -360,7 +361,7 @@ export type ManpowerTrade = {
 
 export type Trade = string;
 export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
-export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
+export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
 
 export type MemoRecord = {
     id: string;

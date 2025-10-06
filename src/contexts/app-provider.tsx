@@ -194,6 +194,7 @@ type AppContextType = {
   addPpeRequest: (request: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
+  resolvePpeDispute: (requestId: string, resolution: 'reverse' | 'reissue', comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
   deletePpeAttachment: (requestId: string) => void;
   markPpeRequestAsViewed: (requestId: string) => void;
@@ -862,10 +863,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return isParticipant && isUnread;
     }).length;
     
-    const isPpeManager = user.role === 'Manager' || user.role === 'Admin';
-    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge'].includes(user.role);
-    const pendingPpeRequestCount = isPpeManager ? ppeRequests.filter(r => r.status === 'Pending').length : (canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0);
-    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected') && !r.viewedByRequester).length;
+    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
+    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
+    
+    const pendingApproval = canApprovePpe ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
+    const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
+    const pendingDisputes = (canApprovePpe || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
+    const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
+
+    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
     
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
@@ -1879,47 +1885,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const rejoinFromLeave = useCallback((manpowerId: string, leaveId: string, rejoinedDate: Date) => {
-      const profile = manpowerProfiles.find(p => p.id === manpowerId);
-      if (!profile) return;
-  
-      const leaveHistory = { ...(profile.leaveHistory || {}) };
-      const leaveKey = Object.keys(leaveHistory).find(key => leaveHistory[key as any]?.id === leaveId);
-      
-      if (!leaveKey) {
-          console.error("Could not find leave record with ID:", leaveId);
-          return;
-      }
-      
-      const updates: { [key: string]: any } = {};
-      updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/rejoinedDate`] = rejoinedDate.toISOString();
-      updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/leaveEndDate`] = rejoinedDate.toISOString();
-      updates[`manpowerProfiles/${manpowerId}/status`] = 'Working';
-      
-      update(ref(rtdb), updates);
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return;
+
+    const leaveKey = Object.keys(profile.leaveHistory || {}).find(key => profile.leaveHistory![key].id === leaveId);
+    
+    if (leaveKey) {
+        const updates: { [key: string]: any } = {};
+        updates[`/manpowerProfiles/${manpowerId}/status`] = 'Working';
+        updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/rejoinedDate`] = rejoinedDate.toISOString();
+        updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/leaveEndDate`] = rejoinedDate.toISOString();
+        update(ref(rtdb), updates);
+    } else {
+        console.error(`Could not find leave with ID ${leaveId} for user ${manpowerId}`);
+    }
   }, [manpowerProfiles]);
   
   const confirmManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
     const updates: { [key: string]: any } = {};
     updates[`manpowerProfiles/${manpowerId}/status`] = 'On Leave';
-    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/status`] = 'Confirmed';
     update(ref(rtdb), updates);
   }, []);
   
   const cancelManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`));
-  }, []);
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile || !profile.leaveHistory) return;
+    
+    const leaveKey = Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key].id === leaveId);
+    if (leaveKey) {
+        remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}`));
+    }
+  }, [manpowerProfiles]);
   
   const updateLeaveRecord = useCallback((manpowerId: string, leaveRecord: LeaveRecord) => {
     if (!user || user.role !== 'Admin') return;
-    const leaveHistoryRef = ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveRecord.id}`);
-    update(leaveHistoryRef, leaveRecord);
-  }, [user]);
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile || !profile.leaveHistory) return;
+    const leaveKey = Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key].id === leaveRecord.id);
+    if(leaveKey) {
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}`), leaveRecord);
+    }
+  }, [user, manpowerProfiles]);
   
   const deleteLeaveRecord = useCallback((manpowerId: string, leaveId: string) => {
     if (!user || user.role !== 'Admin') return;
-    const leaveHistoryRef = ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`);
-    remove(leaveHistoryRef);
-  }, [user]);
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile || !profile.leaveHistory) return;
+    const leaveKey = Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key].id === leaveId);
+    if (leaveKey) {
+        remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}`));
+    }
+  }, [user, manpowerProfiles]);
 
   const addMemoOrWarning = useCallback((manpowerId: string, memo: Omit<MemoRecord, 'id'>) => {
     const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory`));
@@ -2184,7 +2200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility,
+        eligibility: requestData.eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2247,7 +2263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         }
 
-    } else if (status === 'Rejected') {
+    } else if (status === 'Rejected' || status === 'Disputed') {
         updates[`ppeRequests/${requestId}/approverId`] = user.id;
     }
 
@@ -2270,6 +2286,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
+  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reverse' | 'reissue', comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
+      : `Dispute reversed by ${user.name}. Marked as issued. Comment: ${comment}`;
+    
+    updatePpeRequestStatus(requestId, newStatus, actionComment);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `PPE Dispute Resolved: ${request.ppeType}`,
+        'A dispute you filed has been resolved.',
+        { 
+          'Item': `${request.ppeType} (Size: ${request.size})`,
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, ppeRequests, users, can.approve_store_requests, updatePpeRequestStatus]);
+
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `ppeRequests/${requestId}`));
@@ -2975,14 +3020,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
   }, [buildings]);
 
   const saveJobSchedule = useCallback((schedule: JobSchedule) => {
-    set(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
+    const scheduleWithNames = {
+        ...schedule,
+        items: schedule.items.map((item: any) => ({
+            ...item,
+            manpowerNames: item.manpowerIds.map((id: string) => {
+              const mp = manpowerProfiles.find(p => p.id === id);
+              if (mp) return mp.name;
+              const u = users.find(usr => usr.id === id);
+              return u ? u.name : id;
+            }),
+            vehicleNumber: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
+        }))
+    };
+    set(ref(rtdb, `jobSchedules/${schedule.id}`), scheduleWithNames);
     if (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') {
       const pcs = users.filter(u => u.permissions?.includes('prepare_master_schedule'));
       pcs.forEach(pc => {
@@ -3002,7 +3060,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       });
     }
-  }, [user, users, projects]);
+  }, [user, users, projects, vehicles, manpowerProfiles]);
   
   const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrPlant: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
     if (type === 'status') {
@@ -3292,9 +3350,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { importedCount, notFoundCount };
   }, [user, manpowerProfiles, addActivityLog]);
 
+  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reverse' | 'reissue', comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
+      : `Dispute reversed by ${user.name}. Marked as issued. Comment: ${comment}`;
+    
+    updatePpeRequestStatus(requestId, newStatus, actionComment);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `PPE Dispute Resolved: ${request.ppeType}`,
+        'A dispute you filed has been resolved.',
+        { 
+          'Item': `${request.ppeType} (Size: ${request.size})`,
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, ppeRequests, users, can.approve_store_requests, updatePpeRequestStatus]);
+
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, deleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
     ...computedValue,
   };
 
@@ -3311,3 +3398,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+
+
+
