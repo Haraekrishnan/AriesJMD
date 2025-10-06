@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -11,17 +10,17 @@ import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, Chevrons
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -154,6 +153,15 @@ export default function JobRecordSheet() {
             const startIndex = profiles.findIndex(p => p.id === startCell.profileId);
             const endIndex = profiles.findIndex(p => p.id === endCell.profileId);
 
+            if (startIndex === -1 || endIndex === -1) {
+                // This can happen if switching tabs during a drag
+                setIsDragging(false);
+                setStartCell(null);
+                setEndCell(null);
+                setFillValue('');
+                return;
+            }
+
             const minRow = Math.min(startIndex, endIndex);
             const maxRow = Math.max(startIndex, endIndex);
             const minCol = Math.min(startCell.day, endCell.day);
@@ -225,6 +233,7 @@ export default function JobRecordSheet() {
         if (!selectionRange) return false;
         const profiles = filteredAndGroupedProfiles[activeTab] || [];
         const rowIndex = profiles.findIndex(p => p.id === profileId);
+        if(rowIndex === -1) return false;
         return (
             rowIndex >= selectionRange.minRow &&
             rowIndex <= selectionRange.maxRow &&
@@ -336,7 +345,7 @@ export default function JobRecordSheet() {
       return isAfter(firstDayOfCurrentMonth, implementationStartDate);
     }, [currentMonth]);
     
-    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfMonth(new Date())), [currentMonth]);
+    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
 
     const isEditableMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
     
@@ -568,13 +577,14 @@ export default function JobRecordSheet() {
 
                 <div className="flex-1 flex flex-col overflow-auto">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                        <div className="sticky top-[89px] z-30 bg-background py-2">
+                        <div className="sticky top-0 z-30 bg-background py-2 px-4 border-b">
                             <TabsList>
                                 {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
                             </TabsList>
                         </div>
+                        <div className='flex-1 overflow-auto visible-scrollbar'>
                         {allTabs.map(plant => (
-                            <TabsContent key={plant} value={plant} className="flex-1 overflow-auto visible-scrollbar">
+                            <TabsContent key={plant} value={plant} className="mt-0">
                                 <Table className="min-w-full border-collapse">
                                     <TableHeader className="sticky top-0 bg-background z-10">
                                         <TableRow>
@@ -747,6 +757,7 @@ export default function JobRecordSheet() {
                                 </Table>
                             </TabsContent>
                         ))}
+                        </div>
                     </Tabs>
                 </div>
 
