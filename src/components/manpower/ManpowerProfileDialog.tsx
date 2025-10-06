@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -266,13 +265,17 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     const dataToSubmit: Partial<ProfileFormValues> = { ...data };
     
     if (data.trade === 'Others' && data.otherTrade) {
-      dataToSubmit.trade = data.otherTrade.trim();
+        dataToSubmit.trade = data.otherTrade.trim();
     }
     delete dataToSubmit.otherTrade;
 
     let finalLeaveHistory = liveProfile?.leaveHistory ? (Array.isArray(liveProfile.leaveHistory) ? [...liveProfile.leaveHistory] : Object.values(liveProfile.leaveHistory)) : [];
     const originalStatus = liveProfile?.status;
     const newStatus = data.status;
+    
+    if (data.status !== 'On Leave') {
+        delete dataToSubmit.currentLeave;
+    }
 
     if (originalStatus === 'On Leave' && ['Terminated', 'Resigned', 'Left the Project'].includes(newStatus)) {
         const activeLeaveIndex = finalLeaveHistory.findIndex(l => !l.rejoinedDate && !l.leaveEndDate);
@@ -297,8 +300,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         }
     }
     dataToSubmit.leaveHistory = finalLeaveHistory;
-    delete dataToSubmit.currentLeave;
-
+    
     const dateFields: (keyof ProfileFormValues)[] = [
         'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate', 
         'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity', 
@@ -306,7 +308,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     ];
     
     dateFields.forEach(field => {
-        const dateValue = data[field];
+        const dateValue = data[field as keyof typeof data];
         (dataToSubmit as any)[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
     });
     
@@ -317,10 +319,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         }));
     }
 
-    const cleanedData: Partial<ManpowerProfile> = { ...dataToSubmit };
+    const cleanedData: { [key: string]: any } = { ...dataToSubmit };
     Object.keys(cleanedData).forEach(key => {
-        if (cleanedData[key as keyof typeof cleanedData] === undefined) {
-            (cleanedData as any)[key] = null;
+        if (cleanedData[key] === undefined) {
+            cleanedData[key] = null;
         }
     });
 
