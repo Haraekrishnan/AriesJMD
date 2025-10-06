@@ -16,7 +16,7 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
@@ -230,7 +230,7 @@ export default function JobRecordSheet() {
     };
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
-        const code = (value || '').toUpperCase();
+        const code = (value || '').toUpperCase() ?? '';
         const cellId = `${employeeId}-${day}`;
 
         setCellStates(prev => ({...prev, [cellId]: code }));
