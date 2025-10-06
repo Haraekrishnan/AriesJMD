@@ -16,7 +16,7 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider } from '../ui/tooltip';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
@@ -37,9 +37,6 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     
-    const mainScrollRef = useRef<HTMLDivElement>(null);
-    const topScrollRef = useRef<HTMLDivElement>(null);
-
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
@@ -187,17 +184,6 @@ export default function JobRecordSheet() {
             dragFillTimeoutRef.current = setTimeout(() => setEndCell({ profileId, day }), 50);
         }
     };
-    
-    useEffect(() => {
-      const syncScroll = () => {
-        if (topScrollRef.current && mainScrollRef.current) {
-          topScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
-        }
-      };
-      const mainEl = mainScrollRef.current;
-      mainEl?.addEventListener('scroll', syncScroll);
-      return () => mainEl?.removeEventListener('scroll', syncScroll);
-    }, []);
 
     useEffect(() => {
         const newStates: Record<string, string> = {};
@@ -514,7 +500,7 @@ export default function JobRecordSheet() {
             </datalist>
             <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card">
                 {/* Header Section */}
-                <div className="p-4 border-b bg-card shrink-0 space-y-4">
+                <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-30">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -576,12 +562,7 @@ export default function JobRecordSheet() {
                      </Tabs>
                 </div>
                 
-                 {/* Top Scrollbar */}
-                <div ref={topScrollRef} className="overflow-x-scroll h-4 bg-muted border-b visible-scrollbar">
-                    <div style={{ width: `${380 + (dayHeaders.length * 100) + (9 * 150)}px`, height: '1px' }}></div>
-                </div>
-
-                <div ref={mainScrollRef} className="flex-1 overflow-auto">
+                <div className="flex-1 overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
@@ -700,7 +681,7 @@ export default function JobRecordSheet() {
                                                         {canEditSheet && (
                                                             <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
-                                                                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full cursor-crosshair z-30"
+                                                                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-primary border-2 border-background rounded-full cursor-crosshair z-30"
                                                             />
                                                         )}
                                                     </div>
