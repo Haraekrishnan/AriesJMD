@@ -508,7 +508,10 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="grid grid-rows-[auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
+            <div 
+                className="grid grid-rows-[auto_auto_1fr_auto] h-full border rounded-lg overflow-hidden bg-card"
+                style={{'--col1-width': '120px', '--col2-width': '200px', '--col3-width': '150px'} as React.CSSProperties}
+            >
                 <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -578,9 +581,9 @@ export default function JobRecordSheet() {
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-30 w-[120px] border-r">S.No / Actions</TableHead>
-                                <TableHead className="sticky left-[120px] bg-card z-30 min-w-[200px] border-r">Name / EP No.</TableHead>
-                                <TableHead className="sticky left-[320px] bg-card z-30 min-w-[150px] border-r">Plant</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-30 w-[var(--col1-width)] border-r">S.No / Actions</TableHead>
+                                <TableHead className="sticky left-[var(--col1-width)] bg-card z-30 min-w-[var(--col2-width)] border-r">Name / EP No.</TableHead>
+                                <TableHead className="sticky left-[calc(var(--col1-width)+var(--col2-width))] bg-card z-30 min-w-[var(--col3-width)] border-r">Plant</TableHead>
                                 {dayHeaders.map(day => (
                                     <TableHead key={day} className="text-center min-w-[100px] border-r">
                                         {day}
@@ -627,7 +630,7 @@ export default function JobRecordSheet() {
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r">
+                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: 'var(--col1-width)'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -641,11 +644,11 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky left-[120px] bg-card z-20 font-medium whitespace-nowrap border-r">
+                                        <TableCell className="sticky left-[var(--col1-width)] bg-card z-20 font-medium whitespace-nowrap border-r" style={{width: 'var(--col2-width)'}}>
                                             <p>{profile.name}</p>
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
-                                        <TableCell className="sticky left-[320px] bg-card z-20 font-medium whitespace-nowrap border-r">
+                                        <TableCell className="sticky left-[calc(var(--col1-width)+var(--col2-width))] bg-card z-20 font-medium whitespace-nowrap border-r" style={{width: 'var(--col3-width)'}}>
                                         <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
@@ -666,7 +669,7 @@ export default function JobRecordSheet() {
                                                     className="p-0 text-center relative min-w-[100px] border-r"
                                                     onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
-                                                    <div className={cn("relative h-10 w-full flex items-center justify-center", isInSelection && "bg-blue-200/50")}>
+                                                    <div className={cn("relative h-10 w-full", isInSelection && "bg-blue-200/50")}>
                                                         <Input
                                                             id={`${profile.id}-${day}`}
                                                             type="text"
@@ -721,7 +724,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r">Overtime Hours</TableCell>
+                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: 'var(--col1-width)'}}>Overtime Hours</TableCell>
                                             {dayHeaders.map(day => {
                                                 return (
                                                     <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
@@ -796,3 +799,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
