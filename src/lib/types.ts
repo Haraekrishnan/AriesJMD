@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -772,3 +773,4 @@ export type JobRecordPlant = {
   id: string;
   name: string;
 };
+

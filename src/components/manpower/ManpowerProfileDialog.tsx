@@ -315,6 +315,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         }));
     }
 
+    // Explicitly set undefined fields to null to ensure they are removed in Firebase
     const cleanedData: Partial<ManpowerProfile> = { ...dataToSubmit };
     Object.keys(cleanedData).forEach(key => {
         if (cleanedData[key as keyof typeof cleanedData] === undefined) {
@@ -680,3 +681,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
