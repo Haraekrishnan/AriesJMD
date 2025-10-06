@@ -9,9 +9,6 @@ import { AlertTriangle } from 'lucide-react';
 export default function JobRecordPage() {
     const { can } = useAppContext();
 
-    // The page is viewable by everyone, so we no longer need a hard access block.
-    // The JobRecordSheet component will handle disabling editing based on permissions.
-    
     return (
         <div className="space-y-8 h-full flex flex-col">
             <div>
@@ -20,11 +17,7 @@ export default function JobRecordPage() {
                     Track monthly attendance and work allocation for each employee.
                 </p>
             </div>
-            <Card className="flex-1 flex flex-col">
-                <CardContent className="p-0 flex-1 flex flex-col">
-                    <JobRecordSheet />
-                </CardContent>
-            </Card>
+            <JobRecordSheet />
         </div>
     );
 }

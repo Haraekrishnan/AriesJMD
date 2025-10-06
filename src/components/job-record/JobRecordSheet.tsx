@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -509,7 +508,8 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 flex flex-col h-full overflow-hidden bg-card border rounded-lg">
+                {/* --- FROZEN HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -571,8 +571,14 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
-                 <div className="relative flex-1 flex flex-col overflow-hidden">
-                    <div ref={tableContainerRef} className="flex-1 overflow-auto visible-scrollbar">
+                
+                 {/* --- HORIZONTAL SCROLLBAR FOR HEADER --- */}
+                <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar h-[18px] shrink-0">
+                    <div style={{ width: `calc(320px + 150px + ${dayHeaders.length * 100}px + 9 * 150px)`}} className="h-[1px]"></div>
+                </div>
+
+                {/* --- SCROLLABLE TABLE --- */}
+                 <div ref={tableContainerRef} className="flex-1 overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
@@ -744,7 +750,6 @@ export default function JobRecordSheet() {
                         </TableBody>
                     </Table>
                     </div>
-                </div>
                 <div className="shrink-0 z-20 border-t bg-card">
                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="item-1">
@@ -791,3 +796,4 @@ export default function JobRecordSheet() {
 }
 
     
+
