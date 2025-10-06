@@ -196,7 +196,6 @@ export default function JobRecordSheet() {
             }
         });
 
-        // Only sort if not searching, to preserve search result order
         if (!searchTerm) {
             Object.keys(groups).forEach(plantName => {
                 const currentOrder = jobRecordForMonth.plantsOrder?.[plantName];
@@ -322,7 +321,7 @@ export default function JobRecordSheet() {
             const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
             
             ws_data.forEach((row, r) => {
-              if (r < 3) return; // Skip title and header
+              if (r < 3) return;
               row.forEach((cellData, c) => {
                   if (c >= 2 && c < dayHeadersExcel.length + 2) {
                       const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
@@ -572,135 +571,135 @@ export default function JobRecordSheet() {
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
     return (
-        <TooltipProvider>
-             <datalist id="jobcodes-datalist">
-                {jobCodes && jobCodes.map(jc => (
-                    <option key={jc.id} value={jc.code} />
-                ))}
-            </datalist>
-            <div className="flex flex-col h-[calc(100vh-240px)]">
-                <div className="p-4 border-b space-y-4">
-                    <div className="flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-lg font-semibold flex items-center gap-2">
-                                {format(currentMonth, 'MMMM yyyy')}
-                                {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
-                            </span>
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                            <div className="relative ml-4">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="Search by name..." 
-                                    className="pl-9 w-64"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
+      <TooltipProvider>
+           <datalist id="jobcodes-datalist">
+              {jobCodes && jobCodes.map(jc => (
+                  <option key={jc.id} value={jc.code} />
+              ))}
+          </datalist>
+          <div className="flex flex-col h-[calc(100vh-200px)] border rounded-lg">
+              <div className="p-4 border-b space-y-4 shrink-0">
+                  <div className="flex flex-wrap justify-between items-center gap-4">
+                      <div className="flex items-center gap-2">
+                          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
+                              <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-lg font-semibold flex items-center gap-2">
+                              {format(currentMonth, 'MMMM yyyy')}
+                              {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                          </span>
+                          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
+                              <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <div className="relative ml-4">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                  placeholder="Search by name..." 
+                                  className="pl-9 w-64"
+                                  value={searchTerm}
+                                  onChange={(e) => setSearchTerm(e.target.value)}
+                              />
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
+                          {user?.role === 'Admin' && (
+                              <>
+                                  <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
+                                  <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                              </>
+                          )}
+                          {canEditSheet && (
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
+                          </Tooltip>
+                          )}
+                          {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
+                                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
+                          )}
+                          {user?.role === 'Admin' && isCurrentSheetLocked && (
+                              <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
+                                  <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
+                              </Button>
+                          )}
+                      </div>
+                  </div>
+              </div>
+              <div className="flex-1 overflow-auto">
+                {!searchTerm ? (
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+                        <div className="sticky top-0 z-10 bg-background py-2 border-b">
+                            <TabsList className="px-4">
+                                {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                            </TabsList>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
-                            {user?.role === 'Admin' && (
-                                <>
-                                    <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
-                                    <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
-                                </>
-                            )}
-                            {canEditSheet && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
-                            </Tooltip>
-                            )}
-                            {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-                            {user?.role === 'Admin' && isCurrentSheetLocked && (
-                                <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
-                                    <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-auto">
-                    {!searchTerm ? (
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                            <div className="sticky top-[105px] z-30 bg-background py-2">
-                                <TabsList>
-                                    {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                                </TabsList>
-                            </div>
-                            {allTabs.map(plant => (
-                                <TabsContent key={plant} value={plant} className="flex-1 overflow-auto mt-0">
-                                    {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
-                                </TabsContent>
-                            ))}
-                        </Tabs>
-                    ) : (
-                        renderTableForPlant('Search Results', searchResults)
-                    )}
-                </div>
-
-                <Accordion type="single" collapsible className="w-full mt-4">
-                    <AccordionItem value="item-1">
-                        <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                           <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                            {jobCodes && jobCodes.map(jc => (
-                                <div key={jc.id} className="flex items-start gap-4 text-xs">
-                                    <div className="font-bold w-12">{jc.code}</div>
-                                    <div className="flex-1">
-                                        <p>{jc.details}</p>
-                                        {jc.jobNo && <p className="text-muted-foreground">Job No: {jc.jobNo}</p>}
-                                    </div>
-                                    <div className="font-semibold">{manDaysCountByCodeForCurrentTab[jc.code] || 0}</div>
-                                    {user?.role === 'Admin' && (
-                                        <div className="flex">
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingJobCode(jc)}><Edit className="h-3 w-3"/></Button>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle>
-                                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                           </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </div>
-            <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
-            <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
-            {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
-        </TooltipProvider>
+                        {allTabs.map(plant => (
+                            <TabsContent key={plant} value={plant} className="flex-1 overflow-auto mt-0">
+                                {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                ) : (
+                   <div className="overflow-auto">
+                    {renderTableForPlant('Search Results', searchResults)}
+                   </div>
+                )}
+              </div>
+              <Accordion type="single" collapsible className="w-full mt-auto shrink-0">
+                  <AccordionItem value="item-1">
+                      <AccordionTrigger className="p-3 bg-muted/50 rounded-md text-sm font-semibold">
+                          <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                         <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                          {jobCodes && jobCodes.map(jc => (
+                              <div key={jc.id} className="flex items-start gap-4 text-xs">
+                                  <div className="font-bold w-12">{jc.code}</div>
+                                  <div className="flex-1">
+                                      <p>{jc.details}</p>
+                                      {jc.jobNo && <p className="text-muted-foreground">Job No: {jc.jobNo}</p>}
+                                  </div>
+                                  <div className="font-semibold">{manDaysCountByCodeForCurrentTab[jc.code] || 0}</div>
+                                  {user?.role === 'Admin' && (
+                                      <div className="flex">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingJobCode(jc)}><Edit className="h-3 w-3"/></Button>
+                                          <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                  <AlertDialogHeader>
+                                                      <AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle>
+                                                      <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                  </AlertDialogHeader>
+                                                  <AlertDialogFooter>
+                                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                      <AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction>
+                                                  </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                          </AlertDialog>
+                                      </div>
+                                  )}
+                              </div>
+                          ))}
+                         </div>
+                      </AccordionContent>
+                  </AccordionItem>
+              </Accordion>
+          </div>
+          <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
+          <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
+          {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
+      </TooltipProvider>
     );
 }
 
