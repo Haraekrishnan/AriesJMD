@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -119,7 +120,7 @@ export default function JobRecordSheet() {
         return groups;
 
     }, [manpowerProfiles, jobRecordForMonth, prevJobRecordForMonth, searchTerm, jobRecordPlants]);
-
+    
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
             saveJobRecord(monthKey, update.profileId, update.day, update.code, 'status');
@@ -693,7 +694,7 @@ export default function JobRecordSheet() {
                                                         {canEditSheet && (
                                                             <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
-                                                                className="absolute bottom-0 right-0 w-2 h-2 bg-blue-600 cursor-crosshair"
+                                                                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full cursor-crosshair"
                                                             />
                                                         )}
                                                     </div>
