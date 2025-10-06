@@ -13,15 +13,15 @@ export default function JobRecordPage() {
     // The JobRecordSheet component will handle disabling editing based on permissions.
     
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 h-full flex flex-col">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Job Record Sheet</h1>
                 <p className="text-muted-foreground">
                     Track monthly attendance and work allocation for each employee.
                 </p>
             </div>
-            <Card>
-                <CardContent className="p-0">
+            <Card className="flex-1 flex flex-col">
+                <CardContent className="p-0 flex-1 flex flex-col">
                     <JobRecordSheet />
                 </CardContent>
             </Card>

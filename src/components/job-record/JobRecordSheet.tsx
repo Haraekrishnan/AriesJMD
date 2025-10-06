@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -16,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -181,15 +182,16 @@ export default function JobRecordSheet() {
 
         if (!topScroll || !tableContainer) return;
 
-        const handleTopScroll = () => tableContainer.scrollLeft = topScroll.scrollLeft;
-        const handleTableScroll = () => topScroll.scrollLeft = tableContainer.scrollLeft;
+        const handleTopScroll = () => { if (tableContainer) tableContainer.scrollLeft = topScroll.scrollLeft; };
+        const handleTableScroll = () => { if (topScroll) topScroll.scrollLeft = tableContainer.scrollLeft; };
+
 
         topScroll.addEventListener('scroll', handleTopScroll);
         tableContainer.addEventListener('scroll', handleTableScroll);
 
         return () => {
-            topScroll.removeEventListener('scroll', handleTopScroll);
-            tableContainer.removeEventListener('scroll', handleTableScroll);
+            if (topScroll) topScroll.removeEventListener('scroll', handleTopScroll);
+            if (tableContainer) tableContainer.removeEventListener('scroll', handleTableScroll);
         };
     }, []);
 
@@ -500,10 +502,6 @@ export default function JobRecordSheet() {
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
-    const col1Width = 120;
-    const col2Width = 200;
-    const col3Width = 150;
-
     return (
         <TooltipProvider>
             <datalist id="jobcodes-datalist">
@@ -511,7 +509,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
                 <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -573,18 +571,14 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
-
-                <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar border-b sticky top-[152px] z-20 bg-card">
-                    <div style={{ width: `${col1Width + col2Width + col3Width + (dayHeaders.length * 100) + (9 * 150)}px`, height: '1px' }}></div>
-                </div>
-
-                <div ref={tableContainerRef} className="overflow-auto visible-scrollbar">
+                 <div className="relative flex-1 flex flex-col overflow-hidden">
+                    <div ref={tableContainerRef} className="flex-1 overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-30 border-r" style={{ minWidth: col1Width, width: col1Width }}>S.No / Actions</TableHead>
-                                <TableHead className="sticky bg-card z-30 min-w-[var(--col2-width)] border-r" style={{ left: col1Width, width: col2Width }}>Name / EP No.</TableHead>
-                                <TableHead className="sticky bg-card z-30 min-w-[var(--col3-width)] border-r" style={{ left: col1Width + col2Width, width: col3Width }}>Plant</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-30 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
+                                <TableHead className="sticky bg-card z-30 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
+                                <TableHead className="sticky bg-card z-30 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
                                     <TableHead key={day} className="text-center min-w-[100px] border-r">
                                         {day}
@@ -631,7 +625,7 @@ export default function JobRecordSheet() {
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: col1Width}}>
+                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: '120px'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -645,11 +639,11 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: col1Width, width: col2Width }}>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
                                             <p>{profile.name}</p>
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
-                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: col1Width + col2Width, width: col3Width }}>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
                                         <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
@@ -694,10 +688,10 @@ export default function JobRecordSheet() {
                                                             <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
                                                             </Tooltip>
                                                         )}
-                                                        {canEditSheet && (
-                                                             <div 
+                                                         {canEditSheet && (
+                                                            <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
-                                                                className="absolute bottom-0 right-0 w-4 h-4 cursor-crosshair z-30"
+                                                                className="absolute bottom-0 right-0 w-4 h-4 cursor-crosshair z-30 bg-transparent"
                                                             />
                                                         )}
                                                     </div>
@@ -725,7 +719,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: col1Width}}>Overtime Hours</TableCell>
+                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: '320px'}}>Overtime Hours</TableCell>
                                             {dayHeaders.map(day => {
                                                 return (
                                                     <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
@@ -749,6 +743,7 @@ export default function JobRecordSheet() {
                             })}
                         </TableBody>
                     </Table>
+                    </div>
                 </div>
                 <div className="shrink-0 z-20 border-t bg-card">
                     <Accordion type="single" collapsible className="w-full">
@@ -774,14 +769,8 @@ export default function JobRecordSheet() {
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle>
-                                                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
+                                                        <AlertDialogHeader><AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction></AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
                                             </div>
@@ -800,7 +789,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
-
-    
