@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -37,12 +37,10 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     
-    // Drag-to-fill state
-    const [isDragging, setIsDragging] = useState(false);
-    const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
-    const [fillValue, setFillValue] = useState<string>('');
-    const [endCell, setEndCell] = useState<{ profileId: string; day: number } | null>(null);
-    const dragFillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Refs for scrolling
+    const mainScrollRef = useRef<HTMLDivElement>(null);
+    const topScrollRef = useRef<HTMLDivElement>(null);
+    const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -121,6 +119,13 @@ export default function JobRecordSheet() {
 
     }, [manpowerProfiles, jobRecordForMonth, prevJobRecordForMonth, searchTerm, jobRecordPlants]);
     
+    // Drag-to-fill state
+    const [isDragging, setIsDragging] = useState(false);
+    const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
+    const [fillValue, setFillValue] = useState<string>('');
+    const [endCell, setEndCell] = useState<{ profileId: string; day: number } | null>(null);
+    const dragFillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
             saveJobRecord(monthKey, update.profileId, update.day, update.code, 'status');
@@ -165,6 +170,32 @@ export default function JobRecordSheet() {
         setEndCell(null);
         setFillValue('');
     }, [isDragging, startCell, endCell, fillValue, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
+
+    useEffect(() => {
+        const handleSyncScroll = (source: HTMLDivElement, target1: HTMLDivElement | null, target2: HTMLTableSectionElement | null) => {
+            if (target1) {
+                target1.scrollLeft = source.scrollLeft;
+            }
+            if (target2) {
+                target2.scrollLeft = source.scrollLeft;
+            }
+        };
+
+        const main = mainScrollRef.current;
+        const top = topScrollRef.current;
+        const header = tableHeaderRef.current;
+
+        const mainScrollHandler = () => handleSyncScroll(main!, top, header);
+        const topScrollHandler = () => handleSyncScroll(top!, main, header);
+
+        main?.addEventListener('scroll', mainScrollHandler);
+        top?.addEventListener('scroll', topScrollHandler);
+
+        return () => {
+            main?.removeEventListener('scroll', mainScrollHandler);
+            top?.removeEventListener('scroll', topScrollHandler);
+        };
+    }, []);
 
     useEffect(() => {
         const newStates: Record<string, string> = {};
@@ -574,10 +605,15 @@ export default function JobRecordSheet() {
                         </TabsList>
                      </Tabs>
                 </div>
+                
+                 {/* Top Scrollbar */}
+                <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar h-4 bg-muted border-b">
+                    <div style={{ width: `${380 + (dayHeaders.length * 100) + (9 * 150)}px`, height: '1px' }}></div>
+                </div>
 
-                <div className="flex-1 overflow-auto visible-scrollbar">
+                <div ref={mainScrollRef} className="flex-1 overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
-                        <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableHeader ref={tableHeaderRef} className="sticky top-0 bg-background z-10">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-background z-20 w-[120px] border-r">S.No / Actions</TableHead>
                                 <TableHead className="sticky left-[120px] bg-background z-20 min-w-[200px] border-r">Name / EP No.</TableHead>
@@ -587,14 +623,14 @@ export default function JobRecordSheet() {
                                         {day}
                                     </TableHead>
                                 ))}
-                                <TableHead className="text-center min-w-[100px] border-r">Total OFF</TableHead>
-                                <TableHead className="text-center min-w-[100px] border-r">Total Leave</TableHead>
-                                <TableHead className="text-center min-w-[100px] border-r">Total ML</TableHead>
-                                <TableHead className="text-center min-w-[120px] border-r">Over Time</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total OFF</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total Leave</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total ML</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Over Time</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
-                                <TableHead className="text-center min-w-[120px] border-r">Total Working Days</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total Working Days</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
-                                <TableHead className="text-center min-w-[120px] border-r">Salary Days</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Salary Days</TableHead>
                                 <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -701,15 +737,15 @@ export default function JobRecordSheet() {
                                                 </TableCell>
                                             );
                                         })}
-                                        <TableCell className="text-center font-bold border-r">{summary.offDays}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{summary.leaveDays}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{summary.medicalLeave}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{totalOvertime}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{summary.standbyTraining}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{summary.workDays}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{summary.reptOffice}</TableCell>
-                                        <TableCell className="text-center font-bold border-r">{salaryDays}</TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.offDays}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.leaveDays}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.medicalLeave}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{totalOvertime}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.standbyTraining}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
+                                        <TableCell className="text-center min-w-[150px]">
                                             <Input
                                                 type="number"
                                                 defaultValue={record.additionalSundayDuty || ''}
