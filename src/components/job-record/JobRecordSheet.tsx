@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
@@ -20,6 +21,7 @@ import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -405,7 +407,7 @@ export default function JobRecordSheet() {
 
         return (
             <Table className="min-w-full border-collapse">
-                <TableHeader className="sticky top-0 bg-card z-10">
+                <TableHeader className="sticky top-[150px] bg-card z-10">
                     <TableRow>
                         <TableHead className="sticky left-0 bg-card z-20 w-[120px] border-r">S.No / Actions</TableHead>
                         <TableHead className="sticky left-[120px] bg-card z-20 min-w-[200px] border-r">Name / EP No.</TableHead>
@@ -576,8 +578,8 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="space-y-4">
-                <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b space-y-4">
+            <div className="flex flex-col h-[calc(100vh-240px)]">
+                <div className="p-4 border-b space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -632,21 +634,25 @@ export default function JobRecordSheet() {
                             )}
                         </div>
                     </div>
-                     {!searchTerm && (
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList>
-                                {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                            </TabsList>
-                        </Tabs>
-                    )}
                 </div>
 
-                <div className="overflow-x-auto">
-                {searchTerm ? (
-                    renderTableForPlant('Search Results', searchResults)
-                ) : (
-                   renderTableForPlant(activeTab, filteredAndGroupedProfiles[activeTab] || [])
-                )}
+                <div className="flex-1 overflow-auto">
+                    {!searchTerm ? (
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+                            <div className="sticky top-[105px] z-30 bg-background py-2">
+                                <TabsList>
+                                    {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                                </TabsList>
+                            </div>
+                            {allTabs.map(plant => (
+                                <TabsContent key={plant} value={plant} className="flex-1 overflow-auto mt-0">
+                                    {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
+                                </TabsContent>
+                            ))}
+                        </Tabs>
+                    ) : (
+                        renderTableForPlant('Search Results', searchResults)
+                    )}
                 </div>
 
                 <Accordion type="single" collapsible className="w-full mt-4">
@@ -697,3 +703,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
