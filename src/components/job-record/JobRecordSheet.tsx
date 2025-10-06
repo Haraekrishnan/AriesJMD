@@ -18,14 +18,14 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
-import type { JobCode, ManpowerProfile } from '@/lib/types';
+import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet } = useAppContext();
+    const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
@@ -36,9 +36,6 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
 
-    const topScrollRef = useRef<HTMLDivElement>(null);
-    const tableContainerRef = useRef<HTMLDivElement>(null);
-    
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
@@ -176,25 +173,6 @@ export default function JobRecordSheet() {
     };
     
     useEffect(() => {
-        const topScroll = topScrollRef.current;
-        const tableContainer = tableContainerRef.current;
-
-        if (!topScroll || !tableContainer) return;
-
-        const handleTopScroll = () => { if (tableContainer) tableContainer.scrollLeft = topScroll.scrollLeft; };
-        const handleTableScroll = () => { if (topScroll) topScroll.scrollLeft = tableContainer.scrollLeft; };
-
-
-        topScroll.addEventListener('scroll', handleTopScroll);
-        tableContainer.addEventListener('scroll', handleTableScroll);
-
-        return () => {
-            if (topScroll) topScroll.removeEventListener('scroll', handleTopScroll);
-            if (tableContainer) tableContainer.removeEventListener('scroll', handleTableScroll);
-        };
-    }, []);
-
-    useEffect(() => {
         const newStates: Record<string, string> = {};
         if (jobRecords[monthKey]?.records) {
             for (const profileId in jobRecords[monthKey].records) {
@@ -308,12 +286,12 @@ export default function JobRecordSheet() {
     };
     
     const plantProjects = useMemo(() => {
-        return (jobRecordPlants || []).map(p => p.name).sort();
+        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
     }, [jobRecordPlants]);
 
     useEffect(() => {
-        if (plantProjects.length > 0 && !plantProjects.includes(activeTab) && activeTab !== 'Unassigned') {
-            setActiveTab(plantProjects[0]);
+        if (plantProjects.length > 0 && !plantProjects.some(p => p.name === activeTab) && activeTab !== 'Unassigned') {
+            setActiveTab('Unassigned');
         }
     }, [plantProjects, activeTab]);
     
@@ -329,7 +307,7 @@ export default function JobRecordSheet() {
         });
     };
     
-    const allTabs = Array.from(new Set(['Unassigned', ...plantProjects])).sort();
+    const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
     
     const canGoToPreviousMonth = useMemo(() => {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
@@ -499,6 +477,12 @@ export default function JobRecordSheet() {
         toast({ title: 'Job Code Deleted', variant: 'destructive' });
     }
 
+    const handleDeletePlant = (plant: JobRecordPlant) => {
+        deleteJobRecordPlant(plant.id);
+        setActiveTab('Unassigned');
+        toast({title: 'Plant Deleted', variant: 'destructive'});
+    }
+
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
     return (
@@ -508,9 +492,9 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="flex-1 flex flex-col h-full overflow-hidden bg-card border rounded-lg">
+            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full overflow-hidden bg-card border rounded-lg">
                 {/* --- FROZEN HEADER --- */}
-                <div className="p-4 border-b bg-card shrink-0 space-y-4 sticky top-0 z-40">
+                <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
@@ -567,18 +551,38 @@ export default function JobRecordSheet() {
                     </div>
                      <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="w-full justify-start h-auto">
-                            {allTabs.map(plant => <TabsTrigger key={plant} value={plant} className="flex-1">{plant}</TabsTrigger>)}
+                            {allTabs.map(plantName => {
+                                const plant = plantProjects.find(p => p.name === plantName);
+                                return (
+                                <div key={plantName} className="relative group">
+                                    <TabsTrigger value={plantName}>{plantName}</TabsTrigger>
+                                    {user?.role === 'Admin' && plant && plantName !== 'Unassigned' && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive hidden group-hover:flex">
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete Plant "{plant.name}"?</AlertDialogTitle>
+                                                    <AlertDialogDescription>This will move all assigned employees to "Unassigned". This action cannot be undone.</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeletePlant(plant)}>Delete Plant</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </div>
+                            )})}
                         </TabsList>
                      </Tabs>
                 </div>
-                
-                 {/* --- HORIZONTAL SCROLLBAR FOR HEADER --- */}
-                <div ref={topScrollRef} className="overflow-x-auto visible-scrollbar h-[18px] shrink-0">
-                    <div style={{ width: `calc(320px + 150px + ${dayHeaders.length * 100}px + 9 * 150px)`}} className="h-[1px]"></div>
-                </div>
 
                 {/* --- SCROLLABLE TABLE --- */}
-                 <div ref={tableContainerRef} className="flex-1 overflow-auto visible-scrollbar">
+                 <div className="flex-1 overflow-auto relative">
                     <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
@@ -654,7 +658,7 @@ export default function JobRecordSheet() {
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Unassigned">Unassigned</SelectItem>
-                                                    {plantProjects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                                    {plantProjects.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
@@ -694,8 +698,8 @@ export default function JobRecordSheet() {
                                                             <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
                                                             </Tooltip>
                                                         )}
-                                                         {canEditSheet && (
-                                                            <div 
+                                                        {canEditSheet && (
+                                                             <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
                                                                 className="absolute bottom-0 right-0 w-4 h-4 cursor-crosshair z-30 bg-transparent"
                                                             />
@@ -796,4 +800,5 @@ export default function JobRecordSheet() {
 }
 
     
+
 
