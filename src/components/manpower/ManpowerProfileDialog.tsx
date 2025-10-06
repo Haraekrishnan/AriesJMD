@@ -302,22 +302,26 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity', 
         'firstAidExpiryDate', 'resignationDate', 'terminationDate'
     ];
-
-    const cleanedData: Partial<ManpowerProfile> = { ...dataToSubmit };
-
+    
     dateFields.forEach(field => {
         const dateValue = data[field];
-        cleanedData[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+        dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
     });
     
     if (data.skills) {
-        cleanedData.skills = data.skills.map(skill => ({
+        dataToSubmit.skills = data.skills.map(skill => ({
             ...skill,
             validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
         }));
     }
 
-  
+    const cleanedData: Partial<ManpowerProfile> = { ...dataToSubmit };
+    Object.keys(cleanedData).forEach(key => {
+        if (cleanedData[key as keyof typeof cleanedData] === undefined) {
+            cleanedData[key as keyof typeof cleanedData] = null;
+        }
+    });
+
     if (profile) {
       updateManpowerProfile({ ...profile, ...cleanedData } as ManpowerProfile);
       toast({ title: 'Profile Updated' });
@@ -676,5 +680,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
-    

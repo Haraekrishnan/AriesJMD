@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -413,7 +406,7 @@ export type ManpowerProfile = {
   labourLicenseNo?: string;
   eic?: string; 
   joiningDate?: string | null; // ISO
-  plant?: string; // New field for job record plant assignment
+  plantName?: string; // DEPRECATED in favor of jobRecords
 
   // Policy & Card Details
   wcPolicyNumber?: string;
@@ -427,9 +420,9 @@ export type ManpowerProfile = {
 
   // Validity Dates
   passIssueDate?: string | null; // ISO
-  workOrderExpiryDate?: string | null; // ISO, replaces woValidity
-  wcPolicyExpiryDate?: string | null; // ISO, replaces wcPolicyValidity
-  labourLicenseExpiryDate?: string | null; // ISO, new
+  workOrderExpiryDate?: string | null; // ISO
+  wcPolicyExpiryDate?: string | null; // ISO
+  labourLicenseExpiryDate?: string | null; // ISO
   medicalExpiryDate?: string | null; // ISO
   safetyExpiryDate?: string | null; // ISO
   irataValidity?: string | null; // ISO
@@ -779,5 +772,3 @@ export type JobRecordPlant = {
   id: string;
   name: string;
 };
-
-    
