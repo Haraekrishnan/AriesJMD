@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,13 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     
+    // Drag-to-fill state
+    const [isDragging, setIsDragging] = useState(false);
+    const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
+    const [fillValue, setFillValue] = useState<string>('');
+    const [endCell, setEndCell] = useState<{ profileId: string; day: number } | null>(null);
+    const dragFillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
@@ -69,6 +77,97 @@ export default function JobRecordSheet() {
             setCurrentMonth(implementationStartDate);
         }
     }, [currentMonth]);
+    
+    const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
+        updates.forEach(update => {
+            saveJobRecord(monthKey, update.profileId, update.day, update.code, 'status');
+        });
+    }, [monthKey, saveJobRecord]);
+
+    const handleMouseUp = useCallback(() => {
+        if (isDragging && startCell && endCell && fillValue) {
+            const profiles = filteredAndGroupedProfiles[activeTab] || [];
+            const startIndex = profiles.findIndex(p => p.id === startCell.profileId);
+            const endIndex = profiles.findIndex(p => p.id === endCell.profileId);
+
+            const minRow = Math.min(startIndex, endIndex);
+            const maxRow = Math.max(startIndex, endIndex);
+            const minCol = Math.min(startCell.day, endCell.day);
+            const maxCol = Math.max(startCell.day, endCell.day);
+
+            const updates: { profileId: string; day: number; code: string }[] = [];
+            const newCellStates = { ...cellStates };
+
+            for (let i = minRow; i <= maxRow; i++) {
+                const profileId = profiles[i].id;
+                for (let j = minCol; j <= maxCol; j++) {
+                    updates.push({ profileId, day: j, code: fillValue });
+                    newCellStates[`${profileId}-${j}`] = fillValue;
+                }
+            }
+            batchUpdateJobRecords(updates);
+            setCellStates(newCellStates);
+        }
+        setIsDragging(false);
+        setStartCell(null);
+        setEndCell(null);
+        setFillValue('');
+    }, [isDragging, startCell, endCell, fillValue, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
+
+    useEffect(() => {
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [handleMouseUp]);
+
+    const handleMouseDown = (profileId: string, day: number) => {
+        setIsDragging(true);
+        const cellId = `${profileId}-${day}`;
+        const value = cellStates[cellId] || '';
+        setStartCell({ profileId, day });
+        setEndCell({ profileId, day });
+        setFillValue(value);
+    };
+
+    const handleMouseEnter = (profileId: string, day: number) => {
+        if (isDragging) {
+            if (dragFillTimeoutRef.current) {
+                clearTimeout(dragFillTimeoutRef.current);
+            }
+            dragFillTimeoutRef.current = setTimeout(() => {
+                setEndCell({ profileId, day });
+            }, 50); // Debounce to prevent rapid updates
+        }
+    };
+
+    const getSelectionRange = () => {
+        if (!isDragging || !startCell || !endCell) return null;
+        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const startIndex = profiles.findIndex(p => p.id === startCell.profileId);
+        const endIndex = profiles.findIndex(p => p.id === endCell.profileId);
+    
+        return {
+            minRow: Math.min(startIndex, endIndex),
+            maxRow: Math.max(startIndex, endIndex),
+            minCol: Math.min(startCell.day, endCell.day),
+            maxCol: Math.max(startCell.day, endCell.day),
+        };
+    };
+    
+    const selectionRange = getSelectionRange();
+    
+    const isCellInSelection = (profileId: string, day: number) => {
+        if (!selectionRange) return false;
+        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const rowIndex = profiles.findIndex(p => p.id === profileId);
+        return (
+            rowIndex >= selectionRange.minRow &&
+            rowIndex <= selectionRange.maxRow &&
+            day >= selectionRange.minCol &&
+            day <= selectionRange.maxCol
+        );
+    };
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const code = (value || '').toUpperCase();
@@ -84,7 +183,6 @@ export default function JobRecordSheet() {
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert the cell state
             const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
             setCellStates(prev => ({...prev, [cellId]: previousCode}));
             return;
@@ -559,10 +657,15 @@ export default function JobRecordSheet() {
                                                 const code = cellStates[`${profile.id}-${day}`] || '';
                                                 const overtimeForDay = dailyOvertime[day] || 0;
                                                 const colorInfo = JOB_CODE_COLORS[code as string] || {};
+                                                const isInSelection = isCellInSelection(profile.id, day);
 
                                                 return (
-                                                    <TableCell key={day} className="p-0 text-center relative min-w-[100px] border-r">
-                                                        <div className="relative h-10 flex items-center justify-center">
+                                                    <TableCell 
+                                                        key={day} 
+                                                        className="p-0 text-center relative min-w-[100px] border-r"
+                                                        onMouseEnter={() => handleMouseEnter(profile.id, day)}
+                                                    >
+                                                        <div className={cn("relative h-10 flex items-center justify-center", isInSelection && "bg-blue-200/50")}>
                                                             <Input
                                                                 id={`${profile.id}-${day}`}
                                                                 type="text"
@@ -585,6 +688,12 @@ export default function JobRecordSheet() {
                                                                 </TooltipTrigger>
                                                                 <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
                                                                 </Tooltip>
+                                                            )}
+                                                            {canEditSheet && (
+                                                                <div 
+                                                                    onMouseDown={() => handleMouseDown(profile.id, day)}
+                                                                    className="absolute bottom-0 right-0 w-2 h-2 bg-blue-600 cursor-crosshair"
+                                                                />
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -639,7 +748,6 @@ export default function JobRecordSheet() {
 
                 </Tabs>
                 
-                {/* Fixed Footer */}
                 <div className="shrink-0 z-20 border-t bg-card">
                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="item-1">
@@ -690,3 +798,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
