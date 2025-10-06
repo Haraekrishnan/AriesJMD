@@ -524,7 +524,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
+            <div className="grid grid-rows-[auto,1fr,auto] h-full border rounded-lg overflow-hidden bg-card">
                 {/* Header Section */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
@@ -595,9 +595,9 @@ export default function JobRecordSheet() {
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-background z-20 w-[120px] border-r">S.No / Actions</TableHead>
-                                <TableHead className="sticky left-[120px] bg-background z-20 min-w-[200px] border-r">Name / EP No.</TableHead>
-                                <TableHead className="sticky left-[320px] bg-background z-20 min-w-[150px] border-r">Plant</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-30 w-[120px] border-r">S.No / Actions</TableHead>
+                                <TableHead className="sticky left-[120px] bg-card z-30 min-w-[200px] border-r">Name / EP No.</TableHead>
+                                <TableHead className="sticky left-[320px] bg-card z-30 min-w-[150px] border-r">Plant</TableHead>
                                 {dayHeaders.map(day => (
                                     <TableHead key={day} className="text-center min-w-[100px] border-r">
                                         {day}
@@ -644,7 +644,7 @@ export default function JobRecordSheet() {
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow>
-                                        <TableCell className="sticky left-0 bg-background z-20 flex items-center border-r">
+                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r">
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -658,11 +658,11 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky left-[120px] bg-background z-20 font-medium whitespace-nowrap border-r">
+                                        <TableCell className="sticky left-[120px] bg-card z-20 font-medium whitespace-nowrap border-r">
                                             <p>{profile.name}</p>
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
-                                        <TableCell className="sticky left-[320px] bg-background z-20 font-medium whitespace-nowrap border-r">
+                                        <TableCell className="sticky left-[320px] bg-card z-20 font-medium whitespace-nowrap border-r">
                                         <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
@@ -813,3 +813,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
