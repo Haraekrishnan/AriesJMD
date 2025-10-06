@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -37,16 +37,14 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     
-    // Refs for scrolling
     const mainScrollRef = useRef<HTMLDivElement>(null);
     const topScrollRef = useRef<HTMLDivElement>(null);
-    const tableHeaderRef = useRef<HTMLTableSectionElement>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
     const [cellStates, setCellStates] = useState<Record<string, string>>({});
-    
+
     const jobRecordForMonth = useMemo(() => {
         return jobRecords[monthKey] || { records: {}, plantsOrder: {} };
     }, [jobRecords, monthKey]);
@@ -119,18 +117,17 @@ export default function JobRecordSheet() {
 
     }, [manpowerProfiles, jobRecordForMonth, prevJobRecordForMonth, searchTerm, jobRecordPlants]);
 
-    // Drag-to-fill state
-    const [isDragging, setIsDragging] = useState(false);
-    const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
-    const [fillValue, setFillValue] = useState<string>('');
-    const [endCell, setEndCell] = useState<{ profileId: string; day: number } | null>(null);
-    const dragFillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
             saveJobRecord(monthKey, update.profileId, update.day, update.code, 'status');
         });
     }, [monthKey, saveJobRecord]);
+
+    const [isDragging, setIsDragging] = useState(false);
+    const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
+    const [fillValue, setFillValue] = useState<string>('');
+    const [endCell, setEndCell] = useState<{ profileId: string; day: number } | null>(null);
+    const dragFillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleMouseUp = useCallback(() => {
         if (isDragging && startCell && endCell && fillValue) {
@@ -139,7 +136,6 @@ export default function JobRecordSheet() {
             const endIndex = profiles.findIndex(p => p.id === endCell.profileId);
 
             if (startIndex === -1 || endIndex === -1) {
-                // This can happen if switching tabs during a drag
                 setIsDragging(false);
                 setStartCell(null);
                 setEndCell(null);
@@ -172,25 +168,35 @@ export default function JobRecordSheet() {
     }, [isDragging, startCell, endCell, fillValue, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
 
     useEffect(() => {
-        const handleSyncScroll = (source: HTMLDivElement, target: HTMLDivElement | null) => {
-            if (target && target.scrollLeft !== source.scrollLeft) {
-                target.scrollLeft = source.scrollLeft;
-            }
-        };
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => window.removeEventListener('mouseup', handleMouseUp);
+    }, [handleMouseUp]);
+
+    const handleMouseDown = (profileId: string, day: number) => {
+        setIsDragging(true);
+        const cellId = `${profileId}-${day}`;
+        const value = cellStates[cellId] || '';
+        setStartCell({ profileId, day });
+        setEndCell({ profileId, day });
+        setFillValue(value);
+    };
+
+    const handleMouseEnter = (profileId: string, day: number) => {
+        if (isDragging) {
+            if (dragFillTimeoutRef.current) clearTimeout(dragFillTimeoutRef.current);
+            dragFillTimeoutRef.current = setTimeout(() => setEndCell({ profileId, day }), 50);
+        }
+    };
     
-        const main = mainScrollRef.current;
-        const top = topScrollRef.current;
-    
-        const mainScrollHandler = () => handleSyncScroll(main!, top);
-        const topScrollHandler = () => handleSyncScroll(top!, main);
-    
-        main?.addEventListener('scroll', mainScrollHandler);
-        top?.addEventListener('scroll', topScrollHandler);
-    
-        return () => {
-            main?.removeEventListener('scroll', mainScrollHandler);
-            top?.removeEventListener('scroll', topScrollHandler);
-        };
+    useEffect(() => {
+      const syncScroll = () => {
+        if (topScrollRef.current && mainScrollRef.current) {
+          topScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
+        }
+      };
+      const mainEl = mainScrollRef.current;
+      mainEl?.addEventListener('scroll', syncScroll);
+      return () => mainEl?.removeEventListener('scroll', syncScroll);
     }, []);
 
     useEffect(() => {
@@ -207,33 +213,6 @@ export default function JobRecordSheet() {
         }
         setCellStates(newStates);
     }, [jobRecordForMonth]);
-
-    useEffect(() => {
-        window.addEventListener('mouseup', handleMouseUp);
-        return () => {
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [handleMouseUp]);
-
-    const handleMouseDown = (profileId: string, day: number) => {
-        setIsDragging(true);
-        const cellId = `${profileId}-${day}`;
-        const value = cellStates[cellId] || '';
-        setStartCell({ profileId, day });
-        setEndCell({ profileId, day });
-        setFillValue(value);
-    };
-
-    const handleMouseEnter = (profileId: string, day: number) => {
-        if (isDragging) {
-            if (dragFillTimeoutRef.current) {
-                clearTimeout(dragFillTimeoutRef.current);
-            }
-            dragFillTimeoutRef.current = setTimeout(() => {
-                setEndCell({ profileId, day });
-            }, 50); // Debounce to prevent rapid updates
-        }
-    };
 
     const getSelectionRange = () => {
         if (!isDragging || !startCell || !endCell) return null;
@@ -342,12 +321,7 @@ export default function JobRecordSheet() {
             setActiveTab(plantProjects[0]);
         }
     }, [plantProjects, activeTab]);
-
-    const handleRemoveFromPlant = (employeeId: string) => {
-        saveJobRecord(monthKey, employeeId, 0, 'Unassigned', 'plant');
-        toast({ title: 'Employee Unassigned', description: 'The employee has been moved to the Unassigned group.' });
-    };
-
+    
     const toggleRow = (profileId: string) => {
         setExpandedRows(prev => {
             const newSet = new Set(prev);
@@ -374,7 +348,7 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked; // Allow editing historical if not locked
+        return can.manage_job_record && !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -596,20 +570,20 @@ export default function JobRecordSheet() {
                         </div>
                     </div>
                      <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList>
-                            {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                        <TabsList className="w-full justify-start h-auto">
+                            {allTabs.map(plant => <TabsTrigger key={plant} value={plant} className="flex-1">{plant}</TabsTrigger>)}
                         </TabsList>
                      </Tabs>
                 </div>
                 
                  {/* Top Scrollbar */}
-                <div ref={topScrollRef} className="overflow-x-scroll h-4 bg-muted border-b">
+                <div ref={topScrollRef} className="overflow-x-scroll h-4 bg-muted border-b visible-scrollbar">
                     <div style={{ width: `${380 + (dayHeaders.length * 100) + (9 * 150)}px`, height: '1px' }}></div>
                 </div>
 
                 <div ref={mainScrollRef} className="flex-1 overflow-auto">
                     <Table className="min-w-full border-collapse">
-                        <thead ref={tableHeaderRef as any} className="sticky top-0 bg-background z-10">
+                        <thead className="sticky top-0 bg-background z-10">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-background z-20 w-[120px] border-r">S.No / Actions</TableHead>
                                 <TableHead className="sticky left-[120px] bg-background z-20 min-w-[200px] border-r">Name / EP No.</TableHead>
@@ -726,7 +700,7 @@ export default function JobRecordSheet() {
                                                         {canEditSheet && (
                                                             <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
-                                                                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full cursor-crosshair"
+                                                                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full cursor-crosshair z-30"
                                                             />
                                                         )}
                                                     </div>
