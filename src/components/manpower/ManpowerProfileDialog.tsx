@@ -147,7 +147,7 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = [...MANDATORY_DOCS, 'Skill Certificate'];
+    const baseDocs = [...MANDATORY_DOCS];
     if (!profileData) {
       return baseDocs.map(name => ({ name, status: 'Pending' as DocumentStatus, details: '' }));
     }
@@ -261,7 +261,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   }, [watchTrade, form, appendDocument, removeDocument]);
   
   const onSubmit = (data: ProfileFormValues) => {
-    const finalTrade = data.trade === 'Others' ? data.otherTrade : data.trade;
+    const finalTrade = data.trade === 'Others' && data.otherTrade ? data.otherTrade : data.trade;
     const currentProfile = liveProfile;
     let finalLeaveHistory = currentProfile?.leaveHistory ? (Array.isArray(currentProfile.leaveHistory) ? [...currentProfile.leaveHistory] : Object.values(currentProfile.leaveHistory)) : [];
     

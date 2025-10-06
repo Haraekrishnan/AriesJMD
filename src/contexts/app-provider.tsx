@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1891,12 +1890,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Firebase stores array-like objects, so we may need to find the correct key
     const leaveKey = profile.leaveHistory ? Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key].id === leaveId) : undefined;
     
+    const updates: { [key: string]: any } = {};
+    updates[`/manpowerProfiles/${manpowerId}/status`] = 'Working';
+    
     if (leaveKey) {
-        const updates: { [key: string]: any } = {};
-        updates[`/manpowerProfiles/${manpowerId}/status`] = 'Working';
         updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/rejoinedDate`] = rejoinedDate.toISOString();
         updates[`/manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}/leaveEndDate`] = rejoinedDate.toISOString();
-        update(ref(rtdb), updates);
     } else {
         // Fallback for older data structure or if key isn't found
         const updatedHistory = Array.isArray(profile.leaveHistory) ? [...profile.leaveHistory] : (profile.leaveHistory ? Object.values(profile.leaveHistory) : []);
@@ -1904,14 +1903,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (leaveIndex !== -1) {
             updatedHistory[leaveIndex].rejoinedDate = rejoinedDate.toISOString();
             updatedHistory[leaveIndex].leaveEndDate = rejoinedDate.toISOString();
-            const updates: { [key: string]: any } = {};
-            updates[`/manpowerProfiles/${manpowerId}/status`] = 'Working';
             updates[`/manpowerProfiles/${manpowerId}/leaveHistory`] = updatedHistory;
-            update(ref(rtdb), updates);
         } else {
             console.error(`Could not find leave with ID ${leaveId} for user ${manpowerId}`);
+            return;
         }
     }
+    update(ref(rtdb), updates);
 }, [manpowerProfiles]);
 
   
@@ -1945,7 +1943,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user || user.role !== 'Admin') return;
     const profile = manpowerProfiles.find(p => p.id === manpowerId);
     if (!profile || !profile.leaveHistory) return;
-    const leaveKey = Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key].id === leaveId);
+    
+    const leaveKey = Object.keys(profile.leaveHistory).find(key => profile.leaveHistory![key]?.id === leaveId);
+
     if (leaveKey) {
         remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveKey}`));
     }
@@ -3054,7 +3054,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
         }))
     };
-    set(ref(rtdb, `jobSchedules/${schedule.id}`), scheduleWithNames);
+    set(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
     if (user?.role === 'Supervisor' || user?.role === 'Junior Supervisor') {
       const pcs = users.filter(u => u.permissions?.includes('prepare_master_schedule'));
       pcs.forEach(pc => {
@@ -3383,6 +3383,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
