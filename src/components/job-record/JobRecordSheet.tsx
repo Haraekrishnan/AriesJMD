@@ -646,20 +646,22 @@ export default function JobRecordSheet() {
                     </div>
                 </div>
 
-                {searchTerm ? (
-                     renderTableForPlant('Search Results', searchResults)
-                ) : (
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList>
-                            {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                        </TabsList>
-                        {allTabs.map(plant => (
-                            <TabsContent key={plant} value={plant}>
-                                {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
-                            </TabsContent>
-                        ))}
-                    </Tabs>
-                )}
+                <div className="overflow-x-auto">
+                  {searchTerm ? (
+                      renderTableForPlant('Search Results', searchResults)
+                  ) : (
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                          <TabsList>
+                              {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                          </TabsList>
+                          {allTabs.map(plant => (
+                              <TabsContent key={plant} value={plant}>
+                                  {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
+                              </TabsContent>
+                          ))}
+                      </Tabs>
+                  )}
+                </div>
 
                 <Accordion type="single" collapsible className="w-full mt-4">
                     <AccordionItem value="item-1">
@@ -709,5 +711,6 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
