@@ -1883,7 +1883,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!profile) return;
   
       const leaveHistory = { ...(profile.leaveHistory || {}) };
-      const leaveKey = Object.keys(leaveHistory).find(key => leaveHistory[key]?.id === leaveId);
+      const leaveKey = Object.keys(leaveHistory).find(key => leaveHistory[key as any]?.id === leaveId);
       
       if (!leaveKey) {
           console.error("Could not find leave record with ID:", leaveId);
@@ -2243,7 +2243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const stock = ppeStock.find(s => s.id === 'safetyShoes');
             if (stock) {
                 const currentQty = stock.quantity || 0;
-                updates[`ppeStock/safetyShoes/quantity`] = Math.max(0, currentQty - (request.quantity || 1));
+                updates['ppeStock/safetyShoes/quantity'] = Math.max(0, currentQty - (request.quantity || 1));
             }
         }
 

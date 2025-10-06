@@ -78,13 +78,14 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
             .map(u => ({ value: u.id, label: `${u.name} (${u.role})`}));
         
         // Combine and remove duplicates, giving precedence to manpowerProfiles entry if exists
-        const combined = [...regularManpower];
-        adminAndManagers.forEach(adminUser => {
-            if (!combined.some(mpUser => mpUser.value === adminUser.value)) {
-                combined.push(adminUser);
+        const combinedMap = new Map();
+        regularManpower.forEach(u => combinedMap.set(u.value, u));
+        adminAndManagers.forEach(u => {
+            if (!combinedMap.has(u.value)) {
+                combinedMap.set(u.value, u);
             }
         });
-        return combined;
+        return Array.from(combinedMap.values());
     }
     
     return regularManpower;
