@@ -263,11 +263,15 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   }, [watchTrade, form, appendDocument, removeDocument]);
   
   const onSubmit = (data: ProfileFormValues) => {
-    const finalTrade = data.trade === 'Others' && data.otherTrade ? data.otherTrade.trim() : data.trade;
-    const currentProfile = liveProfile;
-    let finalLeaveHistory = currentProfile?.leaveHistory ? (Array.isArray(currentProfile.leaveHistory) ? [...currentProfile.leaveHistory] : Object.values(currentProfile.leaveHistory)) : [];
+    const dataToSubmit: Partial<ProfileFormValues> = { ...data };
     
-    const originalStatus = currentProfile?.status;
+    if (data.trade === 'Others' && data.otherTrade) {
+      dataToSubmit.trade = data.otherTrade.trim();
+    }
+    delete dataToSubmit.otherTrade;
+
+    let finalLeaveHistory = liveProfile?.leaveHistory ? (Array.isArray(liveProfile.leaveHistory) ? [...liveProfile.leaveHistory] : Object.values(liveProfile.leaveHistory)) : [];
+    const originalStatus = liveProfile?.status;
     const newStatus = data.status;
 
     if (originalStatus === 'On Leave' && ['Terminated', 'Resigned', 'Left the Project'].includes(newStatus)) {
@@ -292,9 +296,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             finalLeaveHistory.push(leaveRecord);
         }
     }
-  
-    const dataToSubmit: any = { ...data, trade: finalTrade, leaveHistory: finalLeaveHistory };
-    delete dataToSubmit.otherTrade;
+    dataToSubmit.leaveHistory = finalLeaveHistory;
     delete dataToSubmit.currentLeave;
 
     const dateFields: (keyof ProfileFormValues)[] = [
@@ -305,21 +307,20 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     
     dateFields.forEach(field => {
         const dateValue = data[field];
-        dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+        (dataToSubmit as any)[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
     });
     
     if (data.skills) {
-        dataToSubmit.skills = data.skills.map(skill => ({
+        (dataToSubmit as any).skills = data.skills.map(skill => ({
             ...skill,
             validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
         }));
     }
 
-    // Explicitly set undefined fields to null to ensure they are removed in Firebase
     const cleanedData: Partial<ManpowerProfile> = { ...dataToSubmit };
     Object.keys(cleanedData).forEach(key => {
         if (cleanedData[key as keyof typeof cleanedData] === undefined) {
-            cleanedData[key as keyof typeof cleanedData] = null;
+            (cleanedData as any)[key] = null;
         }
     });
 
@@ -681,4 +682,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
