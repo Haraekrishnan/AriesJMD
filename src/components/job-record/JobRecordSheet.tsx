@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, GripVertical, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
@@ -406,172 +406,161 @@ export default function JobRecordSheet() {
         }
 
         return (
-            <div className="overflow-x-auto">
-                <Table className="min-w-full border-collapse">
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-30 w-[120px] border-r">S.No / Actions</TableHead>
-                            <TableHead className="sticky left-[120px] bg-card z-30 min-w-[200px] border-r">Name / EP No.</TableHead>
-                            <TableHead className="sticky left-[320px] bg-card z-30 min-w-[150px] border-r">Plant</TableHead>
-                            {dayHeaders.map(day => (
-                                <TableHead key={day} className="text-center min-w-[100px] border-r">
-                                    {day}
-                                </TableHead>
-                            ))}
-                            <TableHead className="text-center min-w-[100px] border-r">Total OFF</TableHead>
-                            <TableHead className="text-center min-w-[100px] border-r">Total Leave</TableHead>
-                            <TableHead className="text-center min-w-[100px] border-r">Total ML</TableHead>
-                            <TableHead className="text-center min-w-[120px] border-r">Over Time</TableHead>
-                            <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
-                            <TableHead className="text-center min-w-[120px] border-r">Total Working Days</TableHead>
-                            <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
-                            <TableHead className="text-center min-w-[120px] border-r">Salary Days</TableHead>
-                            <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {profiles.map((profile, index) => {
-                            const record = jobRecordForMonth.records?.[profile.id] || {};
-                            const employeeRecord = record.days || {};
-                            const dailyOvertime = record.dailyOvertime || {};
-                            
-                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
-                            const offCodes = ['OFF', 'PH', 'OS'];
-                            const leaveCodes = ['L', 'X', 'NWS'];
-                            const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
+            <Table className="min-w-full border-collapse">
+                <TableHeader className="sticky top-0 bg-card z-10">
+                    <TableRow>
+                        <TableHead className="sticky left-0 bg-card z-30 w-[120px] border-r">S.No / Actions</TableHead>
+                        <TableHead className="sticky left-[120px] bg-card z-30 min-w-[200px] border-r">Name / EP No.</TableHead>
+                        {dayHeaders.map(day => (
+                            <TableHead key={day} className="text-center min-w-[100px] border-r">
+                                {day}
+                            </TableHead>
+                        ))}
+                        <TableHead className="text-center min-w-[100px] border-r">Total OFF</TableHead>
+                        <TableHead className="text-center min-w-[100px] border-r">Total Leave</TableHead>
+                        <TableHead className="text-center min-w-[100px] border-r">Total ML</TableHead>
+                        <TableHead className="text-center min-w-[120px] border-r">Over Time</TableHead>
+                        <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
+                        <TableHead className="text-center min-w-[120px] border-r">Total Working Days</TableHead>
+                        <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
+                        <TableHead className="text-center min-w-[120px] border-r">Salary Days</TableHead>
+                        <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {profiles.map((profile, index) => {
+                        const record = jobRecordForMonth.records?.[profile.id] || {};
+                        const employeeRecord = record.days || {};
+                        const dailyOvertime = record.dailyOvertime || {};
+                        
+                        const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
+                        const offCodes = ['OFF', 'PH', 'OS'];
+                        const leaveCodes = ['L', 'X', 'NWS'];
+                        const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
 
-                            const summary = dayHeaders.reduce((acc, day) => {
-                                const code = employeeRecord[day];
-                                if (offCodes.includes(code)) acc.offDays++;
-                                else if (leaveCodes.includes(code)) acc.leaveDays++;
-                                else if (code === 'ML') acc.medicalLeave++;
-                                else if (standbyCodes.includes(code)) acc.standbyTraining++;
-                                else if (code === 'R') acc.reptOffice++;
-                                else if (workCodes.includes(code)) acc.workDays++;
-                                return acc;
-                            }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+                        const summary = dayHeaders.reduce((acc, day) => {
+                            const code = employeeRecord[day];
+                            if (offCodes.includes(code)) acc.offDays++;
+                            else if (leaveCodes.includes(code)) acc.leaveDays++;
+                            else if (code === 'ML') acc.medicalLeave++;
+                            else if (standbyCodes.includes(code)) acc.standbyTraining++;
+                            else if (code === 'R') acc.reptOffice++;
+                            else if (workCodes.includes(code)) acc.workDays++;
+                            return acc;
+                        }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
 
-                            const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                            const additionalSundays = record.additionalSundayDuty || 0;
-                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-                            const isExpanded = expandedRows.has(profile.id);
+                        const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                        const additionalSundays = record.additionalSundayDuty || 0;
+                        const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                        const isExpanded = expandedRows.has(profile.id);
 
-                            return (
-                                <React.Fragment key={profile.id}>
-                                <TableRow>
-                                    <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r">
-                                        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
-                                            {index + 1}
-                                            {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
-                                        </Button>
-                                    </TableCell>
-                                    <TableCell className="sticky left-[120px] bg-card z-20 font-medium whitespace-nowrap border-r">
-                                        <div className="flex items-center gap-2">
-                                            {isReorderMode && canEditSheet && (
-                                                <div className="flex flex-col">
-                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
-                                                        <ArrowUp className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
-                                                        <ArrowDown className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                            <div>
-                                            <p>{profile.name}</p>
-                                            <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
+                        return (
+                            <React.Fragment key={profile.id}>
+                            <TableRow>
+                                <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r">
+                                    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toggleRow(profile.id)}>
+                                        {index + 1}
+                                        {isExpanded ? <ChevronUp className="h-4 w-4 ml-2"/> : <ChevronDown className="h-4 w-4 ml-2"/>}
+                                    </Button>
+                                </TableCell>
+                                <TableCell className="sticky left-[120px] bg-card z-20 font-medium whitespace-nowrap border-r">
+                                    <div className="flex items-center gap-2">
+                                        {isReorderMode && canEditSheet && (
+                                            <div className="flex flex-col">
+                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}>
+                                                    <ArrowUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === profiles.length - 1}>
+                                                    <ArrowDown className="h-3 w-3" />
+                                                </Button>
                                             </div>
+                                        )}
+                                        <div>
+                                        <p>{profile.name}</p>
+                                        <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </div>
-                                    </TableCell>
-                                    <TableCell className="sticky left-[320px] bg-card z-20 border-r">
-                                        <Select value={jobRecordForMonth.records?.[profile.id]?.plant || prevJobRecordForMonth.records?.[profile.id]?.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
-                                            <SelectTrigger><SelectValue placeholder="Assign..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {allTabs.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </TableCell>
-                                    {dayHeaders.map(day => {
-                                        const code = cellStates[`${profile.id}-${day}`] || '';
-                                        const overtimeForDay = dailyOvertime[day] || 0;
-                                        const colorInfo = JOB_CODE_COLORS[code as string] || {};
+                                    </div>
+                                </TableCell>
+                                {dayHeaders.map(day => {
+                                    const code = cellStates[`${profile.id}-${day}`] || '';
+                                    const overtimeForDay = dailyOvertime[day] || 0;
+                                    const colorInfo = JOB_CODE_COLORS[code as string] || {};
 
-                                        return (
-                                            <TableCell key={day} className="p-0 text-center relative min-w-[100px] border-r">
-                                                <div className="relative h-10 flex items-center justify-center">
-                                                    <Input
-                                                        id={`${profile.id}-${day}`}
-                                                        type="text"
-                                                        list="jobcodes-datalist"
-                                                        value={code}
-                                                        onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
-                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                        className={cn(
-                                                            "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
-                                                            code ? colorInfo.bg : 'bg-transparent',
-                                                            code ? colorInfo.text : 'text-foreground'
-                                                        )}
-                                                        style={{ boxShadow: 'none' }}
-                                                        disabled={!canEditSheet}
-                                                    />
-                                                    {overtimeForDay > 0 && (
-                                                        <Tooltip>
-                                                        <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                            <Clock className="h-full w-full text-blue-500" />
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                        </Tooltip>
+                                    return (
+                                        <TableCell key={day} className="p-0 text-center relative min-w-[100px] border-r">
+                                            <div className="relative h-10 flex items-center justify-center">
+                                                <Input
+                                                    id={`${profile.id}-${day}`}
+                                                    type="text"
+                                                    list="jobcodes-datalist"
+                                                    value={code}
+                                                    onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
+                                                    onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                    className={cn(
+                                                        "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
+                                                        code ? colorInfo.bg : 'bg-transparent',
+                                                        code ? colorInfo.text : 'text-foreground'
                                                     )}
-                                                </div>
+                                                    style={{ boxShadow: 'none' }}
+                                                    disabled={!canEditSheet}
+                                                />
+                                                {overtimeForDay > 0 && (
+                                                    <Tooltip>
+                                                    <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
+                                                        <Clock className="h-full w-full text-blue-500" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                    </Tooltip>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    );
+                                })}
+                                <TableCell className="text-center font-bold border-r">{summary.offDays}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{summary.leaveDays}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{summary.medicalLeave}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{totalOvertime}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{summary.standbyTraining}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{summary.workDays}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{summary.reptOffice}</TableCell>
+                                <TableCell className="text-center font-bold border-r">{salaryDays}</TableCell>
+                                <TableCell className="text-center">
+                                    <Input
+                                        type="number"
+                                        defaultValue={record.additionalSundayDuty || ''}
+                                        onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
+                                        className="w-16 h-8 text-center"
+                                        placeholder="0"
+                                        disabled={!canEditSheet}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r">Overtime Hours</TableCell>
+                                    {dayHeaders.map(day => {
+                                        return (
+                                            <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
+                                                <Input
+                                                    id={`${profile.id}-${day}-overtime`}
+                                                    type="number"
+                                                    placeholder="0"
+                                                    defaultValue={dailyOvertime[day] || ''}
+                                                    onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                    className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                    disabled={!canEditSheet}
+                                                />
                                             </TableCell>
-                                        );
+                                        )
                                     })}
-                                    <TableCell className="text-center font-bold border-r">{summary.offDays}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{summary.leaveDays}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{summary.medicalLeave}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{totalOvertime}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{summary.standbyTraining}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{summary.workDays}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{summary.reptOffice}</TableCell>
-                                    <TableCell className="text-center font-bold border-r">{salaryDays}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Input
-                                            type="number"
-                                            defaultValue={record.additionalSundayDuty || ''}
-                                            onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                            className="w-16 h-8 text-center"
-                                            placeholder="0"
-                                            disabled={!canEditSheet}
-                                        />
-                                    </TableCell>
+                                    <TableCell colSpan={9} className="bg-muted/50"></TableCell>
                                 </TableRow>
-                                {isExpanded && (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r">Overtime Hours</TableCell>
-                                        {dayHeaders.map(day => {
-                                            return (
-                                                <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
-                                                    <Input
-                                                        id={`${profile.id}-${day}-overtime`}
-                                                        type="number"
-                                                        placeholder="0"
-                                                        defaultValue={dailyOvertime[day] || ''}
-                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                        disabled={!canEditSheet}
-                                                    />
-                                                </TableCell>
-                                            )
-                                        })}
-                                        <TableCell colSpan={9} className="bg-muted/50"></TableCell>
-                                    </TableRow>
-                                )}
-                                </React.Fragment>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </div>
+                            )}
+                            </React.Fragment>
+                        );
+                    })}
+                </TableBody>
+            </Table>
         );
     }
     
@@ -590,76 +579,80 @@ export default function JobRecordSheet() {
                 ))}
             </datalist>
             <div className="space-y-4">
-                <div className="flex flex-wrap justify-between items-center p-4 gap-4">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-lg font-semibold flex items-center gap-2">
-                            {format(currentMonth, 'MMMM yyyy')}
-                            {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
-                        </span>
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                         <div className="relative ml-4">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search by name..." 
-                                className="pl-9 w-64"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
-                        {user?.role === 'Admin' && (
-                            <>
-                                <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
-                                <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
-                            </>
-                        )}
-                        {canEditSheet && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
-                          </Tooltip>
-                        )}
-                        {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
-                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                         {user?.role === 'Admin' && isCurrentSheetLocked && (
-                            <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
-                                <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
+                <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b">
+                    <div className="flex flex-wrap justify-between items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
+                                <ChevronLeft className="h-4 w-4" />
                             </Button>
-                        )}
+                            <span className="text-lg font-semibold flex items-center gap-2">
+                                {format(currentMonth, 'MMMM yyyy')}
+                                {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+                            </span>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                            <div className="relative ml-4">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Search by name..." 
+                                    className="pl-9 w-64"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
+                            {user?.role === 'Admin' && (
+                                <>
+                                    <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
+                                    <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                                </>
+                            )}
+                            {canEditSheet && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
+                            </Tooltip>
+                            )}
+                            {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                            {user?.role === 'Admin' && isCurrentSheetLocked && (
+                                <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
+                                    <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                  {searchTerm ? (
-                      renderTableForPlant('Search Results', searchResults)
-                  ) : (
-                      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                          <TabsList>
-                              {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
-                          </TabsList>
-                          {allTabs.map(plant => (
-                              <TabsContent key={plant} value={plant}>
-                                  {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
-                              </TabsContent>
-                          ))}
-                      </Tabs>
-                  )}
+                {searchTerm ? (
+                    renderTableForPlant('Search Results', searchResults)
+                ) : (
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <div className="sticky top-[105px] z-30 bg-background py-2">
+                            <TabsList>
+                                {allTabs.map(plant => <TabsTrigger key={plant} value={plant}>{plant}</TabsTrigger>)}
+                            </TabsList>
+                        </div>
+                        {allTabs.map(plant => (
+                            <TabsContent key={plant} value={plant} className="mt-0">
+                                {renderTableForPlant(plant, filteredAndGroupedProfiles[plant] || [])}
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                )}
                 </div>
 
                 <Accordion type="single" collapsible className="w-full mt-4">
@@ -710,4 +703,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
