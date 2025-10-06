@@ -574,11 +574,11 @@ export default function JobRecordSheet() {
                  <div className="relative flex-1 flex flex-col overflow-hidden">
                     <div ref={tableContainerRef} className="flex-1 overflow-auto visible-scrollbar">
                     <Table className="min-w-full border-collapse">
-                         <thead className="sticky top-0 bg-background z-10">
+                         <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-30 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
-                                <TableHead className="sticky bg-card z-30 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
-                                <TableHead className="sticky bg-card z-30 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
+                                <TableHead className="sticky bg-card z-50 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
+                                <TableHead className="sticky bg-card z-50 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
                                     <TableHead key={day} className="text-center min-w-[100px] border-r">
                                         {day}
