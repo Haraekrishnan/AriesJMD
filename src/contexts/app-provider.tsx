@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1782,8 +1783,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const existingProfile = manpowerProfiles.find(mp => mp.hardCopyFileNo === hardCopyFileNo);
 
-        const parseExcelDate = (date: any): string | undefined => {
-            if (!date) return undefined;
+        const parseExcelDate = (date: any): string | null => {
+            if (!date) return null;
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
             }
@@ -1793,10 +1794,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const parsed2 = parseISO(date);
                 if (isValid(parsed2)) return parsed2.toISOString();
             }
-            return undefined;
+            return null;
         };
         
-        const profileData: Partial<Omit<ManpowerProfile, 'id'>> = {
+        const profileData: Partial<ManpowerProfile> = {
             name: p[0] || 'No Name Provided',
             mobileNumber: p[1]?.toString() || '',
             gender: p[2],
@@ -1826,6 +1827,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const finalData = existingProfile 
             ? { ...existingProfile, ...profileData }
             : profileData;
+        
+        Object.keys(finalData).forEach(key => {
+            if (finalData[key as keyof typeof finalData] === undefined) {
+                finalData[key as keyof typeof finalData] = null;
+            }
+        });
 
         updates[`manpowerProfiles/${profileId}`] = finalData;
         importedCount++;
@@ -2302,35 +2309,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
-  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reverse' | 'reissue', comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (!request || request.status !== 'Disputed') return;
-  
-    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
-    const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
-      : `Dispute reversed by ${user.name}. Marked as issued. Comment: ${comment}`;
-    
-    updatePpeRequestStatus(requestId, newStatus, actionComment);
-  
-    const requester = users.find(u => u.id === request.requesterId);
-    if(requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `PPE Dispute Resolved: ${request.ppeType}`,
-        'A dispute you filed has been resolved.',
-        { 
-          'Item': `${request.ppeType} (Size: ${request.size})`,
-          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
-          'Comment': comment
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
-
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `ppeRequests/${requestId}`));
@@ -3411,5 +3389,10 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+    
+
+
+
 
     
