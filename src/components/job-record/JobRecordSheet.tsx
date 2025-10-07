@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -274,10 +275,6 @@ export default function JobRecordSheet() {
         const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
     };
-    
-    const handlePlantChange = (employeeId: string, plant: string) => {
-       saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
-    }
     
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? null : parseInt(value, 10);
@@ -840,4 +837,5 @@ export default function JobRecordSheet() {
     
 
     
+
 
