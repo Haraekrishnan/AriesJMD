@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogTrigger, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -330,10 +330,11 @@ export default function JobRecordSheet() {
     }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
     
     const canEditOvertime = useMemo(() => {
-        if (!user) return false;
-        if (user.role === 'Admin') return true;
-        return can.manage_job_record;
-    }, [user, can.manage_job_record]);
+      if (!user) return false;
+      if (user.role === 'Admin') return true;
+      if (!can.manage_job_record) return false;
+      return !isCurrentSheetLocked || user.role === 'Admin';
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
