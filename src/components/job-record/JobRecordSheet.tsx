@@ -41,33 +41,12 @@ export default function JobRecordSheet() {
     const [activeTab, setActiveTab] = useState('Unassigned');
     const [searchTerm, setSearchTerm] = useState('');
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
-    const [editingCell, setEditingCell] = useState<string | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const { toast } = useToast();
-    const tableRef = useRef<HTMLTableElement>(null);
-
-
+    
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
-    const [cellStates, setCellStates] = useState<Record<string, string>>({});
-    
-    useEffect(() => {
-        const newStates: Record<string, string> = {};
-        if (jobRecords[monthKey]?.records) {
-            for (const profileId in jobRecords[monthKey].records) {
-                const record = jobRecords[monthKey].records[profileId];
-                if (record.days) {
-                    for (const day in record.days) {
-                        newStates[`${profileId}-${day}`] = record.days[day] || '';
-                    }
-                }
-            }
-        }
-        setCellStates(newStates);
-    }, [jobRecords, monthKey]);
-
-
     const handlePlantChange = (profileId: string, plantName: string) => {
         saveJobRecord(monthKey, profileId, null, plantName, 'plant');
         toast({
@@ -76,45 +55,25 @@ export default function JobRecordSheet() {
         });
     };
     
-    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
-      const parts = value.split('/');
-      const code = (parts[0] || '').toUpperCase();
-      const overtime = parts[1] ? parseFloat(parts[1]) : null;
-
+    const handleCodeChange = useCallback((employeeId: string, day: number, value: string) => {
+      const code = value.toUpperCase();
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-  
       if (!isValidCode) {
-          toast({
-              title: "Invalid Job Code",
-              description: `The code "${code}" is not a valid job code.`,
-              variant: "destructive"
-          });
-          const previousRecord = jobRecords[monthKey]?.records?.[employeeId];
-          const previousCode = previousRecord?.days?.[day] || '';
-          const previousOvertime = previousRecord?.dailyOvertime?.[day];
-          const previousValue = previousOvertime ? `${previousCode}/${previousOvertime}` : previousCode;
-          setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousValue }));
-          return;
-      }
-
-      if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
-        toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
+        toast({
+            title: "Invalid Job Code",
+            description: `The code "${code}" is not a valid job code.`,
+            variant: "destructive"
+        });
         return;
       }
-  
-      const isOtRestricted = OT_RESTRICTED_CODES.includes(code);
-
-      if (isOtRestricted && overtime) {
-        toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${code}".`, variant: "destructive" });
-        saveJobRecord(monthKey, employeeId, day, code, 'status');
-        saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-        return;
-      }
-
       saveJobRecord(monthKey, employeeId, day, code, 'status');
-      saveJobRecord(monthKey, employeeId, day, overtime, 'dailyOvertime');
 
-    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
+      // If new code is OT restricted, clear existing OT
+      if (OT_RESTRICTED_CODES.includes(code)) {
+        saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+      }
+
+    }, [monthKey, saveJobRecord, jobCodes, toast]);
     
     const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
         const overtime = value === '' ? null : parseFloat(value);
@@ -124,15 +83,14 @@ export default function JobRecordSheet() {
         }
         
         const currentCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
-        const isOtRestricted = OT_RESTRICTED_CODES.includes(currentCode.toUpperCase());
-        
-        if (isOtRestricted && overtime) {
-            toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${currentCode}".`, variant: "destructive" });
+        if (!currentCode && overtime) {
+            toast({ title: "Job Code Required", description: "You must enter a job code before adding overtime.", variant: "destructive" });
             return;
         }
 
-        if (!currentCode && overtime) {
-            toast({ title: "Job Code Required", description: "You must enter a job code before adding overtime.", variant: "destructive" });
+        const isOtRestricted = OT_RESTRICTED_CODES.includes(currentCode.toUpperCase());
+        if (isOtRestricted && overtime) {
+            toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${currentCode}".`, variant: "destructive" });
             return;
         }
 
@@ -416,47 +374,6 @@ export default function JobRecordSheet() {
           return newSet;
       });
   };
-  
-    const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, isOvertime: boolean = false) => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const currentProfiles = searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || []);
-            const numDays = dayHeaders.length;
-            const currentProfileIndex = currentProfiles.findIndex(p => p.id === profileId);
-
-            let nextDay = day + (e.shiftKey ? -1 : 1);
-            let nextProfileIndex = currentProfileIndex;
-
-            if (nextDay > numDays) {
-                nextDay = 1;
-                nextProfileIndex++;
-            } else if (nextDay < 1) {
-                nextDay = numDays;
-                nextProfileIndex--;
-            }
-
-            if (nextProfileIndex >= 0 && nextProfileIndex < currentProfiles.length) {
-                const nextProfileId = currentProfiles[nextProfileIndex].id;
-                const nextCellId = `${nextProfileId}-${nextDay}${isOvertime ? '-ot' : ''}`;
-                const nextInput = tableRef.current?.querySelector(`#${nextCellId}`);
-                if (nextInput) {
-                    if (isOvertime) {
-                        (nextInput as HTMLInputElement).focus();
-                        (nextInput as HTMLInputElement).select();
-                    } else {
-                        setEditingCell(nextCellId);
-                    }
-                }
-            } else {
-                 e.currentTarget.blur();
-                 setEditingCell(null);
-            }
-        } else if (e.key === 'Enter') {
-            e.currentTarget.blur();
-            setEditingCell(null);
-        }
-    };
-
 
     return (
         <TooltipProvider>
@@ -556,7 +473,7 @@ export default function JobRecordSheet() {
 
                 {/* --- SCROLLABLE TABLE --- */}
                  <div className="flex-1 overflow-auto relative">
-                    <Table ref={tableRef} className="min-w-full border-collapse">
+                    <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No</TableHead>
@@ -639,54 +556,25 @@ export default function JobRecordSheet() {
                                                 const cellId = `${profile.id}-${day}`;
                                                 const cellValue = employeeRecord[day] || '';
                                                 const overtimeValue = dailyOvertime[day];
-
                                                 const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
 
                                                 return (
-                                                    <TableCell 
-                                                        key={day} 
-                                                        className={cn(
-                                                            "p-0 text-center relative min-w-[70px] border-r h-10",
-                                                            cellValue ? colorInfo.bg : 'bg-transparent',
-                                                            cellValue ? colorInfo.text : 'text-foreground'
-                                                        )}
-                                                    >
-                                                        <div className="relative w-full h-full flex items-center justify-center">
-                                                            {editingCell === cellId ? (
-                                                              <Input
-                                                                  id={cellId}
-                                                                  type="text"
-                                                                  list="jobcodes-datalist"
-                                                                  defaultValue={overtimeValue ? `${cellValue}/${overtimeValue}` : cellValue}
-                                                                  onBlur={(e) => {
-                                                                      handleStatusChange(profile.id, day, e.target.value);
-                                                                      setEditingCell(null);
-                                                                  }}
-                                                                  onKeyDown={(e) => handleCellKeyDown(e, profile.id, day)}
-                                                                  autoFocus
-                                                                  className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-background text-foreground"
-                                                                  style={{ boxShadow: 'none' }}
-                                                                  disabled={!canEditSheet}
-                                                              />
-                                                            ) : (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <button
-                                                                            onClick={() => canEditSheet && setEditingCell(cellId)}
-                                                                            disabled={!canEditSheet}
-                                                                            className="w-full h-full flex items-center justify-center font-bold relative"
-                                                                        >
-                                                                            {cellValue}
-                                                                            {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
-                                                                        </button>
-                                                                    </TooltipTrigger>
-                                                                    {overtimeValue > 0 && (
-                                                                        <TooltipContent>
-                                                                            <p>{overtimeValue} hrs OT</p>
-                                                                        </TooltipContent>
-                                                                    )}
-                                                                </Tooltip>
-                                                            )}
+                                                    <TableCell key={cellId} className="p-0 text-center min-w-[70px] border-r h-10">
+                                                        <div className="relative w-full h-full">
+                                                            <Input
+                                                                type="text"
+                                                                list="jobcodes-datalist"
+                                                                defaultValue={cellValue}
+                                                                onBlur={(e) => handleCodeChange(profile.id, day, e.target.value)}
+                                                                disabled={!canEditSheet}
+                                                                className={cn(
+                                                                    "w-full h-full text-center font-bold rounded-none border-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
+                                                                    "bg-transparent focus-visible:bg-background",
+                                                                    colorInfo.bg,
+                                                                    colorInfo.text
+                                                                )}
+                                                            />
+                                                             {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
                                                         </div>
                                                     </TableCell>
                                                 );
@@ -727,17 +615,21 @@ export default function JobRecordSheet() {
                                                                           type="number" 
                                                                           defaultValue={dailyOvertime[day] || ''}
                                                                           onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                                          onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, true)}
-                                                                          className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
+                                                                          className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring"
                                                                           placeholder="OT"
                                                                           min="0"
                                                                           disabled={isOtDisabled}
                                                                       />
                                                                     </div>
                                                                 </TooltipTrigger>
-                                                                {isOtDisabled && (
+                                                                {isOtDisabled && jobCode && (
                                                                     <TooltipContent>
-                                                                        <p>Enter a valid job code to add overtime.</p>
+                                                                        <p>Overtime is not applicable for job code "{jobCode}".</p>
+                                                                    </TooltipContent>
+                                                                )}
+                                                                 {isOtDisabled && !jobCode && (
+                                                                    <TooltipContent>
+                                                                        <p>Enter a job code to add overtime.</p>
                                                                     </TooltipContent>
                                                                 )}
                                                             </Tooltip>
@@ -812,6 +704,7 @@ export default function JobRecordSheet() {
 }
 
     
+
 
 
 
