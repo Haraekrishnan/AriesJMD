@@ -18,12 +18,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogTrigger, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
-import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
+import type { JobCode, ManpowerProfile, JobRecordPlant, EpNumberRecord } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
+import { Alert } from '../ui/alert';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -325,13 +326,15 @@ export default function JobRecordSheet() {
     const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
 
     const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
-    
+
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
         if (!can.manage_job_record) return false;
-        return !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+        
+        const isCurrentMonthSheet = isSameMonth(currentMonth, new Date()) && isSameYear(currentMonth, new Date());
+        return isCurrentMonthSheet && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked, currentMonth]);
     
     const canEditOvertime = useMemo(() => {
         if (!user) return false;
@@ -844,6 +847,7 @@ export default function JobRecordSheet() {
     
 
     
+
 
 
 
