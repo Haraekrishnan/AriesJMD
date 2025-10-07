@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
-import type { JobCode, ManpowerProfile, JobRecordPlant, EpNumberRecord } from '@/lib/types';
+import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
@@ -44,6 +44,8 @@ export default function JobRecordSheet() {
     const [editingCell, setEditingCell] = useState<string | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const { toast } = useToast();
+    const tableRef = useRef<HTMLTableElement>(null);
+
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -114,16 +116,7 @@ export default function JobRecordSheet() {
 
     }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
     
-    const handleSundayDutySave = (employeeId: string, value: string) => {
-        const days = value === '' ? null : parseInt(value, 10);
-        if (days !== null && !isNaN(days) && days >= 0) {
-            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
-        } else if (value === '') {
-             saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
-        }
-    };
-    
-    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
+    const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
         const overtime = value === '' ? null : parseFloat(value);
         if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
             toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
@@ -144,6 +137,15 @@ export default function JobRecordSheet() {
         }
 
         saveJobRecord(monthKey, employeeId, day, overtime, 'dailyOvertime');
+    }, [monthKey, saveJobRecord, jobRecords, toast]);
+
+    const handleSundayDutySave = (employeeId: string, value: string) => {
+        const days = value === '' ? null : parseInt(value, 10);
+        if (days !== null && !isNaN(days) && days >= 0) {
+            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
+        } else if (value === '') {
+             saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
+        }
     };
 
     const plantProjects = useMemo(() => {
@@ -414,6 +416,45 @@ export default function JobRecordSheet() {
           return newSet;
       });
   };
+  
+    const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, isOvertime: boolean = false) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const currentProfiles = searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || []);
+            const numDays = dayHeaders.length;
+            const currentProfileIndex = currentProfiles.findIndex(p => p.id === profileId);
+
+            let nextDay = day + (e.shiftKey ? -1 : 1);
+            let nextProfileIndex = currentProfileIndex;
+
+            if (nextDay > numDays) {
+                nextDay = 1;
+                nextProfileIndex++;
+            } else if (nextDay < 1) {
+                nextDay = numDays;
+                nextProfileIndex--;
+            }
+
+            if (nextProfileIndex >= 0 && nextProfileIndex < currentProfiles.length) {
+                const nextProfileId = currentProfiles[nextProfileIndex].id;
+                const nextCellId = `${nextProfileId}-${nextDay}${isOvertime ? '-ot' : ''}`;
+                const nextInput = tableRef.current?.querySelector(`#${nextCellId}`) as HTMLInputElement;
+                if (nextInput) {
+                    if (isOvertime) {
+                        nextInput.focus();
+                        nextInput.select();
+                    } else {
+                        setEditingCell(nextCellId);
+                    }
+                }
+            } else {
+                 e.currentTarget.blur();
+            }
+        } else if (e.key === 'Enter') {
+            e.currentTarget.blur();
+        }
+    };
+
 
     return (
         <TooltipProvider>
@@ -513,7 +554,7 @@ export default function JobRecordSheet() {
 
                 {/* --- SCROLLABLE TABLE --- */}
                  <div className="flex-1 overflow-auto relative">
-                    <Table className="min-w-full border-collapse">
+                    <Table ref={tableRef} className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No</TableHead>
@@ -596,7 +637,6 @@ export default function JobRecordSheet() {
                                                 const cellId = `${profile.id}-${day}`;
                                                 const cellValue = employeeRecord[day] || '';
                                                 const overtimeValue = dailyOvertime[day];
-                                                const fullValue = overtimeValue ? `${cellValue}/${overtimeValue}` : cellValue;
 
                                                 const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
 
@@ -615,12 +655,12 @@ export default function JobRecordSheet() {
                                                                   id={cellId}
                                                                   type="text"
                                                                   list="jobcodes-datalist"
-                                                                  defaultValue={fullValue}
+                                                                  defaultValue={overtimeValue ? `${cellValue}/${overtimeValue}` : cellValue}
                                                                   onBlur={(e) => {
                                                                       handleStatusChange(profile.id, day, e.target.value);
                                                                       setEditingCell(null);
                                                                   }}
-                                                                  onKeyDown={(e) => { if(e.key === 'Enter') e.currentTarget.blur()}}
+                                                                  onKeyDown={(e) => handleCellKeyDown(e, profile.id, day)}
                                                                   autoFocus
                                                                   className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-background text-foreground"
                                                                   style={{ boxShadow: 'none' }}
@@ -681,9 +721,11 @@ export default function JobRecordSheet() {
                                                                 <TooltipTrigger asChild>
                                                                     <div className='w-full h-full'>
                                                                       <Input 
+                                                                          id={cellId}
                                                                           type="number" 
                                                                           defaultValue={dailyOvertime[day] || ''}
                                                                           onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                                          onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, true)}
                                                                           className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
                                                                           placeholder="OT"
                                                                           min="0"
@@ -768,4 +810,5 @@ export default function JobRecordSheet() {
 }
 
     
+
 
