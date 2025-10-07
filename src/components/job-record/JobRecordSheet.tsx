@@ -27,6 +27,9 @@ import { Alert } from '../ui/alert';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
+const OT_RESTRICTED_CODES = ['PH', 'L', 'ML', 'KD', 'OS', 'EP', 'PD', 'TR', 'ST', 'NWS', 'Q', 'X', 'OFF', 'S', 'RST', 'CQ'];
+
+
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
@@ -38,6 +41,7 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
     const [editingCell, setEditingCell] = useState<string | null>(null);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const { toast } = useToast();
 
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -68,6 +72,62 @@ export default function JobRecordSheet() {
             description: `${manpowerProfiles.find(p => p.id === profileId)?.name} moved to ${plantName}.`,
         });
     };
+    
+    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
+        const code = value.toUpperCase();
+        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+    
+        if (!isValidCode) {
+            toast({
+                title: "Invalid Job Code",
+                description: `The code "${code}" is not a valid job code.`,
+                variant: "destructive"
+            });
+            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousCode }));
+            return;
+        }
+        saveJobRecord(monthKey, employeeId, day, code, 'status');
+    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
+    
+    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
+        let hours = value === '' ? null : parseFloat(value);
+        if (hours !== null && hours < 0) {
+            hours = 0;
+        }
+        saveJobRecord(monthKey, employeeId, day, hours, 'dailyOvertime');
+    };
+    
+    const handleSundayDutySave = (employeeId: string, value: string) => {
+        const days = value === '' ? null : parseInt(value, 10);
+        if (days !== null && !isNaN(days) && days >= 0) {
+            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
+        } else if (value === '') {
+             saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
+        }
+    };
+    
+    const plantProjects = useMemo(() => {
+        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
+    }, [jobRecordPlants]);
+
+    useEffect(() => {
+        if (plantProjects.length > 0 && !plantProjects.some(p => p.name === activeTab) && activeTab !== 'Unassigned') {
+            setActiveTab('Unassigned');
+        }
+    }, [plantProjects, activeTab]);
+    
+    const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
+    
+    const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
+
+    const canEditSheet = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'Admin') return true;
+        if (!can.manage_job_record) return false;
+        return !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+
     
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
@@ -128,58 +188,6 @@ export default function JobRecordSheet() {
         return groups;
 
     }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
-
-    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
-        const code = value.toUpperCase();
-        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-    
-        if (!isValidCode) {
-            toast({
-                title: "Invalid Job Code",
-                description: `The code "${code}" is not a valid job code.`,
-                variant: "destructive"
-            });
-            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
-            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousCode }));
-            return;
-        }
-        saveJobRecord(monthKey, employeeId, day, code, 'status');
-    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
-    
-    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
-        const hours = value === '' ? null : parseFloat(value);
-        saveJobRecord(monthKey, employeeId, day, hours, 'dailyOvertime');
-    };
-    
-    const handleSundayDutySave = (employeeId: string, value: string) => {
-        const days = value === '' ? null : parseInt(value, 10);
-        if (days !== null && !isNaN(days) && days >= 0) {
-            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
-        } else if (value === '') {
-             saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
-        }
-    };
-    
-    const plantProjects = useMemo(() => {
-        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
-    }, [jobRecordPlants]);
-
-    useEffect(() => {
-        if (plantProjects.length > 0 && !plantProjects.some(p => p.name === activeTab) && activeTab !== 'Unassigned') {
-            setActiveTab('Unassigned');
-        }
-    }, [plantProjects, activeTab]);
-    
-    const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
-    
-    const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
-
-    const canEditSheet = useMemo(() => {
-        if (!user) return false;
-        if (user.role === 'Admin') return true;
-        if (!can.manage_job_record) return false;
-        return !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -503,100 +511,112 @@ export default function JobRecordSheet() {
                                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
                                 return (
-                                    <React.Fragment key={profile.id}>
-                                    <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: '120px'}}>
-                                            <div className="flex items-center">
-                                                <span className="w-6 text-center">{index + 1}</span>
-                                                {isReorderMode && (
-                                                    <div className="flex flex-col">
-                                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}><ArrowUp className="h-3 w-3"/></Button>
-                                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === (filteredAndGroupedProfiles[activeTab]?.length || 0) - 1}><ArrowDown className="h-3 w-3"/></Button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
-                                            <p>{profile.name}</p>
-                                            <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
-                                        </TableCell>
-                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
-                                        <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
-                                                <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Unassigned">Unassigned</SelectItem>
-                                                    {plantProjects.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        {dayHeaders.map(day => {
-                                            const cellId = `${profile.id}-${day}`;
-                                            const cellValue = cellStates[cellId] || '';
-                                            const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
-
-                                            return (
-                                                <TableCell 
-                                                    key={day} 
-                                                    className={cn(
-                                                        "p-0 text-center relative min-w-[70px] border-r h-10",
-                                                        cellValue ? colorInfo.bg : 'bg-transparent',
-                                                        cellValue ? colorInfo.text : 'text-foreground'
+                                    <Accordion key={profile.id} type="single" collapsible>
+                                    <AccordionItem value={profile.id} className="border-none">
+                                        <TableRow>
+                                            <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: '120px'}}>
+                                                <div className="flex items-center">
+                                                    <AccordionTrigger className="w-8 p-0 hover:no-underline">
+                                                        <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                                    </AccordionTrigger>
+                                                    <span className="w-6 text-center">{index + 1}</span>
+                                                    {isReorderMode && (
+                                                        <div className="flex flex-col">
+                                                            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}><ArrowUp className="h-3 w-3"/></Button>
+                                                            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === (filteredAndGroupedProfiles[activeTab]?.length || 0) - 1}><ArrowDown className="h-3 w-3"/></Button>
+                                                        </div>
                                                     )}
-                                                >
-                                                    <Input
-                                                        id={cellId}
-                                                        type="text"
-                                                        list="jobcodes-datalist"
-                                                        defaultValue={cellValue}
-                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                        className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
-                                                        style={{ boxShadow: 'none' }}
-                                                        disabled={!canEditSheet}
-                                                    />
-                                                </TableCell>
-                                            );
-                                        })}
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.offDays}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.leaveDays}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.medicalLeave}</TableCell>
-                                        <TableCell className="text-center min-w-[150px] border-r font-bold">{totalOvertime}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.standbyTraining}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
-                                        <TableCell className="text-center min-w-[150px]">
-                                            <Input
-                                                type="number"
-                                                defaultValue={record.additionalSundayDuty || ''}
-                                                onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                                className="w-16 h-8 text-center"
-                                                placeholder="0"
-                                                disabled={!canEditSheet}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-10 border-r"></TableCell>
-                                        <TableCell className="sticky bg-card z-10 border-r" style={{ left: '120px' }}></TableCell>
-                                        <TableCell className="sticky bg-card z-10 border-r" style={{ left: '320px' }}><Label className="text-xs">Overtime Hrs</Label></TableCell>
-                                        {dayHeaders.map(day => {
-                                            const ot = record.dailyOvertime?.[day] || '';
-                                            return (
-                                                <TableCell key={`ot-${day}`} className="p-0 text-center min-w-[70px] border-r h-10">
-                                                    <Input 
-                                                        type="number" 
-                                                        defaultValue={ot}
-                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                        className="w-full h-full text-center rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
-                                                        placeholder="0"
-                                                        disabled={!canEditSheet}
-                                                    />
-                                                </TableCell>
-                                            )
-                                        })}
-                                        <TableCell colSpan={9}></TableCell>
-                                    </TableRow>
-                                    </React.Fragment>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
+                                                <p>{profile.name}</p>
+                                                <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
+                                            </TableCell>
+                                            <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
+                                            <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                                    <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Unassigned">Unassigned</SelectItem>
+                                                        {plantProjects.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            {dayHeaders.map(day => {
+                                                const cellId = `${profile.id}-${day}`;
+                                                const cellValue = cellStates[cellId] || '';
+                                                const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
+                                                const overtimeForDay = dailyOvertime[day] || 0;
+
+                                                return (
+                                                    <TableCell 
+                                                        key={day} 
+                                                        className={cn(
+                                                            "p-0 text-center relative min-w-[70px] border-r h-10",
+                                                            cellValue ? colorInfo.bg : 'bg-transparent',
+                                                            cellValue ? colorInfo.text : 'text-foreground'
+                                                        )}
+                                                    >
+                                                        <div className="relative w-full h-full flex items-center justify-center">
+                                                            <Input
+                                                                id={cellId}
+                                                                type="text"
+                                                                list="jobcodes-datalist"
+                                                                defaultValue={cellValue}
+                                                                onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                                className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
+                                                                style={{ boxShadow: 'none' }}
+                                                                disabled={!canEditSheet}
+                                                            />
+                                                            {overtimeForDay > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                        </div>
+                                                    </TableCell>
+                                                );
+                                            })}
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.offDays}</TableCell>
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.leaveDays}</TableCell>
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.medicalLeave}</TableCell>
+                                            <TableCell className="text-center min-w-[150px] border-r font-bold">{totalOvertime}</TableCell>
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.standbyTraining}</TableCell>
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
+                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
+                                            <TableCell className="text-center min-w-[150px]">
+                                                <Input
+                                                    type="number"
+                                                    defaultValue={record.additionalSundayDuty || ''}
+                                                    onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
+                                                    className="w-16 h-8 text-center"
+                                                    placeholder="0"
+                                                    disabled={!canEditSheet}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                        <AccordionContent asChild>
+                                            <TableRow>
+                                                <TableCell colSpan={3}></TableCell>
+                                                {dayHeaders.map(day => {
+                                                    const cellId = `${profile.id}-${day}-ot`;
+                                                    const jobCode = employeeRecord[day] || '';
+                                                    const isOtAllowed = !OT_RESTRICTED_CODES.includes(jobCode.toUpperCase()) && jobCode !== '';
+                                                    return (
+                                                        <TableCell key={cellId} className="p-0 min-w-[70px] border-r h-10">
+                                                            <Input 
+                                                                type="number" 
+                                                                defaultValue={dailyOvertime[day] || ''}
+                                                                onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                                className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
+                                                                placeholder="OT"
+                                                                min="0"
+                                                                disabled={!canEditSheet || !isOtAllowed}
+                                                            />
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                                <TableCell colSpan={9}></TableCell>
+                                            </TableRow>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                    </Accordion>
                                 );
                             })}
                         </TableBody>
