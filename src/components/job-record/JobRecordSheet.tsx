@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, isSameYear } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -319,21 +319,20 @@ export default function JobRecordSheet() {
     
     const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
 
-    const isEditableMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
     const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
     
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
         if (!can.manage_job_record) return false;
-        return isEditableMonth && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
+        const isCurrentMonthSheet = isSameMonth(currentMonth, new Date()) && isSameYear(currentMonth, new Date());
+        return isCurrentMonthSheet && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked, currentMonth]);
     
     const canEditOvertime = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        if (!can.manage_job_record) return false;
-        return !isCurrentSheetLocked || user.role === 'Admin';
+        return can.manage_job_record && !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -558,7 +557,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
+                             {can.manage_job_record && !isCurrentSheetLocked && isSameMonth(currentMonth, new Date()) && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
