@@ -28,6 +28,12 @@ const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 
 
 const OT_RESTRICTED_CODES = ['PH', 'L', 'ML', 'KD', 'OS', 'EP', 'PD', 'TR', 'ST', 'NWS', 'Q', 'X', 'OFF', 'S', 'RST', 'CQ'];
 
+type DragState = {
+  isDragging: boolean;
+  startCell: { profileId: string; day: number; type: 'jobcode' | 'overtime' };
+  endCell: { profileId: string; day: number; type: 'jobcode' | 'overtime' };
+  dragDirection: 'horizontal' | 'vertical' | null;
+};
 
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant } = useAppContext();
@@ -41,6 +47,8 @@ export default function JobRecordSheet() {
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const { toast } = useToast();
+    const tableRef = useRef<HTMLTableElement>(null);
+    const [dragState, setDragState] = useState<DragState | null>(null);
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -55,6 +63,7 @@ export default function JobRecordSheet() {
     
     const handleCodeChange = useCallback((employeeId: string, day: number, value: string, element: HTMLInputElement) => {
       const code = value.toUpperCase();
+      element.value = code; // Force uppercase in UI
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
       if (!isValidCode && code !== '') {
         toast({
@@ -363,55 +372,31 @@ export default function JobRecordSheet() {
 
             let nextDay = day;
             let nextProfileIndex = currentProfileIndex;
-            let nextType = type;
-            let nextId = profileId;
-
+            
             if (e.shiftKey) { // Move backwards
                 nextDay--;
                 if (nextDay < 1) {
-                    if (type === 'overtime') {
-                        nextType = 'jobcode';
-                        nextDay = numDays;
-                    } else { // jobcode
-                        nextProfileIndex--;
-                        if (nextProfileIndex < 0) {
-                            nextProfileIndex = profilesInTab.length - 1;
-                        }
-                        nextId = profilesInTab[nextProfileIndex].id;
-                        const isExpanded = expandedRows.has(nextId);
-                        nextType = isExpanded ? 'overtime' : 'jobcode';
-                        nextDay = numDays;
+                    nextProfileIndex--;
+                    if (nextProfileIndex < 0) {
+                        nextProfileIndex = profilesInTab.length - 1;
                     }
+                    nextDay = numDays;
                 }
             } else { // Move forwards
                 nextDay++;
                 if (nextDay > numDays) {
-                    if (type === 'jobcode') {
-                        const isExpanded = expandedRows.has(profileId);
-                        if (isExpanded) {
-                            nextType = 'overtime';
-                            nextDay = 1;
-                        } else {
-                            nextProfileIndex++;
-                            if (nextProfileIndex >= profilesInTab.length) {
-                                nextProfileIndex = 0;
-                            }
-                            nextId = profilesInTab[nextProfileIndex].id;
-                            nextDay = 1;
-                        }
-                    } else { // overtime
-                        nextProfileIndex++;
-                        if (nextProfileIndex >= profilesInTab.length) {
-                            nextProfileIndex = 0;
-                        }
-                        nextId = profilesInTab[nextProfileIndex].id;
-                        nextType = 'jobcode';
-                        nextDay = 1;
+                    nextProfileIndex++;
+                    if (nextProfileIndex >= profilesInTab.length) {
+                        nextProfileIndex = 0;
                     }
+                    nextDay = 1;
                 }
             }
 
-            const nextCellId = `${nextType}-${nextId}-${nextDay}`;
+            const nextProfileId = profilesInTab[nextProfileIndex]?.id;
+            if (!nextProfileId) return;
+
+            const nextCellId = `${type}-${nextProfileId}-${nextDay}`;
             const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
 
             if (nextElement) {
@@ -419,8 +404,127 @@ export default function JobRecordSheet() {
                 nextElement.select();
             }
         }
-    }, [filteredAndGroupedProfiles, activeTab, currentMonth, expandedRows]);
+    }, [filteredAndGroupedProfiles, activeTab, currentMonth]);
 
+    // Drag-to-copy logic
+    const handleMouseDown = (e: React.MouseEvent, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        setDragState({
+            isDragging: true,
+            startCell: { profileId, day, type },
+            endCell: { profileId, day, type },
+            dragDirection: null,
+        });
+        e.preventDefault();
+    };
+
+    const handleMouseUp = () => {
+        if (dragState) {
+            applyDragCopy();
+            setDragState(null);
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!dragState || !dragState.isDragging) return;
+
+        const target = e.target as HTMLElement;
+        const cell = target.closest('td[data-cell-id]');
+        if (!cell) return;
+
+        const [type, profileId, dayStr] = cell.getAttribute('data-cell-id')!.split('-');
+        const day = parseInt(dayStr, 10);
+        
+        if (dragState.startCell.type !== type) return;
+
+        let dragDirection = dragState.dragDirection;
+        if (!dragDirection) {
+            if (day !== dragState.startCell.day) dragDirection = 'horizontal';
+            else if (profileId !== dragState.startCell.profileId) dragDirection = 'vertical';
+        }
+
+        setDragState(prev => ({
+            ...prev!,
+            endCell: { profileId, day, type: type as 'jobcode' | 'overtime' },
+            dragDirection,
+        }));
+    };
+    
+    const applyDragCopy = () => {
+        if (!dragState) return;
+        const { startCell, endCell, dragDirection } = dragState;
+        const startValue = (document.getElementById(`${startCell.type}-${startCell.profileId}-${startCell.day}`) as HTMLInputElement)?.value;
+        if (startValue === undefined) return;
+    
+        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+    
+        if (dragDirection === 'horizontal') {
+            const startDay = Math.min(startCell.day, endCell.day);
+            const endDay = Math.max(startCell.day, endCell.day);
+            for (let day = startDay; day <= endDay; day++) {
+                if (startCell.type === 'jobcode') {
+                    handleCodeChange(startCell.profileId, day, startValue, document.getElementById(`${startCell.type}-${startCell.profileId}-${day}`) as HTMLInputElement);
+                } else {
+                    handleOvertimeChange(startCell.profileId, day, startValue);
+                }
+            }
+        } else if (dragDirection === 'vertical') {
+            const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
+            const endIndex = profilesInTab.findIndex(p => p.id === endCell.profileId);
+            if (startIndex === -1 || endIndex === -1) return;
+    
+            const startIdx = Math.min(startIndex, endIndex);
+            const endIdx = Math.max(startIndex, endIndex);
+            for (let i = startIdx; i <= endIdx; i++) {
+                const profileId = profilesInTab[i].id;
+                if (startCell.type === 'jobcode') {
+                    handleCodeChange(profileId, startCell.day, startValue, document.getElementById(`${startCell.type}-${profileId}-${startCell.day}`) as HTMLInputElement);
+                } else {
+                    handleOvertimeChange(profileId, startCell.day, startValue);
+                }
+            }
+        }
+    };
+
+    useEffect(() => {
+        const table = tableRef.current;
+        if (table) {
+            table.addEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            if (table) {
+                table.removeEventListener('mouseup', handleMouseUp);
+            }
+        };
+    }, [dragState]); // Re-attach if dragState logic changes
+
+    const getDragSelection = () => {
+      if (!dragState) return new Set();
+      const selection = new Set<string>();
+      const { startCell, endCell, dragDirection } = dragState;
+      const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+
+      if (dragDirection === 'horizontal') {
+          const startDay = Math.min(startCell.day, endCell.day);
+          const endDay = Math.max(startCell.day, endCell.day);
+          for (let day = startDay; day <= endDay; day++) {
+              selection.add(`${startCell.type}-${startCell.profileId}-${day}`);
+          }
+      } else if (dragDirection === 'vertical') {
+          const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
+          const endIndex = profilesInTab.findIndex(p => p.id === endCell.profileId);
+          if (startIndex === -1 || endIndex === -1) return selection;
+          const startIdx = Math.min(startIndex, endIndex);
+          const endIdx = Math.max(startIndex, endIndex);
+          for (let i = startIdx; i <= endIdx; i++) {
+              selection.add(`${startCell.type}-${profilesInTab[i].id}-${startCell.day}`);
+          }
+      } else {
+          selection.add(`${startCell.type}-${startCell.profileId}-${startCell.day}`);
+      }
+      return selection;
+  };
+
+  const dragSelection = getDragSelection();
 
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
 
@@ -548,8 +652,8 @@ export default function JobRecordSheet() {
                 </div>
 
                 {/* --- SCROLLABLE TABLE --- */}
-                 <div className="flex-1 overflow-auto relative">
-                    <Table className="min-w-full border-collapse">
+                 <div className="flex-1 overflow-auto relative" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                    <Table ref={tableRef} className="min-w-full border-collapse" onMouseMove={handleMouseMove}>
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No</TableHead>
@@ -635,7 +739,7 @@ export default function JobRecordSheet() {
                                                 const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
 
                                                 return (
-                                                    <TableCell key={cellId} className="p-0 text-center min-w-[70px] border-r h-10">
+                                                    <TableCell key={cellId} data-cell-id={cellId} className={cn("p-0 text-center min-w-[70px] border-r h-10 relative", dragSelection.has(cellId) && 'bg-blue-200 dark:bg-blue-800')}>
                                                         <div className="relative w-full h-full">
                                                             <Input
                                                                 id={cellId}
@@ -652,7 +756,8 @@ export default function JobRecordSheet() {
                                                                     colorInfo.text
                                                                 )}
                                                             />
-                                                             {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                            {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                            <div className="absolute -bottom-1 -right-1 w-2 h-2 cursor-nwse-resize" onMouseDown={(e) => handleMouseDown(e, profile.id, day, 'jobcode')}/>
                                                         </div>
                                                     </TableCell>
                                                 );
@@ -684,7 +789,7 @@ export default function JobRecordSheet() {
                                                     const jobCode = employeeRecord[day] || '';
                                                     const isOtDisabled = !canEditSheet || !jobCode || OT_RESTRICTED_CODES.includes(jobCode.toUpperCase());
                                                     return (
-                                                        <TableCell key={cellId} className="p-0 min-w-[70px] border-r h-10">
+                                                        <TableCell key={cellId} data-cell-id={cellId} className={cn("p-0 min-w-[70px] border-r h-10 relative", dragSelection.has(cellId) && 'bg-blue-200 dark:bg-blue-800')}>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <div className='w-full h-full'>
@@ -699,6 +804,7 @@ export default function JobRecordSheet() {
                                                                           min="0"
                                                                           disabled={isOtDisabled}
                                                                       />
+                                                                      <div className="absolute -bottom-1 -right-1 w-2 h-2 cursor-nwse-resize" onMouseDown={(e) => handleMouseDown(e, profile.id, day, 'overtime')} />
                                                                     </div>
                                                                 </TooltipTrigger>
                                                                 {isOtDisabled && jobCode && (
