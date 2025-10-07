@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -343,18 +343,27 @@ export default function JobRecordSheet() {
                 nextDay--;
                 if (nextDay < 1) {
                     nextDay = numDays;
-                    nextProfileIndex--;
-                    if (nextProfileIndex < 0) {
-                        nextProfileIndex = profilesInTab.length - 1;
+                    if(type === 'jobcode') {
+                        nextProfileIndex--;
+                         if (nextProfileIndex < 0) {
+                            nextProfileIndex = profilesInTab.length - 1;
+                        }
+                    } else { // overtime
+                        nextType = 'jobcode';
                     }
                 }
             } else { // Move forwards
                 nextDay++;
                 if (nextDay > numDays) {
                     nextDay = 1;
-                    nextProfileIndex++;
-                    if (nextProfileIndex >= profilesInTab.length) {
-                        nextProfileIndex = 0;
+                     if(type === 'jobcode') {
+                       nextType = 'overtime';
+                    } else { // overtime
+                        nextProfileIndex++;
+                        if (nextProfileIndex >= profilesInTab.length) {
+                            nextProfileIndex = 0;
+                        }
+                        nextType = 'jobcode';
                     }
                 }
             }
@@ -682,7 +691,7 @@ export default function JobRecordSheet() {
                 </div>
 
                 {/* --- SCROLLABLE TABLE --- */}
-                 <div className="flex-1 overflow-auto relative" onMouseUp={handleMouseUpTable} onMouseMove={handleMouseMoveTable}>
+                 <div className="flex-1 overflow-auto relative" onMouseUp={handleMouseUp} onMouseMove={handleMouseMoveTable}>
                     <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
@@ -777,7 +786,6 @@ export default function JobRecordSheet() {
                                                         "p-0 text-center relative min-w-[70px] border-r h-10",
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
-                                                    onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'jobcode')}
                                                     onMouseEnter={() => handleMouseEnterCell(profile.id, day, 'jobcode')}
                                                 >
                                                     <div className="relative w-full h-full">
@@ -830,7 +838,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                         <TableRow>
-                                            <TableHead colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: '320px'}}>Overtime Hours</TableHead>
+                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{ left: '0', minWidth: '470px', width: '470px' }}>Overtime Hours</TableCell>
                                             {dayHeaders.map(day => {
                                                 const cellId = `overtime-${profile.id}-${day}`;
                                                 const jobCode = employeeRecord[day] || '';
@@ -842,7 +850,6 @@ export default function JobRecordSheet() {
                                                         "p-0 min-w-[70px] border-r h-10 relative bg-muted/50",
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
-                                                    onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'overtime')}
                                                     onMouseEnter={() => handleMouseEnterCell(profile.id, day, 'overtime')}
                                                     >
                                                         <Tooltip>
