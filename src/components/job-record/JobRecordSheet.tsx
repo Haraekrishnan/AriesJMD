@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -366,23 +366,33 @@ export default function JobRecordSheet() {
 
             let nextDay = day;
             let nextProfileIndex = currentProfileIndex;
+            let nextType = type;
             
             if (e.shiftKey) { // Move backwards
-                nextDay--;
-                if (nextDay < 1) {
-                   nextDay = numDays;
-                   nextProfileIndex--;
-                    if (nextProfileIndex < 0) {
-                         nextProfileIndex = profilesInTab.length - 1;
+                if (type === 'overtime') {
+                    nextType = 'jobcode';
+                } else {
+                    nextDay--;
+                    if (nextDay < 1) {
+                       nextDay = numDays;
+                       nextProfileIndex--;
+                        if (nextProfileIndex < 0) {
+                             nextProfileIndex = profilesInTab.length - 1;
+                        }
                     }
                 }
             } else { // Move forwards
-                nextDay++;
-                if (nextDay > numDays) {
-                   nextDay = 1;
-                   nextProfileIndex++;
-                    if (nextProfileIndex >= profilesInTab.length) {
-                        nextProfileIndex = 0;
+                 if (type === 'jobcode') {
+                    nextType = 'overtime';
+                } else {
+                    nextType = 'jobcode';
+                    nextDay++;
+                    if (nextDay > numDays) {
+                       nextDay = 1;
+                       nextProfileIndex++;
+                        if (nextProfileIndex >= profilesInTab.length) {
+                            nextProfileIndex = 0;
+                        }
                     }
                 }
             }
@@ -390,7 +400,7 @@ export default function JobRecordSheet() {
             const nextProfileId = profilesInTab[nextProfileIndex]?.id;
             if (!nextProfileId) return;
 
-            const nextCellId = `${type}-${nextProfileId}-${nextDay}`;
+            const nextCellId = `${nextType}-${nextProfileId}-${nextDay}`;
             const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
 
             if (nextElement) {
@@ -477,8 +487,8 @@ export default function JobRecordSheet() {
         }));
     };
     
-    const handleMouseEnter = (profileId: string, day: number) => {
-        if (dragState?.isDragging) {
+    const handleMouseEnter = (profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        if (dragState?.isDragging && dragState.startCell.type === type) {
             setDragState(prev => ({ ...prev!, endCell: { ...prev!.endCell, profileId, day } }));
         }
     };
@@ -589,7 +599,7 @@ export default function JobRecordSheet() {
                             {user?.role === 'Admin' && (
                                 <>
                                     <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
-                                    <Button onClick={()={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                                    <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                                 </>
                             )}
                             {canEditSheet && (
@@ -745,7 +755,7 @@ export default function JobRecordSheet() {
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
                                                     onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'jobcode')}
-                                                    onMouseEnter={() => handleMouseEnter(profile.id, day)}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day, 'jobcode')}
                                                 >
                                                     <div className="relative w-full h-full">
                                                         <Input
@@ -809,7 +819,7 @@ export default function JobRecordSheet() {
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
                                                     onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'overtime')}
-                                                    onMouseEnter={() => handleMouseEnter(profile.id, day)}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day, 'overtime')}
                                                     >
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
@@ -914,4 +924,3 @@ export default function JobRecordSheet() {
     );
 }
 
-    
