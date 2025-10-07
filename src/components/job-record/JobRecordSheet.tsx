@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -344,11 +343,10 @@ export default function JobRecordSheet() {
     const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
 
     const canEditSheet = useMemo(() => {
-        if (!user) return false;
-        if (user.role === 'Admin') return true;
-        if (!can.manage_job_record) return false;
-        
-        return !isCurrentSheetLocked;
+      if (!user) return false;
+      if (user.role === 'Admin') return true;
+      if (!can.manage_job_record) return false;
+      return !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -574,7 +572,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
+                             {can.manage_job_record && !isCurrentSheetLocked && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
