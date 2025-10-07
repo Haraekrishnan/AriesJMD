@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -476,22 +476,24 @@ export default function JobRecordSheet() {
     };
     
     const handleMouseEnter = (profileId: string, day: number, type: 'jobcode' | 'overtime') => {
-        if (dragState?.isDragging && dragState.startCell.type === type) {
-            setDragState(prev => ({ ...prev!, endCell: { ...prev!.endCell, profileId, day } }));
+        if (dragState?.isDragging) {
+            setDragState(prev => ({ ...prev!, endCell: { profileId, day, type } }));
         }
     };
 
     const getSelectionRange = () => {
-      if (!dragState) return null;
+      if (!dragState || !dragState.startCell || !dragState.endCell) return null;
       const { startCell, endCell, dragDirection } = dragState;
       const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
 
       if (dragDirection === 'horizontal') {
           const startDay = Math.min(startCell.day, endCell.day);
           const endDay = Math.max(startCell.day, endCell.day);
+          const rowIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
+          if (rowIndex === -1) return null;
           return {
-            minRow: profilesInTab.findIndex(p => p.id === startCell.profileId),
-            maxRow: profilesInTab.findIndex(p => p.id === startCell.profileId),
+            minRow: rowIndex,
+            maxRow: rowIndex,
             minCol: startDay,
             maxCol: endDay,
           };
@@ -510,17 +512,15 @@ export default function JobRecordSheet() {
     };
     
     const isCellInSelection = (profileId: string, day: number, type: string) => {
-        if (!dragState || dragState.startCell.type !== type) return false;
-        const selection = getSelectionRange();
-        if (!selection) return false;
+        if (!dragState || !isDragging || !selectionRange || dragState.startCell.type !== type) return false;
         const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
         const rowIndex = profilesInTab.findIndex(p => p.id === profileId);
 
         return (
-            rowIndex >= selection.minRow &&
-            rowIndex <= selection.maxRow &&
-            day >= selection.minCol &&
-            day <= selection.maxCol
+            rowIndex >= selectionRange.minRow &&
+            rowIndex <= selectionRange.maxRow &&
+            day >= selectionRange.minCol &&
+            day <= selectionRange.maxCol
         );
     };
 
@@ -912,3 +912,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
