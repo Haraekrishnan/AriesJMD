@@ -74,29 +74,44 @@ export default function JobRecordSheet() {
     };
     
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
-        const code = value.toUpperCase();
-        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-    
-        if (!isValidCode) {
-            toast({
-                title: "Invalid Job Code",
-                description: `The code "${code}" is not a valid job code.`,
-                variant: "destructive"
-            });
-            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
-            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousCode }));
-            return;
-        }
+      const parts = value.split('/');
+      const code = (parts[0] || '').toUpperCase();
+      const overtime = parts[1] ? parseFloat(parts[1]) : null;
+
+      const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+  
+      if (!isValidCode) {
+          toast({
+              title: "Invalid Job Code",
+              description: `The code "${code}" is not a valid job code.`,
+              variant: "destructive"
+          });
+          const previousRecord = jobRecords[monthKey]?.records?.[employeeId];
+          const previousCode = previousRecord?.days?.[day] || '';
+          const previousOvertime = previousRecord?.dailyOvertime?.[day];
+          const previousValue = previousOvertime ? `${previousCode}/${previousOvertime}` : previousCode;
+          setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousValue }));
+          return;
+      }
+
+      if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
+        toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
+        return;
+      }
+  
+      const isOtRestricted = OT_RESTRICTED_CODES.includes(code);
+
+      if (isOtRestricted && overtime) {
+        toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${code}".`, variant: "destructive" });
         saveJobRecord(monthKey, employeeId, day, code, 'status');
+        saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+        return;
+      }
+
+      saveJobRecord(monthKey, employeeId, day, code, 'status');
+      saveJobRecord(monthKey, employeeId, day, overtime, 'dailyOvertime');
+
     }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
-    
-    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
-        let hours = value === '' ? null : parseFloat(value);
-        if (hours !== null && hours < 0) {
-            hours = 0;
-        }
-        saveJobRecord(monthKey, employeeId, day, hours, 'dailyOvertime');
-    };
     
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? null : parseInt(value, 10);
@@ -364,6 +379,18 @@ export default function JobRecordSheet() {
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
+    const toggleRow = (id: string) => {
+      setExpandedRows(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(id)) {
+              newSet.delete(id);
+          } else {
+              newSet.add(id);
+          }
+          return newSet;
+      });
+  };
+
     return (
         <TooltipProvider>
             <datalist id="jobcodes-datalist">
@@ -465,7 +492,7 @@ export default function JobRecordSheet() {
                     <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No</TableHead>
                                 <TableHead className="sticky bg-card z-50 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
                                 <TableHead className="sticky bg-card z-50 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
@@ -486,6 +513,7 @@ export default function JobRecordSheet() {
                         </thead>
                         <TableBody>
                             {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || [])).map((profile, index) => {
+                                const isExpanded = expandedRows.has(profile.id);
                                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                                 const employeeRecord = record.days || {};
                                 const dailyOvertime = record.dailyOvertime || {};
@@ -511,14 +539,13 @@ export default function JobRecordSheet() {
                                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
 
                                 return (
-                                    <Accordion key={profile.id} type="single" collapsible>
-                                    <AccordionItem value={profile.id} className="border-none">
+                                    <React.Fragment key={profile.id}>
                                         <TableRow>
                                             <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: '120px'}}>
                                                 <div className="flex items-center">
-                                                    <AccordionTrigger className="w-8 p-0 hover:no-underline">
-                                                        <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                                    </AccordionTrigger>
+                                                    <Button variant="ghost" size="icon" className="w-8 p-0 h-8 hover:bg-transparent" onClick={() => toggleRow(profile.id)}>
+                                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                    </Button>
                                                     <span className="w-6 text-center">{index + 1}</span>
                                                     {isReorderMode && (
                                                         <div className="flex flex-col">
@@ -543,9 +570,11 @@ export default function JobRecordSheet() {
                                             </TableCell>
                                             {dayHeaders.map(day => {
                                                 const cellId = `${profile.id}-${day}`;
-                                                const cellValue = cellStates[cellId] || '';
+                                                const cellValue = employeeRecord[day] || '';
+                                                const overtimeValue = dailyOvertime[day];
+                                                const fullValue = overtimeValue ? `${cellValue}/${overtimeValue}` : cellValue;
+
                                                 const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
-                                                const overtimeForDay = dailyOvertime[day] || 0;
 
                                                 return (
                                                     <TableCell 
@@ -557,17 +586,32 @@ export default function JobRecordSheet() {
                                                         )}
                                                     >
                                                         <div className="relative w-full h-full flex items-center justify-center">
-                                                            <Input
-                                                                id={cellId}
-                                                                type="text"
-                                                                list="jobcodes-datalist"
-                                                                defaultValue={cellValue}
-                                                                onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                                className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
-                                                                style={{ boxShadow: 'none' }}
+                                                            {editingCell === cellId ? (
+                                                              <Input
+                                                                  id={cellId}
+                                                                  type="text"
+                                                                  list="jobcodes-datalist"
+                                                                  defaultValue={fullValue}
+                                                                  onBlur={(e) => {
+                                                                      handleStatusChange(profile.id, day, e.target.value);
+                                                                      setEditingCell(null);
+                                                                  }}
+                                                                  onKeyDown={(e) => { if(e.key === 'Enter') e.currentTarget.blur()}}
+                                                                  autoFocus
+                                                                  className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-background text-foreground"
+                                                                  style={{ boxShadow: 'none' }}
+                                                                  disabled={!canEditSheet}
+                                                              />
+                                                            ) : (
+                                                              <button
+                                                                onClick={() => canEditSheet && setEditingCell(cellId)}
                                                                 disabled={!canEditSheet}
-                                                            />
-                                                            {overtimeForDay > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                                className="w-full h-full flex items-center justify-center font-bold relative"
+                                                              >
+                                                                  {cellValue}
+                                                                  {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                              </button>
+                                                            )}
                                                         </div>
                                                     </TableCell>
                                                 );
@@ -591,32 +635,42 @@ export default function JobRecordSheet() {
                                                 />
                                             </TableCell>
                                         </TableRow>
-                                        <AccordionContent asChild>
+                                        {isExpanded && (
                                             <TableRow>
                                                 <TableCell colSpan={3}></TableCell>
                                                 {dayHeaders.map(day => {
                                                     const cellId = `${profile.id}-${day}-ot`;
                                                     const jobCode = employeeRecord[day] || '';
-                                                    const isOtAllowed = !OT_RESTRICTED_CODES.includes(jobCode.toUpperCase()) && jobCode !== '';
+                                                    const isOtDisabled = !canEditSheet || !jobCode || OT_RESTRICTED_CODES.includes(jobCode.toUpperCase());
                                                     return (
                                                         <TableCell key={cellId} className="p-0 min-w-[70px] border-r h-10">
-                                                            <Input 
-                                                                type="number" 
-                                                                defaultValue={dailyOvertime[day] || ''}
-                                                                onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                                className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
-                                                                placeholder="OT"
-                                                                min="0"
-                                                                disabled={!canEditSheet || !isOtAllowed}
-                                                            />
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className='w-full h-full'>
+                                                                      <Input 
+                                                                          type="number" 
+                                                                          defaultValue={dailyOvertime[day] || ''}
+                                                                          onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                                          className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
+                                                                          placeholder="OT"
+                                                                          min="0"
+                                                                          disabled={isOtDisabled}
+                                                                      />
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                {isOtDisabled && (
+                                                                    <TooltipContent>
+                                                                        <p>Enter a valid job code to add overtime.</p>
+                                                                    </TooltipContent>
+                                                                )}
+                                                            </Tooltip>
                                                         </TableCell>
                                                     );
                                                 })}
                                                 <TableCell colSpan={9}></TableCell>
                                             </TableRow>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    </Accordion>
+                                        )}
+                                    </React.Fragment>
                                 );
                             })}
                         </TableBody>
