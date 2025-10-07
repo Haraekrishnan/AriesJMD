@@ -37,6 +37,7 @@ export default function JobRecordSheet() {
     const [activeTab, setActiveTab] = useState('Unassigned');
     const [searchTerm, setSearchTerm] = useState('');
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
+    const [editingCell, setEditingCell] = useState<string | null>(null);
     const { toast } = useToast();
 
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -134,110 +135,6 @@ export default function JobRecordSheet() {
 
     }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
 
-    const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string, overtime: number | null }[]) => {
-        updates.forEach(update => {
-            saveJobRecord(monthKey, update.profileId, update.day, update.code, 'status');
-            saveJobRecord(monthKey, update.profileId, update.day, update.overtime, 'dailyOvertime');
-        });
-    }, [monthKey, saveJobRecord]);
-
-    const [isDragging, setIsDragging] = useState(false);
-    const [startCell, setStartCell] = useState<{ profileId: string; day: number } | null>(null);
-    const [fillValue, setFillValue] = useState<string>('');
-    const [endCell, setEndCell] = useState<{ profileId: string; day: number } | null>(null);
-    const dragFillTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    const handleMouseUp = useCallback(() => {
-        if (isDragging && startCell && endCell) {
-            const profiles = filteredAndGroupedProfiles[activeTab] || [];
-            const startIndex = profiles.findIndex(p => p.id === startCell.profileId);
-            const endIndex = profiles.findIndex(p => p.id === endCell.profileId);
-
-            if (startIndex === -1 || endIndex === -1) {
-                setIsDragging(false);
-                setStartCell(null);
-                setEndCell(null);
-                setFillValue('');
-                return;
-            }
-
-            const minRow = Math.min(startIndex, endIndex);
-            const maxRow = Math.max(startIndex, endIndex);
-            const minCol = Math.min(startCell.day, endCell.day);
-            const maxCol = Math.max(startCell.day, endCell.day);
-
-            const [fillCode, fillOvertimeStr] = fillValue.split('/');
-            const fillOvertime = fillOvertimeStr ? parseFloat(fillOvertimeStr) : null;
-
-            const updates: { profileId: string; day: number; code: string, overtime: number | null }[] = [];
-            const newCellStates = { ...cellStates };
-
-            for (let i = minRow; i <= maxRow; i++) {
-                const profileId = profiles[i].id;
-                for (let j = minCol; j <= maxCol; j++) {
-                    updates.push({ profileId, day: j, code: fillCode, overtime: fillOvertime });
-                    newCellStates[`${profileId}-${j}`] = fillValue;
-                }
-            }
-            batchUpdateJobRecords(updates);
-            setCellStates(newCellStates);
-        }
-        setIsDragging(false);
-        setStartCell(null);
-        setEndCell(null);
-        setFillValue('');
-    }, [isDragging, startCell, endCell, fillValue, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
-
-    useEffect(() => {
-        window.addEventListener('mouseup', handleMouseUp);
-        return () => window.removeEventListener('mouseup', handleMouseUp);
-    }, [handleMouseUp]);
-
-    const handleMouseDown = (profileId: string, day: number) => {
-        setIsDragging(true);
-        const cellId = `${profileId}-${day}`;
-        const value = cellStates[cellId] || '';
-        setStartCell({ profileId, day });
-        setEndCell({ profileId, day });
-        setFillValue(value);
-    };
-
-    const handleMouseEnter = (profileId: string, day: number) => {
-        if (isDragging) {
-            if (dragFillTimeoutRef.current) clearTimeout(dragFillTimeoutRef.current);
-            dragFillTimeoutRef.current = setTimeout(() => setEndCell({ profileId, day }), 50);
-        }
-    };
-    
-    const getSelectionRange = () => {
-        if (!isDragging || !startCell || !endCell) return null;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
-        const startIndex = profiles.findIndex(p => p.id === startCell.profileId);
-        const endIndex = profiles.findIndex(p => p.id === endCell.profileId);
-    
-        return {
-            minRow: Math.min(startIndex, endIndex),
-            maxRow: Math.max(startIndex, endIndex),
-            minCol: Math.min(startCell.day, endCell.day),
-            maxCol: Math.max(startCell.day, endCell.day),
-        };
-    };
-    
-    const selectionRange = getSelectionRange();
-    
-    const isCellInSelection = (profileId: string, day: number) => {
-        if (!selectionRange) return false;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
-        const rowIndex = profiles.findIndex(p => p.id === profileId);
-        if(rowIndex === -1) return false;
-        return (
-            rowIndex >= selectionRange.minRow &&
-            rowIndex <= selectionRange.maxRow &&
-            day >= selectionRange.minCol &&
-            day <= selectionRange.maxCol
-        );
-    };
-
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const [codeStr, overtimeStr] = value.split('/');
         const code = (codeStr || '').toUpperCase();
@@ -251,7 +148,6 @@ export default function JobRecordSheet() {
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            // Revert state
             const record = jobRecords[monthKey]?.records?.[employeeId];
             const previousCode = record?.days?.[day] || '';
             const previousOvertime = record?.dailyOvertime?.[day] || null;
@@ -298,6 +194,8 @@ export default function JobRecordSheet() {
     
     const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
     
+    const isCurrentMonthSheet = useMemo(() => isSameMonth(currentMonth, new Date()) && isSameYear(currentMonth, new Date()), [currentMonth]);
+    
     const canGoToPreviousMonth = useMemo(() => {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
       return isAfter(firstDayOfCurrentMonth, implementationStartDate);
@@ -313,6 +211,7 @@ export default function JobRecordSheet() {
         if (!can.manage_job_record) return false;
         return !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
+
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -666,22 +565,7 @@ export default function JobRecordSheet() {
                                             const cellValue = cellStates[cellId] || '';
                                             const [code, overtime] = cellValue.split('/');
                                             const colorInfo = JOB_CODE_COLORS[code?.toUpperCase() as string] || {};
-
-                                            const cellContent = (
-                                                <div className="flex items-center justify-center gap-1 w-full h-full">
-                                                    <span>{code}</span>
-                                                    {overtime && (
-                                                        <Tooltip>
-                                                            <TooltipTrigger>
-                                                                <Clock className="h-3 w-3 text-blue-600" />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>{overtime} hrs OT</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    )}
-                                                </div>
-                                            );
+                                            const isEditing = editingCell === cellId;
 
                                             return (
                                                 <TableCell 
@@ -691,9 +575,11 @@ export default function JobRecordSheet() {
                                                         code ? colorInfo.bg : 'bg-transparent',
                                                         code ? colorInfo.text : 'text-foreground'
                                                     )}
+                                                    onClick={() => canEditSheet && setEditingCell(cellId)}
                                                 >
-                                                    {canEditSheet ? (
+                                                    {isEditing ? (
                                                         <Input
+                                                            autoFocus
                                                             id={cellId}
                                                             type="text"
                                                             list="jobcodes-datalist"
@@ -702,13 +588,29 @@ export default function JobRecordSheet() {
                                                                 const newValue = e.target.value;
                                                                 setCellStates(prev => ({...prev, [cellId]: newValue}));
                                                                 handleStatusChange(profile.id, day, newValue);
+                                                                setEditingCell(null);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' || e.key === 'Escape') {
+                                                                    e.currentTarget.blur();
+                                                                }
                                                             }}
                                                             className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
                                                             style={{ boxShadow: 'none' }}
                                                         />
                                                     ) : (
-                                                        <div className="flex items-center justify-center h-full font-bold">
-                                                          {cellContent}
+                                                        <div className="flex items-center justify-center gap-1 w-full h-full font-bold">
+                                                            <span>{code}</span>
+                                                            {overtime && (
+                                                                <Tooltip>
+                                                                    <TooltipTrigger>
+                                                                        <Clock className="h-3 w-3 text-blue-600" />
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>{overtime} hrs OT</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </TableCell>
@@ -796,5 +698,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
