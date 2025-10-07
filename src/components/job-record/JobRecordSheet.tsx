@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -339,8 +338,8 @@ export default function JobRecordSheet() {
     const canEditOvertime = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+        return can.manage_job_record;
+    }, [user, can.manage_job_record]);
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -755,7 +754,7 @@ export default function JobRecordSheet() {
                                                 onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                                 className="w-16 h-8 text-center"
                                                 placeholder="0"
-                                                disabled={!canEditOvertime}
+                                                disabled={user?.role !== 'Admin'}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -847,6 +846,7 @@ export default function JobRecordSheet() {
     
 
     
+
 
 
 
