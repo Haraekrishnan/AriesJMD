@@ -240,40 +240,38 @@ export default function JobRecordSheet() {
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const [codeStr, overtimeStr] = value.split('/');
-        const code = (codeStr || '').toUpperCase() ?? '';
+        const code = (codeStr || '').toUpperCase();
         const overtime = overtimeStr ? parseFloat(overtimeStr) : null;
-        const cellId = `${employeeId}-${day}`;
-
-        setCellStates(prev => ({...prev, [cellId]: value }));
-
+    
         const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-
+    
         if (!isValidCode && code !== '') {
             toast({
                 title: "Invalid Job Code",
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
+            // Revert state
             const record = jobRecords[monthKey]?.records?.[employeeId];
             const previousCode = record?.days?.[day] || '';
             const previousOvertime = record?.dailyOvertime?.[day] || null;
             const previousValue = previousOvertime ? `${previousCode}/${previousOvertime}` : previousCode;
-            setCellStates(prev => ({...prev, [cellId]: previousValue}));
+            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousValue }));
             return;
         }
-
-        const restrictedCodes = ['X','KD','Q','ST','NWS','OS','ML','L','TR','PD','EP','OFF','PH'];
+    
+        const restrictedCodes = ['X', 'KD', 'Q', 'ST', 'NWS', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH'];
         if (overtime && overtime > 0 && restrictedCodes.includes(code)) {
             toast({
                 title: "Invalid Overtime",
                 description: `Overtime cannot be added for the job code "${code}".`,
                 variant: "destructive"
             });
-             setCellStates(prev => ({...prev, [cellId]: code})); // Revert to just the code
-             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-             return;
+            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: code }));
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+            return;
         }
-        
+    
         saveJobRecord(monthKey, employeeId, day, code, 'status');
         saveJobRecord(monthKey, employeeId, day, overtime, 'dailyOvertime');
     
@@ -313,7 +311,6 @@ export default function JobRecordSheet() {
         if (!user) return false;
         if (user.role === 'Admin') return true;
         if (!can.manage_job_record) return false;
-        
         return !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
@@ -786,6 +783,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
 
     
