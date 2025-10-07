@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
-import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role, PpeHistoryRecord } from '@/lib/types';
+import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role, PpeHistoryRecord, EpNumberRecord } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info } from 'lucide-react';
 import { Separator } from '../ui/separator';
@@ -258,14 +258,17 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             delete dataToSubmit.otherTrade;
 
             let epHistory = Array.isArray(data.epNumberHistory) ? data.epNumberHistory : (data.epNumberHistory ? Object.values(data.epNumberHistory) : []);
-            if (isChangingEp && data.newEpNumber) {
-                if (data.epNumber) { // Add old number to history if it exists
-                    epHistory.push({ epNumber: data.epNumber, date: new Date().toISOString() });
+            
+            if (isChangingEp && data.newEpNumber && data.newEpNumber.trim() !== '') {
+                const oldEpNumber = profile?.epNumber || data.epNumber; // Use profile's original number
+                if (oldEpNumber) {
+                    epHistory.push({ epNumber: oldEpNumber, date: new Date().toISOString() });
                 }
                 dataToSubmit.epNumber = data.newEpNumber;
             }
             dataToSubmit.epNumberHistory = epHistory;
             delete dataToSubmit.newEpNumber;
+
 
             const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => l && !l.rejoinedDate && !l.leaveEndDate));
             if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
@@ -347,6 +350,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   };
 
+  const epNumberHistoryArray: EpNumberRecord[] = useMemo(() => {
+    if (!liveProfile?.epNumberHistory) return [];
+    const history = Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory);
+    return history.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [liveProfile]);
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -420,7 +429,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
                       <div className="space-y-2">
                           <Label>EP Number</Label>
-                          <Input {...form.register('epNumber')} disabled={isChangingEp} />
+                          <Input {...form.register('epNumber')} disabled={isChangingEp || !profile} />
                           {profile && (
                             <div className="flex items-center space-x-2">
                                 <Switch id="change-ep" checked={isChangingEp} onCheckedChange={setIsChangingEp} />
@@ -479,11 +488,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </div>
                         </div>
                       ))}
-                      {liveProfile?.epNumberHistory && liveProfile.epNumberHistory.length > 0 && (
+                      {epNumberHistoryArray.length > 0 && (
                         <div className="space-y-2 pt-4">
                             <h4 className="text-sm font-semibold">EP Number History</h4>
-                            <div className="space-y-1 text-xs text-muted-foreground p-2 border rounded-md">
-                            {(Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory)).map((record, index) => (
+                            <div className="space-y-1 text-xs text-muted-foreground p-2 border rounded-md max-h-24 overflow-y-auto">
+                            {epNumberHistoryArray.map((record, index) => (
                                 <p key={index}>
                                 <strong>{record.epNumber}</strong> (since {format(parseISO(record.date), 'dd MMM yyyy')})
                                 </p>
@@ -699,4 +708,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
