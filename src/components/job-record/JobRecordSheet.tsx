@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -17,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -25,7 +24,7 @@ import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
-const OT_RESTRICTED_CODES = ['PH', 'L', 'ML', 'KD', 'OS', 'EP', 'PD', 'TR', 'ST', 'NWS', 'Q', 'X', 'OFF', 'S', 'RST', 'CQ'];
+const OT_RESTRICTED_CODES = ['PH', 'L', 'ML', 'KD', 'OS', 'EP', 'PD', 'TR', 'ST', 'NWS', 'Q', 'X', 'OFF', 'S', 'CQ', 'RST'];
 
 type DragState = {
   isDragging: boolean;
@@ -47,11 +46,13 @@ export default function JobRecordSheet() {
     const [searchTerm, setSearchTerm] = useState('');
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
     const { toast } = useToast();
+    
+    const [cellStates, setCellStates] = useState<Record<string, string>>({});
     const [dragState, setDragState] = useState<DragState | null>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
-    
+
     const handlePlantChange = (profileId: string, plantName: string) => {
         saveJobRecord(monthKey, profileId, null, plantName, 'plant');
         toast({
@@ -60,27 +61,33 @@ export default function JobRecordSheet() {
         });
     };
     
-    const handleCodeChange = useCallback((employeeId: string, day: number, value: string) => {
-      const code = (value || '').toUpperCase();
-      const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-      if (!isValidCode) {
-        toast({
-            title: "Invalid Job Code",
-            description: `The code "${code}" is not a valid job code.`,
-            variant: "destructive"
-        });
-        saveJobRecord(monthKey, employeeId, day, '', 'status');
-        return;
-      }
-      saveJobRecord(monthKey, employeeId, day, code, 'status');
+    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
+        const code = (value || '').toUpperCase() ?? '';
+        const cellId = `jobcode-${employeeId}-${day}`;
 
-      if (OT_RESTRICTED_CODES.includes(code)) {
-        saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-      }
+        setCellStates(prev => ({...prev, [cellId]: code }));
 
-    }, [monthKey, saveJobRecord, jobCodes, toast]);
+        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+
+        if (!isValidCode && code !== '') {
+            toast({
+                title: "Invalid Job Code",
+                description: `The code "${code}" is not a valid job code.`,
+                variant: "destructive"
+            });
+            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+            setCellStates(prev => ({...prev, [cellId]: previousCode}));
+            return;
+        }
+        
+        saveJobRecord(monthKey, employeeId, day, code, 'status');
     
-     const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
+        if (OT_RESTRICTED_CODES.includes(code)) {
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+        }
+    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
+    
+    const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
         const overtime = value === '' ? null : parseFloat(value);
         if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
             toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
@@ -112,28 +119,6 @@ export default function JobRecordSheet() {
              saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
         }
     };
-
-    const plantProjects = useMemo(() => {
-        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
-    }, [jobRecordPlants]);
-
-    useEffect(() => {
-        if (plantProjects.length > 0 && !plantProjects.some(p => p.name === activeTab) && activeTab !== 'Unassigned') {
-            setActiveTab('Unassigned');
-        }
-    }, [plantProjects, activeTab]);
-    
-    const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
-    
-    const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
-
-    const canEditSheet = useMemo(() => {
-        if (!user) return false;
-        if (user.role === 'Admin') return true;
-        if (!can.manage_job_record) return false;
-        return !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
-
     
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
@@ -194,7 +179,237 @@ export default function JobRecordSheet() {
         return groups;
 
     }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
+    
+    useEffect(() => {
+        const newStates: Record<string, string> = {};
+        if (jobRecords[monthKey]?.records) {
+            for (const profileId in jobRecords[monthKey].records) {
+                const record = jobRecords[monthKey].records[profileId];
+                if (record.days) {
+                    for (const day in record.days) {
+                        newStates[`jobcode-${profileId}-${day}`] = record.days[day];
+                    }
+                }
+            }
+        }
+        setCellStates(newStates);
+    }, [jobRecords, monthKey]);
+    
+    const applyDragCopy = () => {
+        if (!dragState) return;
+        const { startCell, endCell, dragDirection } = dragState;
+        
+        const startElement = document.getElementById(`${startCell.type}-${startCell.profileId}-${startCell.day}`) as HTMLInputElement;
+        const startValue = startElement?.value;
+    
+        if (startValue === undefined) return;
+    
+        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+        const handleFn = startCell.type === 'jobcode' ? handleStatusChange : handleOvertimeChange;
+    
+        if (dragDirection === 'horizontal') {
+            const startDay = Math.min(startCell.day, endCell.day);
+            const endDay = Math.max(startCell.day, endCell.day);
+            for (let day = startDay; day <= endDay; day++) {
+                handleFn(startCell.profileId, day, startValue);
+            }
+        } else if (dragDirection === 'vertical') {
+            const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
+            const endIndex = profilesInTab.findIndex(p => p.id === endCell.profileId);
+            if (startIndex === -1 || endIndex === -1) return;
+    
+            const startIdx = Math.min(startIndex, endIndex);
+            const endIdx = Math.max(startIndex, endIndex);
+            for (let i = startIdx; i <= endIdx; i++) {
+                const profileId = profilesInTab[i].id;
+                handleFn(profileId, startCell.day, startValue);
+            }
+        }
+    };
 
+    const handleMouseDownCell = (e: React.MouseEvent, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        const startValue = (document.getElementById(`${type}-${profileId}-${day}`) as HTMLInputElement)?.value;
+        if (startValue === undefined) return;
+
+        setDragState({
+            isDragging: true,
+            startCell: { profileId, day, type },
+            endCell: { profileId, day, type },
+            dragDirection: null,
+        });
+        e.preventDefault();
+    };
+
+    const handleMouseUpTable = useCallback(() => {
+        if (dragState) {
+            applyDragCopy();
+            setDragState(null);
+        }
+    }, [dragState, applyDragCopy]);
+
+    const handleMouseMoveTable = useCallback((e: React.MouseEvent) => {
+        if (!dragState || !dragState.isDragging) return;
+
+        const target = e.target as HTMLElement;
+        const cell = target.closest('td[data-cell-id]');
+        if (!cell) return;
+
+        const [type, profileId, dayStr] = cell.getAttribute('data-cell-id')!.split('-');
+        const day = parseInt(dayStr, 10);
+        
+        if (dragState.startCell.type !== type) return;
+
+        let dragDirection = dragState.dragDirection;
+        if (!dragDirection) {
+            if (day !== dragState.startCell.day) dragDirection = 'horizontal';
+            else if (profileId !== dragState.startCell.profileId) dragDirection = 'vertical';
+        }
+
+        setDragState(prev => ({
+            ...prev!,
+            endCell: { profileId, day, type: type as 'jobcode' | 'overtime' },
+            dragDirection,
+        }));
+    }, [dragState]);
+
+    const handleMouseEnterCell = useCallback((profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        if (dragState?.isDragging) {
+             setDragState(prev => ({ ...prev!, endCell: { profileId, day, type } }));
+        }
+    }, [dragState]);
+
+    const getSelectionRange = () => {
+        if (!dragState || !dragState.isDragging) return null;
+        const { startCell, endCell, dragDirection } = dragState;
+        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+        if (!profilesInTab) return null;
+      
+        if (dragDirection === 'horizontal') {
+          const startDay = Math.min(startCell.day, endCell.day);
+          const endDay = Math.max(startCell.day, endCell.day);
+          const rowIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
+          if (rowIndex === -1) return null;
+          return {
+            minRow: rowIndex,
+            maxRow: rowIndex,
+            minCol: startDay,
+            maxCol: endDay,
+          };
+        } else if (dragDirection === 'vertical') {
+          const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
+          const endIndex = profilesInTab.findIndex(p => p.id === endCell.profileId);
+          if (startIndex === -1 || endIndex === -1) return null;
+          return {
+            minRow: Math.min(startIndex, endIndex),
+            maxRow: Math.max(startIndex, endIndex),
+            minCol: startCell.day,
+            maxCol: startCell.day,
+          }
+        }
+        return null;
+      };
+
+    const isCellInSelection = (profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        const selectionRange = getSelectionRange();
+        if (!dragState || !selectionRange || dragState.startCell.type !== type) return false;
+        
+        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+        if (!profilesInTab) return false;
+        
+        const rowIndex = profilesInTab.findIndex(p => p.id === profileId);
+        
+        if (rowIndex === -1) return false;
+        
+        return (
+            rowIndex >= selectionRange.minRow &&
+            rowIndex <= selectionRange.maxRow &&
+            day >= selectionRange.minCol &&
+            day <= selectionRange.maxCol
+        );
+    };
+
+    const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+            const numDays = getDaysInMonth(currentMonth);
+            const currentProfileIndex = profilesInTab.findIndex(p => p.id === profileId);
+
+            let nextDay = day;
+            let nextProfileIndex = currentProfileIndex;
+            let nextType = type;
+            
+            if (e.shiftKey) { // Move backwards
+                nextDay--;
+                if (nextDay < 1) {
+                    nextDay = numDays;
+                    nextProfileIndex--;
+                    if (nextProfileIndex < 0) {
+                        nextProfileIndex = profilesInTab.length - 1;
+                    }
+                }
+            } else { // Move forwards
+                nextDay++;
+                if (nextDay > numDays) {
+                    nextDay = 1;
+                    nextProfileIndex++;
+                    if (nextProfileIndex >= profilesInTab.length) {
+                        nextProfileIndex = 0;
+                    }
+                }
+            }
+
+            const nextProfileId = profilesInTab[nextProfileIndex]?.id;
+            if (!nextProfileId) return;
+
+            const nextCellId = `${nextType}-${nextProfileId}-${nextDay}`;
+            const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
+
+            if (nextElement) {
+                nextElement.focus();
+                nextElement.select();
+            }
+        }
+    }, [filteredAndGroupedProfiles, activeTab, currentMonth]);
+    
+    const plantProjects = useMemo(() => {
+        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
+    }, [jobRecordPlants]);
+
+    useEffect(() => {
+        if (plantProjects.length > 0 && !plantProjects.some(p => p.name === activeTab) && activeTab !== 'Unassigned') {
+            setActiveTab('Unassigned');
+        }
+    }, [plantProjects, activeTab]);
+    
+    const toggleRow = (profileId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(profileId)) {
+                newSet.delete(profileId);
+            } else {
+                newSet.add(profileId);
+            }
+            return newSet;
+        });
+    };
+    
+    const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
+    
+    const canGoToPreviousMonth = useMemo(() => {
+      const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+      return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+    }, [currentMonth]);
+    
+    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
+
+    const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
+    
+    const canEditSheet = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'Admin') return true;
+        return can.manage_job_record && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -355,175 +570,6 @@ export default function JobRecordSheet() {
         savePlantOrder(monthKey, activeTab, newOrderIds);
     };
     
-    const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
-            const numDays = getDaysInMonth(currentMonth);
-            const currentProfileIndex = profilesInTab.findIndex(p => p.id === profileId);
-
-            let nextDay = day;
-            let nextProfileIndex = currentProfileIndex;
-            
-            if (e.shiftKey) { // Move backwards
-                nextDay--;
-                if (nextDay < 1) {
-                    nextDay = numDays;
-                    nextProfileIndex--;
-                    if (nextProfileIndex < 0) {
-                        nextProfileIndex = profilesInTab.length - 1;
-                    }
-                }
-            } else { // Move forwards
-                nextDay++;
-                if (nextDay > numDays) {
-                    nextDay = 1;
-                    nextProfileIndex++;
-                    if (nextProfileIndex >= profilesInTab.length) {
-                        nextProfileIndex = 0;
-                    }
-                }
-            }
-
-            const nextProfileId = profilesInTab[nextProfileIndex]?.id;
-            if (!nextProfileId) return;
-
-            const nextCellId = `${type}-${nextProfileId}-${nextDay}`;
-            const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
-
-            if (nextElement) {
-                nextElement.focus();
-                nextElement.select();
-            }
-        }
-    }, [filteredAndGroupedProfiles, activeTab, currentMonth]);
-
-    const applyDragCopy = () => {
-        if (!dragState) return;
-        const { startCell, endCell, dragDirection } = dragState;
-        
-        const startElement = document.getElementById(`${startCell.type}-${startCell.profileId}-${startCell.day}`) as HTMLInputElement;
-        const startValue = startElement?.value;
-    
-        if (startValue === undefined) return;
-    
-        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
-        const handleFn = startCell.type === 'jobcode' ? handleCodeChange : handleOvertimeChange;
-    
-        if (dragDirection === 'horizontal') {
-            const startDay = Math.min(startCell.day, endCell.day);
-            const endDay = Math.max(startCell.day, endCell.day);
-            for (let day = startDay; day <= endDay; day++) {
-                handleFn(startCell.profileId, day, startValue);
-            }
-        } else if (dragDirection === 'vertical') {
-            const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
-            const endIndex = profilesInTab.findIndex(p => p.id === endCell.profileId);
-            if (startIndex === -1 || endIndex === -1) return;
-    
-            const startIdx = Math.min(startIndex, endIndex);
-            const endIdx = Math.max(startIndex, endIndex);
-            for (let i = startIdx; i <= endIdx; i++) {
-                const profileId = profilesInTab[i].id;
-                handleFn(profileId, startCell.day, startValue);
-            }
-        }
-    };
-
-    const handleMouseDownCell = (e: React.MouseEvent, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
-        const startValue = (document.getElementById(`${type}-${profileId}-${day}`) as HTMLInputElement)?.value;
-        if (startValue === undefined) return;
-
-        setDragState({
-            isDragging: true,
-            startCell: { profileId, day, type },
-            endCell: { profileId, day, type },
-            dragDirection: null,
-        });
-        e.preventDefault();
-    };
-
-    const handleMouseUpTable = () => {
-        if (dragState) {
-            applyDragCopy();
-            setDragState(null);
-        }
-    };
-
-    const handleMouseMoveTable = (e: React.MouseEvent) => {
-        if (!dragState || !dragState.isDragging) return;
-
-        const target = e.target as HTMLElement;
-        const cell = target.closest('td[data-cell-id]');
-        if (!cell) return;
-
-        const [type, profileId, dayStr] = cell.getAttribute('data-cell-id')!.split('-');
-        const day = parseInt(dayStr, 10);
-        
-        if (dragState.startCell.type !== type) return;
-
-        let dragDirection = dragState.dragDirection;
-        if (!dragDirection) {
-            if (day !== dragState.startCell.day) dragDirection = 'horizontal';
-            else if (profileId !== dragState.startCell.profileId) dragDirection = 'vertical';
-        }
-
-        setDragState(prev => ({
-            ...prev!,
-            endCell: { profileId, day, type: type as 'jobcode' | 'overtime' },
-            dragDirection,
-        }));
-    };
-    
-    const handleMouseEnter = (profileId: string, day: number, type: 'jobcode' | 'overtime') => {
-        if (dragState?.isDragging) {
-            setDragState(prev => ({ ...prev!, endCell: { profileId, day, type } }));
-        }
-    };
-
-    const getSelectionRange = () => {
-      if (!dragState || !dragState.startCell || !dragState.endCell) return null;
-      const { startCell, endCell, dragDirection } = dragState;
-      const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
-
-      if (dragDirection === 'horizontal') {
-          const startDay = Math.min(startCell.day, endCell.day);
-          const endDay = Math.max(startCell.day, endCell.day);
-          const rowIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
-          if (rowIndex === -1) return null;
-          return {
-            minRow: rowIndex,
-            maxRow: rowIndex,
-            minCol: startDay,
-            maxCol: endDay,
-          };
-      } else if (dragDirection === 'vertical') {
-          const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
-          const endIndex = profilesInTab.findIndex(p => p.id === endCell.profileId);
-          if (startIndex === -1 || endIndex === -1) return null;
-          return {
-            minRow: Math.min(startIndex, endIndex),
-            maxRow: Math.max(startIndex, endIndex),
-            minCol: startCell.day,
-            maxCol: startCell.day,
-          }
-      }
-      return null;
-    };
-    
-    const isCellInSelection = (profileId: string, day: number, type: string) => {
-        if (!dragState || !isDragging || !selectionRange || dragState.startCell.type !== type) return false;
-        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
-        const rowIndex = profilesInTab.findIndex(p => p.id === profileId);
-
-        return (
-            rowIndex >= selectionRange.minRow &&
-            rowIndex <= selectionRange.maxRow &&
-            day >= selectionRange.minCol &&
-            day <= selectionRange.maxCol
-        );
-    };
-
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
 
     const handleDeleteJobCode = (id: string) => {
@@ -539,18 +585,6 @@ export default function JobRecordSheet() {
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
-    const toggleRow = (profileId: string) => {
-        setExpandedRows(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(profileId)) {
-                newSet.delete(profileId);
-            } else {
-                newSet.add(profileId);
-            }
-            return newSet;
-        });
-    };
-
     return (
         <TooltipProvider>
             <datalist id="jobcodes-datalist">
@@ -563,14 +597,14 @@ export default function JobRecordSheet() {
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <span className="text-lg font-semibold flex items-center gap-2">
                                 {format(currentMonth, 'MMMM yyyy')}
                                 {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                             </span>
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                             <div className="relative ml-4">
@@ -730,7 +764,7 @@ export default function JobRecordSheet() {
                                         </TableCell>
                                         {dayHeaders.map(day => {
                                             const cellId = `jobcode-${profile.id}-${day}`;
-                                            const code = employeeRecord[day] || '';
+                                            const code = cellStates[cellId] || '';
                                             const overtimeForDay = dailyOvertime[day] || 0;
                                             const colorInfo = JOB_CODE_COLORS[code] || {};
                                             const isInSelection = isCellInSelection(profile.id, day, 'jobcode');
@@ -744,16 +778,17 @@ export default function JobRecordSheet() {
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
                                                     onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'jobcode')}
-                                                    onMouseEnter={() => handleMouseEnter(profile.id, day, 'jobcode')}
+                                                    onMouseEnter={() => handleMouseEnterCell(profile.id, day, 'jobcode')}
                                                 >
                                                     <div className="relative w-full h-full">
                                                         <Input
                                                             id={cellId}
                                                             type="text"
                                                             list="jobcodes-datalist"
-                                                            defaultValue={code}
+                                                            value={code}
+                                                            onChange={(e) => setCellStates(prev => ({...prev, [cellId]: e.target.value.toUpperCase()}))}
+                                                            onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                             onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'jobcode')}
-                                                            onBlur={(e) => handleCodeChange(profile.id, day, e.target.value)}
                                                             className={cn(
                                                                 "absolute inset-0 w-full h-full text-center font-bold uppercase rounded-none border-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
                                                                 "bg-transparent focus-visible:bg-background",
@@ -795,7 +830,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: '320px'}}>Overtime Hours</TableCell>
+                                            <TableHead colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: '320px'}}>Overtime Hours</TableHead>
                                             {dayHeaders.map(day => {
                                                 const cellId = `overtime-${profile.id}-${day}`;
                                                 const jobCode = employeeRecord[day] || '';
@@ -808,7 +843,7 @@ export default function JobRecordSheet() {
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
                                                     onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'overtime')}
-                                                    onMouseEnter={() => handleMouseEnter(profile.id, day, 'overtime')}
+                                                    onMouseEnter={() => handleMouseEnterCell(profile.id, day, 'overtime')}
                                                     >
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
@@ -912,5 +947,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
