@@ -214,6 +214,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             leaveHistory: Array.isArray(liveProfile.leaveHistory) ? liveProfile.leaveHistory : [],
             memoHistory: Array.isArray(liveProfile.memoHistory) ? liveProfile.memoHistory : [],
             ppeHistory: Array.isArray(liveProfile.ppeHistory) ? liveProfile.ppeHistory : [],
+            epNumberHistory: Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : [],
         } : {
             documents: getInitialDocs(), 
             skills: [], 
@@ -222,6 +223,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             leaveHistory: [],
             memoHistory: [],
             ppeHistory: [],
+            epNumberHistory: [],
         };
         form.reset(defaultValues as any);
         if (defaultValues.otherTrade) {
@@ -255,12 +257,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             }
             delete dataToSubmit.otherTrade;
 
-            let epHistory = Array.isArray(data.epNumberHistory) ? data.epNumberHistory : [];
+            let epHistory = Array.isArray(data.epNumberHistory) ? data.epNumberHistory : (data.epNumberHistory ? Object.values(data.epNumberHistory) : []);
             if (isChangingEp && data.newEpNumber) {
-                epHistory.push({ epNumber: data.newEpNumber, date: new Date().toISOString() });
+                if (data.epNumber) { // Add old number to history if it exists
+                    epHistory.push({ epNumber: data.epNumber, date: new Date().toISOString() });
+                }
                 dataToSubmit.epNumber = data.newEpNumber;
-                dataToSubmit.epNumberHistory = epHistory;
             }
+            dataToSubmit.epNumberHistory = epHistory;
             delete dataToSubmit.newEpNumber;
 
             const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => l && !l.rejoinedDate && !l.leaveEndDate));
@@ -475,6 +479,18 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </div>
                         </div>
                       ))}
+                      {liveProfile?.epNumberHistory && liveProfile.epNumberHistory.length > 0 && (
+                        <div className="space-y-2 pt-4">
+                            <h4 className="text-sm font-semibold">EP Number History</h4>
+                            <div className="space-y-1 text-xs text-muted-foreground p-2 border rounded-md">
+                            {(Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory)).map((record, index) => (
+                                <p key={index}>
+                                <strong>{record.epNumber}</strong> (since {format(parseISO(record.date), 'dd MMM yyyy')})
+                                </p>
+                            ))}
+                            </div>
+                        </div>
+                        )}
                   </div>
 
                   <div className="space-y-4 md:col-span-3">
@@ -683,3 +699,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
