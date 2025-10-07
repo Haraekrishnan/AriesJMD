@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -325,9 +325,16 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked]);
+        if (!can.manage_job_record) return false;
+        return isEditableMonth && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
     
+    const canEditOvertime = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'Admin') return true;
+        return can.manage_job_record;
+    }, [user, can.manage_job_record]);
+
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
@@ -509,7 +516,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full overflow-hidden bg-card border rounded-lg">
+            <div className="grid grid-rows-[auto,1fr,auto] h-full overflow-hidden bg-card border rounded-lg">
                 {/* --- FROZEN HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
@@ -740,7 +747,7 @@ export default function JobRecordSheet() {
                                                 onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                                 className="w-16 h-8 text-center"
                                                 placeholder="0"
-                                                disabled={!canEditSheet}
+                                                disabled={!canEditOvertime}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -757,7 +764,7 @@ export default function JobRecordSheet() {
                                                             defaultValue={dailyOvertime[day] || ''}
                                                             onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                             className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                            disabled={!canEditSheet}
+                                                            disabled={!canEditOvertime}
                                                         />
                                                     </TableCell>
                                                 )
@@ -828,10 +835,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
-
-
-
 
     
