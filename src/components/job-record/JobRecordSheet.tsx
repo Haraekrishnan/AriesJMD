@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant, EpNumberRecord } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -52,13 +52,7 @@ export default function JobRecordSheet() {
                 const record = jobRecords[monthKey].records[profileId];
                 if (record.days) {
                     for (const day in record.days) {
-                        const code = record.days[day] || '';
-                        const overtime = record.dailyOvertime?.[day] || null;
-                        let cellValue = code;
-                        if (overtime && overtime > 0) {
-                            cellValue += `/${overtime}`;
-                        }
-                        newStates[`${profileId}-${day}`] = cellValue;
+                        newStates[`${profileId}-${day}`] = record.days[day] || '';
                     }
                 }
             }
@@ -136,42 +130,26 @@ export default function JobRecordSheet() {
     }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
-        const [codeStr, overtimeStr] = value.split('/');
-        const code = (codeStr || '').toUpperCase();
-        const overtime = overtimeStr ? parseFloat(overtimeStr) : null;
-    
+        const code = value.toUpperCase();
         const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
     
-        if (!isValidCode && code !== '') {
+        if (!isValidCode) {
             toast({
                 title: "Invalid Job Code",
                 description: `The code "${code}" is not a valid job code.`,
                 variant: "destructive"
             });
-            const record = jobRecords[monthKey]?.records?.[employeeId];
-            const previousCode = record?.days?.[day] || '';
-            const previousOvertime = record?.dailyOvertime?.[day] || null;
-            const previousValue = previousOvertime ? `${previousCode}/${previousOvertime}` : previousCode;
-            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousValue }));
+            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: previousCode }));
             return;
         }
-    
-        const restrictedCodes = ['X', 'KD', 'Q', 'ST', 'NWS', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH'];
-        if (overtime && overtime > 0 && restrictedCodes.includes(code)) {
-            toast({
-                title: "Invalid Overtime",
-                description: `Overtime cannot be added for the job code "${code}".`,
-                variant: "destructive"
-            });
-            setCellStates(prev => ({ ...prev, [`${employeeId}-${day}`]: code }));
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-            return;
-        }
-    
         saveJobRecord(monthKey, employeeId, day, code, 'status');
-        saveJobRecord(monthKey, employeeId, day, overtime, 'dailyOvertime');
-    
     }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
+    
+    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
+        const hours = value === '' ? null : parseFloat(value);
+        saveJobRecord(monthKey, employeeId, day, hours, 'dailyOvertime');
+    };
     
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? null : parseInt(value, 10);
@@ -194,15 +172,6 @@ export default function JobRecordSheet() {
     
     const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
     
-    const isCurrentMonthSheet = useMemo(() => isSameMonth(currentMonth, new Date()) && isSameYear(currentMonth, new Date()), [currentMonth]);
-    
-    const canGoToPreviousMonth = useMemo(() => {
-      const firstDayOfCurrentMonth = startOfMonth(currentMonth);
-      return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-    }, [currentMonth]);
-    
-    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
-
     const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
 
     const canEditSheet = useMemo(() => {
@@ -399,14 +368,14 @@ export default function JobRecordSheet() {
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <span className="text-lg font-semibold flex items-center gap-2">
                                 {format(currentMonth, 'MMMM yyyy')}
                                 {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                             </span>
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                             <div className="relative ml-4">
@@ -492,14 +461,14 @@ export default function JobRecordSheet() {
                                 <TableHead className="sticky bg-card z-50 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
                                 <TableHead className="sticky bg-card z-50 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
-                                    <TableHead key={day} className="text-center min-w-[100px] border-r">
+                                    <TableHead key={day} className="text-center min-w-[70px] border-r">
                                         {day}
                                     </TableHead>
                                 ))}
                                 <TableHead className="text-center min-w-[150px] border-r">Total OFF</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Leave</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total ML</TableHead>
-                                <TableHead className="text-center min-w-[150px] border-r">Over Time</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total OT</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Working Days</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
@@ -563,63 +532,34 @@ export default function JobRecordSheet() {
                                         {dayHeaders.map(day => {
                                             const cellId = `${profile.id}-${day}`;
                                             const cellValue = cellStates[cellId] || '';
-                                            const [code, overtime] = cellValue.split('/');
-                                            const colorInfo = JOB_CODE_COLORS[code?.toUpperCase() as string] || {};
-                                            const isEditing = editingCell === cellId;
+                                            const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
 
                                             return (
                                                 <TableCell 
                                                     key={day} 
                                                     className={cn(
-                                                        "p-0 text-center relative min-w-[100px] border-r h-10",
-                                                        code ? colorInfo.bg : 'bg-transparent',
-                                                        code ? colorInfo.text : 'text-foreground'
+                                                        "p-0 text-center relative min-w-[70px] border-r h-10",
+                                                        cellValue ? colorInfo.bg : 'bg-transparent',
+                                                        cellValue ? colorInfo.text : 'text-foreground'
                                                     )}
-                                                    onClick={() => canEditSheet && setEditingCell(cellId)}
                                                 >
-                                                    {isEditing ? (
-                                                        <Input
-                                                            autoFocus
-                                                            id={cellId}
-                                                            type="text"
-                                                            list="jobcodes-datalist"
-                                                            defaultValue={cellValue}
-                                                            onBlur={(e) => {
-                                                                const newValue = e.target.value;
-                                                                setCellStates(prev => ({...prev, [cellId]: newValue}));
-                                                                handleStatusChange(profile.id, day, newValue);
-                                                                setEditingCell(null);
-                                                            }}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter' || e.key === 'Escape') {
-                                                                    e.currentTarget.blur();
-                                                                }
-                                                            }}
-                                                            className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
-                                                            style={{ boxShadow: 'none' }}
-                                                        />
-                                                    ) : (
-                                                        <div className="flex items-center justify-center gap-1 w-full h-full font-bold">
-                                                            <span>{code}</span>
-                                                            {overtime && (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger>
-                                                                        <Clock className="h-3 w-3 text-blue-600" />
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>{overtime} hrs OT</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <Input
+                                                        id={cellId}
+                                                        type="text"
+                                                        list="jobcodes-datalist"
+                                                        defaultValue={cellValue}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                        className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
+                                                        style={{ boxShadow: 'none' }}
+                                                        disabled={!canEditSheet}
+                                                    />
                                                 </TableCell>
                                             );
                                         })}
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.offDays}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.leaveDays}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.medicalLeave}</TableCell>
-                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{totalOvertime}</TableCell>
+                                        <TableCell className="text-center min-w-[150px] border-r font-bold">{totalOvertime}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.standbyTraining}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
@@ -634,6 +574,27 @@ export default function JobRecordSheet() {
                                                 disabled={!canEditSheet}
                                             />
                                         </TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="sticky left-0 bg-card z-10 border-r"></TableCell>
+                                        <TableCell className="sticky bg-card z-10 border-r" style={{ left: '120px' }}></TableCell>
+                                        <TableCell className="sticky bg-card z-10 border-r" style={{ left: '320px' }}><Label className="text-xs">Overtime Hrs</Label></TableCell>
+                                        {dayHeaders.map(day => {
+                                            const ot = record.dailyOvertime?.[day] || '';
+                                            return (
+                                                <TableCell key={`ot-${day}`} className="p-0 text-center min-w-[70px] border-r h-10">
+                                                    <Input 
+                                                        type="number" 
+                                                        defaultValue={ot}
+                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                        className="w-full h-full text-center rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring"
+                                                        placeholder="0"
+                                                        disabled={!canEditSheet}
+                                                    />
+                                                </TableCell>
+                                            )
+                                        })}
+                                        <TableCell colSpan={9}></TableCell>
                                     </TableRow>
                                     </React.Fragment>
                                 );
@@ -698,3 +659,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
