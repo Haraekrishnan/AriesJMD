@@ -260,7 +260,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             let epHistory = Array.isArray(data.epNumberHistory) ? data.epNumberHistory : (data.epNumberHistory ? Object.values(data.epNumberHistory) : []);
             
             if (isChangingEp && data.newEpNumber && data.newEpNumber.trim() !== '') {
-                const oldEpNumber = profile?.epNumber || data.epNumber; // Use profile's original number
+                const oldEpNumber = liveProfile?.epNumber;
                 if (oldEpNumber) {
                     epHistory.push({ epNumber: oldEpNumber, date: new Date().toISOString() });
                 }
@@ -350,11 +350,37 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   };
 
-  const epNumberHistoryArray: EpNumberRecord[] = useMemo(() => {
-    if (!liveProfile?.epNumberHistory) return [];
-    const history = Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory);
-    return history.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [liveProfile]);
+    const epNumberTimeline = useMemo(() => {
+        if (!liveProfile) return [];
+
+        const history: EpNumberRecord[] = liveProfile.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory)) : [];
+        const sortedHistory = [...history].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
+        const timeline: { epNumber: string, since: string, till: string | null }[] = [];
+
+        // Add current EP number
+        const lastChangeDate = sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1].date : liveProfile.joiningDate;
+        if (liveProfile.epNumber) {
+            timeline.push({
+                epNumber: liveProfile.epNumber,
+                since: lastChangeDate || liveProfile.joiningDate || new Date().toISOString(),
+                till: null // Current number has no 'till' date
+            });
+        }
+        
+        // Add historical EP numbers
+        for (let i = sortedHistory.length - 1; i >= 0; i--) {
+            const currentRecord = sortedHistory[i];
+            const previousRecord = sortedHistory[i-1];
+            timeline.push({
+                epNumber: currentRecord.epNumber,
+                since: previousRecord ? previousRecord.date : (liveProfile.joiningDate || currentRecord.date),
+                till: currentRecord.date
+            });
+        }
+
+        return timeline;
+    }, [liveProfile]);
 
   return (
     <>
@@ -429,7 +455,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
                       <div className="space-y-2">
                           <Label>EP Number</Label>
-                          <Input {...form.register('epNumber')} disabled={isChangingEp || !profile} />
+                          <Input {...form.register('epNumber')} disabled={!profile || isChangingEp} />
                           {profile && (
                             <div className="flex items-center space-x-2">
                                 <Switch id="change-ep" checked={isChangingEp} onCheckedChange={setIsChangingEp} />
@@ -488,13 +514,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </div>
                         </div>
                       ))}
-                      {epNumberHistoryArray.length > 0 && (
+                      {epNumberTimeline.length > 0 && (
                         <div className="space-y-2 pt-4">
                             <h4 className="text-sm font-semibold">EP Number History</h4>
                             <div className="space-y-1 text-xs text-muted-foreground p-2 border rounded-md max-h-24 overflow-y-auto">
-                            {epNumberHistoryArray.map((record, index) => (
+                            {epNumberTimeline.map((record, index) => (
                                 <p key={index}>
-                                <strong>{record.epNumber}</strong> (since {format(parseISO(record.date), 'dd MMM yyyy')})
+                                <strong>{record.epNumber}</strong> (since {format(parseISO(record.since), 'dd MMM yyyy')}
+                                {record.till ? ` till ${format(parseISO(record.till), 'dd MMM yyyy')}` : ''})
                                 </p>
                             ))}
                             </div>
@@ -708,5 +735,6 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
 
