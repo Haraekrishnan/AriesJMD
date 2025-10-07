@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -57,13 +56,14 @@ export default function JobRecordSheet() {
     const handleCodeChange = useCallback((employeeId: string, day: number, value: string, element: HTMLInputElement) => {
       const code = value.toUpperCase();
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-      if (!isValidCode) {
+      if (!isValidCode && code !== '') {
         toast({
             title: "Invalid Job Code",
             description: `The code "${code}" is not a valid job code.`,
             variant: "destructive"
         });
-        element.value = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+        element.value = ''; // Clear the invalid input
+        saveJobRecord(monthKey, employeeId, day, '', 'status');
         return;
       }
       saveJobRecord(monthKey, employeeId, day, code, 'status');
@@ -71,9 +71,11 @@ export default function JobRecordSheet() {
       // If new code is OT restricted, clear existing OT
       if (OT_RESTRICTED_CODES.includes(code)) {
         saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+        const overtimeInput = document.getElementById(`overtime-${employeeId}-${day}`) as HTMLInputElement | null;
+        if(overtimeInput) overtimeInput.value = '';
       }
 
-    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
+    }, [monthKey, saveJobRecord, jobCodes, toast]);
     
      const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
         const overtime = value === '' ? null : parseFloat(value);
@@ -85,12 +87,16 @@ export default function JobRecordSheet() {
         const currentCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
         if (!currentCode && overtime) {
             toast({ title: "Job Code Required", description: "You must enter a job code before adding overtime.", variant: "destructive" });
+            const overtimeInput = document.getElementById(`overtime-${employeeId}-${day}`) as HTMLInputElement | null;
+            if (overtimeInput) overtimeInput.value = '';
             return;
         }
 
         const isOtRestricted = OT_RESTRICTED_CODES.includes(currentCode.toUpperCase());
         if (isOtRestricted && overtime) {
             toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${currentCode}".`, variant: "destructive" });
+             const overtimeInput = document.getElementById(`overtime-${employeeId}-${day}`) as HTMLInputElement | null;
+            if (overtimeInput) overtimeInput.value = '';
             return;
         }
 
@@ -360,32 +366,22 @@ export default function JobRecordSheet() {
             let nextType = type;
 
             if (e.shiftKey) { // Move backwards
-                if (type === 'overtime' && isExpandedRows(profileId)) {
-                    nextType = 'jobcode';
-                } else {
-                    nextDay--;
-                    if (nextDay < 1) {
-                        nextProfileIndex--;
-                        if (nextProfileIndex < 0) {
-                            nextProfileIndex = profilesInTab.length - 1;
-                        }
-                        nextDay = numDays;
-                        nextType = isExpandedRows(profilesInTab[nextProfileIndex].id) ? 'overtime' : 'jobcode';
+                nextDay--;
+                if (nextDay < 1) {
+                    nextProfileIndex--;
+                    if (nextProfileIndex < 0) {
+                        nextProfileIndex = profilesInTab.length - 1;
                     }
+                    nextDay = numDays;
                 }
             } else { // Move forwards
-                if (type === 'jobcode' && isExpandedRows(profileId)) {
-                    nextType = 'overtime';
-                } else {
-                    nextDay++;
-                    if (nextDay > numDays) {
-                        nextProfileIndex++;
-                        if (nextProfileIndex >= profilesInTab.length) {
-                            nextProfileIndex = 0;
-                        }
-                        nextDay = 1;
+                nextDay++;
+                if (nextDay > numDays) {
+                    nextProfileIndex++;
+                    if (nextProfileIndex >= profilesInTab.length) {
+                        nextProfileIndex = 0;
                     }
-                    nextType = 'jobcode';
+                    nextDay = 1;
                 }
             }
 
@@ -398,7 +394,7 @@ export default function JobRecordSheet() {
                 nextElement.select();
             }
         }
-    }, [filteredAndGroupedProfiles, activeTab, currentMonth, expandedRows]);
+    }, [filteredAndGroupedProfiles, activeTab, currentMonth]);
 
 
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
@@ -673,7 +669,7 @@ export default function JobRecordSheet() {
                                                                           defaultValue={dailyOvertime[day] || ''}
                                                                           onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                                           onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
-                                                                          className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring"
+                                                                          className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                                                                           placeholder="OT"
                                                                           min="0"
                                                                           disabled={isOtDisabled}
@@ -762,8 +758,4 @@ export default function JobRecordSheet() {
 }
 
     
-
-
-
-
-
+```
