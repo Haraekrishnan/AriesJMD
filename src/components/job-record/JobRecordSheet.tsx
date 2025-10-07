@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant, EpNumberRecord } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -386,11 +386,10 @@ export default function JobRecordSheet() {
                 dayHeadersExcel.forEach(day => {
                     const code = employeeRecord[day] || '';
                     const overtimeForDay = dailyOvertime[day];
-                    const cell: {v: string, c?: any[]} = { v: code };
-
+                    const cell: { v: string; c?: any[] } = { v: code };
+                
                     if (overtimeForDay && overtimeForDay > 0) {
-                        // Use a consistent comment format that can be parsed if needed later
-                        cell.c = [{ a: "Overtime", t: `${overtimeForDay}hr`, hidden: true }];
+                      cell.c = [{ a: "Overtime", t: `${overtimeForDay}hr`, hidden: true }];
                     }
                     rowData.push(cell);
                 });
@@ -665,39 +664,53 @@ export default function JobRecordSheet() {
                                         {dayHeaders.map(day => {
                                             const cellId = `${profile.id}-${day}`;
                                             const cellValue = cellStates[cellId] || '';
-                                            const code = (cellValue.split('/')[0] || '').toUpperCase();
-                                            const colorInfo = JOB_CODE_COLORS[code as string] || {};
-                                            const isInSelection = isCellInSelection(profile.id, day);
+                                            const [code, overtime] = cellValue.split('/');
+                                            const colorInfo = JOB_CODE_COLORS[code?.toUpperCase() as string] || {};
+
+                                            const cellContent = (
+                                                <div className="flex items-center justify-center gap-1 w-full h-full">
+                                                    <span>{code}</span>
+                                                    {overtime && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <Clock className="h-3 w-3 text-blue-600" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>{overtime} hrs OT</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
+                                            );
 
                                             return (
                                                 <TableCell 
                                                     key={day} 
-                                                    className="p-0 text-center relative min-w-[100px] border-r"
-                                                    onMouseEnter={() => handleMouseEnter(profile.id, day)}
+                                                    className={cn(
+                                                        "p-0 text-center relative min-w-[100px] border-r h-10",
+                                                        code ? colorInfo.bg : 'bg-transparent',
+                                                        code ? colorInfo.text : 'text-foreground'
+                                                    )}
                                                 >
-                                                    <div className={cn("relative h-10 w-full", isInSelection && "bg-blue-200/50")}>
+                                                    {canEditSheet ? (
                                                         <Input
                                                             id={cellId}
                                                             type="text"
                                                             list="jobcodes-datalist"
-                                                            value={cellValue}
-                                                            onChange={(e) => setCellStates(prev => ({...prev, [cellId]: e.target.value}))}
-                                                            onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                            className={cn(
-                                                                "absolute inset-0 w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
-                                                                code ? colorInfo.bg : 'bg-transparent',
-                                                                code ? colorInfo.text : 'text-foreground'
-                                                            )}
+                                                            defaultValue={cellValue}
+                                                            onBlur={(e) => {
+                                                                const newValue = e.target.value;
+                                                                setCellStates(prev => ({...prev, [cellId]: newValue}));
+                                                                handleStatusChange(profile.id, day, newValue);
+                                                            }}
+                                                            className="w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring bg-transparent"
                                                             style={{ boxShadow: 'none' }}
-                                                            disabled={!canEditSheet}
                                                         />
-                                                        {canEditSheet && (
-                                                             <div 
-                                                                onMouseDown={() => handleMouseDown(profile.id, day)}
-                                                                className="absolute bottom-0 right-0 w-4 h-4 cursor-crosshair z-30 bg-transparent"
-                                                            />
-                                                        )}
-                                                    </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-center h-full font-bold">
+                                                          {cellContent}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                             );
                                         })}
