@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -21,6 +22,7 @@ import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
+import { ScrollArea } from '../ui/scroll-area';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -34,6 +36,7 @@ export default function JobRecordSheet() {
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
     const [searchTerm, setSearchTerm] = useState('');
+    const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
     const { toast } = useToast();
 
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -342,6 +345,20 @@ export default function JobRecordSheet() {
         });
         return counts;
     }, [jobRecords, monthKey, activeTab, jobCodes, filteredAndGroupedProfiles, searchTerm]);
+
+    const filteredJobCodes = useMemo(() => {
+        if (!jobCodeSearchTerm) {
+          return jobCodes;
+        }
+        const lowercasedFilter = jobCodeSearchTerm.toLowerCase();
+        return jobCodes.filter(
+          (jc) =>
+            jc.code.toLowerCase().includes(lowercasedFilter) ||
+            jc.details.toLowerCase().includes(lowercasedFilter) ||
+            jc.jobNo?.toLowerCase().includes(lowercasedFilter)
+        );
+      }, [jobCodes, jobCodeSearchTerm]);
+
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
@@ -761,31 +778,44 @@ export default function JobRecordSheet() {
                                 <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
                             </AccordionTrigger>
                             <AccordionContent>
-                               <div className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-4">
-                                {jobCodes && jobCodes.map(jc => (
-                                    <div key={jc.id} className="flex items-start gap-4 text-xs">
-                                        <div className="font-bold w-12">{jc.code}</div>
-                                        <div className="flex-1">
-                                            <p>{jc.details}</p>
-                                            {jc.jobNo && <p className="text-muted-foreground">Job No: {jc.jobNo}</p>}
-                                        </div>
-                                        <div className="font-semibold">{manDaysCountByCodeForCurrentTab[jc.code] || 0}</div>
-                                        {user?.role === 'Admin' && (
-                                            <div className="flex">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingJobCode(jc)}><Edit className="h-3 w-3"/></Button>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader><AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </div>
-                                        )}
+                                <div className="p-4 pt-0">
+                                    <div className="relative mb-4 max-w-sm">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search code, description, or job no..."
+                                            className="pl-9"
+                                            value={jobCodeSearchTerm}
+                                            onChange={(e) => setJobCodeSearchTerm(e.target.value)}
+                                        />
                                     </div>
-                                ))}
+                                    <ScrollArea className="h-48">
+                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-4">
+                                        {filteredJobCodes.map(jc => (
+                                            <div key={jc.id} className="flex items-start gap-4 text-xs">
+                                                <div className="font-bold w-12">{jc.code}</div>
+                                                <div className="flex-1">
+                                                    <p>{jc.details}</p>
+                                                    {jc.jobNo && <p className="text-muted-foreground">Job No: {jc.jobNo}</p>}
+                                                </div>
+                                                <div className="font-semibold">{manDaysCountByCodeForCurrentTab[jc.code] || 0}</div>
+                                                {user?.role === 'Admin' && (
+                                                    <div className="flex">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingJobCode(jc)}><Edit className="h-3 w-3"/></Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader><AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                       </div>
+                                    </ScrollArea>
                                </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -802,3 +832,6 @@ export default function JobRecordSheet() {
     
 
 
+
+
+    
