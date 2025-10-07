@@ -525,6 +525,18 @@ export default function JobRecordSheet() {
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
+    const toggleRow = (profileId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(profileId)) {
+                newSet.delete(profileId);
+            } else {
+                newSet.add(profileId);
+            }
+            return newSet;
+        });
+    };
+
     return (
         <TooltipProvider>
             <datalist id="jobcodes-datalist">
@@ -717,6 +729,8 @@ export default function JobRecordSheet() {
                                                         "p-0 text-center relative min-w-[70px] border-r h-10",
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
+                                                    onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'jobcode')}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
                                                     <div className="relative w-full h-full">
                                                         <Input
@@ -779,6 +793,8 @@ export default function JobRecordSheet() {
                                                         "p-0 min-w-[70px] border-r h-10 relative bg-muted/50",
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
+                                                    onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'overtime')}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                     >
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
@@ -882,3 +898,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
+
+    
