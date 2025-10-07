@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -55,7 +54,7 @@ export default function JobRecordSheet() {
         });
     };
     
-    const handleCodeChange = useCallback((employeeId: string, day: number, value: string) => {
+    const handleCodeChange = useCallback((employeeId: string, day: number, value: string, element: HTMLInputElement) => {
       const code = value.toUpperCase();
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
       if (!isValidCode) {
@@ -64,6 +63,7 @@ export default function JobRecordSheet() {
             description: `The code "${code}" is not a valid job code.`,
             variant: "destructive"
         });
+        element.value = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
         return;
       }
       saveJobRecord(monthKey, employeeId, day, code, 'status');
@@ -73,9 +73,9 @@ export default function JobRecordSheet() {
         saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
       }
 
-    }, [monthKey, saveJobRecord, jobCodes, toast]);
+    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
     
-    const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
+     const handleOvertimeChange = useCallback((employeeId: string, day: number, value: string) => {
         const overtime = value === '' ? null : parseFloat(value);
         if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
             toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
@@ -347,6 +347,59 @@ export default function JobRecordSheet() {
         const newOrderIds = newOrder.map(p => p.id);
         savePlantOrder(monthKey, activeTab, newOrderIds);
     };
+    
+    const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+            const numDays = getDaysInMonth(currentMonth);
+            const currentProfileIndex = profilesInTab.findIndex(p => p.id === profileId);
+
+            let nextDay = day;
+            let nextProfileIndex = currentProfileIndex;
+            let nextType = type;
+
+            if (e.shiftKey) { // Move backwards
+                if (type === 'overtime' && isExpandedRows(profileId)) {
+                    nextType = 'jobcode';
+                } else {
+                    nextDay--;
+                    if (nextDay < 1) {
+                        nextProfileIndex--;
+                        if (nextProfileIndex < 0) {
+                            nextProfileIndex = profilesInTab.length - 1;
+                        }
+                        nextDay = numDays;
+                        nextType = isExpandedRows(profilesInTab[nextProfileIndex].id) ? 'overtime' : 'jobcode';
+                    }
+                }
+            } else { // Move forwards
+                if (type === 'jobcode' && isExpandedRows(profileId)) {
+                    nextType = 'overtime';
+                } else {
+                    nextDay++;
+                    if (nextDay > numDays) {
+                        nextProfileIndex++;
+                        if (nextProfileIndex >= profilesInTab.length) {
+                            nextProfileIndex = 0;
+                        }
+                        nextDay = 1;
+                    }
+                    nextType = 'jobcode';
+                }
+            }
+
+            const nextProfileId = profilesInTab[nextProfileIndex].id;
+            const nextCellId = `${nextType}-${nextProfileId}-${nextDay}`;
+            const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
+
+            if (nextElement) {
+                nextElement.focus();
+                nextElement.select();
+            }
+        }
+    }, [filteredAndGroupedProfiles, activeTab, currentMonth, expandedRows]);
+
 
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
 
@@ -374,6 +427,8 @@ export default function JobRecordSheet() {
           return newSet;
       });
   };
+    
+    const isExpandedRows = (id: string) => expandedRows.has(id);
 
     return (
         <TooltipProvider>
@@ -553,7 +608,7 @@ export default function JobRecordSheet() {
                                                 </Select>
                                             </TableCell>
                                             {dayHeaders.map(day => {
-                                                const cellId = `${profile.id}-${day}`;
+                                                const cellId = `jobcode-${profile.id}-${day}`;
                                                 const cellValue = employeeRecord[day] || '';
                                                 const overtimeValue = dailyOvertime[day];
                                                 const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
@@ -562,10 +617,12 @@ export default function JobRecordSheet() {
                                                     <TableCell key={cellId} className="p-0 text-center min-w-[70px] border-r h-10">
                                                         <div className="relative w-full h-full">
                                                             <Input
+                                                                id={cellId}
                                                                 type="text"
                                                                 list="jobcodes-datalist"
                                                                 defaultValue={cellValue}
-                                                                onBlur={(e) => handleCodeChange(profile.id, day, e.target.value)}
+                                                                onBlur={(e) => handleCodeChange(profile.id, day, e.target.value, e.target)}
+                                                                onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'jobcode')}
                                                                 disabled={!canEditSheet}
                                                                 className={cn(
                                                                     "w-full h-full text-center font-bold rounded-none border-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
@@ -602,7 +659,7 @@ export default function JobRecordSheet() {
                                             <TableRow>
                                                 <TableCell colSpan={3}></TableCell>
                                                 {dayHeaders.map(day => {
-                                                    const cellId = `${profile.id}-${day}-ot`;
+                                                    const cellId = `overtime-${profile.id}-${day}`;
                                                     const jobCode = employeeRecord[day] || '';
                                                     const isOtDisabled = !canEditSheet || !jobCode || OT_RESTRICTED_CODES.includes(jobCode.toUpperCase());
                                                     return (
@@ -615,6 +672,7 @@ export default function JobRecordSheet() {
                                                                           type="number" 
                                                                           defaultValue={dailyOvertime[day] || ''}
                                                                           onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                                          onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
                                                                           className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring"
                                                                           placeholder="OT"
                                                                           min="0"
@@ -704,6 +762,7 @@ export default function JobRecordSheet() {
 }
 
     
+
 
 
 
