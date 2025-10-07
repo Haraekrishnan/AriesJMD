@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, isSameYear } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -17,16 +17,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { Alert } from '../ui/alert';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
-
 const OT_RESTRICTED_CODES = ['PH', 'L', 'ML', 'KD', 'OS', 'EP', 'PD', 'TR', 'ST', 'NWS', 'Q', 'X', 'OFF', 'S', 'RST', 'CQ'];
 
 type DragState = {
@@ -36,6 +34,7 @@ type DragState = {
   dragDirection: 'horizontal' | 'vertical' | null;
 };
 
+
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
@@ -43,10 +42,10 @@ export default function JobRecordSheet() {
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
     const [searchTerm, setSearchTerm] = useState('');
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const { toast } = useToast();
     const tableRef = useRef<HTMLTableElement>(null);
     const [dragState, setDragState] = useState<DragState | null>(null);
@@ -377,20 +376,20 @@ export default function JobRecordSheet() {
             if (e.shiftKey) { // Move backwards
                 nextDay--;
                 if (nextDay < 1) {
+                    nextDay = numDays;
                     nextProfileIndex--;
                     if (nextProfileIndex < 0) {
-                        nextProfileIndex = profilesInTab.length - 1;
+                         nextProfileIndex = profilesInTab.length - 1;
                     }
-                    nextDay = numDays;
                 }
             } else { // Move forwards
                 nextDay++;
                 if (nextDay > numDays) {
-                    nextProfileIndex++;
+                   nextDay = 1;
+                   nextProfileIndex++;
                     if (nextProfileIndex >= profilesInTab.length) {
                         nextProfileIndex = 0;
                     }
-                    nextDay = 1;
                 }
             }
 
@@ -407,8 +406,10 @@ export default function JobRecordSheet() {
         }
     }, [filteredAndGroupedProfiles, activeTab, currentMonth]);
 
-    // Drag-to-copy logic
     const handleMouseDown = (e: React.MouseEvent, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+        const startValue = (document.getElementById(`${type}-${profileId}-${day}`) as HTMLInputElement)?.value;
+        if (!startValue) return;
+
         setDragState({
             isDragging: true,
             startCell: { profileId, day, type },
@@ -453,20 +454,19 @@ export default function JobRecordSheet() {
     const applyDragCopy = () => {
         if (!dragState) return;
         const { startCell, endCell, dragDirection } = dragState;
-        const startValue = (document.getElementById(`${startCell.type}-${startCell.profileId}-${startCell.day}`) as HTMLInputElement)?.value;
-        if (startValue === undefined) return;
+        const startElement = document.getElementById(`${startCell.type}-${startCell.profileId}-${startCell.day}`) as HTMLInputElement;
+        const startValue = startElement?.value;
+    
+        if (startValue === undefined || startValue === '') return;
     
         const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+        const handleFn = startCell.type === 'jobcode' ? handleCodeChange : handleOvertimeChange;
     
         if (dragDirection === 'horizontal') {
             const startDay = Math.min(startCell.day, endCell.day);
             const endDay = Math.max(startCell.day, endCell.day);
             for (let day = startDay; day <= endDay; day++) {
-                if (startCell.type === 'jobcode') {
-                    handleCodeChange(startCell.profileId, day, startValue, document.getElementById(`${startCell.type}-${startCell.profileId}-${day}`) as HTMLInputElement);
-                } else {
-                    handleOvertimeChange(startCell.profileId, day, startValue);
-                }
+                handleFn(startCell.profileId, day, startValue, document.getElementById(`${startCell.type}-${startCell.profileId}-${day}`) as HTMLInputElement);
             }
         } else if (dragDirection === 'vertical') {
             const startIndex = profilesInTab.findIndex(p => p.id === startCell.profileId);
@@ -477,27 +477,11 @@ export default function JobRecordSheet() {
             const endIdx = Math.max(startIndex, endIndex);
             for (let i = startIdx; i <= endIdx; i++) {
                 const profileId = profilesInTab[i].id;
-                if (startCell.type === 'jobcode') {
-                    handleCodeChange(profileId, startCell.day, startValue, document.getElementById(`${startCell.type}-${profileId}-${startCell.day}`) as HTMLInputElement);
-                } else {
-                    handleOvertimeChange(profileId, startCell.day, startValue);
-                }
+                handleFn(profileId, startCell.day, startValue, document.getElementById(`${startCell.type}-${profileId}-${startCell.day}`) as HTMLInputElement);
             }
         }
     };
-
-    useEffect(() => {
-        const table = tableRef.current;
-        if (table) {
-            table.addEventListener('mouseup', handleMouseUp);
-        }
-        return () => {
-            if (table) {
-                table.removeEventListener('mouseup', handleMouseUp);
-            }
-        };
-    }, [dragState]); // Re-attach if dragState logic changes
-
+    
     const getDragSelection = () => {
       if (!dragState) return new Set();
       const selection = new Set<string>();
@@ -542,20 +526,6 @@ export default function JobRecordSheet() {
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
 
-    const toggleRow = (id: string) => {
-      setExpandedRows(prev => {
-          const newSet = new Set(prev);
-          if (newSet.has(id)) {
-              newSet.delete(id);
-          } else {
-              newSet.add(id);
-          }
-          return newSet;
-      });
-  };
-    
-    const isExpandedRows = (id: string) => expandedRows.has(id);
-
     return (
         <TooltipProvider>
             <datalist id="jobcodes-datalist">
@@ -563,7 +533,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="grid grid-rows-[auto,1fr,auto] h-full overflow-hidden bg-card border rounded-lg">
+            <div className="grid grid-rows-[auto,auto,1fr,auto] h-full overflow-hidden bg-card border rounded-lg">
                 {/* --- FROZEN HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
@@ -596,7 +566,7 @@ export default function JobRecordSheet() {
                                     <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                                 </>
                             )}
-                            {can.manage_job_record && (
+                            {canEditSheet && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                 <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
@@ -657,7 +627,7 @@ export default function JobRecordSheet() {
                     <Table ref={tableRef} className="min-w-full border-collapse" onMouseMove={handleMouseMove}>
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
                                 <TableHead className="sticky bg-card z-50 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
                                 <TableHead className="sticky bg-card z-50 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
@@ -670,7 +640,7 @@ export default function JobRecordSheet() {
                                 <TableHead className="text-center min-w-[150px] border-r">Total ML</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total OT</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
-                                <TableHead className="text-center min-w-[150px] border-r">Total working Days</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total Working Days</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Salary Days</TableHead>
                                 <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
@@ -678,7 +648,6 @@ export default function JobRecordSheet() {
                         </thead>
                         <TableBody>
                             {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || [])).map((profile, index) => {
-                                const isExpanded = expandedRows.has(profile.id);
                                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                                 const employeeRecord = record.days || {};
                                 const dailyOvertime = record.dailyOvertime || {};
@@ -702,129 +671,155 @@ export default function JobRecordSheet() {
                                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                                 const additionalSundays = record.additionalSundayDuty || 0;
                                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                                const isExpanded = expandedRows.has(profile.id);
 
                                 return (
                                     <React.Fragment key={profile.id}>
-                                        <TableRow>
-                                            <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: '120px'}}>
-                                                <div className="flex items-center">
-                                                    <Button variant="ghost" size="icon" className="w-8 p-0 h-8 hover:bg-transparent" onClick={() => toggleRow(profile.id)}>
-                                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                                    </Button>
-                                                    <span className="w-6 text-center">{index + 1}</span>
-                                                    {isReorderMode && (
-                                                        <div className="flex flex-col">
-                                                            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}><ArrowUp className="h-3 w-3"/></Button>
-                                                            <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === (filteredAndGroupedProfiles[activeTab]?.length || 0) - 1}><ArrowDown className="h-3 w-3"/></Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
-                                                <p>{profile.name}</p>
-                                                <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
-                                            </TableCell>
-                                            <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
-                                            <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
-                                                    <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Unassigned">Unassigned</SelectItem>
-                                                        {plantProjects.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            {dayHeaders.map(day => {
-                                                const cellId = `jobcode-${profile.id}-${day}`;
-                                                const cellValue = employeeRecord[day] || '';
-                                                const overtimeValue = dailyOvertime[day];
-                                                const colorInfo = JOB_CODE_COLORS[cellValue.toUpperCase() as string] || {};
+                                    <TableRow>
+                                        <TableCell className="sticky left-0 bg-card z-20 flex items-center border-r" style={{width: '120px'}}>
+                                            <div className="flex items-center">
+                                                <span className="w-6 text-center">{index + 1}</span>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
+                                                    {isExpanded ? <ChevronUp className="h-4 w-4"/> : <ChevronDown className="h-4 w-4"/>}
+                                                </Button>
+                                                {isReorderMode && (
+                                                    <div className="flex flex-col">
+                                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}><ArrowUp className="h-3 w-3"/></Button>
+                                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === (filteredAndGroupedProfiles[activeTab]?.length || 0) - 1}><ArrowDown className="h-3 w-3"/></Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
+                                            <p>{profile.name}</p>
+                                            <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
+                                        </TableCell>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
+                                        <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                                <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Unassigned">Unassigned</SelectItem>
+                                                    {plantProjects.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        {dayHeaders.map(day => {
+                                            const cellId = `jobcode-${profile.id}-${day}`;
+                                            const code = employeeRecord[day] || '';
+                                            const overtimeForDay = dailyOvertime[day] || 0;
+                                            const colorInfo = JOB_CODE_COLORS[code] || {};
 
-                                                return (
-                                                    <TableCell key={cellId} data-cell-id={cellId} className={cn("p-0 text-center min-w-[70px] border-r h-10 relative", dragSelection.has(cellId) && 'bg-blue-200 dark:bg-blue-800')}>
-                                                        <div className="relative w-full h-full">
-                                                            <Input
-                                                                id={cellId}
-                                                                type="text"
-                                                                list="jobcodes-datalist"
-                                                                defaultValue={cellValue}
-                                                                onBlur={(e) => handleCodeChange(profile.id, day, e.target.value, e.target)}
-                                                                onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'jobcode')}
-                                                                disabled={!canEditSheet}
-                                                                className={cn(
-                                                                    "w-full h-full text-center font-bold rounded-none border-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
-                                                                    "bg-transparent focus-visible:bg-background",
-                                                                    colorInfo.bg,
-                                                                    colorInfo.text
-                                                                )}
+                                            return (
+                                                <TableCell 
+                                                    key={day}
+                                                    data-cell-id={cellId}
+                                                    className={cn(
+                                                        "p-0 text-center relative min-w-[70px] border-r h-10",
+                                                        isCellInSelection(profile.id, day) && "bg-blue-200/50"
+                                                    )}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day, 'jobcode')}
+                                                >
+                                                    <div className="relative w-full h-full">
+                                                        <Input
+                                                            id={cellId}
+                                                            type="text"
+                                                            list="jobcodes-datalist"
+                                                            defaultValue={code}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'jobcode')}
+                                                            onBlur={(e) => handleCodeChange(profile.id, day, e.target.value, e.target)}
+                                                            className={cn(
+                                                                "absolute inset-0 w-full h-full text-center font-bold rounded-none border-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
+                                                                "bg-transparent focus-visible:bg-background",
+                                                                colorInfo.bg,
+                                                                colorInfo.text
+                                                            )}
+                                                            style={{ boxShadow: 'none' }}
+                                                            disabled={!canEditSheet}
+                                                        />
+                                                        {overtimeForDay > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                         {canEditSheet && (
+                                                            <div 
+                                                                onMouseDown={(e) => handleMouseDown(profile.id, day, 'jobcode')}
+                                                                className="absolute bottom-0 right-0 w-3 h-3 cursor-crosshair z-30 bg-blue-600 border border-white"
                                                             />
-                                                            {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
-                                                            <div className="absolute -bottom-1 -right-1 w-2 h-2 cursor-nwse-resize" onMouseDown={(e) => handleMouseDown(e, profile.id, day, 'jobcode')}/>
-                                                        </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                            );
+                                        })}
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.offDays}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.leaveDays}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.medicalLeave}</TableCell>
+                                        <TableCell className="text-center min-w-[150px] border-r font-bold">{totalOvertime}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.standbyTraining}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
+                                        <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
+                                        <TableCell className="text-center min-w-[150px]">
+                                            <Input
+                                                type="number"
+                                                defaultValue={record.additionalSundayDuty || ''}
+                                                onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
+                                                className="w-16 h-8 text-center"
+                                                placeholder="0"
+                                                disabled={!canEditSheet}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                    {isExpanded && (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: '320px'}}>Overtime Hours</TableCell>
+                                            {dayHeaders.map(day => {
+                                                const cellId = `overtime-${profile.id}-${day}`;
+                                                const jobCode = employeeRecord[day] || '';
+                                                const isOtDisabled = !canEditSheet || !jobCode || OT_RESTRICTED_CODES.includes(jobCode.toUpperCase());
+                                                return (
+                                                    <TableCell key={`ot-${day}`} data-cell-id={cellId} 
+                                                    className={cn(
+                                                        "p-0 min-w-[70px] border-r h-10 relative bg-muted/50",
+                                                        isCellInSelection(profile.id, day) && "bg-blue-200/50"
+                                                    )}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day, 'overtime')}
+                                                    >
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div className='w-full h-full relative'>
+                                                                  <Input 
+                                                                      id={cellId}
+                                                                      type="number" 
+                                                                      defaultValue={dailyOvertime[day] || ''}
+                                                                      onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                                      onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
+                                                                      className="w-full h-full text-center rounded-none border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                      placeholder="OT"
+                                                                      min="0"
+                                                                      disabled={isOtDisabled}
+                                                                  />
+                                                                  {canEditSheet && (
+                                                                    <div 
+                                                                        onMouseDown={(e) => handleMouseDown(profile.id, day, 'overtime')}
+                                                                        className="absolute bottom-0 right-0 w-3 h-3 cursor-crosshair z-30 bg-blue-600 border border-white"
+                                                                    />
+                                                                  )}
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            {isOtDisabled && jobCode && (
+                                                                <TooltipContent>
+                                                                    <p>Overtime is not applicable for job code "{jobCode}".</p>
+                                                                </TooltipContent>
+                                                            )}
+                                                             {isOtDisabled && !jobCode && (
+                                                                <TooltipContent>
+                                                                    <p>Enter a job code to add overtime.</p>
+                                                                </TooltipContent>
+                                                            )}
+                                                        </Tooltip>
                                                     </TableCell>
                                                 );
                                             })}
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.offDays}</TableCell>
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.leaveDays}</TableCell>
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.medicalLeave}</TableCell>
-                                            <TableCell className="text-center min-w-[150px] border-r font-bold">{totalOvertime}</TableCell>
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.standbyTraining}</TableCell>
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
-                                            <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
-                                            <TableCell className="text-center min-w-[150px]">
-                                                <Input
-                                                    type="number"
-                                                    defaultValue={record.additionalSundayDuty || ''}
-                                                    onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                                    className="w-16 h-8 text-center"
-                                                    placeholder="0"
-                                                    disabled={!canEditSheet}
-                                                />
-                                            </TableCell>
+                                            <TableCell colSpan={9} className="bg-muted/50"></TableCell>
                                         </TableRow>
-                                        {isExpanded && (
-                                            <TableRow>
-                                                <TableCell colSpan={3}></TableCell>
-                                                {dayHeaders.map(day => {
-                                                    const cellId = `overtime-${profile.id}-${day}`;
-                                                    const jobCode = employeeRecord[day] || '';
-                                                    const isOtDisabled = !canEditSheet || !jobCode || OT_RESTRICTED_CODES.includes(jobCode.toUpperCase());
-                                                    return (
-                                                        <TableCell key={cellId} data-cell-id={cellId} className={cn("p-0 min-w-[70px] border-r h-10 relative", dragSelection.has(cellId) && 'bg-blue-200 dark:bg-blue-800')}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <div className='w-full h-full'>
-                                                                      <Input 
-                                                                          id={cellId}
-                                                                          type="number" 
-                                                                          defaultValue={dailyOvertime[day] || ''}
-                                                                          onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                                          onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
-                                                                          className="w-full h-full text-center rounded-none border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                          placeholder="OT"
-                                                                          min="0"
-                                                                          disabled={isOtDisabled}
-                                                                      />
-                                                                      <div className="absolute -bottom-1 -right-1 w-2 h-2 cursor-nwse-resize" onMouseDown={(e) => handleMouseDown(e, profile.id, day, 'overtime')} />
-                                                                    </div>
-                                                                </TooltipTrigger>
-                                                                {isOtDisabled && jobCode && (
-                                                                    <TooltipContent>
-                                                                        <p>Overtime is not applicable for job code "{jobCode}".</p>
-                                                                    </TooltipContent>
-                                                                )}
-                                                                 {isOtDisabled && !jobCode && (
-                                                                    <TooltipContent>
-                                                                        <p>Enter a job code to add overtime.</p>
-                                                                    </TooltipContent>
-                                                                )}
-                                                            </Tooltip>
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                                <TableCell colSpan={9}></TableCell>
-                                            </TableRow>
-                                        )}
+                                    )}
                                     </React.Fragment>
                                 );
                             })}
@@ -889,4 +884,3 @@ export default function JobRecordSheet() {
     );
 }
 
-    
