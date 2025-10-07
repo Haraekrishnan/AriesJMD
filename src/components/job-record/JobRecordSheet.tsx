@@ -24,7 +24,6 @@ import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Alert } from '../ui/alert';
-import EditOvertimeDialog from './EditOvertimeDialog';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -35,7 +34,7 @@ export default function JobRecordSheet() {
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
     const [isReorderMode, setIsReorderMode] = useState(false);
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
-    const [editingOvertime, setEditingOvertime] = useState<{ profile: ManpowerProfile, day: number } | null>(null);
+    const [overtimeValues, setOvertimeValues] = useState<Record<string, string>>({});
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('Unassigned');
     const [searchTerm, setSearchTerm] = useState('');
@@ -188,6 +187,7 @@ export default function JobRecordSheet() {
     
     useEffect(() => {
         const newStates: Record<string, string> = {};
+        const newOtValues: Record<string, string> = {};
         if (jobRecords[monthKey]?.records) {
             for (const profileId in jobRecords[monthKey].records) {
                 const record = jobRecords[monthKey].records[profileId];
@@ -196,9 +196,15 @@ export default function JobRecordSheet() {
                         newStates[`${profileId}-${day}`] = record.days[day];
                     }
                 }
+                 if (record.dailyOvertime) {
+                    for (const day in record.dailyOvertime) {
+                        newOtValues[`${profileId}-${day}`] = String(record.dailyOvertime[day]);
+                    }
+                }
             }
         }
         setCellStates(newStates);
+        setOvertimeValues(newOtValues);
     }, [jobRecords, monthKey]);
 
     const getSelectionRange = () => {
@@ -256,30 +262,42 @@ export default function JobRecordSheet() {
         }
     }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
     
-    const handleOvertimeSave = (profileId: string, day: number, hours: number | null) => {
+    const handleOvertimeChange = (profileId: string, day: number, value: string) => {
+        setOvertimeValues(prev => ({ ...prev, [`${profileId}-${day}`]: value }));
+    };
+
+    const handleOvertimeSave = (profileId: string, day: number) => {
+        const value = overtimeValues[`${profileId}-${day}`];
+        const hours = parseFloat(value);
+        const hoursToSave = isNaN(hours) || hours <= 0 ? null : hours;
+
         const record = jobRecords[monthKey]?.records?.[profileId] || {};
         const jobCodeForDay = record.days?.[day]?.toUpperCase();
         
         const restrictedCodes = ['X','KD','Q','ST','NWS','OS','ML','L','TR','PD','EP','OFF','PH'];
-        if (jobCodeForDay && restrictedCodes.includes(jobCodeForDay)) {
-            toast({
-                title: "Invalid Overtime",
-                description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
-                variant: "destructive"
-            });
-            return;
+        if (hoursToSave !== null && hoursToSave > 0) {
+            if (jobCodeForDay && restrictedCodes.includes(jobCodeForDay)) {
+                toast({
+                    title: "Invalid Overtime",
+                    description: `Overtime cannot be added for the job code "${jobCodeForDay}".`,
+                    variant: "destructive"
+                });
+                setOvertimeValues(prev => ({...prev, [`${profileId}-${day}`]: ''})); // Clear invalid input
+                return;
+            }
+
+            if (!jobCodeForDay) {
+                toast({
+                    title: "Cannot Add Overtime",
+                    description: "Overtime can only be added to a day with a valid job code.",
+                    variant: "destructive"
+                });
+                setOvertimeValues(prev => ({...prev, [`${profileId}-${day}`]: ''})); // Clear invalid input
+                return;
+            }
         }
 
-        if (hours !== null && hours > 0 && !jobCodeForDay) {
-            toast({
-                title: "Cannot Add Overtime",
-                description: "Overtime can only be added to a day with a valid job code.",
-                variant: "destructive"
-            });
-            return;
-        }
-
-        saveJobRecord(monthKey, profileId, day, hours, 'dailyOvertime');
+        saveJobRecord(monthKey, profileId, day, hoursToSave, 'dailyOvertime');
         toast({ title: 'Overtime Saved' });
     };
     
@@ -330,16 +348,9 @@ export default function JobRecordSheet() {
         if (user.role === 'Admin') return true;
         if (!can.manage_job_record) return false;
         
-        const isCurrentMonthSheet = isSameMonth(currentMonth, new Date()) && isSameYear(currentMonth, new Date());
-        return isCurrentMonthSheet && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked, currentMonth]);
-    
-    const canEditOvertime = useMemo(() => {
-        if (!user) return false;
-        if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
+        return !isCurrentSheetLocked;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
-
+    
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
@@ -694,7 +705,6 @@ export default function JobRecordSheet() {
                                         </TableCell>
                                         {dayHeaders.map(day => {
                                             const code = cellStates[`${profile.id}-${day}`] || '';
-                                            const overtimeForDay = dailyOvertime[day] || 0;
                                             const colorInfo = JOB_CODE_COLORS[code as string] || {};
                                             const isInSelection = isCellInSelection(profile.id, day);
 
@@ -720,14 +730,6 @@ export default function JobRecordSheet() {
                                                             style={{ boxShadow: 'none' }}
                                                             disabled={!canEditSheet}
                                                         />
-                                                        {overtimeForDay > 0 && (
-                                                            <Tooltip>
-                                                            <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                                <Clock className="h-full w-full text-blue-500" />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                            </Tooltip>
-                                                        )}
                                                         {canEditSheet && (
                                                              <div 
                                                                 onMouseDown={() => handleMouseDown(profile.id, day)}
@@ -761,17 +763,18 @@ export default function JobRecordSheet() {
                                         <TableRow>
                                             <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{left: '320px'}}>Overtime Hours</TableCell>
                                             {dayHeaders.map(day => {
-                                                const overtimeForDay = dailyOvertime[day] || 0;
+                                                const overtimeForDay = overtimeValues[`${profile.id}-${day}`] || '';
                                                 return (
                                                     <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
-                                                        <div className="flex items-center justify-center h-8">
-                                                            <span className="text-xs font-semibold">{overtimeForDay || ''}</span>
-                                                            {canEditOvertime && (
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={() => setEditingOvertime({ profile, day })}>
-                                                                    <Edit className="h-3 w-3" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
+                                                        <Input
+                                                          type="number"
+                                                          value={overtimeForDay}
+                                                          onChange={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                          onBlur={() => handleOvertimeSave(profile.id, day)}
+                                                          className="w-full h-8 text-center border-0 rounded-none bg-transparent"
+                                                          placeholder="0"
+                                                          disabled={!canEditSheet}
+                                                        />
                                                     </TableCell>
                                                 )
                                             })}
@@ -838,16 +841,6 @@ export default function JobRecordSheet() {
             <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
             <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
             {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
-            {editingOvertime && (
-                <EditOvertimeDialog
-                    isOpen={!!editingOvertime}
-                    onClose={() => setEditingOvertime(null)}
-                    profile={editingOvertime.profile}
-                    day={editingOvertime.day}
-                    currentOvertime={jobRecords[monthKey]?.records?.[editingOvertime.profile.id]?.dailyOvertime?.[editingOvertime.day] || 0}
-                    onSave={handleOvertimeSave}
-                />
-            )}
         </TooltipProvider>
     );
 }
