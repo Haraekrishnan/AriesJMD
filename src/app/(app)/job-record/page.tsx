@@ -9,6 +9,20 @@ import { AlertTriangle } from 'lucide-react';
 export default function JobRecordPage() {
     const { can } = useAppContext();
 
+    if (!can.manage_job_record) {
+        return (
+            <Card className="w-full max-w-md mx-auto mt-20">
+                <CardHeader className="text-center items-center">
+                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                    </div>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You do not have permission to manage Job Records.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
+
     return (
         <div className="space-y-8 h-full flex flex-col">
             <div>

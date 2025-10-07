@@ -338,8 +338,8 @@ export default function JobRecordSheet() {
     const canEditOvertime = useMemo(() => {
         if (!user) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record;
-    }, [user, can.manage_job_record]);
+        return can.manage_job_record && !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
@@ -556,7 +556,7 @@ export default function JobRecordSheet() {
                                     <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
                                 </>
                             )}
-                            {canEditSheet && (
+                            {can.manage_job_record && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                 <Button variant="outline" size="icon" onClick={() => setIsReorderMode(!isReorderMode)}><Settings className="h-4 w-4" /></Button>
@@ -754,7 +754,7 @@ export default function JobRecordSheet() {
                                                 onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                                 className="w-16 h-8 text-center"
                                                 placeholder="0"
-                                                disabled={user?.role !== 'Admin'}
+                                                disabled={!canEditOvertime}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -846,6 +846,7 @@ export default function JobRecordSheet() {
     
 
     
+
 
 
 
