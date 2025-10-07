@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -61,10 +61,9 @@ export default function JobRecordSheet() {
     };
     
     const handleCodeChange = useCallback((employeeId: string, day: number, value: string) => {
-      const code = value.toUpperCase();
-      
+      const code = (value || '').toUpperCase();
       const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-      if (!isValidCode && code !== '') {
+      if (!isValidCode) {
         toast({
             title: "Invalid Job Code",
             description: `The code "${code}" is not a valid job code.`,
@@ -75,7 +74,6 @@ export default function JobRecordSheet() {
       }
       saveJobRecord(monthKey, employeeId, day, code, 'status');
 
-      // If new code is OT restricted, clear existing OT
       if (OT_RESTRICTED_CODES.includes(code)) {
         saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
       }
@@ -366,33 +364,23 @@ export default function JobRecordSheet() {
 
             let nextDay = day;
             let nextProfileIndex = currentProfileIndex;
-            let nextType = type;
             
             if (e.shiftKey) { // Move backwards
-                if (type === 'overtime') {
-                    nextType = 'jobcode';
-                } else {
-                    nextDay--;
-                    if (nextDay < 1) {
-                       nextDay = numDays;
-                       nextProfileIndex--;
-                        if (nextProfileIndex < 0) {
-                             nextProfileIndex = profilesInTab.length - 1;
-                        }
+                nextDay--;
+                if (nextDay < 1) {
+                    nextDay = numDays;
+                    nextProfileIndex--;
+                    if (nextProfileIndex < 0) {
+                        nextProfileIndex = profilesInTab.length - 1;
                     }
                 }
             } else { // Move forwards
-                 if (type === 'jobcode') {
-                    nextType = 'overtime';
-                } else {
-                    nextType = 'jobcode';
-                    nextDay++;
-                    if (nextDay > numDays) {
-                       nextDay = 1;
-                       nextProfileIndex++;
-                        if (nextProfileIndex >= profilesInTab.length) {
-                            nextProfileIndex = 0;
-                        }
+                nextDay++;
+                if (nextDay > numDays) {
+                    nextDay = 1;
+                    nextProfileIndex++;
+                    if (nextProfileIndex >= profilesInTab.length) {
+                        nextProfileIndex = 0;
                     }
                 }
             }
@@ -400,7 +388,7 @@ export default function JobRecordSheet() {
             const nextProfileId = profilesInTab[nextProfileIndex]?.id;
             if (!nextProfileId) return;
 
-            const nextCellId = `${nextType}-${nextProfileId}-${nextDay}`;
+            const nextCellId = `${type}-${nextProfileId}-${nextDay}`;
             const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
 
             if (nextElement) {
@@ -521,18 +509,19 @@ export default function JobRecordSheet() {
       return null;
     };
     
-    const isCellInSelection = (profileId: string, day: number) => {
-      const selection = getSelectionRange();
-      if (!selection) return false;
-      const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
-      const rowIndex = profilesInTab.findIndex(p => p.id === profileId);
+    const isCellInSelection = (profileId: string, day: number, type: string) => {
+        if (!dragState || dragState.startCell.type !== type) return false;
+        const selection = getSelectionRange();
+        if (!selection) return false;
+        const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
+        const rowIndex = profilesInTab.findIndex(p => p.id === profileId);
 
-      return (
-        rowIndex >= selection.minRow &&
-        rowIndex <= selection.maxRow &&
-        day >= selection.minCol &&
-        day <= selection.maxCol
-      );
+        return (
+            rowIndex >= selection.minRow &&
+            rowIndex <= selection.maxRow &&
+            day >= selection.minCol &&
+            day <= selection.maxCol
+        );
     };
 
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
@@ -659,8 +648,8 @@ export default function JobRecordSheet() {
                 </div>
 
                 {/* --- SCROLLABLE TABLE --- */}
-                 <div className="flex-1 overflow-auto relative" onMouseUp={handleMouseUpTable} onMouseLeave={handleMouseUpTable}>
-                    <Table className="min-w-full border-collapse" onMouseMove={handleMouseMoveTable}>
+                 <div className="flex-1 overflow-auto relative" onMouseUp={handleMouseUpTable} onMouseMove={handleMouseMoveTable}>
+                    <Table className="min-w-full border-collapse">
                          <thead className="sticky top-0 bg-card z-30">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-card z-50 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
@@ -744,7 +733,7 @@ export default function JobRecordSheet() {
                                             const code = employeeRecord[day] || '';
                                             const overtimeForDay = dailyOvertime[day] || 0;
                                             const colorInfo = JOB_CODE_COLORS[code] || {};
-                                            const isInSelection = isCellInSelection(profile.id, day);
+                                            const isInSelection = isCellInSelection(profile.id, day, 'jobcode');
 
                                             return (
                                                 <TableCell 
@@ -811,7 +800,7 @@ export default function JobRecordSheet() {
                                                 const cellId = `overtime-${profile.id}-${day}`;
                                                 const jobCode = employeeRecord[day] || '';
                                                 const isOtDisabled = !canEditSheet || !jobCode || OT_RESTRICTED_CODES.includes(jobCode.toUpperCase());
-                                                const isInSelection = isCellInSelection(profile.id, day);
+                                                const isInSelection = isCellInSelection(profile.id, day, 'overtime');
                                                 return (
                                                     <TableCell key={`ot-${day}`} data-cell-id={cellId} 
                                                     className={cn(
@@ -923,4 +912,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
