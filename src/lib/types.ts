@@ -380,6 +380,11 @@ export type PpeHistoryRecord = {
   approverId?: string;
 };
 
+export type EpNumberRecord = {
+    epNumber: string;
+    date: string; // ISO string
+};
+
 export type ManpowerProfile = {
   id: string;
   name: string;
@@ -413,7 +418,8 @@ export type ManpowerProfile = {
   wcPolicyNumber?: string;
   cardCategory?: string;
   cardType?: string;
-  epNumber?: string;
+  epNumber?: string; // Current EP Number
+  epNumberHistory?: EpNumberRecord[];
   
   // Documents and Skills
   documents: ManpowerDocument[];
@@ -773,5 +779,3 @@ export type JobRecordPlant = {
   id: string;
   name: string;
 };
-
-

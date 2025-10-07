@@ -2,7 +2,7 @@
 
 'use client';
 import { useMemo, useState } from 'react';
-import type { ManpowerProfile } from '@/lib/types';
+import type { ManpowerProfile, EpNumberRecord } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';

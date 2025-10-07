@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -13,7 +14,7 @@ import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
 import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role, PpeHistoryRecord } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, PlusCircle, FileWarning, Shirt } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -26,7 +27,8 @@ import EditMemoDialog from './EditMemoDialog';
 import EditPpeHistoryDialog from './EditPpeHistoryDialog';
 import AddPpeHistoryDialog from './AddPpeHistoryDialog';
 import { rtdb } from '@/lib/rtdb';
-import { ref, push, update } from 'firebase/database';
+import { ref, push, set } from 'firebase/database';
+import { Switch } from '../ui/switch';
 
 
 const profileSchema = z.object({
@@ -61,6 +63,7 @@ const profileSchema = z.object({
   cardCategory: z.string().optional(),
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
+  newEpNumber: z.string().optional(),
   documents: z.array(z.object({ name: z.string(), details: z.string().optional(), status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']) })).optional(),
   skills: z.array(z.object({ name: z.string().min(1, "Skill name is required"), details: z.string().optional(), link: z.string().url().optional().or(z.literal('')), validity: z.date().optional().nullable() })).optional(),
   resignationDate: z.date().optional().nullable(),
@@ -70,6 +73,7 @@ const profileSchema = z.object({
   leaveHistory: z.array(z.any()).optional(), 
   memoHistory: z.array(z.any()).optional(),
   ppeHistory: z.array(z.any()).optional(),
+  epNumberHistory: z.array(z.any()).optional(),
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
         ctx.addIssue({
@@ -132,6 +136,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
   const [isAddPpeOpen, setIsAddPpeOpen] = useState(false);
+  const [isChangingEp, setIsChangingEp] = useState(false);
+  const [similarProfile, setSimilarProfile] = useState<ManpowerProfile | null>(null);
 
   const canAddPpe = useMemo(() => {
     if (!user) return false;
@@ -162,6 +168,16 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   
   const watchTrade = form.watch('trade');
   const watchStatus = form.watch('status');
+  const watchName = form.watch('name');
+
+  useEffect(() => {
+    if (!profile && watchName && watchName.length > 2) {
+      const found = manpowerProfiles.find(p => p.name.toLowerCase().includes(watchName.toLowerCase()));
+      setSimilarProfile(found || null);
+    } else {
+      setSimilarProfile(null);
+    }
+  }, [watchName, profile, manpowerProfiles]);
 
   const liveProfile = useMemo(() => {
     return profile ? manpowerProfiles.find(p => p.id === profile.id) || profile : null;
@@ -175,6 +191,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
   useEffect(() => {
     if (isOpen) {
+        setIsChangingEp(false);
         const defaultValues = liveProfile ? {
             ...liveProfile,
             dob: parseDate(liveProfile.dob),
@@ -236,6 +253,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 dataToSubmit.trade = data.otherTrade.trim();
             }
             delete dataToSubmit.otherTrade;
+
+            let epHistory = Array.isArray(data.epNumberHistory) ? data.epNumberHistory : [];
+            if (isChangingEp && data.newEpNumber) {
+                epHistory.push({ epNumber: data.newEpNumber, date: new Date().toISOString() });
+                dataToSubmit.epNumber = data.newEpNumber;
+                dataToSubmit.epNumberHistory = epHistory;
+            }
+            delete dataToSubmit.newEpNumber;
 
             const hasActiveLeave = (liveProfile?.leaveHistory && Object.values(liveProfile.leaveHistory).some(l => l && !l.rejoinedDate && !l.leaveEndDate));
             if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
@@ -302,19 +327,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   };
 
-  const handleDeletePpe = (recordId: string) => {
-    if(profile) {
-      deletePpeHistoryRecord(profile.id, recordId);
-      toast({ variant: 'destructive', title: 'PPE Record Deleted' });
-    }
-  };
-
   const handleEditMemo = (memo: MemoRecord) => {
       setEditingMemo(memo);
   };
   
   const handleEditPpe = (record: PpeHistoryRecord) => {
       setEditingPpeRecord(record);
+  };
+
+  const handleDeletePpe = (recordId: string) => {
+    if(profile) {
+      deletePpeHistoryRecord(profile.id, recordId);
+      toast({ variant: 'destructive', title: 'PPE Record Deleted' });
+    }
   };
 
   return (
@@ -329,6 +354,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   <div className="space-y-4">
                       <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                       <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
+                      {similarProfile && (
+                          <Alert variant="destructive">
+                              <Info className="h-4 w-4" />
+                              <p className="text-xs">A profile with a similar name already exists: <strong>{similarProfile.name}</strong> (EP No: {similarProfile.epNumber || 'N/A'}). Please review before creating a duplicate.</p>
+                          </Alert>
+                      )}
                       <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
                       <div>
                           <Label>Trade</Label>
@@ -382,7 +413,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                       <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
-                      <div><Label>EP Number</Label><Input {...form.register('epNumber')} /></div>
+                      <div className="space-y-2">
+                          <Label>EP Number</Label>
+                          <Input {...form.register('epNumber')} disabled={isChangingEp} />
+                          {profile && (
+                            <div className="flex items-center space-x-2">
+                                <Switch id="change-ep" checked={isChangingEp} onCheckedChange={setIsChangingEp} />
+                                <Label htmlFor="change-ep" className="text-xs">Change EP Number</Label>
+                            </div>
+                          )}
+                          {isChangingEp && (
+                            <div>
+                                <Label>New EP Number</Label>
+                                <Input {...form.register('newEpNumber')} />
+                            </div>
+                          )}
+                      </div>
                       <Separator className="my-4" />
                       <div><Label>Joining Date</Label><DatePickerController name="joiningDate" control={form.control} /></div>
                       <div><Label>Pass Issue Date</Label><DatePickerController name="passIssueDate" control={form.control} /></div>
