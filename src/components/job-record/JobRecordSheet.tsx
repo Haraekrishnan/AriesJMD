@@ -438,20 +438,22 @@ export default function JobRecordSheet() {
             if (nextProfileIndex >= 0 && nextProfileIndex < currentProfiles.length) {
                 const nextProfileId = currentProfiles[nextProfileIndex].id;
                 const nextCellId = `${nextProfileId}-${nextDay}${isOvertime ? '-ot' : ''}`;
-                const nextInput = tableRef.current?.querySelector(`#${nextCellId}`) as HTMLInputElement;
+                const nextInput = tableRef.current?.querySelector(`#${nextCellId}`);
                 if (nextInput) {
                     if (isOvertime) {
-                        nextInput.focus();
-                        nextInput.select();
+                        (nextInput as HTMLInputElement).focus();
+                        (nextInput as HTMLInputElement).select();
                     } else {
                         setEditingCell(nextCellId);
                     }
                 }
             } else {
                  e.currentTarget.blur();
+                 setEditingCell(null);
             }
         } else if (e.key === 'Enter') {
             e.currentTarget.blur();
+            setEditingCell(null);
         }
     };
 
@@ -810,5 +812,6 @@ export default function JobRecordSheet() {
 }
 
     
+
 
 
