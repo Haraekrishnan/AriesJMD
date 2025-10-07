@@ -45,6 +45,14 @@ export default function JobRecordSheet() {
     
     const [cellStates, setCellStates] = useState<Record<string, string>>({});
 
+    const handlePlantChange = (profileId: string, plantName: string) => {
+        saveJobRecord(monthKey, profileId, null, plantName, 'plant');
+        toast({
+            title: 'Plant Changed',
+            description: `${manpowerProfiles.find(p => p.id === profileId)?.name} moved to ${plantName}.`,
+        });
+    };
+    
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
             ? manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -322,9 +330,8 @@ export default function JobRecordSheet() {
         if (!user) return false;
         if (user.role === 'Admin') return true;
         if (!can.manage_job_record) return false;
-        const isCurrentMonthSheet = isSameMonth(currentMonth, new Date()) && isSameYear(currentMonth, new Date());
-        return isCurrentMonthSheet && !isCurrentSheetLocked;
-    }, [user, can.manage_job_record, isCurrentSheetLocked, currentMonth]);
+        return !isCurrentSheetLocked;
+    }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const canEditOvertime = useMemo(() => {
         if (!user) return false;
@@ -837,5 +844,6 @@ export default function JobRecordSheet() {
     
 
     
+
 
 
