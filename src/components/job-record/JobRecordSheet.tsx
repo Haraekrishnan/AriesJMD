@@ -330,10 +330,10 @@ export default function JobRecordSheet() {
     }, [user, can.manage_job_record, isCurrentSheetLocked, isEditableMonth]);
     
     const canEditOvertime = useMemo(() => {
-      if (!user) return false;
-      if (user.role === 'Admin') return true;
-      if (!can.manage_job_record) return false;
-      return !isCurrentSheetLocked || user.role === 'Admin';
+        if (!user) return false;
+        if (user.role === 'Admin') return true;
+        if (!can.manage_job_record) return false;
+        return !isCurrentSheetLocked || user.role === 'Admin';
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -836,5 +836,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
 
     
