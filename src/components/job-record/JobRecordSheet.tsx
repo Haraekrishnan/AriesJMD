@@ -364,29 +364,54 @@ export default function JobRecordSheet() {
             let nextDay = day;
             let nextProfileIndex = currentProfileIndex;
             let nextType = type;
+            let nextId = profileId;
 
             if (e.shiftKey) { // Move backwards
                 nextDay--;
                 if (nextDay < 1) {
-                    nextProfileIndex--;
-                    if (nextProfileIndex < 0) {
-                        nextProfileIndex = profilesInTab.length - 1;
+                    if (type === 'overtime') {
+                        nextType = 'jobcode';
+                        nextDay = numDays;
+                    } else { // jobcode
+                        nextProfileIndex--;
+                        if (nextProfileIndex < 0) {
+                            nextProfileIndex = profilesInTab.length - 1;
+                        }
+                        nextId = profilesInTab[nextProfileIndex].id;
+                        const isExpanded = expandedRows.has(nextId);
+                        nextType = isExpanded ? 'overtime' : 'jobcode';
+                        nextDay = numDays;
                     }
-                    nextDay = numDays;
                 }
             } else { // Move forwards
                 nextDay++;
                 if (nextDay > numDays) {
-                    nextProfileIndex++;
-                    if (nextProfileIndex >= profilesInTab.length) {
-                        nextProfileIndex = 0;
+                    if (type === 'jobcode') {
+                        const isExpanded = expandedRows.has(profileId);
+                        if (isExpanded) {
+                            nextType = 'overtime';
+                            nextDay = 1;
+                        } else {
+                            nextProfileIndex++;
+                            if (nextProfileIndex >= profilesInTab.length) {
+                                nextProfileIndex = 0;
+                            }
+                            nextId = profilesInTab[nextProfileIndex].id;
+                            nextDay = 1;
+                        }
+                    } else { // overtime
+                        nextProfileIndex++;
+                        if (nextProfileIndex >= profilesInTab.length) {
+                            nextProfileIndex = 0;
+                        }
+                        nextId = profilesInTab[nextProfileIndex].id;
+                        nextType = 'jobcode';
+                        nextDay = 1;
                     }
-                    nextDay = 1;
                 }
             }
 
-            const nextProfileId = profilesInTab[nextProfileIndex].id;
-            const nextCellId = `${nextType}-${nextProfileId}-${nextDay}`;
+            const nextCellId = `${nextType}-${nextId}-${nextDay}`;
             const nextElement = document.getElementById(nextCellId) as HTMLInputElement;
 
             if (nextElement) {
@@ -394,7 +419,7 @@ export default function JobRecordSheet() {
                 nextElement.select();
             }
         }
-    }, [filteredAndGroupedProfiles, activeTab, currentMonth]);
+    }, [filteredAndGroupedProfiles, activeTab, currentMonth, expandedRows]);
 
 
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
@@ -756,6 +781,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
-```
