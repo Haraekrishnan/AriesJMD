@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -122,6 +123,29 @@ export default function JobRecordSheet() {
         }
     };
     
+    const handleOvertimeChange = (employeeId: string, day: number, value: string) => {
+        const overtime = value === '' ? null : parseFloat(value);
+        if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
+            toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
+            return;
+        }
+        
+        const currentCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+        const isOtRestricted = OT_RESTRICTED_CODES.includes(currentCode.toUpperCase());
+        
+        if (isOtRestricted && overtime) {
+            toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${currentCode}".`, variant: "destructive" });
+            return;
+        }
+
+        if (!currentCode && overtime) {
+            toast({ title: "Job Code Required", description: "You must enter a job code before adding overtime.", variant: "destructive" });
+            return;
+        }
+
+        saveJobRecord(monthKey, employeeId, day, overtime, 'dailyOvertime');
+    };
+
     const plantProjects = useMemo(() => {
         return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
     }, [jobRecordPlants]);
@@ -505,7 +529,7 @@ export default function JobRecordSheet() {
                                 <TableHead className="text-center min-w-[150px] border-r">Total ML</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total OT</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Standby/Training</TableHead>
-                                <TableHead className="text-center min-w-[150px] border-r">Total Working Days</TableHead>
+                                <TableHead className="text-center min-w-[150px] border-r">Total working Days</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Total Rept/Office</TableHead>
                                 <TableHead className="text-center min-w-[150px] border-r">Salary Days</TableHead>
                                 <TableHead className="text-center min-w-[150px]">Additional Sunday Duty</TableHead>
@@ -603,14 +627,23 @@ export default function JobRecordSheet() {
                                                                   disabled={!canEditSheet}
                                                               />
                                                             ) : (
-                                                              <button
-                                                                onClick={() => canEditSheet && setEditingCell(cellId)}
-                                                                disabled={!canEditSheet}
-                                                                className="w-full h-full flex items-center justify-center font-bold relative"
-                                                              >
-                                                                  {cellValue}
-                                                                  {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
-                                                              </button>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <button
+                                                                            onClick={() => canEditSheet && setEditingCell(cellId)}
+                                                                            disabled={!canEditSheet}
+                                                                            className="w-full h-full flex items-center justify-center font-bold relative"
+                                                                        >
+                                                                            {cellValue}
+                                                                            {overtimeValue > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                                        </button>
+                                                                    </TooltipTrigger>
+                                                                    {overtimeValue > 0 && (
+                                                                        <TooltipContent>
+                                                                            <p>{overtimeValue} hrs OT</p>
+                                                                        </TooltipContent>
+                                                                    )}
+                                                                </Tooltip>
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -735,3 +768,4 @@ export default function JobRecordSheet() {
 }
 
     
+
