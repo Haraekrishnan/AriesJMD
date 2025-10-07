@@ -508,6 +508,7 @@ export default function JobRecordSheet() {
     }
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
+    const isEditableMonth = isSameMonth(currentMonth, new Date()) || isAfter(currentMonth, new Date());
 
     return (
         <TooltipProvider>
@@ -557,7 +558,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !isCurrentSheetLocked && isSameMonth(currentMonth, new Date()) && (
+                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -839,3 +840,4 @@ export default function JobRecordSheet() {
     
 
     
+
