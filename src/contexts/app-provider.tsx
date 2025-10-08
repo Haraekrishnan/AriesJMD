@@ -1,7 +1,9 @@
+
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -2024,23 +2026,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, roles, users, addActivityLog]);
   
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if(!user) return;
+    if (!user) return;
     const request = internalRequests.find(r => r.id === requestId);
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
     const commentText = `Status changed to ${status}. Comment: ${comment}`;
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
+
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/status`] = status;
     updates[`internalRequests/${requestId}/approverId`] = user.id;
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
-    if (status === 'Approved' || status === 'Issued' || status === 'Rejected') {
-        const updatedItems = request.items.map(item => ({ ...item, status }));
+    if (status === 'Issued') {
+        const updatedItems = request.items.map(item => ({ ...item, status: 'Issued' }));
         updates[`internalRequests/${requestId}/items`] = updatedItems;
+        
+        updatedItems.forEach(item => {
+            if (item.inventoryItemId) {
+                const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
+                if (inventoryItem && typeof inventoryItem.quantity === 'number') {
+                    const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
+                    updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
+                }
+            }
+        });
+    } else if (status === 'Approved' || status === 'Rejected') {
+      const updatedItems = request.items.map(item => ({...item, status }));
+      updates[`internalRequests/${requestId}/items`] = updatedItems;
     }
 
     update(ref(rtdb), updates);
@@ -2048,20 +2063,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const requester = users.find(u => u.id === request.requesterId);
     if (requester && requester.email) {
-        createAndSendNotification(
-            requester.email,
-            `Update on your Internal Store Request #${requestId.slice(-6)}`,
-            `Your request status is now: ${status}`,
-            {
-                'Request ID': `#${requestId.slice(-6)}`,
-                'Updated By': user.name,
-                'Comment': comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'View Request'
-        );
+      createAndSendNotification(
+        requester.email,
+        `Update on your Internal Store Request #${requestId.slice(-6)}`,
+        `Your request status is now: ${status}`,
+        { 'Request ID': `#${requestId.slice(-6)}`, 'Updated By': user.name, 'Comment': comment },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
     }
-  }, [user, internalRequests, users, addActivityLog]);
+  }, [user, internalRequests, users, inventoryItems, addActivityLog]);
 
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -3394,4 +3405,5 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
