@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -865,7 +864,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                          <TableRow>
-                                            <TableCell colSpan={3} className="sticky left-0 bg-muted/50 z-20 border-r" style={{ left: '0' }}>
+                                            <TableCell colSpan={3} className="sticky left-0 z-20 border-r bg-muted/50" style={{ left: 0 }}>
                                                 <div className="text-right font-semibold text-xs pr-4">Overtime Hours</div>
                                             </TableCell>
                                              {dayHeaders.map(day => {
