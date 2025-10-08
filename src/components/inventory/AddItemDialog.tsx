@@ -28,6 +28,8 @@ const itemSchema = z.object({
   tpInspectionDueDate: z.date().optional().nullable(),
   category: z.enum(['General', 'Daily Consumable', 'Job Consumable']).default('General'),
   remarks: z.string().optional(),
+  quantity: z.coerce.number().optional(),
+  unit: z.string().optional(),
 }).superRefine((data, ctx) => {
     if(data.category === 'General' && !data.serialNumber) {
         ctx.addIssue({
@@ -60,6 +62,7 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
     defaultValues: {
       status: 'In Store',
       category: 'General',
+      quantity: 1,
     },
   });
 
@@ -115,12 +118,24 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
             {itemName?.toLowerCase() === 'harness' && category === 'General' && (
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="ariesId">Aries ID</Label>
+                        <Label htmlFor="ariesId">Aries ID (sl no)</Label>
                         <Input id="ariesId" {...form.register('ariesId')} />
                     </div>
                     <div>
                         <Label htmlFor="chestCrollNo">Chest Croll No</Label>
                         <Input id="chestCrollNo" {...form.register('chestCrollNo')} />
+                    </div>
+                </div>
+            )}
+             {category !== 'General' && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="quantity">Quantity</Label>
+                        <Input id="quantity" type="number" {...form.register('quantity')} />
+                    </div>
+                    <div>
+                        <Label htmlFor="unit">Unit</Label>
+                        <Input id="unit" {...form.register('unit')} placeholder="e.g., pcs, box, m" />
                     </div>
                 </div>
             )}
@@ -146,7 +161,7 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
             )}
 
             <div>
-                <Label>Remarks</Label>
+                <Label>Remarks (Description)</Label>
                 <Textarea {...form.register('remarks')} placeholder="Add any notes..." />
             </div>
           

@@ -569,6 +569,8 @@ export type InventoryItem = {
   lastUpdated: string; // ISO string
   remarks?: string;
   category?: InventoryCategory;
+  quantity?: number;
+  unit?: string;
 };
 
 export type UTMachine = {
