@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -211,6 +210,7 @@ export default function JobRecordSheet() {
 
     useEffect(() => {
         const newStates: Record<string, string> = {};
+        const newOtStates: Record<string, string> = {};
         if (jobRecords[monthKey]?.records) {
             for (const profileId in jobRecords[monthKey].records) {
                 const record = jobRecords[monthKey].records[profileId];
@@ -221,12 +221,13 @@ export default function JobRecordSheet() {
                 }
                 if (record.dailyOvertime) {
                     for (const day in record.dailyOvertime) {
-                        setOvertimeStates(prev => ({...prev, [`${profileId}-${day}`]: (record.dailyOvertime as any)[day]?.toString() || ''}))
+                        newOtStates[`${profileId}-${day}`] = (record.dailyOvertime as any)[day]?.toString() || '';
                     }
                 }
             }
         }
         setCellStates(newStates);
+        setOvertimeStates(newOtStates);
     }, [jobRecords, monthKey]);
 
     const getSelectionRange = () => {
@@ -595,7 +596,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !isCurrentSheetLocked && (
+                             {can.manage_job_record && !isCurrentSheetLocked && isEditableMonth && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -788,17 +789,22 @@ export default function JobRecordSheet() {
                                 </TableRow>
                                 {isExpanded && (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{ left: 0, width: '470px' }}>
+                                        <TableCell
+                                            colSpan={3}
+                                            className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
+                                            style={{ left: 0, width: '470px' }}
+                                        >
                                             Overtime Hours
                                         </TableCell>
                                         {dayHeaders.map(day => {
+                                            const overtimeValue = overtimeStates[`${profile.id}-${day}`] || '';
                                             return (
                                                 <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
                                                     <Input
                                                         id={`${profile.id}-${day}-overtime`}
                                                         type="number"
                                                         placeholder="0"
-                                                        value={overtimeStates[`${profile.id}-${day}`] || ''}
+                                                        value={overtimeValue}
                                                         onChange={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                         onBlur={(e) => handleOvertimeBlur(profile.id, day, e.target.value)}
                                                         onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
