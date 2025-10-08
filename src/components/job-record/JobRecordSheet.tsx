@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -147,6 +148,18 @@ export default function JobRecordSheet() {
         e.preventDefault();
     };
 
+    const handleMouseEnterCell = (profileId: string, day: number) => {
+        if (dragInfo && dragInfo.isDragging) {
+            const profiles = filteredAndGroupedProfiles[activeTab] || [];
+            if (!dragInfo.dragDirection) {
+                const direction = Math.abs(day - dragInfo.startCell!.day) > Math.abs((profiles.findIndex(p => p.id === profileId)) - (profiles.findIndex(p => p.id === dragInfo.startCell!.profileId))) ? 'horizontal' : 'vertical';
+                setDragInfo({ ...dragInfo, endCell: { profileId, day }, dragDirection: direction });
+            } else {
+                setDragInfo({ ...dragInfo, endCell: { profileId, day } });
+            }
+        }
+    };
+
     const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'status' | 'overtime') => {
         const { key } = e;
         const profiles = filteredAndGroupedProfiles[activeTab] || [];
@@ -226,6 +239,45 @@ export default function JobRecordSheet() {
         if (dragInfo.type === 'overtime') {
             setOvertimeStates(newOvertimeStates);
         }
+    };
+    
+    const getSelectionRange = () => {
+        if (!dragInfo || !dragInfo.startCell || !dragInfo.endCell) return null;
+        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const startIndex = profiles.findIndex(p => p.id === dragInfo.startCell!.profileId);
+        const endIndex = profiles.findIndex(p => p.id === dragInfo.endCell!.profileId);
+
+        if (startIndex === -1 || endIndex === -1) return null;
+
+        return {
+            minRow: Math.min(startIndex, endIndex),
+            maxRow: Math.max(startIndex, endIndex),
+            minCol: Math.min(dragInfo.startCell.day, dragInfo.endCell.day),
+            maxCol: Math.max(dragInfo.startCell.day, dragInfo.endCell.day),
+        };
+    };
+
+    const selectionRange = getSelectionRange();
+    
+    const isCellInSelection = (profileId: string, day: number) => {
+        if (!selectionRange) return false;
+        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const rowIndex = profiles.findIndex(p => p.id === profileId);
+        if(rowIndex === -1) return false;
+        
+        let inRange = rowIndex >= selectionRange.minRow &&
+            rowIndex <= selectionRange.maxRow &&
+            day >= selectionRange.minCol &&
+            day <= selectionRange.maxCol;
+
+        if (dragInfo?.dragDirection === 'vertical') {
+            return day === dragInfo.startCell?.day && rowIndex >= selectionRange.minRow && rowIndex <= selectionRange.maxRow;
+        }
+        if (dragInfo?.dragDirection === 'horizontal') {
+            return rowIndex === profiles.findIndex(p => p.id === dragInfo.startCell?.profileId) && day >= selectionRange.minCol && day <= selectionRange.maxCol;
+        }
+
+        return inRange;
     };
 
 
@@ -629,7 +681,7 @@ export default function JobRecordSheet() {
                                         </AlertDialog>
                                     )}
                                 </div>
-                            )})}
+                        )})}
                         </TabsList>
                      </Tabs>
                 </div>
@@ -716,8 +768,7 @@ export default function JobRecordSheet() {
                                             </Select>
                                         </TableCell>
                                         {dayHeaders.map(day => {
-                                            const cellId = `${profile.id}-${day}`;
-                                            const code = cellStates[cellId] || '';
+                                            const code = cellStates[`${profile.id}-${day}`] || '';
                                             const overtimeForDay = dailyOvertime[day] || 0;
                                             const colorInfo = JOB_CODE_COLORS[code as string] || {};
                                             const isInSelection = isCellInSelection(profile.id, day);
@@ -725,41 +776,37 @@ export default function JobRecordSheet() {
                                             return (
                                                 <TableCell 
                                                     key={day} 
-                                                    className="p-0 text-center relative min-w-[100px] border-r"
+                                                    data-cell-id={`${profile.id}-${day}`}
+                                                    className={cn(
+                                                        "p-0 text-center relative min-w-[70px] border-r h-10",
+                                                        isInSelection && "bg-blue-200/50"
+                                                    )}
+                                                    onMouseDown={() => handleMouseDown(profile.id, day)}
+                                                    onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
-                                                    <div className={cn("relative h-10 w-full", isInSelection && dragInfo?.type === 'status' && "bg-blue-200/50")}
-                                                        onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'status')}
-                                                        onMouseEnter={(e) => {
-                                                          if (!dragInfo) return;
-                                                          const direction = Math.abs(day - dragInfo.startCell!.day) > Math.abs((profiles.findIndex(p => p.id === profile.id)) - (profiles.findIndex(p => p.id === dragInfo.startCell!.profileId))) ? 'horizontal' : 'vertical';
-                                                          setDragInfo({...dragInfo, endCell: {profileId, day}, dragDirection: dragInfo.dragDirection || direction });
-                                                        }}
-                                                    >
-                                                        <Input
-                                                            id={cellId}
-                                                            type="text"
-                                                            list="jobcodes-datalist"
-                                                            value={code}
-                                                            onChange={(e) => setCellStates(prev => ({...prev, [cellId]: e.target.value}))}
-                                                            onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
-                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'status')}
-                                                            className={cn(
-                                                                "absolute inset-0 w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
-                                                                code ? colorInfo.bg : 'bg-transparent',
-                                                                code ? colorInfo.text : 'text-foreground'
-                                                            )}
-                                                            style={{ boxShadow: 'none' }}
-                                                            disabled={!canEditSheet}
-                                                        />
-                                                        {overtimeForDay > 0 && (
-                                                            <Tooltip>
-                                                            <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                                <Clock className="h-full w-full text-blue-500" />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                            </Tooltip>
+                                                    <Input
+                                                        id={`${profile.id}-${day}`}
+                                                        type="text"
+                                                        list="jobcodes-datalist"
+                                                        value={code}
+                                                        onChange={(e) => setCellStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
+                                                        onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                        className={cn(
+                                                            "w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
+                                                            code ? colorInfo.bg : 'bg-transparent',
+                                                            code ? colorInfo.text : 'text-foreground'
                                                         )}
-                                                    </div>
+                                                        style={{ boxShadow: 'none' }}
+                                                        disabled={!canEditSheet}
+                                                    />
+                                                    {overtimeForDay > 0 && (
+                                                        <Tooltip>
+                                                        <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
+                                                            <Clock className="h-full w-full text-blue-500" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                        </Tooltip>
+                                                    )}
                                                 </TableCell>
                                             );
                                         })}
@@ -783,39 +830,28 @@ export default function JobRecordSheet() {
                                         </TableCell>
                                     </TableRow>
                                     {isExpanded && (
-                                        <TableRow>
-                                          <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{ left: 0, width: '470px' }}>Overtime Hours</TableCell>
-                                            {dayHeaders.map(day => {
-                                                const cellId = `${profile.id}-${day}-overtime`;
-                                                const isInSelection = isCellInSelection(profile.id, day);
-                                                return (
-                                                    <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r"
-                                                        onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'overtime')}
-                                                        onMouseEnter={(e) => {
-                                                            if (!dragInfo) return;
-                                                            const direction = Math.abs(day - dragInfo.startCell!.day) > Math.abs((profiles.findIndex(p => p.id === profile.id)) - (profiles.findIndex(p => p.id === dragInfo.startCell!.profileId))) ? 'horizontal' : 'vertical';
-                                                            setDragInfo({...dragInfo, endCell: {profileId, day}, dragDirection: dragInfo.dragDirection || direction });
-                                                        }}
-                                                    >
-                                                        <div className={cn("relative h-8 w-full", isInSelection && dragInfo?.type === 'overtime' && "bg-blue-200/50")}>
-                                                            <Input
-                                                                id={cellId}
-                                                                type="number"
-                                                                placeholder="0"
-                                                                value={overtimeStates[cellId.replace('-overtime','')] || ''}
-                                                                onChange={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                                onBlur={(e) => handleOvertimeBlur(profile.id, day, e.target.value)}
-                                                                onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
-                                                                className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                                disabled={!canEditSheet}
-                                                            />
-                                                        </div>
-                                                    </TableCell>
-                                                )
-                                            })}
-                                            <TableCell colSpan={9} className="bg-muted/50"></TableCell>
-                                        </TableRow>
-                                    )}
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{width: '470px', left: 0}}>
+                                            Overtime Hours
+                                        </TableCell>
+                                        {dayHeaders.map(day => {
+                                            return (
+                                                <TableCell key={`ot-${day}`} className="p-0 bg-muted/50 border-r">
+                                                    <Input
+                                                        id={`${profile.id}-${day}-overtime`}
+                                                        type="number"
+                                                        placeholder="0"
+                                                        defaultValue={dailyOvertime[day] || ''}
+                                                        onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                        disabled={!canEditSheet}
+                                                    />
+                                                </TableCell>
+                                            )
+                                        })}
+                                        <TableCell colSpan={9} className="bg-muted/50"></TableCell>
+                                    </TableRow>
+                                )}
                                     </React.Fragment>
                                 );
                             })}
@@ -879,3 +915,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
