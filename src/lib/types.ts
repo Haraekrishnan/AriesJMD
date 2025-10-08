@@ -493,6 +493,7 @@ export type ManpowerLog = {
 export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Partially Issued' | 'Disputed' | 'Partially Approved';
 export type InternalRequestItem = {
     id: string;
+    inventoryItemId?: string;
     description: string;
     quantity: number;
     unit: string;

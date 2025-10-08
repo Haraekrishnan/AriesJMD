@@ -19,6 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 
 const requestItemSchema = z.object({
   id: z.string(),
+  inventoryItemId: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   unit: z.string().min(1, 'Unit is required. (e.g., pcs, box, m)'),
@@ -53,7 +54,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'items',
   });
@@ -77,11 +78,14 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
   const handleItemSelect = (index: number, itemName: string) => {
     const item = consumableItems.find(i => i.name === itemName);
     if(item) {
-        update(index, {
-            ...form.getValues(`items.${index}`),
-            description: item.name,
-            // You might want to prefill unit as well if available
-        });
+        form.setValue(`items.${index}.description`, item.name);
+        form.setValue(`items.${index}.inventoryItemId`, item.id);
+        if(item.unit) {
+            form.setValue(`items.${index}.unit`, item.unit);
+        }
+    } else {
+        form.setValue(`items.${index}.description`, itemName);
+        form.setValue(`items.${index}.inventoryItemId`, undefined);
     }
   };
 
@@ -125,7 +129,10 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                     <Command>
-                                        <CommandInput placeholder="Search items..." />
+                                        <CommandInput 
+                                            placeholder="Search items..." 
+                                            onValueChange={(value) => handleItemSelect(index, value)}
+                                        />
                                         <CommandList>
                                             <CommandEmpty>No item found. You can still type a custom item.</CommandEmpty>
                                             <CommandGroup>
@@ -133,9 +140,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
                                                 <CommandItem
                                                     key={item.id}
                                                     value={item.name}
-                                                    onSelect={() => {
-                                                        form.setValue(`items.${index}.description`, item.name);
-                                                    }}
+                                                    onSelect={() => handleItemSelect(index, item.name)}
                                                 >
                                                     {item.name}
                                                 </CommandItem>
