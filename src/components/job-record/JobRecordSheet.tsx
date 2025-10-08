@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -93,6 +93,8 @@ export default function JobRecordSheet() {
         const overtime = value === '' ? null : parseFloat(value);
         if (overtime !== null && (isNaN(overtime) || overtime < 0)) {
             toast({ title: "Invalid Overtime", description: "Overtime must be a positive number.", variant: "destructive" });
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+            setOvertimeCellStates(prev => ({...prev, [`overtime-${employeeId}-${day}`]: ''}));
             return;
         }
         
@@ -100,6 +102,7 @@ export default function JobRecordSheet() {
         if (!currentCode && overtime) {
             toast({ title: "Job Code Required", description: "You must enter a job code before adding overtime.", variant: "destructive" });
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+            setOvertimeCellStates(prev => ({...prev, [`overtime-${employeeId}-${day}`]: ''}));
             return;
         }
 
@@ -107,6 +110,7 @@ export default function JobRecordSheet() {
         if (isOtRestricted && overtime) {
             toast({ title: "Overtime Restricted", description: `Overtime cannot be added for job code "${currentCode}".`, variant: "destructive" });
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+            setOvertimeCellStates(prev => ({...prev, [`overtime-${employeeId}-${day}`]: ''}));
             return;
         }
 
@@ -205,7 +209,7 @@ export default function JobRecordSheet() {
         setOvertimeCellStates(newOvertimeStates);
     }, [jobRecords, monthKey]);
     
-    const applyDragCopy = () => {
+    const applyDragCopy = useCallback(() => {
         if (!dragState) return;
         const { startCell, endCell, dragDirection } = dragState;
         
@@ -240,7 +244,7 @@ export default function JobRecordSheet() {
                 handleFn(profileId, startCell.day, startValue);
             }
         }
-    };
+    }, [dragState, cellStates, overtimeCellStates, filteredAndGroupedProfiles, activeTab, handleStatusChange, handleOvertimeChange]);
 
     const handleMouseDownCell = (e: React.MouseEvent, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
         setDragState({
@@ -253,12 +257,12 @@ export default function JobRecordSheet() {
     };
 
     const handleMouseUpTable = useCallback(() => {
-        if (dragState) {
+        if (dragState?.isDragging) {
             applyDragCopy();
-            setDragState(null);
         }
+        setDragState(null);
     }, [dragState, applyDragCopy]);
-
+    
     const handleMouseMoveTable = useCallback((e: React.MouseEvent) => {
         if (!dragState || !dragState.isDragging) return;
 
@@ -284,13 +288,7 @@ export default function JobRecordSheet() {
         }));
     }, [dragState]);
 
-    const handleMouseEnterCell = (profileId: string, day: number, type: 'jobcode' | 'overtime') => {
-        if (dragState?.isDragging) {
-             setDragState(prev => ({ ...prev!, endCell: { profileId, day, type } }));
-        }
-    };
-
-    const getSelectionRange = () => {
+    const getSelectionRange = useCallback(() => {
         if (!dragState || !dragState.isDragging) return null;
         const { startCell, endCell, dragDirection } = dragState;
         const profilesInTab = filteredAndGroupedProfiles[activeTab] || [];
@@ -319,9 +317,9 @@ export default function JobRecordSheet() {
           }
         }
         return null;
-      };
+    }, [dragState, filteredAndGroupedProfiles, activeTab]);
 
-    const isCellInSelection = (profileId: string, day: number, type: 'jobcode' | 'overtime') => {
+    const isCellInSelection = useCallback((profileId: string, day: number, type: 'jobcode' | 'overtime') => {
         const selectionRange = getSelectionRange();
         if (!dragState || !selectionRange || dragState.startCell.type !== type) return false;
         
@@ -338,7 +336,7 @@ export default function JobRecordSheet() {
             day >= selectionRange.minCol &&
             day <= selectionRange.maxCol
         );
-    };
+    }, [dragState, getSelectionRange, filteredAndGroupedProfiles, activeTab]);
 
     const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'jobcode' | 'overtime') => {
         if (e.key !== 'Tab') return;
@@ -348,36 +346,33 @@ export default function JobRecordSheet() {
         const numDays = getDaysInMonth(currentMonth);
         const currentProfileIndex = profilesInTab.findIndex(p => p.id === profileId);
     
-        let nextDay: number;
-        let nextProfileIndex: number;
-        let nextType: 'jobcode' | 'overtime';
-    
-        if (type === 'jobcode') {
-            nextDay = e.shiftKey ? day - 1 : day + 1;
-            nextProfileIndex = currentProfileIndex;
-            nextType = 'jobcode';
-    
-            if (nextDay < 1) {
-                nextDay = numDays;
-                nextProfileIndex = e.shiftKey ? currentProfileIndex - 1 : currentProfileIndex;
-                if (nextProfileIndex < 0) nextProfileIndex = profilesInTab.length - 1;
-            } else if (nextDay > numDays) {
-                nextDay = 1;
-                nextType = 'overtime'; // Move to OT row
-            }
-        } else { // type is 'overtime'
-            nextDay = e.shiftKey ? day - 1 : day + 1;
-            nextProfileIndex = currentProfileIndex;
-            nextType = 'overtime';
+        let nextDay = day;
+        let nextProfileIndex = currentProfileIndex;
+        let nextType = type;
 
-            if (nextDay < 1) {
-                nextDay = numDays;
-                nextType = 'jobcode'; // Move up to job code row
-            } else if (nextDay > numDays) {
-                nextDay = 1;
-                nextProfileIndex = e.shiftKey ? currentProfileIndex : currentProfileIndex + 1;
-                if (nextProfileIndex >= profilesInTab.length) nextProfileIndex = 0;
+        if (e.shiftKey) { // Move backwards
+            if (type === 'overtime') {
+                nextDay = day;
                 nextType = 'jobcode';
+            } else { // type is 'jobcode'
+                nextDay = day - 1;
+                if (nextDay < 1) {
+                    nextDay = numDays;
+                    nextProfileIndex--;
+                    if(nextProfileIndex < 0) nextProfileIndex = profilesInTab.length - 1;
+                }
+            }
+        } else { // Move forwards
+            if (type === 'jobcode') {
+                nextDay = day;
+                nextType = 'overtime';
+            } else { // type is 'overtime'
+                nextDay = day + 1;
+                if (nextDay > numDays) {
+                    nextDay = 1;
+                    nextProfileIndex++;
+                    if (nextProfileIndex >= profilesInTab.length) nextProfileIndex = 0;
+                }
             }
         }
     
@@ -403,7 +398,7 @@ export default function JobRecordSheet() {
         }
     }, [plantProjects, activeTab]);
     
-    const toggleRow = (profileId: string) => {
+    const toggleRow = useCallback((profileId: string) => {
         setExpandedRows(prev => {
             const newSet = new Set(prev);
             if (newSet.has(profileId)) {
@@ -413,7 +408,7 @@ export default function JobRecordSheet() {
             }
             return newSet;
         });
-    };
+    }, []);
     
     const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
     
@@ -786,7 +781,6 @@ export default function JobRecordSheet() {
                                         {dayHeaders.map(day => {
                                             const cellId = `jobcode-${profile.id}-${day}`;
                                             const code = cellStates[cellId] || '';
-                                            const overtimeForDay = dailyOvertime[day] || 0;
                                             const colorInfo = JOB_CODE_COLORS[code] || {};
                                             const isInSelection = isCellInSelection(profile.id, day, 'jobcode');
 
@@ -798,7 +792,6 @@ export default function JobRecordSheet() {
                                                         "p-0 text-center relative min-w-[70px] border-r h-10",
                                                         isInSelection && "bg-blue-200/50"
                                                     )}
-                                                    onMouseEnter={() => handleMouseEnterCell(profile.id, day, 'jobcode')}
                                                 >
                                                     <div className="relative w-full h-full">
                                                         <Input
@@ -809,6 +802,11 @@ export default function JobRecordSheet() {
                                                             onChange={(e) => setCellStates(prev => ({...prev, [cellId]: e.target.value.toUpperCase()}))}
                                                             onBlur={(e) => handleStatusChange(profile.id, day, e.target.value)}
                                                             onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'jobcode')}
+                                                            onMouseEnter={() => {
+                                                                if (dragState?.isDragging) {
+                                                                    setDragState(prev => ({ ...prev!, endCell: { profileId: profile.id, day: day, type: 'jobcode' } }));
+                                                                }
+                                                            }}
                                                             className={cn(
                                                                 "absolute inset-0 w-full h-full text-center font-bold uppercase rounded-none border-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0",
                                                                 "bg-transparent focus-visible:bg-background",
@@ -818,7 +816,7 @@ export default function JobRecordSheet() {
                                                             style={{ boxShadow: 'none' }}
                                                             disabled={!canEditSheet}
                                                         />
-                                                        {overtimeForDay > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
+                                                        {dailyOvertime[day] && dailyOvertime[day]! > 0 && <Clock className="absolute right-0.5 top-0.5 h-3 w-3 text-white mix-blend-difference" />}
                                                          {canEditSheet && (
                                                             <div 
                                                                 onMouseDown={(e) => handleMouseDownCell(e, profile.id, day, 'jobcode')}
@@ -850,7 +848,9 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                          <TableRow>
-                                             <TableCell colSpan={3} className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r" style={{ left: '0', minWidth: '470px', width: '470px' }}>Overtime Hours</TableCell>
+                                             <TableCell colSpan={3} className="sticky left-0 bg-muted/50 z-20 border-r" style={{ left: '0' }}>
+                                                 <div className="text-right font-semibold text-xs pr-4">Overtime Hours</div>
+                                             </TableCell>
                                              {dayHeaders.map(day => {
                                                  const cellId = `overtime-${profile.id}-${day}`;
                                                  const isInSelection = isCellInSelection(profile.id, day, 'overtime');
@@ -861,7 +861,6 @@ export default function JobRecordSheet() {
                                                          key={`ot-${day}`} 
                                                          data-cell-id={cellId}
                                                          className={cn("p-0 min-w-[70px] border-r h-10 relative bg-muted/50", isInSelection && "bg-blue-200/50")}
-                                                         onMouseEnter={() => handleMouseEnterCell(profile.id, day, 'overtime')}
                                                      >
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
@@ -873,6 +872,11 @@ export default function JobRecordSheet() {
                                                                         onChange={e => setOvertimeCellStates(prev => ({...prev, [cellId]: e.target.value}))}
                                                                         onBlur={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                                         onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
+                                                                        onMouseEnter={() => {
+                                                                            if (dragState?.isDragging) {
+                                                                                setDragState(prev => ({ ...prev!, endCell: { profileId: profile.id, day: day, type: 'overtime' } }));
+                                                                            }
+                                                                        }}
                                                                         className="w-full h-full text-center rounded-none border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                                                                         placeholder="OT"
                                                                         min="0"
@@ -964,4 +968,5 @@ export default function JobRecordSheet() {
 }
 
     
+
 
