@@ -28,6 +28,7 @@ const itemSchema = z.object({
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
   category: z.enum(['General', 'Daily Consumable', 'Job Consumable']).default('General'),
+  remarks: z.string().optional(),
 }).superRefine((data, ctx) => {
     if(data.category === 'General' && !data.serialNumber) {
         ctx.addIssue({
@@ -150,6 +151,11 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                 <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
               </>
             )}
+
+            <div>
+                <Label>Remarks</Label>
+                <Textarea {...form.register('remarks')} placeholder="Add any notes..." />
+            </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>

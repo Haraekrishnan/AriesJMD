@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { InventoryItemStatus, InventoryCategory } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { Textarea } from '../ui/textarea';
 
 const itemSchema = z.object({
   name: z.string().min(1, 'Item name is required'),
@@ -26,6 +27,7 @@ const itemSchema = z.object({
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
   category: z.enum(['General', 'Daily Consumable', 'Job Consumable']).default('General'),
+  remarks: z.string().optional(),
 }).superRefine((data, ctx) => {
     if(data.category === 'General' && !data.serialNumber) {
         ctx.addIssue({
@@ -142,6 +144,11 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                 <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
               </>
             )}
+
+            <div>
+                <Label>Remarks</Label>
+                <Textarea {...form.register('remarks')} placeholder="Add any notes..." />
+            </div>
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
