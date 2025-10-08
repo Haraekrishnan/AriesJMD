@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -11,12 +12,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { InventoryItemStatus } from '@/lib/types';
+import type { InventoryItemStatus, InventoryCategory } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 
 const itemSchema = z.object({
   name: z.string().min(1, 'Item name is required'),
-  serialNumber: z.string().min(1, 'Serial number is required'),
+  serialNumber: z.string().optional(),
   ariesId: z.string().optional(),
   chestCrollNo: z.string().optional(),
   status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired']),
@@ -24,7 +25,17 @@ const itemSchema = z.object({
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
+  category: z.enum(['General', 'Daily Consumable', 'Job Consumable']).default('General'),
+}).superRefine((data, ctx) => {
+    if(data.category === 'General' && !data.serialNumber) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Serial number is required for General items.",
+            path: ['serialNumber'],
+        });
+    }
 });
+
 
 type ItemFormValues = z.infer<typeof itemSchema>;
 
@@ -34,6 +45,7 @@ interface AddItemDialogProps {
 }
 
 const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired'];
+const categoryOptions: InventoryCategory[] = ['General', 'Daily Consumable', 'Job Consumable'];
 
 export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps) {
   const { projects, addInventoryItem, inventoryItems } = useAppContext();
@@ -45,14 +57,17 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
     resolver: zodResolver(itemSchema),
     defaultValues: {
       status: 'In Store',
+      category: 'General',
     },
   });
 
   const itemName = form.watch('name');
+  const category = form.watch('category');
 
   const onSubmit = (data: ItemFormValues) => {
     addInventoryItem({
         ...data,
+        serialNumber: data.serialNumber || `N/A-${Date.now()}`,
         inspectionDate: data.inspectionDate ? data.inspectionDate.toISOString() : '',
         inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
         tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
@@ -84,14 +99,18 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                     </datalist>
                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
-                <div>
-                    <Label htmlFor="serialNumber">Serial Number</Label>
-                    <Input id="serialNumber" {...form.register('serialNumber')} />
-                    {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+                 <div>
+                    <Label>Category</Label>
+                    <Controller control={form.control} name="category" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categoryOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
                 </div>
             </div>
+             <div>
+                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Input id="serialNumber" {...form.register('serialNumber')} disabled={category !== 'General'} />
+                {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+            </div>
 
-            {itemName?.toLowerCase() === 'harness' && (
+            {itemName?.toLowerCase() === 'harness' && category === 'General' && (
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="ariesId">Aries ID</Label>
@@ -116,9 +135,13 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                 </div>
             </div>
 
-            <div><Label>Inspection Date</Label><Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
-            <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
-            <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
+            {category === 'General' && (
+              <>
+                <div><Label>Inspection Date</Label><Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
+                <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
+                <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
+              </>
+            )}
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>

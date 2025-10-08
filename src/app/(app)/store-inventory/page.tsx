@@ -19,6 +19,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import InventoryReportDownloads from '@/components/inventory/InventoryReportDownloads';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed } = useAppContext();
@@ -40,11 +41,27 @@ export default function StoreInventoryPage() {
         return userRole?.permissions.includes('manage_inventory') ?? false;
     }, [user, roles]);
 
+    const { generalItems, dailyConsumables, jobConsumables } = useMemo(() => {
+        const general: InventoryItem[] = [];
+        const daily: InventoryItem[] = [];
+        const job: InventoryItem[] = [];
+        inventoryItems.forEach(item => {
+            if (item.category === 'Daily Consumable') {
+                daily.push(item);
+            } else if (item.category === 'Job Consumable') {
+                job.push(item);
+            } else {
+                general.push(item);
+            }
+        });
+        return { generalItems: general, dailyConsumables: daily, jobConsumables: job };
+    }, [inventoryItems]);
+
     const filteredItems = useMemo(() => {
       const privilegedRoles: Role[] = ['Admin', 'Manager', 'Store in Charge', 'Assistant Store Incharge'];
       const isPrivileged = user ? privilegedRoles.includes(user.role) : false;
 
-      return inventoryItems.filter(item => {
+      return generalItems.filter(item => {
         const { name, status, projectId, search } = filters;
         if (name !== 'all' && item.name !== name) return false;
         if (search && !(item.serialNumber.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
@@ -76,7 +93,7 @@ export default function StoreInventoryPage() {
 
         return true;
       });
-    }, [inventoryItems, filters, user, roles]);
+    }, [generalItems, filters, user, roles]);
 
     const summaryData = useMemo(() => {
         const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};
@@ -117,7 +134,7 @@ export default function StoreInventoryPage() {
         const thirtyDaysFromNow = addDays(now, 30);
         const notifications: { message: string, item: InventoryItem }[] = [];
 
-        inventoryItems.forEach(item => {
+        generalItems.forEach(item => {
             if (item.inspectionDueDate) {
                 const inspectionDueDate = parseISO(item.inspectionDueDate);
                 if (isBefore(inspectionDueDate, now)) {
@@ -137,7 +154,7 @@ export default function StoreInventoryPage() {
         });
 
         return notifications;
-    }, [inventoryItems]);
+    }, [generalItems]);
 
     return (
         <div className="space-y-8">
@@ -252,19 +269,47 @@ export default function StoreInventoryPage() {
                 </Card>
             )}
 
-            <Card>
-                <CardHeader>
-                   <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
-                     {view === 'list' ? (
-                        <InventoryFilters onApplyFilters={setFilters} />
-                     ) : <CardTitle>Inventory Summary</CardTitle>}
-                     <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
-                   </div>
-                </CardHeader>
-                <CardContent>
-                    {view === 'list' ? <InventoryTable items={filteredItems} /> : <InventorySummary items={filteredItems} />}
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="general">
+                <TabsList>
+                    <TabsTrigger value="general">General Items</TabsTrigger>
+                    <TabsTrigger value="consumables">Consumables</TabsTrigger>
+                </TabsList>
+                <TabsContent value="general">
+                    <Card>
+                        <CardHeader>
+                           <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                             {view === 'list' ? (
+                                <InventoryFilters onApplyFilters={setFilters} />
+                             ) : <CardTitle>General Inventory Summary</CardTitle>}
+                             <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
+                           </div>
+                        </CardHeader>
+                        <CardContent>
+                            {view === 'list' ? <InventoryTable items={filteredItems} /> : <InventorySummary items={filteredItems} />}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                 <TabsContent value="consumables">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Consumable Items</CardTitle>
+                            <CardDescription>Manage daily and job-specific consumable items.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-2">Daily Consumables</h3>
+                                    <InventoryTable items={dailyConsumables} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-2">Job Consumables</h3>
+                                    <InventoryTable items={jobConsumables} />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />

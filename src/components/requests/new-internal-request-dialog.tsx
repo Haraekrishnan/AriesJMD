@@ -11,8 +11,11 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronsUpDown } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
+import { useMemo } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 const requestItemSchema = z.object({
   id: z.string(),
@@ -36,8 +39,12 @@ interface NewInternalRequestDialogProps {
 const generateNewItemId = () => `item-${Date.now()}-${Math.random()}`;
 
 export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInternalRequestDialogProps) {
-  const { addInternalRequest } = useAppContext();
+  const { addInternalRequest, inventoryItems } = useAppContext();
   const { toast } = useToast();
+
+  const consumableItems = useMemo(() => {
+    return inventoryItems.filter(item => item.category === 'Daily Consumable' || item.category === 'Job Consumable');
+  }, [inventoryItems]);
 
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
@@ -46,7 +53,7 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: 'items',
   });
@@ -67,12 +74,23 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
     setIsOpen(open);
   };
 
+  const handleItemSelect = (index: number, itemName: string) => {
+    const item = consumableItems.find(i => i.name === itemName);
+    if(item) {
+        update(index, {
+            ...form.getValues(`items.${index}`),
+            description: item.name,
+            // You might want to prefill unit as well if available
+        });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>New Internal Store Request</DialogTitle>
-          <DialogDescription>List the items you need from the internal store.</DialogDescription>
+          <DialogDescription>List the items you need from the internal store. You can select from available consumables or type a custom item.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           {/* Static Header for the list */}
@@ -90,7 +108,45 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
               {fields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
                   <div className="col-span-5">
-                    <Textarea id={`items.${index}.description`} {...form.register(`items.${index}.description`)} rows={1} />
+                    <Controller
+                        name={`items.${index}.description`}
+                        control={form.control}
+                        render={({ field: controllerField }) => (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <div className="relative">
+                                      <Input
+                                        {...controllerField}
+                                        placeholder="Select or type item..."
+                                        className="pr-8"
+                                      />
+                                      <ChevronsUpDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50"/>
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search items..." />
+                                        <CommandList>
+                                            <CommandEmpty>No item found. You can still type a custom item.</CommandEmpty>
+                                            <CommandGroup>
+                                                {consumableItems.map(item => (
+                                                <CommandItem
+                                                    key={item.id}
+                                                    value={item.name}
+                                                    onSelect={() => {
+                                                        form.setValue(`items.${index}.description`, item.name);
+                                                    }}
+                                                >
+                                                    {item.name}
+                                                </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                    />
                     {form.formState.errors.items?.[index]?.description && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.description?.message}</p>}
                   </div>
                   <div className="col-span-2">

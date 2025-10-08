@@ -553,6 +553,7 @@ export type PpeRequest = {
 
 
 export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired';
+export type InventoryCategory = 'General' | 'Daily Consumable' | 'Job Consumable';
 
 export type InventoryItem = {
   id: string;
@@ -567,6 +568,7 @@ export type InventoryItem = {
   tpInspectionDueDate?: string; // ISO string
   lastUpdated: string; // ISO string
   remarks?: string;
+  category?: InventoryCategory;
 };
 
 export type UTMachine = {
