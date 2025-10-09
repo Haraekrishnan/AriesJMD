@@ -145,7 +145,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
-    const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && req.status === 'Pending');
+    const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
     return (
         <>
@@ -220,7 +220,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>This will permanently delete this store request. This action cannot be undone.</AlertDialogDescription>
+                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this store request.</AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -336,3 +336,6 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
 
     
 
+
+
+      

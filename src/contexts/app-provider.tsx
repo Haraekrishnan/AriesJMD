@@ -2029,7 +2029,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
     if (!user) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
@@ -2037,23 +2037,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
 
     const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/status`] = status;
     updates[`internalRequests/${requestId}/approverId`] = user.id;
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
-    const applicableItems = (request.items || []).filter(item => {
+    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
+    
+    const applicableItems = requestItems.filter(item => {
         if (status === 'Approved' || status === 'Rejected') return item.status === 'Pending';
         if (status === 'Issued') return item.status === 'Approved';
         return false;
     });
     
-    const itemUpdates = { ...request.items };
+    const itemUpdates = [...requestItems];
+    let itemsChanged = false;
 
     applicableItems.forEach((item) => {
-        const itemIndex = request.items.findIndex(i => i.id === item.id);
+        const itemIndex = itemUpdates.findIndex(i => i.id === item.id);
         if (itemIndex !== -1) {
-            itemUpdates[itemIndex as any].status = status;
+            itemsChanged = true;
+            itemUpdates[itemIndex].status = status;
             if(status === 'Issued' && item.inventoryItemId) {
                 const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
                 if (inventoryItem && typeof inventoryItem.quantity === 'number') {
@@ -2063,7 +2066,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         }
     });
-    updates[`internalRequests/${requestId}/items`] = itemUpdates;
+
+    if (itemsChanged) {
+        updates[`internalRequests/${requestId}/items`] = itemUpdates;
+        // Recalculate overall status after individual changes
+        const areAllSameStatus = itemUpdates.every(item => item.status === status);
+        if (areAllSameStatus) {
+            updates[`internalRequests/${requestId}/status`] = status;
+        } else {
+            const hasPending = itemUpdates.some(item => item.status === 'Pending');
+            const hasApproved = itemUpdates.some(item => item.status === 'Approved');
+            if (hasApproved && hasPending) {
+                updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+            } else if (itemUpdates.some(item => item.status === 'Issued')) {
+                updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
+            } else if(itemUpdates.every(item => item.status === 'Rejected' || item.status === 'Issued')) {
+                updates[`internalRequests/${requestId}/status`] = itemUpdates.every(item => item.status === 'Rejected') ? 'Rejected' : 'Partially Issued';
+            }
+        }
+    }
+
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
@@ -2079,18 +2101,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, internalRequests, users, inventoryItems, addActivityLog]);
+  }, [user, internalRequestsById, users, inventoryItems, addActivityLog]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestStatus, commentText: string) => {
     if (!user) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request) return;
 
-    const itemIndex = (request.items || []).findIndex(item => item.id === itemId);
+    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
+    const itemIndex = requestItems.findIndex(item => item.id === itemId);
     if (itemIndex === -1) return;
     
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const itemDescription = request.items[itemIndex].description;
+    const itemDescription = requestItems[itemIndex].description;
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Item "${itemDescription}" status changed to ${status}. Comment: ${commentText}`, date: new Date().toISOString() };
 
     const updates: { [key: string]: any } = {};
@@ -2099,26 +2122,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`internalRequests/${requestId}/approverId`] = user.id;
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
-    // Check overall request status
-    const updatedItems = [...(request.items || [])];
+    // Recalculate overall request status
+    const updatedItems = [...requestItems];
     updatedItems[itemIndex].status = status;
     
-    const areAllSameStatus = updatedItems.every(item => item.status === status);
-    if (areAllSameStatus) {
-        updates[`internalRequests/${requestId}/status`] = status;
+    const allStatuses = new Set(updatedItems.map(item => item.status));
+
+    if (allStatuses.size === 1) {
+        updates[`internalRequests/${requestId}/status`] = updatedItems[0].status;
     } else {
-        const hasPending = updatedItems.some(item => item.status === 'Pending');
-        const hasApproved = updatedItems.some(item => item.status === 'Approved');
-        if (hasApproved && hasPending) {
-            updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-        } else if (updatedItems.some(item => item.status === 'Issued')) {
+        if (allStatuses.has('Issued') && (allStatuses.has('Approved') || allStatuses.has('Pending'))) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
+        } else if (allStatuses.has('Approved') && allStatuses.has('Pending')) {
+            updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+        } else if (updatedItems.every(item => ['Issued', 'Rejected'].includes(item.status))) {
+            updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
+        } else if (updatedItems.every(item => ['Approved', 'Rejected', 'Issued'].includes(item.status))) {
+             updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+        } else {
+            updates[`internalRequests/${requestId}/status`] = 'Pending';
         }
     }
     
     // Deduct stock if issued
     if (status === 'Issued') {
-        const item = request.items[itemIndex];
+        const item = requestItems[itemIndex];
         if (item.inventoryItemId) {
             const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
             if (inventoryItem && typeof inventoryItem.quantity === 'number') {
@@ -2129,14 +2157,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb), updates);
-  }, [user, internalRequests, inventoryItems]);
+  }, [user, internalRequestsById, inventoryItems]);
 
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request) return;
 
-    const canDelete = user.role === 'Admin' || (request.requesterId === user.id && request.status === 'Pending');
+    const canDelete = user.role === 'Admin' || (request.requesterId === user.id && ['Pending', 'Rejected'].includes(request.status));
     
     if (canDelete) {
         remove(ref(rtdb, `internalRequests/${requestId}`));
@@ -2145,7 +2173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
         toast({ variant: 'destructive', title: "Permission Denied", description: "You cannot delete this request." });
     }
-  }, [user, internalRequests, addActivityLog, toast]);
+  }, [user, internalRequestsById, addActivityLog, toast]);
 
   const forceDeleteInternalRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
@@ -2385,10 +2413,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
   const deletePpeRequest = useCallback((requestId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `ppeRequests/${requestId}`));
-    addActivityLog(user.id, 'PPE Request Deleted', `ID: ${requestId}`);
-  }, [user, addActivityLog]);
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const canDelete = user.role === 'Admin' || (request.requesterId === user.id && ['Pending', 'Rejected'].includes(request.status));
+    
+    if (canDelete) {
+        remove(ref(rtdb, `ppeRequests/${requestId}`));
+        toast({ title: "Request Deleted" });
+        addActivityLog(user.id, "PPE Request Deleted", `ID: ${requestId}`);
+    } else {
+        toast({ variant: 'destructive', title: "Permission Denied", description: "You cannot delete this request." });
+    }
+  }, [user, ppeRequests, addActivityLog, toast]);
 
   const deletePpeAttachment = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') return;
@@ -3089,7 +3127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
@@ -3476,3 +3514,6 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+
+      
