@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -161,7 +160,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                  <div className="space-y-2">
-                    {req.items.map((item, index) => (
+                    {(req.items || []).map((item, index) => (
                         <div key={item.id || index} className="grid grid-cols-[1fr,auto,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
                             <div>
                                 <p>{item.quantity} {item.unit} - {item.description}</p>
@@ -311,3 +310,5 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+
+    
