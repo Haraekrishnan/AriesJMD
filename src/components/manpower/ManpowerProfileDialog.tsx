@@ -455,7 +455,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
                       <div className="space-y-2">
                           <Label>EP Number</Label>
-                          <Input {...form.register('epNumber')} disabled={!profile || isChangingEp} />
+                          <Input {...form.register('epNumber')} disabled={profile && !isChangingEp} />
                           {profile && (
                             <div className="flex items-center space-x-2">
                                 <Switch id="change-ep" checked={isChangingEp} onCheckedChange={setIsChangingEp} />
@@ -735,6 +735,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
 
 
