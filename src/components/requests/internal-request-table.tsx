@@ -17,6 +17,7 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
+import Link from 'next/link';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -334,3 +335,4 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
 }
 
     
+
