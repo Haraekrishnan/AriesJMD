@@ -30,7 +30,7 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     setTextValue(str);
     if (str.length === 0) {
       onChange(undefined);
-    } else if (str.length >= 8) { // Allow parsing as user types
+    } else {
       const parsedDate = parse(str, 'dd-MM-yyyy', new Date());
       if (isValid(parsedDate)) {
         onChange(parsedDate);
@@ -61,6 +61,7 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
         placeholder="DD-MM-YYYY"
         value={textValue}
         onChange={handleInputChange}
+        onBlur={() => setTextValue(value ? format(value, 'dd-MM-yyyy') : '')} // Revert on blur if invalid
         disabled={disabled}
         className="pr-10"
       />
