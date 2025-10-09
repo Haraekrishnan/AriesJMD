@@ -17,7 +17,7 @@ interface DatePickerInputProps {
 }
 
 export function DatePickerInput({ value, onChange, disabled }: DatePickerInputProps) {
-  const [textValue, setTextValue] = React.useState(value ? format(value, 'dd-MM-yyyy') : '');
+  const [textValue, setTextValue] = React.useState('');
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -27,23 +27,20 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const str = e.target.value;
     setTextValue(str);
-    if (str.length === 0) {
-      onChange(undefined);
-    } else {
-      const parsedDate = parse(str, 'dd-MM-yyyy', new Date());
-      if (isValid(parsedDate)) {
-        onChange(parsedDate);
-      }
+
+    if (str.length === 10) { // e.g., "dd-MM-yyyy"
+        const parsedDate = parse(str, 'dd-MM-yyyy', new Date());
+        if (isValid(parsedDate)) {
+            onChange(parsedDate);
+        }
+    } else if (str.length === 0) {
+        onChange(undefined);
     }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     onChange(date);
-    if (date) {
-        setTextValue(format(date, 'dd-MM-yyyy'));
-    } else {
-        setTextValue('');
-    }
+    setTextValue(date ? format(date, 'dd-MM-yyyy') : '');
     setIsCalendarOpen(false);
   };
   
@@ -66,13 +63,14 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
       />
       <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center">
         {value && !disabled ? (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClear}>
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={handleClear}>
               <X className="h-4 w-4 text-muted-foreground" />
             </Button>
         ) : (
             <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>
                 <Button
+                    type="button"
                     variant={'ghost'}
                     size="icon"
                     className={cn('h-8 w-8', disabled && 'hidden')}
