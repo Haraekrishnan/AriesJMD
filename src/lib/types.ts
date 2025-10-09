@@ -491,6 +491,8 @@ export type ManpowerLog = {
 };
 
 export type InternalRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Partially Issued' | 'Disputed' | 'Partially Approved';
+export type InternalRequestItemStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+
 export type InternalRequestItem = {
     id: string;
     inventoryItemId?: string;
@@ -498,7 +500,7 @@ export type InternalRequestItem = {
     quantity: number;
     unit: string;
     remarks: string;
-    status: 'Pending' | 'Approved' | 'Rejected' | 'Issued';
+    status: InternalRequestItemStatus;
 };
 export type InternalRequest = {
   id: string;
