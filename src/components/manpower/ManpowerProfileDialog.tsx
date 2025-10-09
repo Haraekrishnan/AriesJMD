@@ -265,6 +265,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     epHistory.push({ epNumber: oldEpNumber, date: new Date().toISOString() });
                 }
                 dataToSubmit.epNumber = data.newEpNumber;
+            } else if (!profile && data.epNumber && data.epNumber.trim() !== '') { // Adding for the first time on a new profile
+                dataToSubmit.epNumber = data.epNumber;
             }
             dataToSubmit.epNumberHistory = epHistory;
             delete dataToSubmit.newEpNumber;
@@ -455,19 +457,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
                       <div className="space-y-2">
                           <Label>EP Number</Label>
-                          <Input {...form.register('epNumber')} disabled={profile && !isChangingEp} />
-                          {profile && (
-                            <div className="flex items-center space-x-2">
-                                <Switch id="change-ep" checked={isChangingEp} onCheckedChange={setIsChangingEp} />
-                                <Label htmlFor="change-ep" className="text-xs">Change EP Number</Label>
-                            </div>
-                          )}
-                          {isChangingEp && (
-                            <div>
-                                <Label>New EP Number</Label>
-                                <Input {...form.register('newEpNumber')} />
-                            </div>
-                          )}
+                           <Input {...form.register('epNumber')} disabled={!!profile && !isChangingEp} />
+                            {profile && (
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="change-ep" checked={isChangingEp} onCheckedChange={setIsChangingEp} />
+                                    <Label htmlFor="change-ep" className="text-xs">Change EP Number</Label>
+                                </div>
+                            )}
+                            {isChangingEp && (
+                                <div>
+                                    <Label>New EP Number</Label>
+                                    <Input {...form.register('newEpNumber')} />
+                                </div>
+                            )}
                       </div>
                       <Separator className="my-4" />
                       <div><Label>Joining Date</Label><DatePickerController name="joiningDate" control={form.control} /></div>
@@ -735,6 +737,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
 
 
