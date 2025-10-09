@@ -42,8 +42,10 @@ export default function MyRequestsPage() {
 
     const visibleInternalRequests = useMemo(() => {
         if (!user) return [];
+        // Hard-coded fix to hide corrupted request
+        const corruptedRequestId = "-OaA1ma81MdDVw62D8Xg";
         return internalRequests
-            .filter(req => req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests)
+            .filter(req => req.id !== corruptedRequestId && (req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests))
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [internalRequests, user, can.view_internal_store_request, can.manage_store_requests]);
     
