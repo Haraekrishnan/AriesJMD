@@ -183,7 +183,7 @@ type AppContextType = {
   addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
-  updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestStatus, comment: string) => void;
+  updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => void;
   deleteInternalRequest: (requestId: string) => void;
   forceDeleteInternalRequest: (requestId: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
@@ -2074,14 +2074,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (areAllSameStatus) {
             updates[`internalRequests/${requestId}/status`] = status;
         } else {
-            const hasPending = itemUpdates.some(item => item.status === 'Pending');
-            const hasApproved = itemUpdates.some(item => item.status === 'Approved');
-            if (hasApproved && hasPending) {
-                updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-            } else if (itemUpdates.some(item => item.status === 'Issued')) {
+            const allStatuses = new Set(itemUpdates.map(item => item.status));
+            if (allStatuses.has('Issued') && allStatuses.has('Approved')) {
                 updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
-            } else if(itemUpdates.every(item => item.status === 'Rejected' || item.status === 'Issued')) {
+            } else if (allStatuses.has('Approved') && allStatuses.has('Pending')) {
+                updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+            } else if (itemUpdates.every(item => ['Issued', 'Rejected'].includes(item.status))) {
                 updates[`internalRequests/${requestId}/status`] = itemUpdates.every(item => item.status === 'Rejected') ? 'Rejected' : 'Partially Issued';
+            } else {
+                updates[`internalRequests/${requestId}/status`] = 'Pending';
             }
         }
     }
@@ -2103,7 +2104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, internalRequestsById, users, inventoryItems, addActivityLog]);
   
-  const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestStatus, commentText: string) => {
+  const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, commentText: string) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
@@ -2131,16 +2132,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (allStatuses.size === 1) {
         updates[`internalRequests/${requestId}/status`] = updatedItems[0].status;
     } else {
-        if (allStatuses.has('Issued') && (allStatuses.has('Approved') || allStatuses.has('Pending'))) {
+        const hasIssued = allStatuses.has('Issued');
+        const hasApproved = allStatuses.has('Approved');
+        const hasPending = allStatuses.has('Pending');
+        const hasRejected = allStatuses.has('Rejected');
+    
+        if (hasIssued) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
-        } else if (allStatuses.has('Approved') && allStatuses.has('Pending')) {
+        } else if (hasApproved) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-        } else if (updatedItems.every(item => ['Issued', 'Rejected'].includes(item.status))) {
-            updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
-        } else if (updatedItems.every(item => ['Approved', 'Rejected', 'Issued'].includes(item.status))) {
-             updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-        } else {
+        } else if (hasPending) {
             updates[`internalRequests/${requestId}/status`] = 'Pending';
+        } else {
+            updates[`internalRequests/${requestId}/status`] = 'Rejected';
         }
     }
     
@@ -2326,7 +2330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility,
+        eligibility: requestData.eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2337,7 +2341,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if (!user) return;
     const { id, ...data } = request;
-    update(ref(rtdb, `ppeRequests/${id}`), data);
+    const cleanData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [key, value === undefined ? null : value])
+    );
+    update(ref(rtdb, `ppeRequests/${id}`), cleanData);
     addActivityLog(user.id, 'PPE Request Updated', `Request ID: ${id}`);
   }, [user, addActivityLog]);
 
@@ -3127,7 +3134,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
@@ -3517,3 +3524,5 @@ export const useAppContext = (): AppContextType => {
 
 
       
+
+    
