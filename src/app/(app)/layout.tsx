@@ -7,6 +7,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
+import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
@@ -78,7 +79,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex h-screen w-full flex-col md:pl-64">
             <Header />
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-                {children}
+                <BroadcastFeed />
+                <div className="mt-4">
+                    {children}
+                </div>
             </main>
         </div>
       </div>
