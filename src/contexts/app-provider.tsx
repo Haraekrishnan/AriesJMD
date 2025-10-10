@@ -1544,7 +1544,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteVehicle = useCallback((vehicleId: string) => {
     if(!user) return;
     const vehicle = vehicles.find(v => v.id === vehicleId);
-    remove(ref(rtdb, `vehicles/${vehicleId}`));
+    if (vehicle) remove(ref(rtdb, `vehicles/${vehicleId}`));
     if (vehicle) addActivityLog(user.id, 'Vehicle Deleted', vehicle.vehicleNumber);
   }, [user, vehicles, addActivityLog]);
   
@@ -1567,7 +1567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteDriver = useCallback((driverId: string) => {
     if(!user) return;
     const driver = drivers.find(d => d.id === driverId);
-    remove(ref(rtdb, `drivers/${driverId}`));
+    if (driver) remove(ref(rtdb, `drivers/${driverId}`));
     if (driver) addActivityLog(user.id, 'Driver Deleted', driver.name);
   }, [user, drivers, addActivityLog]);
 
@@ -2011,7 +2011,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
     const newRequest: Omit<InternalRequest, 'id'> = {
         ...requestData,
-        items: requestData.items.map(item => ({...item, status: 'Pending'})),
+        items: requestData.items.map(item => ({...item, status: 'Pending', inventoryItemId: item.inventoryItemId || null })),
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
@@ -2158,15 +2158,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const allStatuses = new Set(updatedItems.map(item => item.status));
 
     if (updatedItems.every(i => i.status === 'Rejected')) {
-      updates[`internalRequests/${requestId}/status`] = 'Rejected';
+        updates[`internalRequests/${requestId}/status`] = 'Rejected';
     } else if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
         updates[`internalRequests/${requestId}/status`] = 'Issued';
     } else if (allStatuses.has('Issued')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
     } else if (allStatuses.has('Approved')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-    } else if (allStatuses.has('Pending')) {
+    } else if (updatedItems.every(i => i.status === 'Pending')) {
         updates[`internalRequests/${requestId}/status`] = 'Pending';
+    } else {
+        updates[`internalRequests/${requestId}/status`] = 'Partially Approved'; // Default to this if mixed
     }
     
     // Deduct stock if issued
