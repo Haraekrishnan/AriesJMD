@@ -21,20 +21,58 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
   React.useEffect(() => {
-    setTextValue(value ? format(value, 'dd-MM-yyyy') : '');
+    // This effect synchronizes the input field when the `value` prop changes from the outside.
+    if (value && isValid(value)) {
+      setTextValue(format(value, 'dd-MM-yyyy'));
+    } else {
+      setTextValue('');
+    }
   }, [value]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const str = e.target.value;
     setTextValue(str);
 
-    if (str.length === 10) { // e.g., "dd-MM-yyyy"
-        const parsedDate = parse(str, 'dd-MM-yyyy', new Date());
-        if (isValid(parsedDate)) {
-            onChange(parsedDate);
+    // Try parsing the date with different formats
+    const formats = ['dd-MM-yyyy', 'dd/MM/yyyy'];
+    let parsedDate: Date | undefined;
+
+    for (const fmt of formats) {
+      const parsed = parse(str, fmt, new Date());
+      if (isValid(parsed)) {
+        parsedDate = parsed;
+        break;
+      }
+    }
+    
+    // Only update the parent form's state if a valid date is parsed or if the field is cleared
+    if (parsedDate) {
+      onChange(parsedDate);
+    } else if (str === '') {
+      onChange(undefined);
+    }
+  };
+
+  const handleBlur = () => {
+    // On blur, if the text input is invalid, format it back to the last valid `value`
+    if (value && isValid(value)) {
+      setTextValue(format(value, 'dd-MM-yyyy'));
+    } else {
+        // If there's no valid date, but text is present, clear it.
+        if (textValue !== '') {
+           const formats = ['dd-MM-yyyy', 'dd/MM/yyyy'];
+           let isValidInput = false;
+           for (const fmt of formats) {
+               if (isValid(parse(textValue, fmt, new Date()))) {
+                   isValidInput = true;
+                   break;
+               }
+           }
+           if (!isValidInput) {
+               setTextValue('');
+               onChange(undefined);
+           }
         }
-    } else if (str.length === 0) {
-        onChange(undefined);
     }
   };
 
@@ -57,7 +95,7 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
         placeholder="DD-MM-YYYY"
         value={textValue}
         onChange={handleInputChange}
-        onBlur={() => setTextValue(value ? format(value, 'dd-MM-yyyy') : '')} // Revert on blur if invalid
+        onBlur={handleBlur}
         disabled={disabled}
         className="pr-10"
       />
