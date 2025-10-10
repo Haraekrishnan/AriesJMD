@@ -5,7 +5,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
@@ -2087,20 +2087,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (itemsChanged) {
         // Recalculate overall status after individual changes
         const updatedItems = requestItems.map(item => applicableItems.find(a => a.id === item.id) ? { ...item, status } : item);
-        const areAllSameStatus = updatedItems.every(item => item.status === status);
-        if (areAllSameStatus) {
-            updates[`internalRequests/${requestId}/status`] = status;
-        } else {
-            const allStatuses = new Set(updatedItems.map(item => item.status));
-            if (allStatuses.has('Issued')) {
-                updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
-            } else if (allStatuses.has('Approved')) {
-                updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-            } else if (allStatuses.has('Pending')) {
-                updates[`internalRequests/${requestId}/status`] = 'Pending';
-            } else {
-                updates[`internalRequests/${requestId}/status`] = 'Rejected';
-            }
+        const allStatuses = new Set(updatedItems.map(item => item.status));
+        if (updatedItems.every(i => i.status === 'Rejected')) {
+            updates[`internalRequests/${requestId}/status`] = 'Rejected';
+        } else if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
+            updates[`internalRequests/${requestId}/status`] = 'Issued';
+        } else if (allStatuses.has('Issued')) {
+            updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
+        } else if (allStatuses.has('Approved')) {
+            updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+        } else if (allStatuses.has('Pending')) {
+            updates[`internalRequests/${requestId}/status`] = 'Pending';
         }
     }
 
@@ -2148,12 +2145,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (allStatuses.size === 1) {
         updates[`internalRequests/${requestId}/status`] = updatedItems[0].status;
+    } else if (updatedItems.every(i => i.status === 'Rejected')) {
+        updates[`internalRequests/${requestId}/status`] = 'Rejected';
+    } else if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
+        updates[`internalRequests/${requestId}/status`] = 'Issued';
     } else if (allStatuses.has('Issued')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
     } else if (allStatuses.has('Approved')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-    } else if (updatedItems.every(i => i.status === 'Rejected' || i.status === 'Issued')) {
-        updates[`internalRequests/${requestId}/status`] = 'Issued';
     } else {
         updates[`internalRequests/${requestId}/status`] = 'Pending';
     }
@@ -2681,7 +2680,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         status: 'Pending',
         requestDate: new Date().toISOString(),
-        comments: [{id: 'comm-init', userId: user.id, text: `Request for ${requestData.requestType} submitted. Reason: ${requestData.remarks || 'N/A'}`, date: new Date().toISOString()}],
+        comments: [{ id: 'comm-init', userId: user.id, text: `Request for ${requestData.requestType} submitted. Reason: ${requestData.remarks || 'N/A'}`, date: new Date().toISOString() }],
         viewedByRequester: true,
     };
     set(newRef, newRequest);
@@ -3519,11 +3518,6 @@ export const useAppContext = (): AppContextType => {
 
 
     
-
-    
-
-
-
 
     
 
