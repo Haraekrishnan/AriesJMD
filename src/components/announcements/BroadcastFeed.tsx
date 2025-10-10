@@ -5,6 +5,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Radio, X } from 'lucide-react';
 import { parseISO, isAfter } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function BroadcastFeed() {
     const { user, broadcasts, dismissBroadcast } = useAppContext();
@@ -42,7 +43,7 @@ export default function BroadcastFeed() {
                             <Radio className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                             <div className="flex-1 overflow-hidden">
                                 <div 
-                                    className="inline-block animate-marquee whitespace-nowrap text-sm text-yellow-800 dark:text-yellow-300"
+                                    className={cn("inline-block animate-marquee whitespace-nowrap text-base font-semibold text-yellow-900 dark:text-yellow-200")}
                                     style={{ animationDuration }}
                                 >
                                     {broadcast.message}
