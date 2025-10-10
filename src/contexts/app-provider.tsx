@@ -314,6 +314,9 @@ const createDataListener = <T extends {}>(
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
+
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
@@ -404,11 +407,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
 
-  const [storedUser, setStoredUser] = useLocalStorage<User | null>('aries-user-v8', null);
-  const user = storedUser;
-  
   const { toast } = useToast();
   const router = useRouter();
+
+  // Set user based on stored ID
+  useEffect(() => {
+    if (storedUserId) {
+        const foundUser = usersById[storedUserId];
+        if (foundUser) {
+            setUser(foundUser);
+        }
+    } else {
+        setUser(null);
+    }
+  }, [storedUserId, usersById]);
 
   // Listen for status changes on the current user
   useEffect(() => {
@@ -416,21 +428,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userRef = ref(rtdb, `users/${user.id}`);
         const unsubscribe = onValue(userRef, (snapshot) => {
             if (!snapshot.exists()) {
-                setStoredUser(null);
+                setStoredUserId(null);
+                setUser(null);
                 router.replace('/login');
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
             if (updatedUser.status && updatedUser.status !== 'active') {
-                setStoredUser(updatedUser); 
+                setUser(updatedUser); 
                 router.replace('/status');
             } else if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-              setStoredUser(updatedUser);
+              setUser(updatedUser);
             }
         });
         return () => unsubscribe();
     }
-  }, [user, setStoredUser, router]);
+  }, [user, setStoredUserId, router]);
   
   useEffect(() => {
     if (!rtdb) {
@@ -453,7 +466,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     seedData();
 
-    if (!user) {
+    if (!storedUserId) {
       setLoading(false);
       // Clear all state when user logs out
       const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
@@ -524,7 +537,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [user]);
+  }, [storedUserId]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -583,7 +596,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     setLoading(false);
     if (foundUser) {
-        setStoredUser(foundUser);
+        setStoredUserId(foundUser.id);
         if (foundUser.status && foundUser.status !== 'active') {
             return { success: true, status: foundUser.status, user: foundUser };
         }
@@ -591,15 +604,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { success: true, status: 'active', user: foundUser };
     }
     return { success: false };
-  }, [addActivityLog, setStoredUser]);
+  }, [addActivityLog, setStoredUserId]);
 
   const logout = useCallback(() => {
     if (user) {
       addActivityLog(user.id, 'User Logged Out');
     }
-    setStoredUser(null);
+    setStoredUserId(null);
+    setUser(null);
     router.push('/login');
-  }, [user, addActivityLog, setStoredUser, router]);
+  }, [user, addActivityLog, setStoredUserId, router]);
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -610,9 +624,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-      if (user.id === updatedUser.id) setStoredUser(updatedUser);
+      if (user.id === updatedUser.id) setUser(updatedUser);
     }
-  }, [user, addActivityLog, setStoredUser]);
+  }, [user, addActivityLog]);
 
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
     if (user) {
@@ -2143,17 +2157,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const allStatuses = new Set(updatedItems.map(item => item.status));
 
-    if (allStatuses.size === 1) {
-        updates[`internalRequests/${requestId}/status`] = updatedItems[0].status;
-    } else if (updatedItems.every(i => i.status === 'Rejected')) {
-        updates[`internalRequests/${requestId}/status`] = 'Rejected';
+    if (updatedItems.every(i => i.status === 'Rejected')) {
+      updates[`internalRequests/${requestId}/status`] = 'Rejected';
     } else if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
         updates[`internalRequests/${requestId}/status`] = 'Issued';
     } else if (allStatuses.has('Issued')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
     } else if (allStatuses.has('Approved')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-    } else {
+    } else if (allStatuses.has('Pending')) {
         updates[`internalRequests/${requestId}/status`] = 'Pending';
     }
     
@@ -3505,28 +3517,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    
-
-
-
-
-
-
-
-
-
-    
-
-    
-
-
-
-
-    
-
-
-      
-
-    
