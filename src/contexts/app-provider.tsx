@@ -2082,12 +2082,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     
     let itemsChanged = false;
+    const updatedItems = [...requestItems];
 
     applicableItems.forEach((item) => {
         itemsChanged = true;
         const itemIndex = requestItems.findIndex(i => i.id === item.id);
         if (itemIndex !== -1) {
             updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
+            updatedItems[itemIndex].status = status;
             if(status === 'Issued' && item.inventoryItemId) {
                 const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
                 if (inventoryItem && typeof inventoryItem.quantity === 'number') {
@@ -2100,18 +2102,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (itemsChanged) {
         // Recalculate overall status after individual changes
-        const updatedItems = requestItems.map(item => applicableItems.find(a => a.id === item.id) ? { ...item, status } : item);
         const allStatuses = new Set(updatedItems.map(item => item.status));
-        if (updatedItems.every(i => i.status === 'Rejected')) {
-            updates[`internalRequests/${requestId}/status`] = 'Rejected';
-        } else if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
+        
+        if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
             updates[`internalRequests/${requestId}/status`] = 'Issued';
+        } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
+            updates[`internalRequests/${requestId}/status`] = 'Approved';
         } else if (allStatuses.has('Issued')) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
         } else if (allStatuses.has('Approved')) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+        } else if (updatedItems.every(i => i.status === 'Rejected')) {
+            updates[`internalRequests/${requestId}/status`] = 'Rejected';
         } else if (allStatuses.has('Pending')) {
-            updates[`internalRequests/${requestId}/status`] = 'Pending';
+             updates[`internalRequests/${requestId}/status`] = 'Pending';
         }
     }
 
