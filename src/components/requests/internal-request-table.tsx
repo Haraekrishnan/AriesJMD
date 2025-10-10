@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -19,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import Link from 'next/link';
 import { Input } from '../ui/input';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -64,10 +64,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         setIsActionConfirmOpen(false);
         setComment('');
     }
-    
-    const handleItemStatusUpdate = (itemId: string, status: InternalRequestStatus, itemComment: string) => {
-        updateInternalRequestItemStatus(req.id, itemId, status, itemComment);
-    };
     
     const handleAddComment = () => {
         if (!newComment.trim() || !user) return;
