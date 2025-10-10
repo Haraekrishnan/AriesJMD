@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import Link from 'next/link';
+import { Input } from '../ui/input';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -33,68 +34,13 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
   Disputed: 'destructive'
 };
 
-const ItemActionButtons = ({ item, onRequestUpdate }: { item: InternalRequestItem, onRequestUpdate: (itemId: string, status: InternalRequestStatus, comment: string) => void }) => {
-    const { can } = useAppContext();
-    const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
-    const [action, setAction] = useState<InternalRequestStatus | null>(null);
-    const [comment, setComment] = useState('');
-    const { toast } = useToast();
-
-    if (!can.approve_store_requests) return null;
-    
-    const handleActionClick = (act: InternalRequestStatus) => {
-        setAction(act);
-        setIsActionConfirmOpen(true);
-    };
-    
-    const handleConfirmAction = () => {
-        if (!item || !action) return;
-        if (!comment.trim() && (action === 'Rejected' || action === 'Issued')) {
-            toast({ title: 'Comment required', variant: 'destructive' });
-            return;
-        }
-        onRequestUpdate(item.id, action, comment);
-        toast({ title: `Item ${action}` });
-        setIsActionConfirmOpen(false);
-        setComment('');
-    };
-
-    return (
-        <>
-            <div className="flex items-center gap-1">
-                {item.status === 'Pending' && <Button size="icon" variant="ghost" className="h-6 w-6 text-green-600" onClick={() => handleActionClick('Approved')}><CheckCircle className="h-4 w-4"/></Button>}
-                {(item.status === 'Pending' || item.status === 'Approved') && <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleActionClick('Rejected')}><XCircle className="h-4 w-4"/></Button>}
-                {item.status === 'Approved' && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleActionClick('Issued')}><Truck className="h-4 w-4"/></Button>}
-            </div>
-            
-            {isActionConfirmOpen && (
-                <AlertDialog open={isActionConfirmOpen} onOpenChange={setIsActionConfirmOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>{action} Item?</AlertDialogTitle>
-                            <AlertDialogDescription>Please provide a comment for this action.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div>
-                            <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
-                            <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
-                        </div>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-        </>
-    );
-};
-
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest } = useAppContext();
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment } = useAppContext();
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [comment, setComment] = useState('');
-    const { toast } = useToast();
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
+    const [newComment, setNewComment] = useState('');
+    const { toast } = useToast();
     
     const canApprove = useMemo(() => {
         if (!user) return false;
@@ -122,6 +68,12 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const handleItemStatusUpdate = (itemId: string, status: InternalRequestStatus, itemComment: string) => {
         updateInternalRequestItemStatus(req.id, itemId, status, itemComment);
     };
+    
+    const handleAddComment = () => {
+        if (!newComment.trim() || !user) return;
+        addInternalRequestComment(req.id, newComment);
+        setNewComment('');
+    };
 
     const handleDelete = (requestId: string) => {
         deleteInternalRequest(requestId);
@@ -147,9 +99,11 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
+    const canAddComments = user?.role === 'Admin' || canApprove;
+
     return (
         <>
-            <Card className={cn("relative", hasUpdate && "border-blue-500")}>
+            <Card className={cn("relative flex flex-col", hasUpdate && "border-blue-500")}>
                 {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
                 <CardHeader className="p-4">
                     <div className="flex justify-between items-start">
@@ -164,44 +118,65 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="p-4 pt-0">
-                 <div className="space-y-2">
-                    {(req.items || []).map((item, index) => (
-                        <div key={item.id || index} className="grid grid-cols-[1fr,auto,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
-                            <div>
-                                <p>{item.quantity} {item.unit} - {item.description}</p>
-                                {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
-                            </div>
-                            <Badge variant={statusVariant[item.status] || 'secondary'} className="h-5">{item.status}</Badge>
-                            <ItemActionButtons item={item} onRequestUpdate={handleItemStatusUpdate} />
+                <CardContent className="p-4 pt-0 flex-1 overflow-hidden">
+                    <ScrollArea className="h-full pr-2">
+                        <div className="space-y-2">
+                            {(req.items || []).map((item, index) => (
+                                <div key={item.id || index} className="grid grid-cols-[1fr,auto] items-center gap-2 text-sm p-2 rounded-md bg-muted/50">
+                                    <div>
+                                        <p>{item.quantity} {item.unit} - {item.description}</p>
+                                        {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
+                                    </div>
+                                    <Badge variant={statusVariant[item.status] || 'secondary'} className="h-5">{item.status}</Badge>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-                    <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
-                        <AccordionItem value={req.id} className="border-none">
-                            <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
-                            <AccordionContent className="pt-2 text-muted-foreground">
-                            <h4 className="font-semibold text-xs mb-2">Comment History</h4>
-                            <div className="space-y-2">
-                                {commentsArray.length > 0 ? commentsArray.map((c, i) => {
-                                    const commentUser = users.find(u => u.id === c.userId);
-                                    return (
-                                        <div key={i} className="flex items-start gap-2">
-                                            <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                            <div className="text-xs bg-background p-2 rounded-md w-full">
-                                                <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                        <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
+                            <AccordionItem value={req.id} className="border-none">
+                                <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
+                                <AccordionContent className="pt-2 text-muted-foreground">
+                                <h4 className="font-semibold text-xs mb-2">Comment History</h4>
+                                <div className="space-y-2">
+                                    {commentsArray.length > 0 ? commentsArray.map((c, i) => {
+                                        const commentUser = users.find(u => u.id === c.userId);
+                                        return (
+                                            <div key={i} className="flex items-start gap-2">
+                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )
-                                }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                            </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
+                                        )
+                                    }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                                </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    </ScrollArea>
                 </CardContent>
-                <CardFooter className="p-2 bg-muted/50">
-                    <div className="flex flex-wrap justify-end gap-2 w-full">
+                <CardFooter className="p-2 bg-muted/50 flex flex-col items-stretch gap-2">
+                    {canAddComments && (
+                        <div className="relative px-2 pb-2">
+                            <Textarea
+                                placeholder="Add a comment..."
+                                className="text-xs pr-10 bg-background"
+                                value={newComment}
+                                onChange={e => setNewComment(e.target.value)}
+                            />
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 h-7 w-7"
+                                onClick={handleAddComment}
+                                disabled={!newComment.trim()}
+                            >
+                                <Send className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                    <div className="flex flex-wrap justify-end gap-2 px-2">
                         {canApprove && (
                             <>
                                 <Button size="sm" variant="outline" onClick={() => handleBulkActionClick('Approved')} disabled={!canBulkApprove}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
@@ -333,9 +308,3 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
-
-    
-
-
-
-      
