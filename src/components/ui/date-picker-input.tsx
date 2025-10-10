@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -33,15 +34,18 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     const str = e.target.value;
     setTextValue(str);
 
-    // Try parsing the date with different formats
+    // Try parsing the date with different formats only if it looks like a full date
     const formats = ['dd-MM-yyyy', 'dd/MM/yyyy'];
     let parsedDate: Date | undefined;
 
     for (const fmt of formats) {
-      const parsed = parse(str, fmt, new Date());
-      if (isValid(parsed)) {
-        parsedDate = parsed;
-        break;
+      // Check if the string length is plausible for a full date
+      if (str.length >= fmt.length - 2) { 
+        const parsed = parse(str, fmt, new Date());
+        if (isValid(parsed)) {
+          parsedDate = parsed;
+          break;
+        }
       }
     }
     
@@ -63,7 +67,8 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
            const formats = ['dd-MM-yyyy', 'dd/MM/yyyy'];
            let isValidInput = false;
            for (const fmt of formats) {
-               if (isValid(parse(textValue, fmt, new Date()))) {
+               const parsed = parse(textValue, fmt, new Date());
+               if (isValid(parsed) && format(parsed, fmt) === textValue) {
                    isValidInput = true;
                    break;
                }
