@@ -26,6 +26,7 @@ export type JobRecord = {
     [employeeId: string]: {
       days: { [day: number]: string }; // day: 1-31, value: code
       dailyOvertime?: { [day: number]: number };
+      dailyComments?: { [day: number]: string };
       additionalSundayDuty?: number;
       plant?: string;
     };
@@ -495,7 +496,7 @@ export type InternalRequestItemStatus = 'Pending' | 'Approved' | 'Rejected' | 'I
 
 export type InternalRequestItem = {
     id: string;
-    inventoryItemId?: string;
+    inventoryItemId?: string | null;
     description: string;
     quantity: number;
     unit: string;
