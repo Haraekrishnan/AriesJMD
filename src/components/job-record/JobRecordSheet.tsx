@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -483,8 +483,8 @@ export default function JobRecordSheet() {
                 dayHeadersExcel.forEach((day, cIndex) => {
                     const overtimeForDay = dailyOvertime[day];
                     const commentForDay = dailyComments[day];
-
-                    const comments = [];
+                    
+                    const comments: { a: string, t: string }[] = [];
                     if (overtimeForDay && overtimeForDay > 0) {
                         comments.push({ a: "Overtime", t: `${overtimeForDay} Hours`});
                     }
@@ -499,7 +499,10 @@ export default function JobRecordSheet() {
 
                         const commentsText = comments.map(com => `${com.a}: ${com.t}`).join('\n');
                         if (!cell.c) cell.c = [];
-                        cell.c.push({a: "Note", t: commentsText});
+                        // Check if a note with the exact same text already exists
+                        if (!cell.c.some(c => c.t === commentsText)) {
+                            cell.c.push({a: "Note", t: commentsText});
+                        }
                     }
                 });
             });
@@ -755,6 +758,7 @@ export default function JobRecordSheet() {
                                     {dayHeaders.map(day => {
                                         const code = cellStates[`${profile.id}-${day}`] || '';
                                         const overtimeForDay = dailyOvertime[day] || 0;
+                                        const commentForDay = dailyComments[day] || '';
                                         const colorInfo = JOB_CODE_COLORS[code as string] || {};
                                         const isInSelection = isCellInSelection(profile.id, day);
 
@@ -784,14 +788,24 @@ export default function JobRecordSheet() {
                                                         style={{ boxShadow: 'none' }}
                                                         disabled={!canEditSheet}
                                                     />
-                                                    {overtimeForDay > 0 && (
-                                                        <Tooltip>
-                                                        <TooltipTrigger className="absolute right-1 top-1 h-3 w-3">
-                                                            <Clock className="h-full w-full text-blue-500" />
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
-                                                        </Tooltip>
-                                                    )}
+                                                    <div className="absolute right-1 top-1 flex items-center gap-0.5">
+                                                        {overtimeForDay > 0 && (
+                                                            <Tooltip>
+                                                                <TooltipTrigger className="h-3 w-3">
+                                                                    <Clock className="h-full w-full text-blue-500" />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                        {commentForDay && (
+                                                            <Tooltip>
+                                                                <TooltipTrigger className="h-3 w-3">
+                                                                    <MessageSquare className="h-full w-full text-green-500" />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>{commentForDay}</p></TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                    </div>
                                                     {canEditSheet && (
                                                          <div 
                                                             onMouseDown={() => handleMouseDown(profile.id, day)}
