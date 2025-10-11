@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -466,23 +467,7 @@ export default function JobRecordSheet() {
     
                 const rowData: any[] = [rIndex + 1, profile.name];
                 dayHeadersExcel.forEach(day => {
-                    const code = employeeRecord[day] || '';
-                    const overtimeForDay = dailyOvertime[day];
-                    const commentForDay = dailyComments[day];
-
-                    const cell: {v: string, c?: any[]} = { v: code };
-
-                    const comments = [];
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        comments.push({ a: "Overtime", t: `Hours: ${overtimeForDay}`});
-                    }
-                    if (commentForDay) {
-                         comments.push({ a: "Comment", t: commentForDay });
-                    }
-                    if (comments.length > 0) {
-                        cell.c = comments;
-                    }
-                    rowData.push(cell);
+                    rowData.push(employeeRecord[day] || '');
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 ws_data.push(rowData);
@@ -490,35 +475,35 @@ export default function JobRecordSheet() {
     
             const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
             
-            ws_data.forEach((row, r) => {
-              if (r < 3) return;
-              row.forEach((cellData, c) => {
-                  if (c >= 2 && c < dayHeadersExcel.length + 2) {
-                      const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
-                      const cellAddress = XLSX.utils.encode_cell({ r, c });
-                      if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                      
-                      const cell = ws[cellAddress];
+            profiles.forEach((profile, rIndex) => {
+                const record = jobRecords[monthKey]?.records?.[profile.id] || {};
+                const dailyOvertime = record.dailyOvertime || {};
+                const dailyComments = record.dailyComments || {};
 
-                      // Color formatting
-                      const colorInfo = JOB_CODE_COLORS[code as string];
-                      if (colorInfo?.excelFill) {
-                          cell.s = {
-                             fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
-                             font: colorInfo.excelFill.font || {}
-                         };
-                      }
-                      
-                      // Comment formatting
-                      if(typeof cellData === 'object' && cellData !== null && 'c' in cellData && Array.isArray(cellData.c)) {
-                        const commentsText = cellData.c.map(com => `${com.a}: ${com.t}`).join('\n');
+                dayHeadersExcel.forEach((day, cIndex) => {
+                    const overtimeForDay = dailyOvertime[day];
+                    const commentForDay = dailyComments[day];
+
+                    const comments = [];
+                    if (overtimeForDay && overtimeForDay > 0) {
+                        comments.push({ a: "Overtime", t: `${overtimeForDay} Hours`});
+                    }
+                    if (commentForDay) {
+                         comments.push({ a: "Comment", t: commentForDay });
+                    }
+                    
+                    if (comments.length > 0) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' }; // Ensure cell exists
+                        const cell = ws[cellAddress];
+
+                        const commentsText = comments.map(com => `${com.a}: ${com.t}`).join('\n');
                         if (!cell.c) cell.c = [];
                         cell.c.push({a: "Note", t: commentsText});
-                      }
-                  }
-              });
+                    }
+                });
             });
-            
+
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeadersExcel.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     
             const legendStartRow = ws_data.length + 2;
