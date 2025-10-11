@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -263,7 +262,7 @@ type AppContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrPlant: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrPlantOrComment: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => void;
   savePlantOrder: (monthKey: string, plantName: string, orderedIds: string[]) => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
@@ -2101,7 +2100,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (itemsChanged) {
-        // Recalculate overall status after individual changes
         const allStatuses = new Set(updatedItems.map(item => item.status));
         
         if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
@@ -3190,33 +3188,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, users, projects, vehicles, manpowerProfiles]);
   
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrPlant: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'sundayDuty') => {
-    if (type === 'status') {
-      const code = (codeOrPlant as string)?.toUpperCase() ?? '';
-      const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-      if (!isValidCode) {
-        toast({
-            title: "Invalid Job Code",
-            description: `The code "${code}" is not a valid job code.`,
-            variant: "destructive"
-        });
-        return;
-      }
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}/days`), { [day!]: code || null });
-    } else if (type === 'plant') {
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { plant: codeOrPlant });
-    } else if (type === 'dailyOvertime') {
-      const overtimeDay = day!;
-      const hours = codeOrPlant as (number | null);
-      const path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${overtimeDay}`;
-      if (hours && hours > 0) {
-        set(ref(rtdb, path), hours);
-      } else {
-        remove(ref(rtdb, path));
-      }
-    } else if (type === 'sundayDuty') {
-      const sundayDuty = day;
-      update(ref(rtdb, `jobRecords/${monthKey}/records/${employeeId}`), { additionalSundayDuty: sundayDuty });
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => {
+    let path: string;
+    let valueToSave = codeOrValue;
+  
+    switch(type) {
+        case 'status':
+            const code = (codeOrValue as string)?.toUpperCase() ?? '';
+            const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+            if (!isValidCode) {
+                toast({
+                    title: "Invalid Job Code",
+                    description: `The code "${code}" is not a valid job code.`,
+                    variant: "destructive"
+                });
+                return;
+            }
+            path = `jobRecords/${monthKey}/records/${employeeId}/days/${day}`;
+            if(code === '') valueToSave = null;
+            break;
+        case 'plant':
+            path = `jobRecords/${monthKey}/records/${employeeId}/plant`;
+            break;
+        case 'dailyOvertime':
+            path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${day}`;
+            if (valueToSave === null || valueToSave === 0 || valueToSave === '') valueToSave = null;
+            break;
+        case 'dailyComments':
+            path = `jobRecords/${monthKey}/records/${employeeId}/dailyComments/${day}`;
+            if (valueToSave === null || valueToSave === '') valueToSave = null;
+            break;
+        case 'sundayDuty':
+            path = `jobRecords/${monthKey}/records/${employeeId}/additionalSundayDuty`;
+            break;
+        default:
+            return;
+    }
+
+    if (valueToSave === null) {
+      remove(ref(rtdb, path));
+    } else {
+      set(ref(rtdb, path), valueToSave);
     }
   }, [jobCodes, toast]);
   

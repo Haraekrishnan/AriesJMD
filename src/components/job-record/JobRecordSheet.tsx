@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -43,6 +44,7 @@ export default function JobRecordSheet() {
     
     const [cellStates, setCellStates] = useState<Record<string, string>>({});
     const [overtimeStates, setOvertimeStates] = useState<Record<string, string>>({});
+    const [commentStates, setCommentStates] = useState<Record<string, string>>({});
 
     const [dragState, setDragState] = useState<{
         isDragging: boolean;
@@ -175,13 +177,13 @@ export default function JobRecordSheet() {
         return () => window.removeEventListener('mouseup', handleMouseUp);
     }, [handleMouseUp]);
     
-    const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'status' | 'overtime') => {
+    const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'status' | 'overtime' | 'comment') => {
         const { key } = e;
         const profiles = filteredAndGroupedProfiles[activeTab] || [];
         const profileIndex = profiles.findIndex(p => p.id === profileId);
 
-        const focusCell = (pId: string, d: number, t: 'status' | 'overtime') => {
-            const cellId = t === 'status' ? `${pId}-${d}` : `${pId}-${d}-overtime`;
+        const focusCell = (pId: string, d: number, t: 'status' | 'overtime' | 'comment') => {
+            const cellId = `${pId}-${d}-${t}`;
             const element = document.getElementById(cellId);
             element?.focus();
             element?.select();
@@ -211,6 +213,8 @@ export default function JobRecordSheet() {
     useEffect(() => {
         const newStates: Record<string, string> = {};
         const newOtStates: Record<string, string> = {};
+        const newCommentStates: Record<string, string> = {};
+        
         if (jobRecords[monthKey]?.records) {
             for (const profileId in jobRecords[monthKey].records) {
                 const record = jobRecords[monthKey].records[profileId];
@@ -224,10 +228,16 @@ export default function JobRecordSheet() {
                         newOtStates[`${profileId}-${day}`] = (record.dailyOvertime as any)[day]?.toString() || '';
                     }
                 }
+                 if (record.dailyComments) {
+                    for (const day in record.dailyComments) {
+                        newCommentStates[`${profileId}-${day}`] = record.dailyComments[day as any] || '';
+                    }
+                }
             }
         }
         setCellStates(newStates);
         setOvertimeStates(newOtStates);
+        setCommentStates(newCommentStates);
     }, [jobRecords, monthKey]);
 
     const getSelectionRange = () => {
@@ -321,6 +331,15 @@ export default function JobRecordSheet() {
         const hours = Number(value);
         const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
+    };
+
+    const handleCommentChange = (employeeId: string, day: number, value: string) => {
+        setCommentStates(prev => ({...prev, [`${employeeId}-${day}`]: value}));
+    };
+
+    const handleCommentBlur = (employeeId: string, day: number, value: string) => {
+        const comment = value.trim() === '' ? null : value;
+        saveJobRecord(monthKey, employeeId, day, comment, 'dailyComments');
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -426,6 +445,7 @@ export default function JobRecordSheet() {
                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
+                const dailyComments = record.dailyComments || {};
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
@@ -448,10 +468,19 @@ export default function JobRecordSheet() {
                 dayHeadersExcel.forEach(day => {
                     const code = employeeRecord[day] || '';
                     const overtimeForDay = dailyOvertime[day];
+                    const commentForDay = dailyComments[day];
+
                     const cell: {v: string, c?: any[]} = { v: code };
 
+                    const comments = [];
                     if (overtimeForDay && overtimeForDay > 0) {
-                        cell.c = [{ a: "Overtime", t: `Hours: ${overtimeForDay}`, hidden: true }];
+                        comments.push({ a: "Overtime", t: `Hours: ${overtimeForDay}`});
+                    }
+                    if (commentForDay) {
+                         comments.push({ a: "Comment", t: commentForDay });
+                    }
+                    if (comments.length > 0) {
+                        cell.c = comments;
                     }
                     rowData.push(cell);
                 });
@@ -675,6 +704,7 @@ export default function JobRecordSheet() {
                             const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                             const employeeRecord = record.days || {};
                             const dailyOvertime = record.dailyOvertime || {};
+                            const dailyComments = record.dailyComments || {};
                             
                             const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                             const offCodes = ['OFF', 'PH', 'OS'];
@@ -744,7 +774,7 @@ export default function JobRecordSheet() {
                                             >
                                                 <div className="relative h-10 w-full">
                                                     <Input
-                                                        id={`${profile.id}-${day}`}
+                                                        id={`${profile.id}-${day}-status`}
                                                         type="text"
                                                         list="jobcodes-datalist"
                                                         value={code}
@@ -797,34 +827,64 @@ export default function JobRecordSheet() {
                                     </TableCell>
                                 </TableRow>
                                 {isExpanded && (
-                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                        <TableCell
-                                            colSpan={3}
-                                            className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
-                                            style={{ left: 0, width: '470px' }}
-                                        >
-                                            Overtime Hours
-                                        </TableCell>
-                                        {dayHeaders.map(day => {
-                                            const overtimeValue = overtimeStates[`${profile.id}-${day}`] || '';
-                                            return (
-                                                <TableCell key={`ot-${day}`} className="p-0 border-r">
-                                                    <Input
-                                                        id={`${profile.id}-${day}-overtime`}
-                                                        type="number"
-                                                        placeholder="0"
-                                                        value={overtimeValue}
-                                                        onChange={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
-                                                        onBlur={(e) => handleOvertimeBlur(profile.id, day, e.target.value)}
-                                                        onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
-                                                        className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
-                                                        disabled={!canEditSheet}
-                                                    />
-                                                </TableCell>
-                                            )
-                                        })}
-                                        <TableCell colSpan={9}></TableCell>
-                                    </TableRow>
+                                   <>
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableCell
+                                                colSpan={3}
+                                                className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
+                                                style={{ left: 0, width: '470px' }}
+                                            >
+                                                Overtime Hours
+                                            </TableCell>
+                                            {dayHeaders.map(day => {
+                                                const overtimeValue = overtimeStates[`${profile.id}-${day}`] || '';
+                                                return (
+                                                    <TableCell key={`ot-${day}`} className="p-0 border-r">
+                                                        <Input
+                                                            id={`${profile.id}-${day}-overtime`}
+                                                            type="number"
+                                                            placeholder="0"
+                                                            value={overtimeValue}
+                                                            onChange={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
+                                                            onBlur={(e) => handleOvertimeBlur(profile.id, day, e.target.value)}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
+                                                            className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                            disabled={!canEditSheet}
+                                                        />
+                                                    </TableCell>
+                                                )
+                                            })}
+                                            <TableCell colSpan={9}></TableCell>
+                                        </TableRow>
+                                         <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableCell
+                                                colSpan={3}
+                                                className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
+                                                style={{ left: 0, width: '470px' }}
+                                            >
+                                                Comments
+                                            </TableCell>
+                                            {dayHeaders.map(day => {
+                                                const commentValue = commentStates[`${profile.id}-${day}`] || '';
+                                                return (
+                                                    <TableCell key={`comment-${day}`} className="p-0 border-r">
+                                                        <Input
+                                                            id={`${profile.id}-${day}-comment`}
+                                                            type="text"
+                                                            placeholder="Comment"
+                                                            value={commentValue}
+                                                            onChange={(e) => handleCommentChange(profile.id, day, e.target.value)}
+                                                            onBlur={(e) => handleCommentBlur(profile.id, day, e.target.value)}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'comment')}
+                                                            className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                            disabled={!canEditSheet}
+                                                        />
+                                                    </TableCell>
+                                                );
+                                            })}
+                                            <TableCell colSpan={9}></TableCell>
+                                        </TableRow>
+                                   </>
                                 )}
                                 </React.Fragment>
                             );
