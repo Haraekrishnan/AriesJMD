@@ -14,7 +14,6 @@ export default function LoginPage() {
   const { user, loading: authLoading } = useAuth();
   const { appName, appLogo, loading: contextLoading } = useAppContext();
   const router = useRouter();
-  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     // This effect runs when auth state is determined.
@@ -26,16 +25,13 @@ export default function LoginPage() {
         } else {
           router.replace('/dashboard');
         }
-      } else {
-        // If no user, it's safe to show the login form.
-        setInitialLoad(false);
       }
     }
   }, [user, authLoading, router]);
 
-  const isLoading = authLoading || contextLoading || initialLoad;
+  const isLoading = authLoading || contextLoading;
 
-  if (isLoading) {
+  if (isLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center space-x-4">
