@@ -497,13 +497,23 @@ export default function JobRecordSheet() {
                       const code = (typeof cellData === 'object' && cellData !== null && 'v' in cellData) ? cellData.v : cellData;
                       const cellAddress = XLSX.utils.encode_cell({ r, c });
                       if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+                      
+                      const cell = ws[cellAddress];
 
+                      // Color formatting
                       const colorInfo = JOB_CODE_COLORS[code as string];
                       if (colorInfo?.excelFill) {
-                          ws[cellAddress].s = {
+                          cell.s = {
                              fill: { patternType: "solid", fgColor: colorInfo.excelFill.fgColor },
                              font: colorInfo.excelFill.font || {}
                          };
+                      }
+                      
+                      // Comment formatting
+                      if(typeof cellData === 'object' && cellData !== null && 'c' in cellData && Array.isArray(cellData.c)) {
+                        const commentsText = cellData.c.map(com => `${com.a}: ${com.t}`).join('\n');
+                        if (!cell.c) cell.c = [];
+                        cell.c.push({a: "Note", t: commentsText});
                       }
                   }
               });
