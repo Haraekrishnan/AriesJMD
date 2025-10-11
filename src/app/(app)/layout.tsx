@@ -15,10 +15,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // Wait until the initial loading is complete.
     if (loading) {
       return;
     }
 
+    // If loading is finished and there's no user, redirect to login.
     if (!user) {
       if (pathname !== '/login') {
         router.replace('/login');
@@ -26,20 +28,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Handle different user statuses if a user object exists.
     const isLockedOrDeactivated = user.status === 'locked' || user.status === 'deactivated';
 
     if (isLockedOrDeactivated) {
+      // If user is locked/deactivated, redirect to the status page.
       if (pathname !== '/status') {
         router.replace('/status');
       }
-    } else { // user is active
+    } else {
+      // If the user is active but on the status page, redirect to the dashboard.
       if (pathname === '/status') {
         router.replace('/dashboard');
       }
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || (!user && pathname !== '/status')) {
+  // Show a loading skeleton while checking auth state or if there's no user (to prevent flashing the app layout).
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -53,12 +59,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (user && (user.status === 'locked' || user.status === 'deactivated')) {
-    // Render children directly for the status page without the main layout
+  // Special case for the status page: it should not have the main app layout.
+  if (user.status === 'locked' || user.status === 'deactivated') {
     if (pathname === '/status') {
       return <main>{children}</main>;
     }
-    // Still show loading state while redirecting to prevent flashing of incorrect UI
+    // If on any other page, the effect above will redirect, so we continue to show a loader.
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">
@@ -72,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-
+  // If user is authenticated and active, render the full app layout.
   return (
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
