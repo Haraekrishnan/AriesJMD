@@ -38,25 +38,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname !== '/status') {
       router.replace('/status');
     }
-    // Continue showing loader while redirecting to status page
+    // Return a loader while redirecting to prevent rendering the main layout
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                </div>
-            </div>
-        </div>
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+          <div className="flex items-center space-x-4">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2">
+                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-[200px]" />
+              </div>
+          </div>
+      </div>
     );
   }
 
-  // If user is active but on a non-app page (like /status or /login), redirect to dashboard
+  // If a logged-in, active user somehow lands on the status or login page, redirect them.
   if (pathname === '/status' || pathname === '/login') {
     router.replace('/dashboard');
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="space-y-2">
