@@ -436,22 +436,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userRef = ref(rtdb, `users/${user.id}`);
         unsubscribe = onValue(userRef, (snapshot) => {
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            setUser(currentUser => {
-                // Prevent infinite loop by checking if data is actually different
-                if (JSON.stringify(currentUser) !== JSON.stringify(updatedUser)) {
-                    return updatedUser;
-                }
-                return currentUser;
-            });
+            setUser(updatedUser);
         });
+        return () => unsubscribe();
     }
-    return () => {
-        if (unsubscribe) unsubscribe();
-    };
   }, [user?.id]);
   
   useEffect(() => {
-    if (loading) return; // Don't run this effect until initial auth check is done
+    const dataLoaded = roles.length > 0;
+    if (loading || !dataLoaded) return; 
 
     if (!rtdb) {
       console.error("Firebase Realtime Database is not initialized.");
@@ -530,7 +523,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [loading]);
+  }, [loading, roles.length]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -2047,7 +2040,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
 
     const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments`] = [...existingComments, { ...newComment, id: newCommentRef.key }];
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
