@@ -15,7 +15,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If a logged-in and active user reaches this page, redirect them away.
+    // If a logged-in and active user somehow lands on this page, redirect them away.
     if (!contextLoading && user && user.status === 'active') {
       router.replace('/dashboard');
     }
@@ -36,8 +36,10 @@ export default function LoginPage() {
       </div>
     );
   }
-
-  // Only show the login form if we are sure there is no active user.
+  
+  // If user is locked or deactivated, the main app layout will handle redirection to /status
+  // So we don't need special logic here for that case.
+  // We only show the login form if we are sure there is no authenticated user or they are not active.
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md shadow-2xl border-none">
