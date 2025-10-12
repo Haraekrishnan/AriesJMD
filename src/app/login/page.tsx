@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,12 +15,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     // If an active user lands on the login page, redirect them away.
-    if (!loading && user && user.status === 'active') {
-      router.replace('/dashboard');
-    }
-    // If a non-active user lands here, redirect to status page
-    else if (!loading && user && user.status !== 'active') {
-      router.replace('/status');
+    if (!loading && user) {
+        if (user.status === 'active') {
+          router.replace('/dashboard');
+        } else {
+          router.replace('/status');
+        }
     }
   }, [user, loading, router]);
 
@@ -60,5 +60,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    

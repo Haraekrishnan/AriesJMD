@@ -19,26 +19,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return; // Wait until the loading state is resolved.
     }
 
-    // If no user, redirect to login. This is the primary guard for all app routes.
+    // If there is no user, redirect to login page.
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // If user is not active, they should only be on the status page.
+    // If user's status is not active, they should only be on the /status page.
     if (user.status !== 'active') {
       if (pathname !== '/status') {
         router.replace('/status');
       }
-      return;
+      return; // Allow them to stay on /status
     }
     
     // If an active user somehow lands on the login or status page, redirect to dashboard.
-    if (user.status === 'active') {
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
-      return;
+    if (pathname === '/login' || pathname === '/status') {
+      router.replace('/dashboard');
     }
 
   }, [user, loading, router, pathname]);
@@ -58,24 +55,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is not active but is on the correct status page, render the children (the status page content)
-  // without the main app layout.
+  // If user is not active, and they are on the status page, render only the children.
+  // This prevents the main layout from showing on the status page.
   if (user.status !== 'active') {
     if (pathname === '/status') {
       return <>{children}</>;
     }
-    // While redirecting a non-active user, show a loader.
+    // While redirecting, show the loader.
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-       <div className="flex items-center space-x-4">
-         <Skeleton className="h-12 w-12 rounded-full" />
-         <div className="space-y-2">
-           <Skeleton className="h-4 w-[250px]" />
-           <Skeleton className="h-4 w-[200px]" />
-         </div>
-       </div>
-     </div>
-   );
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // If user is active and on a valid app page, render the full layout.
