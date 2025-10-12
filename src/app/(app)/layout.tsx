@@ -15,15 +15,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && pathname !== '/login' && pathname !== '/status') {
       router.replace('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
-  // If the page is still loading or there's no user, show a skeleton screen.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+    router.replace('/status');
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="space-y-2">
@@ -31,23 +45,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Skeleton className="h-4 w-[200px]" />
             </div>
         </div>
-      </div>
-    );
-  }
-
-  // If user is locked/deactivated AND they are NOT already on the status page, redirect them.
-  if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-    router.replace('/status');
-    // Return a loader while redirecting to prevent rendering the main layout
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-          <div className="flex items-center space-x-4">
-              <Skeleton className="h-12 w-12 rounded-full" />
-              <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
-              </div>
-          </div>
       </div>
     );
   }
@@ -67,8 +64,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  // If the user's status is fine or they are correctly on the status page, render the normal layout.
+  
+  if (pathname === '/status') {
+    return <>{children}</>;
+  }
+  
   return (
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
