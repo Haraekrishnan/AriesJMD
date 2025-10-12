@@ -25,18 +25,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // If an active user somehow lands on the login or status page, redirect to dashboard.
-    if (user.status === 'active') {
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
-      return;
-    }
-
     // If user is not active, they should only be on the status page.
     if (user.status !== 'active') {
       if (pathname !== '/status') {
         router.replace('/status');
+      }
+      return;
+    }
+    
+    // If an active user somehow lands on the login or status page, redirect to dashboard.
+    if (user.status === 'active') {
+      if (pathname === '/login' || pathname === '/status') {
+        router.replace('/dashboard');
       }
       return;
     }
