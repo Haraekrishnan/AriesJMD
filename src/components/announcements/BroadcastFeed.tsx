@@ -36,14 +36,14 @@ export default function BroadcastFeed() {
     return (
         <div className="space-y-2">
             {visibleBroadcasts.map(broadcast => {
-                const animationDuration = `${broadcast.message.length / 10}s`;
+                const animationDuration = `${Math.max(15, broadcast.message.length / 10)}s`;
                 return (
                     <div key={broadcast.id} className="relative w-full rounded-lg border p-3 bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800 overflow-hidden">
                         <div className="flex items-center space-x-3">
                             <Radio className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                             <div className="flex-1 overflow-hidden">
                                 <div 
-                                    className={cn("inline-block animate-marquee whitespace-nowrap text-base font-semibold text-yellow-900 dark:text-yellow-200")}
+                                    className="inline-block animate-marquee whitespace-nowrap text-base font-semibold text-yellow-900 dark:text-yellow-200"
                                     style={{ animationDuration }}
                                 >
                                     {broadcast.message}
