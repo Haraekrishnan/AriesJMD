@@ -31,13 +31,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return; 
     }
     
+    // If user is active, but they are on a non-app page, redirect them to dashboard.
     if (pathname === '/login' || pathname === '/status') {
       router.replace('/dashboard');
     }
 
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  // While loading, show a full-screen skeleton loader.
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -51,11 +53,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If there's no user, we are in the process of redirecting.
+  // Render a loader to avoid flashing any content.
+  if (!user) {
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If the user's status is not active, but they are on the status page,
+  // render the children directly without the main app layout.
   if (user.status !== 'active') {
     if (pathname === '/status') {
       return <>{children}</>;
     }
-    // While redirecting, show the loader.
+    // If they are not on the status page, the useEffect will redirect them.
+    // Show a loader in the meantime.
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -69,6 +90,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If user is active and on a valid app page, render the full layout.
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
@@ -84,5 +106,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-  
