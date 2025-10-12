@@ -19,11 +19,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return; // Wait until the loading state is resolved.
     }
 
-    // If there's no user, redirect to login, unless we are already on a public page.
+    // If there's no user, redirect to login. This is the primary guard.
     if (!user) {
-      if (pathname !== '/login' && pathname !== '/status') {
-         router.replace('/login');
-      }
+      router.replace('/login');
       return;
     }
 
@@ -42,25 +40,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, loading, router, pathname]);
 
   // Show a full-page loader while checking auth state or during initial redirection.
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If there's no user, we are redirecting, so show a loader.
-  // The login page itself will handle its own rendering.
-  if (!user) {
-    return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
           <Skeleton className="h-12 w-12 rounded-full" />
           <div className="space-y-2">
