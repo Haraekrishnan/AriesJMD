@@ -19,27 +19,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return; // Wait until the loading state is resolved.
     }
 
+    // If there's no user, redirect to login, unless we are already on a public page.
     if (!user) {
-      // If there's no user, redirect to login immediately.
-      router.replace('/login');
+      if (pathname !== '/login' && pathname !== '/status') {
+         router.replace('/login');
+      }
       return;
     }
 
+    // If user is not active, they should only be on the status page.
     if (user.status !== 'active') {
-      // If user is locked/deactivated and NOT on the status page, redirect them.
       if (pathname !== '/status') {
         router.replace('/status');
       }
-    } else {
-      // If an active user lands on a non-app page, redirect to dashboard.
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
+      return;
+    }
+
+    // If an active user somehow lands on the login or status page, redirect to dashboard.
+    if (pathname === '/login' || pathname === '/status') {
+      router.replace('/dashboard');
     }
   }, [user, loading, router, pathname]);
 
   // Show a full-page loader while checking auth state or during initial redirection.
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -53,8 +56,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If there's no user, we are redirecting, so show a loader.
+  // The login page itself will handle its own rendering.
+  if (!user) {
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // If the user is not active, we want to show the dedicated status page.
-  // The useEffect above handles the redirection, so we can show a loader here.
   // The actual /status page content will be rendered by its own page.tsx.
   if (user.status !== 'active') {
     // Only render the children if we are on the status page

@@ -15,7 +15,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     // If an active user somehow lands on the login page, redirect them away.
-    // The main app layout will also enforce this, but this is an extra layer.
     if (!loading && user && user.status === 'active') {
       router.replace('/dashboard');
     }
@@ -40,6 +39,7 @@ export default function LoginPage() {
   // the main app layout's logic will redirect them to /status.
   // We can show a loader here as well while that happens.
   if (user && user.status !== 'active') {
+    // The redirect is handled by AppLayout, just show a loader.
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center space-x-4">
@@ -76,7 +76,7 @@ export default function LoginPage() {
     );
   }
   
-  // Fallback loader for any other in-between states.
+  // Fallback loader for any other in-between states while redirecting.
   return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center space-x-4">

@@ -262,7 +262,7 @@ type AppContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrPlantOrComment: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => void;
   savePlantOrder: (monthKey: string, plantName: string, orderedIds: string[]) => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
@@ -411,50 +411,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Set user based on stored ID
   useEffect(() => {
+    setLoading(true);
     if (storedUserId) {
-        const foundUser = usersById[storedUserId];
-        if (foundUser) {
-            setUser(foundUser);
-        }
+        const userRef = ref(rtdb, 'users/' + storedUserId);
+        onValue(userRef, (snapshot) => {
+            if (snapshot.exists()) {
+                setUser({ id: snapshot.key, ...snapshot.val() });
+            } else {
+                setStoredUserId(null); // Clear invalid ID
+                setUser(null);
+            }
+            setLoading(false);
+        }, { onlyOnce: true }); // Fetch user data once on initial load
     } else {
         setUser(null);
+        setLoading(false);
     }
-  }, [storedUserId, usersById]);
-
-  const handleUserUpdate = useCallback((snapshot: any) => {
-    if (!snapshot.exists()) {
-        setStoredUserId(null);
-        setUser(null);
-        router.replace('/login');
-        return;
-    }
-    const updatedUser = { id: snapshot.key, ...snapshot.val() };
-    setUser(currentUser => {
-        if (JSON.stringify(currentUser) !== JSON.stringify(updatedUser)) {
-            return updatedUser;
-        }
-        return currentUser;
-    });
-  }, [router, setStoredUserId]);
+  }, [storedUserId, setStoredUserId]);
   
-  // Listen for status changes on the current user
+  // Listen for real-time updates on the currently logged-in user
   useEffect(() => {
-    if (user && user.id) {
+    let unsubscribe: () => void;
+    if (user?.id) {
         const userRef = ref(rtdb, `users/${user.id}`);
-        const unsubscribe = onValue(userRef, handleUserUpdate);
-        
-        if (user.status && user.status !== 'active') {
-            router.replace('/status');
-        }
-
-        return () => unsubscribe();
+        unsubscribe = onValue(userRef, (snapshot) => {
+            const updatedUser = { id: snapshot.key, ...snapshot.val() };
+            setUser(currentUser => {
+                // Prevent infinite loop by checking if data is actually different
+                if (JSON.stringify(currentUser) !== JSON.stringify(updatedUser)) {
+                    return updatedUser;
+                }
+                return currentUser;
+            });
+        });
     }
-  }, [user, handleUserUpdate, router]);
+    return () => {
+        if (unsubscribe) unsubscribe();
+    };
+  }, [user?.id]);
   
   useEffect(() => {
+    if (loading) return; // Don't run this effect until initial auth check is done
+
     if (!rtdb) {
       console.error("Firebase Realtime Database is not initialized.");
-      setLoading(false);
       return;
     }
   
@@ -472,17 +472,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     seedData();
 
-    if (!storedUserId) {
-      setLoading(false);
-      // Clear all state when user logs out
-      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
-      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
-      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
-      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
-      return;
-    }
-  
     const listeners = [
       createDataListener('users', setUsersById),
       createDataListener('roles', setRolesById),
@@ -537,13 +526,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
   
-    setLoading(false);
-  
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [storedUserId]);
+  }, [loading]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -600,15 +587,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const foundUser = usersArray.find(u => u.email === email && u.password === pass);
     
-    setLoading(false);
     if (foundUser) {
         setStoredUserId(foundUser.id);
-        if (foundUser.status && foundUser.status !== 'active') {
-            return { success: true, status: foundUser.status, user: foundUser };
+        setUser(foundUser);
+        if (foundUser.status === 'active') {
+            addActivityLog(foundUser.id, 'User Logged In');
         }
-        addActivityLog(foundUser.id, 'User Logged In');
-        return { success: true, status: 'active', user: foundUser };
+        setLoading(false);
+        return { success: true, status: foundUser.status, user: foundUser };
     }
+    setLoading(false);
     return { success: false };
   }, [addActivityLog, setStoredUserId]);
 

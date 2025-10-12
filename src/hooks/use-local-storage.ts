@@ -3,22 +3,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-// A flag to ensure we only read from localStorage on the client side.
-const isClient = typeof window !== 'undefined';
-
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    if (!isClient) {
-      return initialValue;
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      try {
+        const item = window.localStorage.getItem(key);
+        setStoredValue(item ? JSON.parse(item) : initialValue);
+      } catch (error) {
+        console.error(`Error reading localStorage key “${key}”:`, error);
+        setStoredValue(initialValue);
+      }
     }
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(`Error reading localStorage key “${key}”:`, error);
-      return initialValue;
-    }
-  });
+  }, [isClient, key, initialValue]);
 
   const setValue = useCallback((value: T | ((val: T) => T)) => {
     if (!isClient) {
@@ -36,9 +39,8 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
     } catch (error) {
       console.error(`Error setting localStorage key “${key}”:`, error);
     }
-  }, [key, storedValue]);
+  }, [key, storedValue, isClient]);
 
-  // This effect will listen for changes to the localStorage from other tabs/windows.
   useEffect(() => {
     if (!isClient) return;
     
@@ -55,7 +57,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key, initialValue]);
+  }, [key, initialValue, isClient]);
 
   return [storedValue, setValue];
 }
