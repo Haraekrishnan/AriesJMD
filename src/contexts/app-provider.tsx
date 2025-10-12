@@ -421,28 +421,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [storedUserId, usersById]);
 
+  const handleUserUpdate = useCallback((snapshot: any) => {
+    if (!snapshot.exists()) {
+        setStoredUserId(null);
+        setUser(null);
+        router.replace('/login');
+        return;
+    }
+    const updatedUser = { id: snapshot.key, ...snapshot.val() };
+    setUser(currentUser => {
+        if (JSON.stringify(currentUser) !== JSON.stringify(updatedUser)) {
+            return updatedUser;
+        }
+        return currentUser;
+    });
+  }, [router, setStoredUserId]);
+  
   // Listen for status changes on the current user
   useEffect(() => {
     if (user && user.id) {
         const userRef = ref(rtdb, `users/${user.id}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (!snapshot.exists()) {
-                setStoredUserId(null);
-                setUser(null);
-                router.replace('/login');
-                return;
-            }
-            const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (updatedUser.status && updatedUser.status !== 'active') {
-                setUser(updatedUser); 
-                router.replace('/status');
-            } else if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-              setUser(updatedUser);
-            }
-        });
+        const unsubscribe = onValue(userRef, handleUserUpdate);
+        
+        if (user.status && user.status !== 'active') {
+            router.replace('/status');
+        }
+
         return () => unsubscribe();
     }
-  }, [user, setStoredUserId, router]);
+  }, [user, handleUserUpdate, router]);
   
   useEffect(() => {
     if (!rtdb) {
