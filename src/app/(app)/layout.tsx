@@ -19,28 +19,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return; // Wait until the loading state is resolved.
     }
 
-    // If there is no user, redirect to login page.
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // If user's status is not active, they should only be on the /status page.
     if (user.status !== 'active') {
       if (pathname !== '/status') {
         router.replace('/status');
       }
-      return; // Allow them to stay on /status
+      return; 
     }
     
-    // If an active user somehow lands on the login or status page, redirect to dashboard.
     if (pathname === '/login' || pathname === '/status') {
       router.replace('/dashboard');
     }
 
   }, [user, loading, router, pathname]);
 
-  // Show a full-page loader while checking auth state or during initial redirection.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -55,8 +51,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is not active, and they are on the status page, render only the children.
-  // This prevents the main layout from showing on the status page.
   if (user.status !== 'active') {
     if (pathname === '/status') {
       return <>{children}</>;
@@ -75,7 +69,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is active and on a valid app page, render the full layout.
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
@@ -91,3 +84,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+  

@@ -14,7 +14,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If an active user lands on the login page, redirect them away.
+    // If loading is done and there's a user, the main layout will handle redirection.
+    // This effect is mainly to prevent the login form from showing if the user is already logged in.
     if (!loading && user) {
         if (user.status === 'active') {
           router.replace('/dashboard');
@@ -60,3 +61,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+  

@@ -409,26 +409,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Set user based on stored ID
   useEffect(() => {
-    setLoading(true);
+    let unsubscribe: (() => void) | undefined;
     if (storedUserId) {
-        const userRef = ref(rtdb, 'users/' + storedUserId);
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (snapshot.exists()) {
-                setUser({ id: snapshot.key, ...snapshot.val() });
-            } else {
-                setStoredUserId(null); // Clear invalid ID
-                setUser(null);
-            }
-             // Set loading to false only after we have a definitive user status
-            setLoading(false);
-        });
-        return () => unsubscribe();
+      setLoading(true);
+      const userRef = ref(rtdb, 'users/' + storedUserId);
+      unsubscribe = onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setUser({ id: snapshot.key, ...snapshot.val() });
+        } else {
+          setStoredUserId(null); // Clear invalid ID
+          setUser(null);
+        }
+        setLoading(false); // Set loading to false after user data is processed
+      });
     } else {
-        setUser(null);
-        setLoading(false);
+      setUser(null);
+      setLoading(false);
     }
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [storedUserId, setStoredUserId]);
   
   useEffect(() => {
@@ -3515,3 +3518,5 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
+  
