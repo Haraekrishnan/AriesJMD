@@ -14,6 +14,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -38,6 +39,7 @@ export function LoginForm() {
   const { login } = useAuth();
   const { requestPasswordReset, resetPassword, requestUnlock } = useAppContext();
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isLockedDialogOpen, setIsLockedDialogOpen] = useState(false);
@@ -63,11 +65,12 @@ export function LoginForm() {
     setIsLoading(true);
     const result = await login(data.email, data.password);
     
-    if (result.success) {
-        // Successful login, navigation will be handled by the layout
-    } else if (result.status === 'locked' && result.user) {
-        setLockedUser(result.user);
-        setIsLockedDialogOpen(true);
+    if (result.success && result.user) {
+        if (result.status === 'locked' || result.status === 'deactivated') {
+          router.replace('/status');
+        } else {
+          router.replace('/dashboard');
+        }
     } else {
       toast({
         variant: 'destructive',
@@ -199,7 +202,7 @@ export function LoginForm() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="reset-code">Reset Code</Label>
-                        <Input id="reset-code" {...resetPasswordForm.register('resetCode')} />
+                        <Input id="reset-code" {...form.register('resetCode')} />
                          {resetPasswordForm.formState.errors.resetCode && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.resetCode.message}</p>}
                     </div>
                      <div className="space-y-2">
