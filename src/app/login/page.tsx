@@ -18,27 +18,14 @@ export default function LoginPage() {
     if (!loading && user && user.status === 'active') {
       router.replace('/dashboard');
     }
+    // If a non-active user lands here, redirect to status page
+    else if (!loading && user && user.status !== 'active') {
+      router.replace('/status');
+    }
   }, [user, loading, router]);
 
   // While checking auth status, show a loader to prevent the login form from flashing.
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If there's an authenticated user but they aren't active,
-  // let the main app layout handle the redirect to /status.
-  // We can show a loader here as well while that happens.
-  if (user && user.status !== 'active') {
+  if (loading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center space-x-4">
@@ -53,38 +40,25 @@ export default function LoginPage() {
   }
 
   // Only show the login form if we're done loading and there is no authenticated user.
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="w-full max-w-md shadow-2xl border-none">
-          <CardHeader className="text-center">
-            <div className="flex justify-center items-center gap-3 mb-4">
-              {appLogo ? (
-                <img src={appLogo} alt={appName} className="h-10 w-auto object-contain" />
-              ) : (
-                <Ship className="w-8 h-8 text-primary" />
-              )}
-              <h1 className="text-3xl font-bold text-primary">{appName}</h1>
-            </div>
-            <CardTitle className="text-2xl">Welcome</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
-          </CardHeader>
-          <LoginForm />
-        </Card>
-      </div>
-    );
-  }
-  
-  // Fallback loader for any other in-between states while redirecting.
   return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Card className="w-full max-w-md shadow-2xl border-none">
+        <CardHeader className="text-center">
+          <div className="flex justify-center items-center gap-3 mb-4">
+            {appLogo ? (
+              <img src={appLogo} alt={appName} className="h-10 w-auto object-contain" />
+            ) : (
+              <Ship className="w-8 h-8 text-primary" />
+            )}
+            <h1 className="text-3xl font-bold text-primary">{appName}</h1>
           </div>
-        </div>
-      </div>
-    );
+          <CardTitle className="text-2xl">Welcome</CardTitle>
+          <CardDescription>Enter your credentials to access your account</CardDescription>
+        </CardHeader>
+        <LoginForm />
+      </Card>
+    </div>
+  );
 }
+
+    

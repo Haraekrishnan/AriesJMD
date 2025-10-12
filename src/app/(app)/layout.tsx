@@ -56,13 +56,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // If the user is not active, we want to show the dedicated status page.
   // The actual /status page content will be rendered by its own page.tsx.
+  // We show a loader while the redirect is happening.
   if (user.status !== 'active') {
-    // Only render the children if we are on the status page
-    if (pathname === '/status') {
-       return <>{children}</>;
-    }
-    // Otherwise show a loader while redirecting
-    return (
+     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
           <Skeleton className="h-12 w-12 rounded-full" />
@@ -91,3 +87,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+    

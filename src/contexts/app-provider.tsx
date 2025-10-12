@@ -414,33 +414,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     if (storedUserId) {
         const userRef = ref(rtdb, 'users/' + storedUserId);
-        onValue(userRef, (snapshot) => {
+        const unsubscribe = onValue(userRef, (snapshot) => {
             if (snapshot.exists()) {
                 setUser({ id: snapshot.key, ...snapshot.val() });
             } else {
                 setStoredUserId(null); // Clear invalid ID
                 setUser(null);
             }
+             // Set loading to false only after we have a definitive user status
             setLoading(false);
-        }, { onlyOnce: true }); // Fetch user data once on initial load
+        });
+        return () => unsubscribe();
     } else {
         setUser(null);
         setLoading(false);
     }
   }, [storedUserId, setStoredUserId]);
-  
-  // Listen for real-time updates on the currently logged-in user
-  useEffect(() => {
-    let unsubscribe: () => void;
-    if (user?.id) {
-        const userRef = ref(rtdb, `users/${user.id}`);
-        unsubscribe = onValue(userRef, (snapshot) => {
-            const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            setUser(updatedUser);
-        });
-        return () => unsubscribe();
-    }
-  }, [user?.id]);
   
   useEffect(() => {
     const dataLoaded = roles.length > 0;
@@ -3523,3 +3512,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    
