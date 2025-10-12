@@ -19,9 +19,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return; // Wait until the loading state is resolved.
     }
 
-    // If there's no user, redirect to login. This is the primary guard.
+    // If no user, redirect to login. This is the primary guard for all app routes.
     if (!user) {
       router.replace('/login');
+      return;
+    }
+
+    // If an active user somehow lands on the login or status page, redirect to dashboard.
+    if (user.status === 'active') {
+      if (pathname === '/login' || pathname === '/status') {
+        router.replace('/dashboard');
+      }
       return;
     }
 
@@ -33,10 +41,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // If an active user somehow lands on the login or status page, redirect to dashboard.
-    if (pathname === '/login' || pathname === '/status') {
-      router.replace('/dashboard');
-    }
   }, [user, loading, router, pathname]);
 
   // Show a full-page loader while checking auth state or during initial redirection.
@@ -54,21 +58,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If the user is not active, we want to show the dedicated status page.
-  // The actual /status page content will be rendered by its own page.tsx.
-  // We show a loader while the redirect is happening.
+  // If user is not active but is on the correct status page, render the children (the status page content)
+  // without the main app layout.
   if (user.status !== 'active') {
-     return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
-        </div>
-      </div>
-    );
+    if (pathname === '/status') {
+      return <>{children}</>;
+    }
+    // While redirecting a non-active user, show a loader.
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+       <div className="flex items-center space-x-4">
+         <Skeleton className="h-12 w-12 rounded-full" />
+         <div className="space-y-2">
+           <Skeleton className="h-4 w-[250px]" />
+           <Skeleton className="h-4 w-[200px]" />
+         </div>
+       </div>
+     </div>
+   );
   }
 
   // If user is active and on a valid app page, render the full layout.
@@ -87,5 +94,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-    
