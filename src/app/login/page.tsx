@@ -1,29 +1,28 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
+import { useAppContext } from '@/contexts/app-provider';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
-import { useAppContext } from '@/contexts/app-provider';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
-  const { user, loading: contextLoading } = useAppContext();
+  const { user, loading } = useAppContext();
   const router = useRouter();
 
   useEffect(() => {
-    // If a logged-in and active user somehow lands on this page, redirect them away.
-    if (!contextLoading && user && user.status === 'active') {
+    // If an active user somehow lands on the login page, redirect them away.
+    // The main app layout will also enforce this, but this is an extra layer.
+    if (!loading && user && user.status === 'active') {
       router.replace('/dashboard');
     }
-  }, [user, contextLoading, router]);
+  }, [user, loading, router]);
 
-  // Show a loading screen until we're sure the user is not logged in.
-  // This prevents the login form from flashing for already authenticated users.
-  if (contextLoading || (user && user.status === 'active')) {
+  // While checking auth status, show a loader to prevent the login form from flashing.
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center space-x-4">
@@ -36,27 +35,57 @@ export default function LoginPage() {
       </div>
     );
   }
-  
-  // If user is locked or deactivated, the main app layout will handle redirection to /status
-  // So we don't need special logic here for that case.
-  // We only show the login form if we are sure there is no authenticated user or they are not active.
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="w-full max-w-md shadow-2xl border-none">
-        <CardHeader className="text-center">
-          <div className="flex justify-center items-center gap-3 mb-4">
-            {false ? (
-              <img src={''} alt={'Aries Marine'} className="h-10 w-auto object-contain" />
-            ) : (
-              <Ship className="w-8 h-8 text-primary" />
-            )}
-            <h1 className="text-3xl font-bold text-primary">Aries Marine</h1>
+
+  // If there's an authenticated user but they aren't active,
+  // the main app layout's logic will redirect them to /status.
+  // We can show a loader here as well while that happens.
+  if (user && user.status !== 'active') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
           </div>
-          <CardTitle className="text-2xl">Welcome</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
-        </CardHeader>
-        <LoginForm />
-      </Card>
-    </div>
-  );
+        </div>
+      </div>
+    );
+  }
+
+  // Only show the login form if we're done loading and there is no authenticated user.
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Card className="w-full max-w-md shadow-2xl border-none">
+          <CardHeader className="text-center">
+            <div className="flex justify-center items-center gap-3 mb-4">
+              {false ? (
+                <img src={''} alt={'Aries Marine'} className="h-10 w-auto object-contain" />
+              ) : (
+                <Ship className="w-8 h-8 text-primary" />
+              )}
+              <h1 className="text-3xl font-bold text-primary">Aries Marine</h1>
+            </div>
+            <CardTitle className="text-2xl">Welcome</CardTitle>
+            <CardDescription>Enter your credentials to access your account</CardDescription>
+          </CardHeader>
+          <LoginForm />
+        </Card>
+      </div>
+    );
+  }
+  
+  // Fallback loader for any other in-between states.
+  return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </div>
+      </div>
+    );
 }

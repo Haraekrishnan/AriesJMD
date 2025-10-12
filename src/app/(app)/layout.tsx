@@ -16,30 +16,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) {
-      return; // Do nothing while loading, the skeleton will be shown
+      return; // Wait until the loading state is resolved.
     }
 
-    // If no user is logged in, redirect to login page.
     if (!user) {
+      // If there's no user, redirect to login immediately.
       router.replace('/login');
       return;
     }
 
-    // Handle different user statuses
-    if (user.status === 'locked' || user.status === 'deactivated') {
+    if (user.status !== 'active') {
       // If user is locked/deactivated and NOT on the status page, redirect them.
       if (pathname !== '/status') {
         router.replace('/status');
       }
-    } else if (user.status === 'active') {
-      // If an active user lands on login or status, redirect to dashboard.
+    } else {
+      // If an active user lands on a non-app page, redirect to dashboard.
       if (pathname === '/login' || pathname === '/status') {
         router.replace('/dashboard');
       }
     }
   }, [user, loading, router, pathname]);
 
-  // Show a full-page loader while waiting for user data or redirection to complete.
+  // Show a full-page loader while checking auth state or during initial redirection.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -54,12 +53,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If the user is locked/deactivated, show a loading screen while redirecting to /status.
+  // If the user is not active, we want to show the dedicated status page.
+  // The useEffect above handles the redirection, so we can show a loader here.
   // The actual /status page content will be rendered by its own page.tsx.
   if (user.status !== 'active') {
+    // Only render the children if we are on the status page
     if (pathname === '/status') {
        return <>{children}</>;
     }
+    // Otherwise show a loader while redirecting
     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
