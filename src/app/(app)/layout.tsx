@@ -20,6 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router]);
 
+  // If the page is still loading or there's no user, show a skeleton screen.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -34,10 +35,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (user.status === 'locked' || user.status === 'deactivated') {
-    if (pathname !== '/status') {
-      router.replace('/status');
-    }
+  // If user is locked/deactivated AND they are NOT already on the status page, redirect them.
+  if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+    router.replace('/status');
     // Return a loader while redirecting to prevent rendering the main layout
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -52,8 +52,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If a logged-in, active user somehow lands on the status or login page, redirect them.
-  if (pathname === '/status' || pathname === '/login') {
+  // If a logged-in, active user somehow lands on the status page, redirect them to the dashboard.
+  if (user.status === 'active' && pathname === '/status') {
     router.replace('/dashboard');
     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -68,6 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If the user's status is fine or they are correctly on the status page, render the normal layout.
   return (
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
