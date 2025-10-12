@@ -15,36 +15,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Wait until the initial loading is complete.
-    if (loading) {
-      return;
+    if (!loading && !user) {
+      router.replace('/login');
     }
+  }, [user, loading, router]);
 
-    // If loading is finished and there's no user, redirect to login.
-    if (!user) {
-      if (pathname !== '/login') {
-        router.replace('/login');
-      }
-      return;
-    }
-
-    // Handle different user statuses if a user object exists.
-    const isLockedOrDeactivated = user.status === 'locked' || user.status === 'deactivated';
-
-    if (isLockedOrDeactivated) {
-      // If user is locked/deactivated, redirect to the status page.
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-    } else {
-      // If the user is active but on the status page, redirect to the dashboard.
-      if (pathname === '/status') {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, router, pathname]);
-
-  // Show a loading skeleton while checking auth state or if there's no user (to prevent flashing the app layout).
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -58,13 +33,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  // Special case for the status page: it should not have the main app layout.
+
   if (user.status === 'locked' || user.status === 'deactivated') {
-    if (pathname === '/status') {
-      return <main>{children}</main>;
+    if (pathname !== '/status') {
+      router.replace('/status');
     }
-    // If on any other page, the effect above will redirect, so we continue to show a loader.
+    // Continue showing loader while redirecting to status page
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">
@@ -78,7 +52,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is authenticated and active, render the full app layout.
+  // If user is active but on a non-app page (like /status or /login), redirect to dashboard
+  if (pathname === '/status' || pathname === '/login') {
+    router.replace('/dashboard');
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+            </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />

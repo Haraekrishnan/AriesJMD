@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,21 +16,16 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // This effect runs when auth state is determined.
-    if (!authLoading) {
-      if (user) {
-        // If user exists, redirect them based on their status.
-        if (user.status === 'locked' || user.status === 'deactivated') {
-          router.replace('/status');
-        } else {
-          router.replace('/dashboard');
-        }
-      }
+    // If the user is authenticated, redirect them away from the login page.
+    // The main layout will handle the specific destination (/dashboard or /status).
+    if (!authLoading && user) {
+      router.replace('/dashboard');
     }
   }, [user, authLoading, router]);
 
   const isLoading = authLoading || contextLoading;
 
+  // If we are still loading or if the user is authenticated (and we're waiting for redirect), show a loader.
   if (isLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
