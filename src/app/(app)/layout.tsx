@@ -15,9 +15,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login' && pathname !== '/status') {
-      router.replace('/login');
+    if (loading) return;
+
+    if (!user) {
+      if (pathname !== '/login') {
+        router.replace('/login');
+      }
+      return;
     }
+
+    if (user.status === 'locked' || user.status === 'deactivated') {
+      if (pathname !== '/status') {
+        router.replace('/status');
+      }
+      return;
+    }
+    
+    if (user.status === 'active' && (pathname === '/login' || pathname === '/status')) {
+      router.replace('/dashboard');
+    }
+
   }, [user, loading, router, pathname]);
 
   if (loading || !user) {
@@ -34,39 +51,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-    router.replace('/status');
+  if (user.status !== 'active') {
+    // For locked/deactivated users, if they are on the status page, render children (the status page content)
+    if (pathname === '/status') {
+      return <>{children}</>;
+    }
+    // Otherwise, show a loader while redirecting
     return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
         </div>
       </div>
     );
-  }
-
-  // If a logged-in, active user somehow lands on the status page, redirect them to the dashboard.
-  if (user.status === 'active' && pathname === '/status') {
-    router.replace('/dashboard');
-    return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
-        </div>
-      </div>
-    );
-  }
-  
-  if (pathname === '/status') {
-    return <>{children}</>;
   }
   
   return (
