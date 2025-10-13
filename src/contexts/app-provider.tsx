@@ -587,22 +587,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
     setLoading(true);
-    const usersRef = ref(rtdb, 'users');
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
     const snapshot = await get(usersRef);
-    const dbUsers = snapshot.val();
-    const usersArray: User[] = dbUsers ? Object.keys(dbUsers).map(k => ({ id: k, ...dbUsers[k] })) : [];
 
-    const foundUser = usersArray.find(u => u.email === email && u.password === pass);
-    
-    setLoading(false);
-    if (foundUser) {
-        setStoredUserId(foundUser.id);
-        if (foundUser.status && foundUser.status !== 'active') {
-            return { success: true, status: foundUser.status, user: foundUser };
+    if (snapshot.exists()) {
+        const usersData = snapshot.val();
+        const userId = Object.keys(usersData)[0];
+        const foundUser = { id: userId, ...usersData[userId] };
+
+        if (foundUser.password === pass) {
+            setStoredUserId(foundUser.id);
+             if (foundUser.status && foundUser.status !== 'active') {
+                setLoading(false);
+                return { success: true, status: foundUser.status, user: foundUser };
+            }
+            addActivityLog(foundUser.id, 'User Logged In');
+            setLoading(false);
+            return { success: true, status: 'active', user: foundUser };
         }
-        addActivityLog(foundUser.id, 'User Logged In');
-        return { success: true, status: 'active', user: foundUser };
     }
+    setLoading(false);
     return { success: false };
   }, [addActivityLog, setStoredUserId]);
 
@@ -3536,3 +3540,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
