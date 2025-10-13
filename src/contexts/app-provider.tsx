@@ -1816,8 +1816,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (typeof date === 'string') {
                 const parsed = parse(date, 'yyyy-MM-dd', new Date());
                 if (isValid(parsed)) return parsed.toISOString();
-                const parsed2 = parseISO(date);
-                if (isValid(parsed2)) return parsed2.toISOString();
             }
             return null;
         };
