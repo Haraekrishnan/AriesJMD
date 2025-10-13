@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -606,7 +607,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setLoading(false);
     return { success: false };
-}, [addActivityLog, setStoredUserId]);
+  }, [addActivityLog, setStoredUserId]);
 
   const logout = useCallback(() => {
     if (user) {
