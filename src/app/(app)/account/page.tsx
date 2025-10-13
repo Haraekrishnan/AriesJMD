@@ -10,7 +10,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, ShieldPlus, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -21,24 +21,23 @@ import ProjectManagementTable from '@/components/account/project-management-tabl
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordResetRequests from '@/components/account/password-reset-requests';
 import FeedbackManagement from '@/components/account/FeedbackManagement';
-import { Badge } from '@/components/ui/badge';
-import UnlockRequests from '@/components/account/UnlockRequests';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser } = useAppContext();
+  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
   const [avatar, setAvatar] = useState(user?.avatar || '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [newAppName, setNewAppName] = useState(appName);
   const [newAppLogo, setNewAppLogo] = useState<string | null>(appLogo);
+  const [newAppLogoFile, setNewAppLogoFile] = useState<File | null>(null);
 
   useEffect(() => {
     setNewAppName(appName);
@@ -95,20 +94,25 @@ export default function AccountPage() {
     }
   };
 
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewAppLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setNewAppLogoFile(file);
+      setNewAppLogo(URL.createObjectURL(file));
     }
   };
 
-  const handleBrandingSave = (e: React.FormEvent) => {
+  const handleBrandingSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateBranding(newAppName, newAppLogo);
+    let logoUrl = newAppLogo;
+    if (newAppLogoFile) {
+        // This is a simplified version. In a real app, you'd upload to a service
+        // and get a URL back. For this prototype, we'll just use the object URL.
+        // In a real implementation, you would call your Firebase Storage upload function here.
+        // For example: logoUrl = await uploadFile(newAppLogoFile, 'branding/logo');
+        toast({title: "Logo uploading..."}) // Placeholder for actual upload
+    }
+    updateBranding(newAppName, logoUrl);
     toast({
       title: 'Branding Updated',
       description: 'The application name and logo have been updated.',
@@ -126,18 +130,6 @@ export default function AccountPage() {
         variant: 'destructive',
         title: 'User Deleted',
         description: 'The user has been removed from the system.',
-    });
-  };
-
-  const handleStatusChange = (userId: string, action: 'lock' | 'unlock') => {
-    const actionMap = {
-        lock: lockUser,
-        unlock: unlockUser,
-    };
-    actionMap[action](userId);
-    toast({
-        title: 'User Status Updated',
-        description: `The user account has been ${action}ed.`,
     });
   };
 
@@ -159,8 +151,9 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground">{user.role}</p>
             </CardHeader>
           </Card>
-           {can.manage_password_resets && <PasswordResetRequests />}
-           {can.manage_user_lock_status && <UnlockRequests />}
+           {can.manage_password_resets && (
+              <PasswordResetRequests />
+            )}
         </div>
         <div className="md:col-span-2">
           <form onSubmit={handleProfileSave}>
@@ -252,7 +245,7 @@ export default function AccountPage() {
           </Card>
       )}
 
-      {(can.manage_roles || user.role === 'Admin') && (
+      {can.manage_roles && (
           <Card>
             <CardHeader>
                 <CardTitle>Role Management</CardTitle>
@@ -289,24 +282,19 @@ export default function AccountPage() {
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {visibleUsers.map((report, index) => {
+                      {visibleUsers.map(report => {
                           const supervisor = users.find(u => u.id === report.supervisorId);
                           return (
-                            <TableRow key={`${report.id}-${index}`}>
+                            <TableRow key={report.id}>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
                                         <Avatar className="h-9 w-9">
                                             <AvatarImage src={report.avatar} alt={report.name} />
                                             <AvatarFallback>{report.name.charAt(0)}</AvatarFallback>
                                         </Avatar>
-                                        <div>
-                                          <div className="font-medium flex items-center gap-2">
+                                        <div className="font-medium">
                                             <p>{report.name}</p>
-                                            <Badge variant={report.status === 'locked' ? 'destructive' : 'secondary'}>
-                                              {report.status || 'active'}
-                                            </Badge>
-                                          </div>
-                                          <p className="text-xs text-muted-foreground">{report.email}</p>
+                                            <p className="text-xs text-muted-foreground">{report.email}</p>
                                         </div>
                                     </div>
                                 </TableCell>
@@ -323,18 +311,22 @@ export default function AccountPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleEditClick(report)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                                    {report.status !== 'locked' && can.manage_user_lock_status && <DropdownMenuItem onSelect={() => handleStatusChange(report.id, 'lock')}><Lock className="mr-2 h-4 w-4" /> Lock</DropdownMenuItem>}
-                                                    {report.status === 'locked' && can.manage_user_lock_status && <DropdownMenuItem onSelect={() => handleStatusChange(report.id, 'unlock')}><Unlock className="mr-2 h-4 w-4" /> Unlock</DropdownMenuItem>}
+                                                    <DropdownMenuItem onSelect={() => handleEditClick(report)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    </DropdownMenuItem>
                                                     <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
                                                     </AlertDialogTrigger>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete the user account.</AlertDialogDescription>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete the user account.
+                                                    </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -361,3 +353,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
