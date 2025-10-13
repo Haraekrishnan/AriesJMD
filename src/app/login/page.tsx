@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -15,11 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.status === 'active') {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/status');
-      }
+      router.replace('/dashboard');
     }
   }, [user, loading, router]);
 

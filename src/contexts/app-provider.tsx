@@ -62,7 +62,6 @@ type AppContextType = {
   passwordResetRequests: PasswordResetRequest[];
   igpOgpRecords: IgpOgpRecord[];
   feedback: Feedback[];
-  unlockRequests: UnlockRequest[];
   appName: string;
   appLogo: string | null;
 
@@ -74,7 +73,6 @@ type AppContextType = {
   generateResetCode: (requestId: string) => void;
   resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
-  requestUnlock: (userId: string, userName: string) => void;
 
   // Permissions
   can: PermissionsObject;
@@ -137,11 +135,6 @@ type AppContextType = {
   updateUser: (user: User) => void;
   updateUserPlanningScore: (userId: string, score: number) => void;
   deleteUser: (userId: string) => void;
-  lockUser: (userId: string) => void;
-  unlockUser: (userId: string) => void;
-  deactivateUser: (userId: string) => void;
-  reactivateUser: (userId: string) => void;
-  resolveUnlockRequest: (requestId: string) => void;
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
@@ -359,7 +352,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
   const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
-  const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
 
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
@@ -406,7 +398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
-  const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
+  const unlockRequests = useMemo(() => [], []);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -435,8 +427,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            
-            // Only update state if there's a meaningful difference to prevent loops
             if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                  setUser(updatedUser);
             }
@@ -472,7 +462,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
       clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
       clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); clearState(setUnlockRequestsById);
+      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
       clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
       return;
     }
@@ -519,7 +509,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createDataListener('passwordResetRequests', setPasswordResetRequestsById),
       createDataListener('igpOgpRecords', setIgpOgpRecordsById),
       createDataListener('feedback', setFeedbackById),
-      createDataListener('unlockRequests', setUnlockRequestsById),
     ];
   
     const brandingRef = ref(rtdb, 'branding');
@@ -597,10 +586,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
-             if (foundUser.status && foundUser.status !== 'active') {
-                setLoading(false);
-                return { success: true, status: foundUser.status, user: foundUser };
-            }
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
             return { success: true, status: 'active', user: foundUser };
@@ -714,75 +699,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (!validRequest || !requestId) return false;
     
-    // Update user's password
     await update(ref(rtdb, `users/${validRequest.userId}`), { password: newPass });
-    // Mark request as handled
     await update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
 
     addActivityLog(validRequest.userId, 'Password Reset');
     return true;
 
   }, [addActivityLog]);
-
-  const lockUser = useCallback((userId: string) => {
-    if (!user) return;
-    update(ref(rtdb, `users/${userId}`), { status: 'locked' });
-    addActivityLog(user.id, 'User Locked', `Locked account for user ID: ${userId}`);
-  }, [user, addActivityLog]);
-
-  const unlockUser = useCallback((userId: string) => {
-    if (!user) return;
-    update(ref(rtdb, `users/${userId}`), { status: 'active' });
-    addActivityLog(user.id, 'User Unlocked', `Unlocked account for user ID: ${userId}`);
-  }, [user, addActivityLog]);
   
-  const deactivateUser = useCallback((userId: string) => {
-    if (!user) return;
-    update(ref(rtdb, `users/${userId}`), { status: 'deactivated' });
-    addActivityLog(user.id, 'User Deactivated', `Deactivated account for user ID: ${userId}`);
-  }, [user, addActivityLog]);
-  
-  const reactivateUser = useCallback((userId: string) => {
-    if (!user) return;
-    update(ref(rtdb, `users/${userId}`), { status: 'active' });
-    addActivityLog(user.id, 'User Reactivated', `Reactivated account for user ID: ${userId}`);
-  }, [user, addActivityLog]);
-  
-  const requestUnlock = useCallback((userId: string, userName: string) => {
-    const newRequestRef = push(ref(rtdb, 'unlockRequests'));
-    const newRequest: Omit<UnlockRequest, 'id'> = {
-        userId,
-        userName,
-        date: new Date().toISOString(),
-        status: 'pending',
-    };
-    set(newRequestRef, newRequest);
-
-    const admins = users.filter(u => u.role === 'Admin');
-    admins.forEach(admin => {
-        if (admin.email) {
-            createAndSendNotification(
-                admin.email,
-                `Account Unlock Request from ${userName}`,
-                'Account Unlock Request',
-                { 'User': userName },
-                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-                'View Requests'
-            );
-        }
-    });
-
-  }, [users]);
-
-  const resolveUnlockRequest = useCallback((requestId: string) => {
-    if (!user) return;
-    const request = unlockRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    unlockUser(request.userId);
-    update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
-  }, [user, unlockRequests, unlockUser]);
-
   const can = useMemo(() => {
     const permissions = new Set<Permission>();
     if (user && !loading && roles.length > 0) {
@@ -898,7 +822,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
     const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
     const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
-    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingUnlockRequestCount = 0; // Removed feature
 
     const { workingManpowerCount, onLeaveManpowerCount } = manpowerProfiles.reduce((acc, profile) => {
         if(profile.status === 'Working') acc.workingManpowerCount++;
@@ -909,7 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
     };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, unlockRequests, manpowerProfiles]);
+  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
@@ -3524,9 +3448,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
 
+  const requestUnlock = useCallback((userId: string, userName: string) => {
+    // This feature is removed.
+  }, []);
+
+  const resolveUnlockRequest = useCallback((requestId: string) => {
+    // This feature is removed.
+  }, []);
+
+  const lockUser = useCallback((userId: string) => {
+    // This feature is removed.
+  }, []);
+
+  const unlockUser = useCallback((userId: string) => {
+    // This feature is removed.
+  }, []);
+
+  const deactivateUser = useCallback((userId: string) => {
+    // This feature is removed.
+  }, []);
+
+  const reactivateUser = useCallback((userId: string) => {
+    // This feature is removed.
+  }, []);
+
   const contextValue: AppContextType = {
-    user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, requestUnlock, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, lockUser, unlockUser, deactivateUser, reactivateUser, resolveUnlockRequest, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+    user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, appName, appLogo,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement, addBroadcast, dismissBroadcast, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, resolvePpeDispute,
+    // Pass placeholder functions for removed features to avoid breaking the app
+    requestUnlock: () => {}, resolveUnlockRequest: () => {},
     ...computedValue,
   };
 
@@ -3540,5 +3490,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
