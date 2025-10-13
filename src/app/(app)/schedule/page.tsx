@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -47,3 +48,5 @@ export default function SchedulePage() {
         </div>
     );
 }
+
+    

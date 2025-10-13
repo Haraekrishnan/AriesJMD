@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, startOfWeek, endOfWeek, isSameMonth, isToday, isPast } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, startOfWeek, endOfWeek, isSameMonth, isToday, isPast, isValid, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Edit, Trash2, Send, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -210,7 +211,9 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                     {selectedDayEvents.map((event) => {
                                         const creator = users.find(u => u.id === event.creatorId);
                                         const canModifyEvent = user?.id === event.creatorId || user?.role === 'Admin';
-                                        const isEventInPast = event.date ? isPast(new Date(event.date)) : true;
+                                        const eventDate = event.date ? parseISO(event.date) : null;
+                                        const isEventInPast = eventDate ? isPast(eventDate) : true;
+                                        
                                         return (
                                             <div key={event.id} className="p-3 border rounded-md bg-muted/50">
                                                 <div className="flex justify-between items-start">
@@ -241,15 +244,17 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                             )}
                             <div className="space-y-3">
                                 {selectedDayComments.length > 0 ? selectedDayComments.map((comment) => {
-                                    if (!comment) return null;
+                                    if (!comment || !comment.date) return null;
                                     const commentUser = users.find(u => u.id === comment.userId);
                                     const canModify = user?.id === comment.userId || user?.role === 'Admin';
                                     const isEditing = editingComment?.id === comment.id;
+                                    const commentDate = parseISO(comment.date);
+                                    
                                     return (
                                         <div key={comment.id} className="flex items-start gap-2 group">
-                                            <Avatar className="h-7 w-7"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                            <Avatar className="h-7 w-7"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name?.charAt(0) || '?'}</AvatarFallback></Avatar>
                                             <div className="bg-muted p-2 rounded-lg w-full text-sm">
-                                                <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{comment.date ? format(new Date(comment.date), 'p') : ''}</p></div>
+                                                <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{isValid(commentDate) ? format(commentDate, 'p') : ''}</p></div>
                                                 {isEditing ? (
                                                     <div className='mt-2 space-y-2'>
                                                         <Textarea value={editingComment.text} onChange={(e) => setEditingComment({...editingComment, text: e.target.value})} className="bg-background"/>
@@ -297,3 +302,5 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
+
+    

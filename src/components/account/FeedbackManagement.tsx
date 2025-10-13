@@ -30,7 +30,7 @@ export default function FeedbackManagement() {
 
     const filteredFeedback = useMemo(() => {
         if (!feedback || !Array.isArray(feedback)) return [];
-        const sorted = [...feedback].sort((a,b) => {
+        const sorted = [...feedback].sort((a, b) => {
             if (!a?.date) return 1;
             if (!b?.date) return -1;
             const dateA = parseISO(a.date);
@@ -68,9 +68,7 @@ export default function FeedbackManagement() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="New">New</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Resolved">Resolved</SelectItem>
+                        {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
