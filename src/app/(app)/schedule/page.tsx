@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -33,8 +32,8 @@ export default function SchedulePage() {
                                     <SelectValue placeholder="Select an employee" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {visibleUsers.map(u => (
-                                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                    {visibleUsers.map((u, index) => (
+                                        <SelectItem key={`${u.id}-${index}`} value={u.id}>{u.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
