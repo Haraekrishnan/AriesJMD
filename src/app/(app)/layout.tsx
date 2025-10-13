@@ -14,12 +14,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // If loading is finished and there's still no user, redirect to login.
-    if (!loading && !user) {
+    // If loading is finished, there's no user, and we are not already on the login page, redirect.
+    if (!loading && !user && pathname !== '/login') {
       router.replace('/login');
     }
-  }, [user, loading, router]);
-  
+  }, [user, loading, router, pathname]);
+
   // While the initial authentication is loading, or if there's no user yet (and we're about to redirect),
   // show a consistent loading skeleton. This prevents any flickering of the main layout.
   if (loading || !user) {
