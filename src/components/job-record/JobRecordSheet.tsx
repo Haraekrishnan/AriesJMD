@@ -460,7 +460,7 @@ export default function JobRecordSheet() {
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
-                const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
+                const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                 const summary = dayHeadersExcel.reduce((acc, day) => {
                     const code = employeeRecord[day];
                     if (offCodes.includes(code)) acc.offDays++;
@@ -714,7 +714,7 @@ export default function JobRecordSheet() {
                             const dailyOvertime = record.dailyOvertime || {};
                             const dailyComments = record.dailyComments || {};
                             
-                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'KD', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
+                            const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                             const offCodes = ['OFF', 'PH', 'OS'];
                             const leaveCodes = ['L', 'X', 'NWS'];
                             const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
@@ -732,7 +732,7 @@ export default function JobRecordSheet() {
 
                             const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                             const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
-                            const salaryDays = (additionalSundays || 0) + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                             const isExpanded = expandedRows.has(profile.id);
 
                             return (
@@ -974,3 +974,4 @@ export default function JobRecordSheet() {
     
 
     
+
