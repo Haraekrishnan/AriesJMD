@@ -24,20 +24,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user.status !== 'active') {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-      return;
+    if (user.status !== 'active' && pathname !== '/status') {
+      router.replace('/status');
     }
     
-    // This was causing the redirect loop. The login/status pages will handle their own redirects.
-    // if (pathname === '/login' || pathname === '/status') {
-    //   router.replace('/dashboard');
-    // }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || !user || (user.status !== 'active' && pathname !== '/status')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -50,19 +43,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
+  
   if (user.status !== 'active') {
-     return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-           <div className="flex items-center space-x-4">
-               <Skeleton className="h-12 w-12 rounded-full" />
-               <div className="space-y-2">
-                   <Skeleton className="h-4 w-[250px]" />
-                   <Skeleton className="h-4 w-[200px]" />
-               </div>
-           </div>
-       </div>
-   );
+      if (pathname === '/status') {
+          return <>{children}</>;
+      }
+      return (
+          <div className="flex h-screen w-full items-center justify-center bg-background">
+              <div className="flex items-center space-x-4">
+                  <p>Redirecting...</p>
+              </div>
+          </div>
+      );
   }
   
   return (
