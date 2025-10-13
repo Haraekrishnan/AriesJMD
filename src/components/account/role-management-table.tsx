@@ -61,7 +61,7 @@ export default function RoleManagementTable() {
                             <TableCell className="font-medium">{role.name}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-1 max-w-md">
-                                    {permissions.map(permission => (
+                                    {permissions.map((permission) => (
                                         <Badge key={permission} variant="secondary">
                                             {permission.replace(/_/g, ' ')}
                                         </Badge>
