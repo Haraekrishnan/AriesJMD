@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -311,64 +311,63 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
 }
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
-    const { user, markPpeRequestAsViewed } = useAppContext();
-    const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+  const { user, markPpeRequestAsViewed } = useAppContext();
+  const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-    const { activeRequests, completedRequests } = useMemo(() => {
-        const active: PpeRequest[] = [];
-        const completed: PpeRequest[] = [];
-        requests.forEach(req => {
-            if (req.status === 'Issued' || req.status === 'Rejected') {
-                completed.push(req);
-            } else {
-                active.push(req);
+  const { activeRequests, completedRequests } = useMemo(() => {
+    const active: PpeRequest[] = [];
+    const completed: PpeRequest[] = [];
+    requests.forEach(req => {
+      if (req.status === 'Issued' || req.status === 'Rejected') {
+        completed.push(req);
+      } else {
+        active.push(req);
+      }
+    });
+    return { activeRequests: active, completedRequests: completed };
+  }, [requests]);
+
+  useEffect(() => {
+    if (isCompletedOpen && user) {
+        completedRequests.forEach(req => {
+            if (req.requesterId === user.id && !req.viewedByRequester) {
+                markPpeRequestAsViewed(req.id);
             }
         });
-        return { activeRequests: active, completedRequests: completed };
-    }, [requests]);
-
-    useEffect(() => {
-        if (isCompletedOpen && user) {
-            completedRequests.forEach(req => {
-                if (req.requesterId === user.id && !req.viewedByRequester) {
-                    markPpeRequestAsViewed(req.id);
-                }
-            });
-        }
-    }, [isCompletedOpen, completedRequests, user, markPpeRequestAsViewed]);
-
-
-    if (requests.length === 0) {
-        return <p className="text-center py-10 text-muted-foreground">No PPE requests found.</p>;
     }
+  }, [isCompletedOpen, completedRequests, user, markPpeRequestAsViewed]);
 
-    return (
-        <div className="space-y-4">
-            <div className="space-y-2">
-                <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
-                {activeRequests.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
-                )}
-            </div>
-             {completedRequests.length > 0 && (
-                <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
-                    <AccordionItem value="completed-requests" className="border rounded-md">
-                        <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
-                           Completed & Rejected Requests ({completedRequests.length})
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {completedRequests.map(req => <RequestCard key={req.id} req={req} />)}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-             )}
-        </div>
-    );
+
+  if (requests.length === 0) {
+    return <p className="text-center py-10 text-muted-foreground">No PPE requests found.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
+        {activeRequests.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
+        )}
+      </div>
+       {completedRequests.length > 0 && (
+        <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
+          <AccordionItem key="completed-requests" value="completed-requests" className="border rounded-md">
+            <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
+               Completed & Rejected Requests ({completedRequests.length})
+            </AccordionTrigger>
+            <AccordionContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {completedRequests.map(req => <RequestCard key={req.id} req={req} />)}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+       )}
+    </div>
+  );
 }
-
