@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -15,15 +14,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // If not loading and there's no user, redirect to login.
-    // This is the main guard for the authenticated parts of the app.
+    // If loading is finished and there's still no user, redirect to login.
     if (!loading && !user) {
       router.replace('/login');
     }
   }, [user, loading, router]);
   
-  // While the initial user authentication is in progress, or if there's no user yet, show a loading skeleton.
-  // This prevents the flicker by ensuring we don't render the app until the user state is confirmed.
+  // While the initial authentication is loading, or if there's no user yet (and we're about to redirect),
+  // show a consistent loading skeleton. This prevents any flickering of the main layout.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -38,24 +36,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If the user is not active, redirect them to the status page.
+  // If the user's account is locked or deactivated, redirect them to the status page.
   if (user.status === 'locked' || user.status === 'deactivated') {
     if (pathname !== '/status') {
       router.replace('/status');
-      // Show a loader while redirecting.
+      // Continue to show a loader while the redirection is in progress.
       return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
           <p>Redirecting...</p>
         </div>
       );
     }
-    // If we are already on the status page, let it render.
+    // If we are already on the status page, let it render without the main layout.
     return <>{children}</>;
   }
   
-  // If an active user somehow lands on login/status, redirect them to the dashboard.
+  // If an active user somehow lands on a public page like login or status, redirect them to the dashboard.
   if (pathname === '/login' || pathname === '/status') {
     router.replace('/dashboard');
+    // Show a loader during this redirect as well.
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
            <p>Redirecting...</p>
