@@ -18,14 +18,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/login');
     }
     
-    if (!loading && user && (user.status === 'locked' || user.status === 'deactivated')) {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
+    if (!loading && user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+      router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || !user || (!loading && user && (user.status === 'locked' || user.status === 'deactivated'))) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -36,17 +34,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
         </div>
       </div>
-    );
-  }
-  
-  if (pathname === '/login' || (user && (user.status === 'locked' || user.status === 'deactivated'))) {
-    if (pathname !== '/status') {
-       router.replace('/status');
-    }
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-           <p>Redirecting...</p>
-        </div>
     );
   }
 
