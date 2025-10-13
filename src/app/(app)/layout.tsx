@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -23,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user || (!loading && user && (user.status === 'locked' || user.status === 'deactivated'))) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
