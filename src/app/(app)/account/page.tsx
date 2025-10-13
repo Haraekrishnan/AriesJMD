@@ -289,10 +289,10 @@ export default function AccountPage() {
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {visibleUsers.map(report => {
+                      {visibleUsers.map((report, index) => {
                           const supervisor = users.find(u => u.id === report.supervisorId);
                           return (
-                            <TableRow key={report.id}>
+                            <TableRow key={`${report.id}-${index}`}>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
                                         <Avatar className="h-9 w-9">
