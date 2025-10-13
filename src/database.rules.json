@@ -5,7 +5,7 @@
     ".read": false,
     ".write": false,
     "users": {
-      ".read": "query.orderByChild === 'email'",
+      ".read": true,
       ".write": true,
       ".indexOn": "email"
     },
@@ -168,10 +168,10 @@
     },
     "feedback": {
         ".read": true,
-        ".write": "auth != null"
+        ".write": true
     },
     "unlockRequests": {
-        ".read": "auth != null",
+        ".read": true,
         ".write": true
     }
   }
