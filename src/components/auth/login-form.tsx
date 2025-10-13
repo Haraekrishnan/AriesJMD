@@ -61,10 +61,10 @@ export function LoginForm() {
     const result = await login(data.email, data.password);
     
     if (result.success && result.user) {
-        if (result.user.status === 'active') {
-            router.replace('/dashboard');
-        } else {
+        if (result.user.status === 'locked' || result.user.status === 'deactivated') {
             router.replace('/status');
+        } else {
+            router.replace('/dashboard');
         }
     } else {
       toast({

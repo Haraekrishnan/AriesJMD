@@ -17,6 +17,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !user && pathname !== '/login') {
       router.replace('/login');
     }
+    
+    if (!loading && user && (user.status === 'locked' || user.status === 'deactivated')) {
+      if (pathname !== '/status') {
+        router.replace('/status');
+      }
+    }
   }, [user, loading, router, pathname]);
 
   if (loading || !user) {
@@ -33,8 +39,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (pathname === '/login') {
-    router.replace('/dashboard');
+  if (pathname === '/login' || (user && (user.status === 'locked' || user.status === 'deactivated'))) {
+    if (pathname !== '/status') {
+       router.replace('/status');
+    }
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
            <p>Redirecting...</p>
