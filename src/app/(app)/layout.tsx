@@ -31,9 +31,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    if (pathname === '/login' || pathname === '/status') {
-      router.replace('/dashboard');
-    }
+    // This was causing the redirect loop. The login/status pages will handle their own redirects.
+    // if (pathname === '/login' || pathname === '/status') {
+    //   router.replace('/dashboard');
+    // }
   }, [user, loading, router, pathname]);
 
   if (loading || !user) {
