@@ -425,7 +425,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Listen for status changes on the current user
   useEffect(() => {
-    if (user && user.id) {
+    if (user?.id) {
         const userRef = ref(rtdb, `users/${user.id}`);
         const unsubscribe = onValue(userRef, (snapshot) => {
             if (!snapshot.exists()) {
@@ -435,11 +435,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (updatedUser.status && updatedUser.status !== 'active') {
-                setUser(updatedUser); 
-                router.replace('/status');
-            } else if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-              setUser(updatedUser);
+            
+            // Only update state if there's a meaningful difference to prevent loops
+            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                 setUser(updatedUser);
             }
         });
         return () => unsubscribe();
@@ -588,25 +587,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
     setLoading(true);
-    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const usersRef = ref(rtdb, 'users');
     const snapshot = await get(usersRef);
+    const dbUsers = snapshot.val();
+    const usersArray: User[] = dbUsers ? Object.keys(dbUsers).map(k => ({ id: k, ...dbUsers[k] })) : [];
+
+    const foundUser = usersArray.find(u => u.email === email && u.password === pass);
+    
     setLoading(false);
-    
-    if (snapshot.exists()) {
-        const usersData = snapshot.val();
-        const userId = Object.keys(usersData)[0];
-        const foundUser = { id: userId, ...usersData[userId] };
-        
-        if (foundUser.password === pass) {
-            setUser(foundUser);
-            setStoredUserId(foundUser.id);
-            addActivityLog(foundUser.id, 'User Logged In');
-            return { success: true, status: foundUser.status || 'active', user: foundUser };
+    if (foundUser) {
+        setStoredUserId(foundUser.id);
+        if (foundUser.status && foundUser.status !== 'active') {
+            return { success: true, status: foundUser.status, user: foundUser };
         }
+        addActivityLog(foundUser.id, 'User Logged In');
+        return { success: true, status: 'active', user: foundUser };
     }
-    
     return { success: false };
-}, [addActivityLog, setStoredUserId]);
+  }, [addActivityLog, setStoredUserId]);
 
   const logout = useCallback(() => {
     if (user) {
