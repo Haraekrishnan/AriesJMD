@@ -16,11 +16,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) {
-      return; // Wait until the loading state is resolved.
+      return; 
     }
 
     if (!user) {
-      router.replace('/login');
+      if (pathname !== '/login') {
+        router.replace('/login');
+      }
       return;
     }
 
@@ -106,3 +108,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+    

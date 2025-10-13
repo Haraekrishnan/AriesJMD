@@ -412,31 +412,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     if (storedUserId) {
-      setLoading(true);
-      const userRef = ref(rtdb, 'users/' + storedUserId);
-      unsubscribe = onValue(userRef, (snapshot) => {
-        if (snapshot.exists()) {
-          setUser({ id: snapshot.key, ...snapshot.val() });
-        } else {
-          setStoredUserId(null); // Clear invalid ID
-          setUser(null);
-        }
-        setLoading(false); // Set loading to false after user data is processed
-      });
+        setLoading(true);
+        const userRef = ref(rtdb, 'users/' + storedUserId);
+        unsubscribe = onValue(userRef, (snapshot) => {
+            if (snapshot.exists()) {
+                setUser({ id: snapshot.key, ...snapshot.val() });
+                setLoading(false);
+            } else {
+                setStoredUserId(null); // Clear invalid ID
+                setUser(null);
+                setLoading(false);
+            }
+        }, (error) => {
+            console.error("Firebase read failed: " + error.name);
+            setLoading(false);
+        });
     } else {
-      setUser(null);
-      setLoading(false);
+        setUser(null);
+        setLoading(false);
     }
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+        if (unsubscribe) {
+            unsubscribe();
+        }
     };
-  }, [storedUserId, setStoredUserId]);
+}, [storedUserId, setStoredUserId]);
   
   useEffect(() => {
-    const dataLoaded = roles.length > 0;
-    if (loading || !dataLoaded) return; 
+    let dataLoaded = roles.length > 0;
+    if (!dataLoaded) return; 
 
     if (!rtdb) {
       console.error("Firebase Realtime Database is not initialized.");
@@ -515,7 +519,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [loading, roles.length]);
+  }, [roles.length]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -3520,3 +3524,5 @@ export const useAppContext = (): AppContextType => {
     
 
   
+
+    
