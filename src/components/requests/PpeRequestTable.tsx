@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -293,7 +292,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                            <AlertDialogAction onClick={handleConfirmBulkAction}>{action}</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -348,7 +347,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map(req => <RequestCard key={req.id} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -362,7 +361,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map(req => <RequestCard key={req.id} req={req} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
