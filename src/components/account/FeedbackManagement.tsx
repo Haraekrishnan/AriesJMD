@@ -31,8 +31,8 @@ export default function FeedbackManagement() {
     const filteredFeedback = useMemo(() => {
         if (!feedback || !Array.isArray(feedback)) return [];
         const sorted = [...feedback].sort((a,b) => {
-            if (!a || !a.date) return 1; // Move items without a date to the end
-            if (!b || !b.date) return -1; // Keep items without a date at the end
+            if (!a || !a.date) return 1;
+            if (!b || !b.date) return -1;
             const dateA = parseISO(a.date);
             const dateB = parseISO(b.date);
             if (!isValid(dateA)) return 1;
