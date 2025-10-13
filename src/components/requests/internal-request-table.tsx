@@ -105,7 +105,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     <div className="flex justify-between items-start">
                         <div>
                         <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
-                        <p className="text-sm text-muted-foreground">ID: {req.id.slice(-6)} &middot; {req.date ? format(parseISO(req.date), 'dd MMM yyyy') : 'No date'}</p>
+                        <p className="text-sm text-muted-foreground">ID: {req.id ? req.id.slice(-6) : 'N/A'} &middot; {req.date ? format(parseISO(req.date), 'dd MMM yyyy') : 'No date'}</p>
                         </div>
                         {needsAcknowledgement ? (
                         <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
