@@ -159,7 +159,7 @@ type AppContextType = {
   publishIncident: (incidentId: string, comment: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
   markIncidentAsViewed: (incidentId: string) => void;
-  addManpowerLog: (log: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate?: Date) => Promise<void>;
+  addManpowerLog: (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate?: Date) => Promise<void>;
   updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => Promise<void>;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => Promise<void>;
   addMultipleManpowerProfiles: (profiles: any[]) => number;
@@ -1667,7 +1667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, incidentReports]);
   
-  const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate: Date = new Date()) => {
+  const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string; logType?: 'daily' | 'total'; newTotal?: number; }, logDate: Date = new Date()) => {
     if (!user) return;
     const dateStr = format(logDate, 'yyyy-MM-dd');
     
@@ -1683,7 +1683,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const countIn = logData.countIn || 0;
     const countOut = logData.countOut || 0;
     const countOnLeave = logData.countOnLeave || 0;
-    const total = yesterdayCount + countIn - countOut;
+    
+    let total;
+    if (logData.logType === 'total' && logData.newTotal !== undefined) {
+        total = logData.newTotal;
+    } else {
+        total = yesterdayCount + countIn - countOut;
+    }
     
     const logEntry: Omit<ManpowerLog, 'id'> = {
       projectId: logData.projectId,
@@ -2014,7 +2020,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
 
     const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments`] = [...existingComments, { ...newComment, id: newCommentRef.key }];
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
@@ -3497,4 +3503,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
