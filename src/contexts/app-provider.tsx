@@ -412,17 +412,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     if (storedUserId) {
-        setLoading(true);
         const userRef = ref(rtdb, 'users/' + storedUserId);
         unsubscribe = onValue(userRef, (snapshot) => {
             if (snapshot.exists()) {
-                setUser({ id: snapshot.key, ...snapshot.val() });
-                setLoading(false);
+                const fetchedUser = { id: snapshot.key, ...snapshot.val() };
+                setUser(fetchedUser);
             } else {
                 setStoredUserId(null); // Clear invalid ID
                 setUser(null);
-                setLoading(false);
             }
+            setLoading(false);
         }, (error) => {
             console.error("Firebase read failed: " + error.name);
             setLoading(false);
@@ -439,9 +438,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }, [storedUserId, setStoredUserId]);
   
   useEffect(() => {
-    let dataLoaded = roles.length > 0;
-    if (!dataLoaded) return; 
-
     if (!rtdb) {
       console.error("Firebase Realtime Database is not initialized.");
       return;
@@ -519,7 +515,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [roles.length]);
+  }, []);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -576,16 +572,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const foundUser = usersArray.find(u => u.email === email && u.password === pass);
     
+    setLoading(false);
     if (foundUser) {
         setStoredUserId(foundUser.id);
-        setUser(foundUser);
-        if (foundUser.status === 'active') {
-            addActivityLog(foundUser.id, 'User Logged In');
+        if (foundUser.status && foundUser.status !== 'active') {
+            return { success: true, status: foundUser.status, user: foundUser };
         }
-        setLoading(false);
-        return { success: true, status: foundUser.status, user: foundUser };
+        addActivityLog(foundUser.id, 'User Logged In');
+        return { success: true, status: 'active', user: foundUser };
     }
-    setLoading(false);
     return { success: false };
   }, [addActivityLog, setStoredUserId]);
 
@@ -2036,7 +2031,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const existingComments = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
 
     const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/comments`] = [...existingComments, { ...newComment, id: newCommentRef.key }];
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
@@ -3519,10 +3514,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    
-
-  
-
-    

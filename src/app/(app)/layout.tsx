@@ -16,24 +16,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) {
-      return; 
+      return; // Do nothing while loading
     }
 
     if (!user) {
-      if (pathname !== '/login') {
-        router.replace('/login');
-      }
+      // If not loading and no user, redirect to login
+      router.replace('/login');
       return;
     }
 
     if (user.status !== 'active') {
+      // If user is not active, redirect to status page
       if (pathname !== '/status') {
         router.replace('/status');
       }
       return; 
     }
     
-    // If user is active, but they are on a non-app page, redirect them to dashboard.
+    // If active user lands on login or status page, redirect to dashboard
     if (pathname === '/login' || pathname === '/status') {
       router.replace('/dashboard');
     }
@@ -108,5 +108,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-    
