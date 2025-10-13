@@ -1,4 +1,3 @@
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -21,6 +20,7 @@ import ProjectManagementTable from '@/components/account/project-management-tabl
 import { Skeleton } from '@/components/ui/skeleton';
 import PasswordResetRequests from '@/components/account/password-reset-requests';
 import FeedbackManagement from '@/components/account/FeedbackManagement';
+import UnlockRequests from '@/components/account/UnlockRequests';
 
 export default function AccountPage() {
   const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
@@ -153,6 +153,9 @@ export default function AccountPage() {
           </Card>
            {can.manage_password_resets && (
               <PasswordResetRequests />
+            )}
+            {can.manage_user_lock_status && (
+              <UnlockRequests />
             )}
         </div>
         <div className="md:col-span-2">
@@ -353,5 +356,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    

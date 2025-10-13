@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAppContext } from "@/contexts/app-provider";
@@ -20,6 +19,10 @@ export default function UnlockRequests() {
 
     const pendingRequests = (unlockRequests || []).filter(r => r.status === 'pending');
     
+    if (pendingRequests.length === 0) {
+        return null; // Don't render the card if there are no requests
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -32,30 +35,26 @@ export default function UnlockRequests() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {pendingRequests.length > 0 ? (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Requested</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Requested</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {pendingRequests.map(req => (
+                            <TableRow key={req.id}>
+                                <TableCell>{req.userName}</TableCell>
+                                <TableCell>{formatDistanceToNow(parseISO(req.date), { addSuffix: true })}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button size="sm" onClick={() => handleResolve(req.id)}>Unlock Account</Button>
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {pendingRequests.map(req => (
-                                <TableRow key={req.id}>
-                                    <TableCell>{req.userName}</TableCell>
-                                    <TableCell>{formatDistanceToNow(parseISO(req.date), { addSuffix: true })}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button size="sm" onClick={() => handleResolve(req.id)}>Unlock Account</Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No pending unlock requests.</p>
-                )}
+                        ))}
+                    </TableBody>
+                </Table>
             </CardContent>
         </Card>
     );
