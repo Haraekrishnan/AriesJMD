@@ -76,7 +76,7 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
             <SelectContent>
                 {canSelectAll && <SelectItem key="all" value="all">All Visible Members</SelectItem>}
                 {visibleUsers.map(u => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
             </SelectContent>
             </Select>
