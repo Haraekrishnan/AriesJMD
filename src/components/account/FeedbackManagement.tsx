@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -30,6 +31,8 @@ export default function FeedbackManagement() {
     const filteredFeedback = useMemo(() => {
         if (!feedback || !Array.isArray(feedback)) return [];
         const sorted = [...feedback].sort((a,b) => {
+            if (!a || !a.date) return 1; // Move items without a date to the end
+            if (!b || !b.date) return -1; // Keep items without a date at the end
             const dateA = parseISO(a.date);
             const dateB = parseISO(b.date);
             if (!isValid(dateA)) return 1;
@@ -50,7 +53,8 @@ export default function FeedbackManagement() {
         return <p className="text-muted-foreground">No feedback has been submitted yet.</p>;
     }
     
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'Invalid Date';
         const date = parseISO(dateString);
         return isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date';
     };
@@ -72,6 +76,7 @@ export default function FeedbackManagement() {
             </div>
              <Accordion type="multiple" className="w-full space-y-2">
                 {filteredFeedback.map(item => {
+                    if (!item) return null; // Add a guard for potentially null items in the array
                     const submitter = users.find(u => u.id === item.userId);
                     return (
                         <AccordionItem key={item.id} value={item.id} className="border rounded-lg">
