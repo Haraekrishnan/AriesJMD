@@ -857,16 +857,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
     const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
 
-    const { workingManpowerCount, onLeaveManpowerCount } = manpowerProfiles.reduce((acc, profile) => {
-        if(profile.status === 'Working') acc.workingManpowerCount++;
-        if(profile.status === 'On Leave') acc.onLeaveManpowerCount++;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todaysLogs = manpowerLogs.filter(log => log.date === todayStr);
+    
+    const { workingManpowerCount, onLeaveManpowerCount } = todaysLogs.reduce((acc, log) => {
+        acc.workingManpowerCount += (log.total || 0);
+        acc.onLeaveManpowerCount += (log.countOnLeave || 0);
         return acc;
     }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
 
     return {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
     };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests]);
+  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, manpowerLogs]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
@@ -2078,10 +2081,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Issued';
         } else if (allStatuses.has('Approved')) {
             updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-        } else if (updatedItems.every(i => i.status === 'Rejected')) {
-            updates[`internalRequests/${requestId}/status`] = 'Rejected';
-        } else if (allStatuses.has('Pending')) {
+        } else if (updatedItems.every(i => i.status === 'Pending')) {
              updates[`internalRequests/${requestId}/status`] = 'Pending';
+        } else {
+             updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
         }
     }
 
@@ -3503,5 +3506,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
