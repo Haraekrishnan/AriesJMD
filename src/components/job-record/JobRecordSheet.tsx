@@ -45,6 +45,7 @@ export default function JobRecordSheet() {
     const [cellStates, setCellStates] = useState<Record<string, string>>({});
     const [overtimeStates, setOvertimeStates] = useState<Record<string, string>>({});
     const [commentStates, setCommentStates] = useState<Record<string, string>>({});
+    const [sundayDutyStates, setSundayDutyStates] = useState<Record<string, string>>({});
 
     const [dragState, setDragState] = useState<{
         isDragging: boolean;
@@ -214,6 +215,7 @@ export default function JobRecordSheet() {
         const newStates: Record<string, string> = {};
         const newOtStates: Record<string, string> = {};
         const newCommentStates: Record<string, string> = {};
+        const newSundayDutyStates: Record<string, string> = {};
         
         if (jobRecords[monthKey]?.records) {
             for (const profileId in jobRecords[monthKey].records) {
@@ -233,11 +235,15 @@ export default function JobRecordSheet() {
                         newCommentStates[`${profileId}-${day}`] = record.dailyComments[day as any] || '';
                     }
                 }
+                if (record.additionalSundayDuty) {
+                    newSundayDutyStates[profileId] = record.additionalSundayDuty.toString();
+                }
             }
         }
         setCellStates(newStates);
         setOvertimeStates(newOtStates);
         setCommentStates(newCommentStates);
+        setSundayDutyStates(newSundayDutyStates);
     }, [jobRecords, monthKey]);
 
     const getSelectionRange = () => {
@@ -346,6 +352,10 @@ export default function JobRecordSheet() {
        saveJobRecord(monthKey, employeeId, 0, plant, 'plant');
     }
     
+    const handleSundayDutyChange = (profileId: string, value: string) => {
+        setSundayDutyStates(prev => ({ ...prev, [profileId]: value }));
+    }
+
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? null : parseInt(value, 10);
         if (days !== null && !isNaN(days) && days >= 0) {
@@ -459,7 +469,7 @@ export default function JobRecordSheet() {
                     if (code === 'R') acc.reptOffice++;
                     if (workCodes.includes(code)) acc.workDays++;
                     return acc;
-                }, { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 });
+                }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
                 const additionalSundays = record.additionalSundayDuty || 0;
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
@@ -720,7 +730,7 @@ export default function JobRecordSheet() {
                             }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
 
                             const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                            const additionalSundays = record.additionalSundayDuty || 0;
+                            const additionalSundays = sundayDutyStates[profile.id] !== undefined ? Number(sundayDutyStates[profile.id]) : (record.additionalSundayDuty || 0);
                             const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                             const isExpanded = expandedRows.has(profile.id);
 
@@ -826,7 +836,8 @@ export default function JobRecordSheet() {
                                     <TableCell className="text-center min-w-[150px]">
                                         <Input
                                             type="number"
-                                            defaultValue={record.additionalSundayDuty || ''}
+                                            value={sundayDutyStates[profile.id] ?? ''}
+                                            onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
                                             onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
                                             className="w-16 h-8 text-center"
                                             placeholder="0"
