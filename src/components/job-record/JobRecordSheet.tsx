@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -359,9 +360,9 @@ export default function JobRecordSheet() {
     const handleSundayDutySave = (employeeId: string, value: string) => {
         const days = value === '' ? null : parseInt(value, 10);
         if (days !== null && !isNaN(days) && days >= 0) {
-            saveJobRecord(monthKey, employeeId, days, 'sundayDuty', 'sundayDuty');
+            saveJobRecord(monthKey, employeeId, null, days, 'sundayDuty');
         } else if (value === '') {
-             saveJobRecord(monthKey, employeeId, null, 'sundayDuty', 'sundayDuty');
+             saveJobRecord(monthKey, employeeId, null, null, 'sundayDuty');
         }
     };
     
