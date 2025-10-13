@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -173,12 +172,12 @@ export function LoginForm() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="reset-code">Reset Code</Label>
-                        <Input id="reset-code" {...form.register('resetCode')} />
+                        <Input id="reset-code" {...resetPasswordForm.register('resetCode')} />
                          {resetPasswordForm.formState.errors.resetCode && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.resetCode.message}</p>}
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="new-password">New Password</Label>
-                        <Input id="new-password" type="password" {...form.register('newPassword')} />
+                        <Input id="new-password" type="password" {...resetPasswordForm.register('newPassword')} />
                          {resetPasswordForm.formState.errors.newPassword && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.newPassword.message}</p>}
                     </div>
                   <DialogFooter>
