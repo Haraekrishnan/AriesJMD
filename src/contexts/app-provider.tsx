@@ -608,7 +608,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { success: false };
 }, [addActivityLog, setStoredUserId]);
 
-
   const logout = useCallback(() => {
     if (user) {
       addActivityLog(user.id, 'User Logged Out');
@@ -1817,6 +1816,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (typeof date === 'string') {
                 const parsed = parse(date, 'yyyy-MM-dd', new Date());
                 if (isValid(parsed)) return parsed.toISOString();
+                const parsed2 = parseISO(date);
+                if (isValid(parsed2)) return parsed2.toISOString();
             }
             return null;
         };
@@ -3188,7 +3189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       });
     }
-  }, [user, users, projects, manpowerProfiles]);
+  }, [user, users, projects, manpowerProfiles, vehicles]);
   
   const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => {
     let path: string;
