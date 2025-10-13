@@ -5,7 +5,7 @@
     ".read": false,
     ".write": false,
     "users": {
-      ".read": true,
+      ".read": "query.orderByChild === 'email'",
       ".write": true,
       ".indexOn": "email"
     },
