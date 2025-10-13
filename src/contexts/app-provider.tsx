@@ -595,6 +595,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         if (foundUser.password === pass) {
             setLoading(false);
+            setUser(foundUser);
             setStoredUserId(foundUser.id);
             if (foundUser.status && foundUser.status !== 'active') {
                 return { success: true, status: foundUser.status, user: foundUser };
@@ -1816,6 +1817,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (typeof date === 'string') {
                 const parsed = parse(date, 'yyyy-MM-dd', new Date());
                 if (isValid(parsed)) return parsed.toISOString();
+                const parsed2 = parseISO(date);
+                if (isValid(parsed2)) return parsed2.toISOString();
             }
             return null;
         };
@@ -3187,7 +3190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       });
     }
-  }, [user, users, projects, manpowerProfiles, vehicles]);
+  }, [user, users, projects, vehicles, manpowerProfiles]);
   
   const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => {
     let path: string;
