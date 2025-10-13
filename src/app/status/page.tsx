@@ -5,9 +5,20 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Lock, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StatusPage() {
-    const { user, logout, requestUnlock } = useAppContext();
+    const { user, logout, requestUnlock, loading } = useAppContext();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && user?.status === 'active') {
+            router.replace('/dashboard');
+        }
+    }, [user, loading, router]);
+
 
     const handleUnlockRequest = () => {
         if (user) {
@@ -15,29 +26,17 @@ export default function StatusPage() {
             alert('Your unlock request has been sent to the administrator.');
         }
     };
-
-    if (!user) {
-        return null; // The main layout will handle redirection if there's no user
-    }
-
-    if (user.status !== 'locked') {
-        // This case is unlikely due to layout routing, but as a fallback, show a generic message.
+    
+    if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <Card className="w-full max-w-md text-center">
-                    <CardHeader>
-                        <CardTitle className="text-2xl">Account Issue</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p>There is an issue with your account status. Please contact an administrator.</p>
-                    </CardContent>
-                    <CardFooter className="flex flex-col gap-4">
-                        <Button variant="outline" onClick={logout} className="w-full">
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Logout
-                        </Button>
-                    </CardFooter>
-                </Card>
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex items-center space-x-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                </div>
             </div>
         );
     }
