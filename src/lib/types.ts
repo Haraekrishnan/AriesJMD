@@ -132,7 +132,7 @@ export type User = {
   email: string;
   avatar: string;
   role: Role;
-  status?: 'active' | 'locked' | 'deactivated';
+  status?: 'active' | 'locked';
   password?: string;
   supervisorId?: string;
   projectId?: string;

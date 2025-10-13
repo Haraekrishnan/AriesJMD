@@ -21,12 +21,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     if (!user) {
       // If not loading and no user, redirect to login
-      router.replace('/login');
+      if (pathname !== '/login') {
+          router.replace('/login');
+      }
       return;
     }
 
     if (user.status !== 'active') {
-      // If user is not active, redirect to status page
+      // If user is locked, redirect to status page
       if (pathname !== '/status') {
         router.replace('/status');
       }
