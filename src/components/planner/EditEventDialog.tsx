@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -54,7 +52,7 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
         form.reset({
             ...event,
             description: event.description || '',
-            date: new Date(event.date)
+            date: event.date ? new Date(event.date) : new Date(),
         });
     }
   }, [event, form]);
