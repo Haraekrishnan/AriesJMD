@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -587,25 +588,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
     const snapshot = await get(usersRef);
-
+    setLoading(false);
+    
     if (snapshot.exists()) {
         const usersData = snapshot.val();
         const userId = Object.keys(usersData)[0];
         const foundUser = { id: userId, ...usersData[userId] };
         
         if (foundUser.password === pass) {
-            setLoading(false);
             setUser(foundUser);
             setStoredUserId(foundUser.id);
-            if (foundUser.status && foundUser.status !== 'active') {
-                return { success: true, status: foundUser.status, user: foundUser };
-            }
             addActivityLog(foundUser.id, 'User Logged In');
-            return { success: true, status: 'active', user: foundUser };
+            return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
-
-    setLoading(false);
+    
     return { success: false };
 }, [addActivityLog, setStoredUserId]);
 
