@@ -281,6 +281,8 @@ type AppContextType = {
   addFeedback: (subject: string, message: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
   markFeedbackAsViewed: () => void;
+  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
+  resolvePpeDispute: (requestId: string, resolution: 'reverse' | 'reissue', comment: string) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
