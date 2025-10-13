@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -262,7 +261,7 @@ type AppContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrPlantOrComment: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => void;
   savePlantOrder: (monthKey: string, plantName: string, orderedIds: string[]) => void;
   lockJobSchedule: (date: string) => void;
   unlockJobSchedule: (date: string, projectId: string) => void;
@@ -607,7 +606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setLoading(false);
     return { success: false };
-  }, [addActivityLog, setStoredUserId]);
+}, [addActivityLog, setStoredUserId]);
 
   const logout = useCallback(() => {
     if (user) {

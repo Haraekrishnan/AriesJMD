@@ -5,9 +5,11 @@
     ".read": false,
     ".write": false,
     "users": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": "email"
+      ".indexOn": "email",
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
     },
     "roles": {
       ".read": true,
@@ -138,6 +140,14 @@
       ".write": true
     },
     "jobRecords": {
+        ".read": true,
+        ".write": true
+    },
+    "jobRecordPlants": {
+        ".read": true,
+        ".write": true
+    },
+    "jobCodes": {
         ".read": true,
         ".write": true
     },
