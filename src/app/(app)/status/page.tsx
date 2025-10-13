@@ -17,12 +17,11 @@ export default function StatusPage() {
     };
 
     if (!user) {
-        return null;
+        return null; // The main layout will handle redirection if there's no user
     }
 
     if (user.status !== 'locked') {
-        // This case should ideally not be reached if routing is correct,
-        // but as a fallback, show a generic message.
+        // This case is unlikely due to layout routing, but as a fallback, show a generic message.
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <Card className="w-full max-w-md text-center">
