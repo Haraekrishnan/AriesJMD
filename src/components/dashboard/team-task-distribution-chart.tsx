@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -74,7 +73,7 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
-                {canSelectAll && <SelectItem value="all">All Visible Members</SelectItem>}
+                {canSelectAll && <SelectItem key="all" value="all">All Visible Members</SelectItem>}
                 {visibleUsers.map(u => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
@@ -109,8 +108,8 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
                   dataKey="value"
                   nameKey="name"
                 >
-                  {chartData.map((entry) => (
-                    <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name]} />
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[entry.name]} />
                   ))}
                 </Pie>
               </PieChart>
