@@ -1,6 +1,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -133,7 +134,7 @@ export type User = {
   email: string;
   avatar: string;
   role: Role;
-  status?: 'active' | 'locked';
+  status?: 'active' | 'locked' | 'deactivated';
   password?: string;
   supervisorId?: string;
   projectId?: string;
@@ -414,7 +415,7 @@ export type ManpowerProfile = {
   labourLicenseNo?: string;
   eic?: string; 
   joiningDate?: string | null; // ISO
-  plant?: string; 
+  plantName?: string; 
 
   // Policy & Card Details
   wcPolicyNumber?: string;

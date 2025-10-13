@@ -9,7 +9,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -21,9 +21,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PasswordResetRequests from '@/components/account/password-reset-requests';
 import FeedbackManagement from '@/components/account/FeedbackManagement';
 import { Badge } from '@/components/ui/badge';
+import UnlockRequests from '@/components/account/UnlockRequests';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers } = useAppContext();
+  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser } = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -53,7 +54,6 @@ export default function AccountPage() {
 
   const visibleUsers = useMemo(() => {
     if (!user) return [];
-    // Only show other users in the management list
     const allVisible = getVisibleUsers();
     return allVisible.filter(u => u.id !== user.id);
   }, [user, getVisibleUsers, users]);
@@ -127,6 +127,16 @@ export default function AccountPage() {
     });
   };
 
+  const handleLockToggle = (targetUser: UserType) => {
+    if (targetUser.status === 'locked') {
+        unlockUser(targetUser.id);
+        toast({ title: 'User Unlocked', description: `${targetUser.name}'s account has been unlocked.` });
+    } else {
+        lockUser(targetUser.id);
+        toast({ variant: 'destructive', title: 'User Locked', description: `${targetUser.name}'s account has been locked.` });
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -146,6 +156,7 @@ export default function AccountPage() {
             </CardHeader>
           </Card>
            {can.manage_password_resets && <PasswordResetRequests />}
+           {can.manage_user_lock_status && <UnlockRequests />}
         </div>
         <div className="md:col-span-2">
           <form onSubmit={handleProfileSave}>
@@ -276,6 +287,7 @@ export default function AccountPage() {
                   <TableBody>
                       {visibleUsers.map(report => {
                           const supervisor = users.find(u => u.id === report.supervisorId);
+                          const isLocked = report.status === 'locked';
                           return (
                             <TableRow key={report.id}>
                                 <TableCell>
@@ -287,6 +299,7 @@ export default function AccountPage() {
                                         <div>
                                           <div className="font-medium flex items-center gap-2">
                                             <p>{report.name}</p>
+                                            {isLocked && <Badge variant="destructive">Locked</Badge>}
                                           </div>
                                           <p className="text-xs text-muted-foreground">{report.email}</p>
                                         </div>
@@ -306,6 +319,12 @@ export default function AccountPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onSelect={() => handleEditClick(report)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                    {can.manage_user_lock_status && (
+                                                        <DropdownMenuItem onSelect={() => handleLockToggle(report)}>
+                                                            {isLocked ? <Unlock className="mr-2 h-4 w-4"/> : <Lock className="mr-2 h-4 w-4"/>}
+                                                            {isLocked ? 'Unlock' : 'Lock'}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <AlertDialogTrigger asChild>
                                                         <DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                                                     </AlertDialogTrigger>
