@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -81,8 +82,8 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
                 <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All Users" /></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Users</SelectItem>
-                    {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
+                    {users.map((user, index) => (
+                    <SelectItem key={`${user.id}-${index}`} value={user.id}>
                         {user.name}
                     </SelectItem>
                     ))}
