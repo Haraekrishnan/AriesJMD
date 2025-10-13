@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -29,14 +30,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-
-    // If user is active, but somehow on login or status page, redirect to dashboard
+    
     if (pathname === '/login' || pathname === '/status') {
       router.replace('/dashboard');
     }
   }, [user, loading, router, pathname]);
 
-  // While loading, or if there's no user (and we're about to redirect), show a full-page loader.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -51,8 +50,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If a non-active user is trying to access an app page, show a loader while redirecting.
-  // The actual /status page is handled outside this layout.
   if (user.status !== 'active') {
      return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -67,7 +64,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
    );
   }
   
-  // If user is active and on a valid app page, render the full layout.
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />

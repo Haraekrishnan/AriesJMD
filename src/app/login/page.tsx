@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,17 +14,15 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If loading is done and there's a user, the main layout will handle redirection.
     if (!loading && user) {
-        if (user.status === 'active') {
-          router.replace('/dashboard');
-        } else {
-          router.replace('/status');
-        }
+      if (user.status === 'active') {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/status');
+      }
     }
   }, [user, loading, router]);
 
-  // While checking auth status, show a loader to prevent the login form from flashing.
   if (loading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -39,7 +37,6 @@ export default function LoginPage() {
     );
   }
 
-  // Only show the login form if we're done loading and there is no authenticated user.
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md shadow-2xl border-none">

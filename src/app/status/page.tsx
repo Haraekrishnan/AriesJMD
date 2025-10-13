@@ -14,19 +14,11 @@ export default function StatusPage() {
     const router = useRouter();
 
     useEffect(() => {
-        if (!loading && user?.status === 'active') {
+        if (!loading && (!user || user.status === 'active')) {
             router.replace('/dashboard');
         }
     }, [user, loading, router]);
 
-
-    const handleUnlockRequest = () => {
-        if (user) {
-            requestUnlock(user.id, user.name);
-            alert('Your unlock request has been sent to the administrator.');
-        }
-    };
-    
     if (loading || !user) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -36,6 +28,18 @@ export default function StatusPage() {
                         <Skeleton className="h-4 w-[250px]" />
                         <Skeleton className="h-4 w-[200px]" />
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (user.status !== 'locked') {
+        // This case should ideally not be reached due to the redirect logic,
+        // but it's a safe fallback.
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex items-center space-x-4">
+                    <p>Redirecting...</p>
                 </div>
             </div>
         );
@@ -56,7 +60,7 @@ export default function StatusPage() {
                     <p>Your account has been temporarily locked by an administrator. You can request to have it unlocked.</p>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4">
-                    <Button onClick={handleUnlockRequest} className="w-full">
+                    <Button onClick={() => requestUnlock(user.id, user.name)} className="w-full">
                         Request Unlock
                     </Button>
                     <Button variant="outline" onClick={logout} className="w-full">
