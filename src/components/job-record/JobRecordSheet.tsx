@@ -471,7 +471,7 @@ export default function JobRecordSheet() {
                     return acc;
                 }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
                 const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                const additionalSundays = record.additionalSundayDuty || 0;
+                const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
     
                 const rowData: any[] = [rIndex + 1, profile.name];
@@ -730,8 +730,8 @@ export default function JobRecordSheet() {
                             }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
 
                             const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                            const additionalSundays = sundayDutyStates[profile.id] !== undefined ? Number(sundayDutyStates[profile.id]) : (record.additionalSundayDuty || 0);
-                            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
+                            const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
+                            const salaryDays = (additionalSundays || 0) + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
                             const isExpanded = expandedRows.has(profile.id);
 
                             return (
@@ -969,5 +969,7 @@ export default function JobRecordSheet() {
 );
 
 }
+
+    
 
     
