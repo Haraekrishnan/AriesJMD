@@ -68,7 +68,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
     const subTotal = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate), 0);
     const totalTax = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate * (item.tax / 100)), 0);
     const totalBeforeRoundOff = subTotal + totalTax;
-    const roundOffValue = parseFloat(String(watchedRoundOff || '0'));
+    const roundOffValue = Number(watchedRoundOff) || 0;
     const grandTotal = totalBeforeRoundOff + roundOffValue;
     return { subTotal, totalTax, grandTotal };
   }, [watchedItems, watchedRoundOff]);
@@ -81,20 +81,28 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
         subTotal: totals.subTotal,
         totalTax: totals.totalTax,
         grandTotal: totals.grandTotal,
-        poDate: data.poDate?.toISOString(),
-        invoiceDate: data.invoiceDate?.toISOString(),
+        poDate: data.poDate ? data.poDate.toISOString() : null,
+        invoiceDate: data.invoiceDate ? data.invoiceDate.toISOString() : null,
     });
     toast({
       title: 'Ledger Entry Saved',
       description: 'The purchase has been logged.',
     });
     setIsOpen(false);
-    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 }] });
+      form.reset({
+        vendorId: '',
+        poNumber: '',
+        invoiceNumber: '',
+        deliveryNoteNumber: '',
+        poDate: undefined,
+        invoiceDate: undefined,
+        items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 }],
+        roundOff: 0
+      });
     }
     setIsOpen(open);
   };
@@ -127,7 +135,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                     </div>
                      <div className="space-y-2">
                         <Label>PO Date</Label>
-                        <Controller name="poDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                        <Controller name="poDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="invoiceNumber">Invoice No</Label>
@@ -135,7 +143,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                     </div>
                      <div className="space-y-2">
                         <Label>Invoice Date</Label>
-                        <Controller name="invoiceDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                        <Controller name="invoiceDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="deliveryNoteNumber">Delivery Note No</Label>

@@ -25,7 +25,7 @@ const paymentSchema = z.object({
       from: z.date().optional(),
       to: z.date().optional()
   }).optional(),
-  emailSentDate: z.date().optional(),
+  emailSentDate: z.date().optional().nullable(),
   remarks: z.string().optional(),
 });
 
@@ -54,7 +54,7 @@ export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPa
                 from: payment.durationFrom ? parseISO(payment.durationFrom) : undefined,
                 to: payment.durationTo ? parseISO(payment.durationTo) : undefined,
             },
-            emailSentDate: payment.emailSentDate ? parseISO(payment.emailSentDate) : undefined,
+            emailSentDate: payment.emailSentDate ? parseISO(payment.emailSentDate) : null,
             remarks: payment.remarks,
         });
     }
@@ -64,9 +64,9 @@ export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPa
     updatePayment({
         ...payment,
         ...data,
-        durationFrom: data.duration?.from?.toISOString(),
-        durationTo: data.duration?.to?.toISOString(),
-        emailSentDate: data.emailSentDate?.toISOString(),
+        durationFrom: data.duration?.from?.toISOString() || null,
+        durationTo: data.duration?.to?.toISOString() || null,
+        emailSentDate: data.emailSentDate ? data.emailSentDate.toISOString() : null,
     });
     toast({
       title: 'Payment Updated',
@@ -123,7 +123,7 @@ export default function EditPaymentDialog({ isOpen, setIsOpen, payment }: EditPa
 
             <div className="space-y-2">
                 <Label>Email Sent Date (Optional)</Label>
-                <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
             </div>
 
             <div className="space-y-2">

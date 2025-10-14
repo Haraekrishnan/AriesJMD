@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -3262,7 +3261,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updatePayment = useCallback((payment: Payment) => {
     const { id, ...data } = payment;
-    update(ref(rtdb, `payments/${id}`), data);
+    const cleanData = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
+    update(ref(rtdb, `payments/${id}`), cleanData);
   }, []);
 
   const updatePaymentStatus = useCallback((paymentId: string, status: PaymentStatus, comment: string) => {
@@ -3491,7 +3491,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
-
