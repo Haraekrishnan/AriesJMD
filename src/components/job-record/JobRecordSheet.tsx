@@ -911,7 +911,9 @@ export default function JobRecordSheet() {
                         </TableBody>
                     </Table>
                 </div>
-            <div className="shrink-0 z-20 border-t bg-card">
+
+                {/* --- FOOTER --- */}
+                <div className="shrink-0 z-20 border-t bg-card">
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">
@@ -960,18 +962,11 @@ export default function JobRecordSheet() {
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
+                </div>
             </div>
-        </div>
-        <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
-        <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
-        {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
-    </TooltipProvider>
-);
-
+            <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
+            <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
+            {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
+        </TooltipProvider>
+    );
 }
-
-    
-
-    
-
-    

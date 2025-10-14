@@ -24,14 +24,16 @@ export default function JobRecordPage() {
     }
 
     return (
-        <div className="space-y-8 h-full flex flex-col">
+        <div className="h-full flex flex-col space-y-4">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Job Record Sheet</h1>
                 <p className="text-muted-foreground">
                     Track monthly attendance and work allocation for each employee.
                 </p>
             </div>
-            <JobRecordSheet />
+            <div className="flex-1 min-h-0">
+                <JobRecordSheet />
+            </div>
         </div>
     );
 }
