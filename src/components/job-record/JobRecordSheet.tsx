@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -594,7 +593,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden">
+            <div className="flex flex-col h-full bg-card border rounded-lg">
                 {/* --- HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
