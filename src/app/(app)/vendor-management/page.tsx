@@ -12,7 +12,7 @@ import EditVendorDialog from '@/components/vendor-management/EditVendorDialog';
 import type { Vendor, Payment } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PaymentsTable from '@/components/payments/PaymentsTable';
-import AddPaymentDialog from '@/components/payments/AddPaymentDialog';
+import AddPurchaseLedgerDialog from '@/components/vendor-management/AddPurchaseLedgerDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -220,7 +220,7 @@ export default function VendorManagementPage() {
             </Tabs>
 
             <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
-            <AddPaymentDialog isOpen={isAddPaymentOpen} setIsOpen={setIsAddPaymentOpen} />
+            <AddPurchaseLedgerDialog isOpen={isAddPaymentOpen} setIsOpen={setIsAddPaymentOpen} />
             {editingVendor && (
                 <EditVendorDialog
                     isOpen={!!editingVendor}
