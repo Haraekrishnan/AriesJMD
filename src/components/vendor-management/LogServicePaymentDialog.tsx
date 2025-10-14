@@ -85,7 +85,8 @@ export default function LogServicePaymentDialog({ isOpen, setIsOpen }: LogServic
     }
     
     const totalBeforeRoundOff = subTotal + totalTax;
-    const grandTotal = totalBeforeRoundOff + (watchedRoundOff || 0);
+    const roundOffValue = watchedRoundOff || 0;
+    const grandTotal = totalBeforeRoundOff + roundOffValue;
     return { subTotal, totalTax, grandTotal };
   }, [watchedItems, watchedTotalAmount, watchedRoundOff]);
 

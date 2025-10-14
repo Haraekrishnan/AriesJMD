@@ -76,8 +76,9 @@ export default function EditPurchaseLedgerDialog({ isOpen, setIsOpen, purchaseRe
     const subTotal = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate), 0);
     const totalTax = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate * (item.tax / 100)), 0);
     const totalBeforeRoundOff = subTotal + totalTax;
-    const grandTotal = totalBeforeRoundOff + (watchedRoundOff || 0);
-    return { subTotal, totalTax, totalBeforeRoundOff, grandTotal };
+    const roundOffValue = watchedRoundOff || 0;
+    const grandTotal = totalBeforeRoundOff + roundOffValue;
+    return { subTotal, totalTax, grandTotal };
   }, [watchedItems, watchedRoundOff]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
