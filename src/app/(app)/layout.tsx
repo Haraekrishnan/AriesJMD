@@ -18,9 +18,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !user && pathname !== '/login') {
       router.replace('/login');
     }
+    if (!loading && user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+      router.replace('/status');
+    }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || (!user && pathname !== '/login')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
