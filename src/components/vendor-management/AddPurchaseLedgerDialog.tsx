@@ -68,7 +68,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
     const subTotal = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate), 0);
     const totalTax = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate * (item.tax / 100)), 0);
     const totalBeforeRoundOff = subTotal + totalTax;
-    const roundOffValue = watchedRoundOff || 0;
+    const roundOffValue = parseFloat(String(watchedRoundOff)) || 0;
     const grandTotal = totalBeforeRoundOff + roundOffValue;
     return { subTotal, totalTax, grandTotal };
   }, [watchedItems, watchedRoundOff]);
