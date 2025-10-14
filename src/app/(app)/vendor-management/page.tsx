@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Search, PlusCircle, Briefcase, FileDown, IndianRupee } from 'lucide-react';
+import { Search, PlusCircle, Briefcase, FileDown, IndianRupee, Handshake } from 'lucide-react';
 import VendorListTable from '@/components/vendor-management/VendorListTable';
 import { Input } from '@/components/ui/input';
 import AddVendorDialog from '@/components/vendor-management/AddVendorDialog';
@@ -21,6 +21,7 @@ import { format, isWithinInterval, parseISO, getYear, getMonth, startOfYear, end
 import PaymentReportDownloads from '@/components/payments/PaymentReportDownloads';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
+import LogServicePaymentDialog from '@/components/vendor-management/LogServicePaymentDialog';
 
 
 export default function VendorManagementPage() {
@@ -28,6 +29,7 @@ export default function VendorManagementPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
     const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+    const [isLogServiceOpen, setIsLogServiceOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
     // Filters
@@ -118,10 +120,16 @@ export default function VendorManagementPage() {
                 </h1>
                 <div className="flex gap-2">
                     {canAddPayment && (
-                        <Button onClick={() => setIsAddPaymentOpen(true)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Purchase Ledger
-                        </Button>
+                        <>
+                           <Button onClick={() => setIsLogServiceOpen(true)}>
+                                <Handshake className="mr-2 h-4 w-4" />
+                                Log Service Payment
+                            </Button>
+                            <Button onClick={() => setIsAddPaymentOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add Purchase Ledger
+                            </Button>
+                        </>
                     )}
                     {can.manage_vendors && (
                         <Button variant="outline" onClick={() => setIsAddVendorOpen(true)}>
@@ -221,6 +229,7 @@ export default function VendorManagementPage() {
 
             <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
             <AddPurchaseLedgerDialog isOpen={isAddPaymentOpen} setIsOpen={setIsAddPaymentOpen} />
+            <LogServicePaymentDialog isOpen={isLogServiceOpen} setIsOpen={setIsLogServiceOpen} />
             {editingVendor && (
                 <EditVendorDialog
                     isOpen={!!editingVendor}
