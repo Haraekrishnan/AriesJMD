@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +15,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { useMemo } from 'react';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
 
 const itemSchema = z.object({
   id: z.string(),
