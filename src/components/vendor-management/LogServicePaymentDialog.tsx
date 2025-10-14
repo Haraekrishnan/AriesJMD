@@ -102,7 +102,7 @@ export default function LogServicePaymentDialog({ isOpen, setIsOpen }: LogServic
     });
     toast({
       title: 'Service Payment Logged',
-      description: 'The payment has been sent for approval.',
+      description: 'The payment has been saved to the ledger.',
     });
     setIsOpen(false);
   };
@@ -219,7 +219,7 @@ export default function LogServicePaymentDialog({ isOpen, setIsOpen }: LogServic
             </div>
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit">Log for Approval</Button>
+                <Button type="submit">Save Payment</Button>
             </DialogFooter>
         </form>
       </DialogContent>

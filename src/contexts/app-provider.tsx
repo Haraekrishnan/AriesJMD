@@ -270,7 +270,7 @@ type AppContextType = {
   addVendor: (vendor: Omit<Vendor, 'id'>) => void;
   updateVendor: (vendor: Vendor) => void;
   deleteVendor: (vendorId: string) => void;
-  addPayment: (payment: Omit<Payment, 'id'|'requesterId'|'status'|'approverId'>) => void;
+  addPayment: (payment: Omit<Payment, 'id'|'requesterId'|'status'|'approverId'|'date'|'comments'>) => void;
   updatePayment: (payment: Payment) => void;
   updatePaymentStatus: (paymentId: string, status: PaymentStatus, comment: string) => void;
   deletePayment: (paymentId: string) => void;
@@ -3130,7 +3130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
@@ -3252,26 +3252,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRef = push(ref(rtdb, 'payments'));
     const newPayment: Omit<Payment, 'id'> = {
         ...payment,
+        date: new Date().toISOString(),
         requesterId: user.id,
-        status: 'Pending',
-        comments: [],
+        status: 'Paid',
+        comments: [{ id: `comm-init`, text: 'Payment logged.', userId: user.id, date: new Date().toISOString() }],
     };
     set(newRef, newPayment);
-    const approvers = users.filter(u => u.role === 'Admin' || u.role === 'Manager');
-    approvers.forEach(approver => {
-        if (approver.email) {
-            const vendor = vendors.find(v => v.id === payment.vendorId);
-            createAndSendNotification(
-                approver.email,
-                `New Payment for Approval: ${vendor?.name}`,
-                `A new payment of ${payment.amount} has been logged by ${user.name} and requires your approval.`, {
-                    'Vendor': vendor?.name || 'N/A',
-                    'Amount': payment.amount,
-                    'Requested By': user.name,
-                }, `${process.env.NEXT_PUBLIC_APP_URL}/vendor-management`, 'Review Payment')
-        }
-    });
-  }, [user, users, vendors]);
+  }, [user]);
   
   const updatePayment = useCallback((payment: Payment) => {
     const { id, ...data } = payment;
@@ -3322,8 +3309,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       date: new Date().toISOString(),
     };
     set(newRef, newPurchase);
-
-    // Also create a corresponding payment ledger entry
+    
     const paymentData = {
       vendorId: purchase.vendorId,
       amount: purchase.grandTotal,
@@ -3333,7 +3319,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       remarks: `From Purchase Register #${newRef.key?.slice(-6)}`,
     };
     addPayment(paymentData);
-
   }, [user, addPayment]);
 
   const updatePurchaseRegisterPoNumber = useCallback((purchaseRegisterId: string, poNumber: string) => {
@@ -3506,6 +3491,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 

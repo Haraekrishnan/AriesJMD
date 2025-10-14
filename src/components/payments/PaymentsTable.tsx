@@ -43,6 +43,11 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
         toast({ title: 'Payment Deleted', variant: 'destructive' });
     }
 
+    const canEdit = useMemo(() => {
+        if (!user) return false;
+        return ['Admin', 'Project Coordinator'].includes(user.role);
+    }, [user]);
+
 
     if (payments.length === 0) {
         return (
@@ -66,7 +71,7 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                             <TableHead>PO Number</TableHead>
                             <TableHead>Remarks</TableHead>
                             <TableHead>Logged By</TableHead>
-                            {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
+                            {canEdit && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -92,7 +97,7 @@ export default function PaymentsTable({ payments, title }: PaymentsTableProps) {
                                         )}
                                     </TableCell>
                                     <TableCell>{requester?.name || 'Unknown'}</TableCell>
-                                    {user?.role === 'Admin' && (
+                                    {canEdit && (
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => setEditingPayment(payment)}>
