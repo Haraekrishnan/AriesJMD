@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -593,7 +594,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="relative flex flex-col h-full bg-card border rounded-lg overflow-hidden">
+            <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden">
                 {/* --- HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
@@ -682,8 +683,7 @@ export default function JobRecordSheet() {
                  </Tabs>
                 </div>
 
-                {/* --- SCROLLABLE TABLE AREA --- */}
-                <div className="absolute top-[155px] right-0 bottom-[140px] left-0 overflow-auto">
+                <div className="overflow-auto flex-1">
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-card z-10">
                             <TableRow>
@@ -913,7 +913,7 @@ export default function JobRecordSheet() {
                 </div>
 
                 {/* --- FOOTER --- */}
-                <div className="absolute bottom-0 left-0 right-0 shrink-0 z-20 border-t bg-card">
+                <div className="shrink-0 z-20 border-t bg-card">
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">
