@@ -9,13 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePickerInput } from '../ui/date-picker-input';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
+import type { PurchaseRegister } from '@/lib/types';
+import { parseISO } from 'date-fns';
 
 const itemSchema = z.object({
   id: z.string(),
@@ -26,35 +27,42 @@ const itemSchema = z.object({
   tax: z.coerce.number().min(0, 'Cannot be negative').max(100, 'Cannot exceed 100'),
 });
 
-
-const paymentSchema = z.object({
+const purchaseSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   poNumber: z.string().optional(),
   invoiceNumber: z.string().optional(),
   deliveryNoteNumber: z.string().optional(),
-  poDate: z.date().optional(),
-  invoiceDate: z.date().optional(),
+  poDate: z.date().optional().nullable(),
+  invoiceDate: z.date().optional().nullable(),
   items: z.array(itemSchema).min(1, 'Please add at least one item.'),
   roundOff: z.coerce.number().optional(),
 });
 
-type PaymentFormValues = z.infer<typeof paymentSchema>;
+type PurchaseFormValues = z.infer<typeof purchaseSchema>;
 
-interface AddPurchaseLedgerDialogProps {
+interface EditPurchaseLedgerDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  purchaseRegister: PurchaseRegister;
 }
 
-export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurchaseLedgerDialogProps) {
-  const { addPurchaseRegister, vendors } = useAppContext();
+export default function EditPurchaseLedgerDialog({ isOpen, setIsOpen, purchaseRegister }: EditPurchaseLedgerDialogProps) {
+  const { updatePurchaseRegister, vendors } = useAppContext();
   const { toast } = useToast();
 
-  const form = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema),
-    defaultValues: {
-      items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 }]
-    }
+  const form = useForm<PurchaseFormValues>({
+    resolver: zodResolver(purchaseSchema),
   });
+
+  useEffect(() => {
+    if (purchaseRegister) {
+      form.reset({
+        ...purchaseRegister,
+        poDate: purchaseRegister.poDate ? parseISO(purchaseRegister.poDate) : undefined,
+        invoiceDate: purchaseRegister.invoiceDate ? parseISO(purchaseRegister.invoiceDate) : undefined,
+      });
+    }
+  }, [purchaseRegister, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -74,8 +82,9 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
-  const onSubmit = (data: PaymentFormValues) => {
-    addPurchaseRegister({
+  const onSubmit = (data: PurchaseFormValues) => {
+    updatePurchaseRegister({
+        ...purchaseRegister,
         ...data,
         subTotal: totals.subTotal,
         totalTax: totals.totalTax,
@@ -84,15 +93,15 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
         invoiceDate: data.invoiceDate?.toISOString(),
     });
     toast({
-      title: 'Ledger Entry Saved',
-      description: 'The purchase has been logged.',
+      title: 'Ledger Entry Updated',
+      description: 'The purchase has been updated.',
     });
     setIsOpen(false);
   };
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 }] });
+      form.reset();
     }
     setIsOpen(open);
   };
@@ -102,8 +111,8 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-4xl h-full flex flex-col">
         <DialogHeader>
-          <DialogTitle>Add Purchase Ledger</DialogTitle>
-          <DialogDescription>Log approved and purchased items against a vendor.</DialogDescription>
+          <DialogTitle>Edit Purchase Ledger</DialogTitle>
+          <DialogDescription>Update details for this purchase record.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
             <ScrollArea className="flex-1 pr-6 -mr-6">
@@ -190,7 +199,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
             </div>
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit">Save Ledger</Button>
+                <Button type="submit">Save Changes</Button>
             </DialogFooter>
         </form>
       </DialogContent>

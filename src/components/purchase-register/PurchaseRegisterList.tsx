@@ -7,19 +7,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Save } from 'lucide-react';
+import { Save, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Role, PurchaseRegister } from '@/lib/types';
 import ViewPurchaseRegisterDialog from './ViewPurchaseRegisterDialog';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
+import EditPurchaseLedgerDialog from '../vendor-management/EditPurchaseLedgerDialog';
+
 
 interface PurchaseRegisterListProps {
     registers: PurchaseRegister[];
 }
 
 export default function PurchaseRegisterList({ registers }: PurchaseRegisterListProps) {
-    const { user, vendors, updatePurchaseRegisterPoNumber } = useAppContext();
+    const { user, vendors, updatePurchaseRegisterPoNumber, deletePurchaseRegister } = useAppContext();
     const [poNumbers, setPoNumbers] = useState<Record<string, string>>({});
     const [viewingPurchase, setViewingPurchase] = useState<PurchaseRegister | null>(null);
+    const [editingPurchase, setEditingPurchase] = useState<PurchaseRegister | null>(null);
     const { toast } = useToast();
 
     const canEditPo = (poNumberExists: boolean) => {
@@ -42,12 +46,22 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
             toast({ title: 'PO Number Saved', description: 'The PO number has been updated.' });
         }
     };
+    
+    const handleDelete = (id: string) => {
+        deletePurchaseRegister(id);
+        toast({ title: 'Purchase Register Deleted', variant: 'destructive' });
+    }
 
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
     if (registers.length === 0) {
         return <p className="text-center text-muted-foreground py-8">No purchase history found for the selected filters.</p>;
     }
+    
+    const canEditRegister = useMemo(() => {
+        if (!user) return false;
+        return ['Admin', 'Project Coordinator'].includes(user.role);
+    }, [user]);
 
     return (
         <>
@@ -59,6 +73,7 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
                         <TableHead>Total Amount</TableHead>
                         <TableHead>PO Number</TableHead>
                         <TableHead>Details</TableHead>
+                        {canEditRegister && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -90,6 +105,30 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
                                 <TableCell>
                                     <Button variant="link" onClick={() => setViewingPurchase(pr)}>View Items</Button>
                                 </TableCell>
+                                {canEditRegister && (
+                                  <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => setEditingPurchase(pr)}>
+                                        <Edit className="h-4 w-4"/>
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                             <Button variant="ghost" size="icon" className="text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>This will permanently delete this purchase record and its associated payment ledger.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(pr.id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                  </TableCell>
+                                )}
                             </TableRow>
                         )
                     })}
@@ -100,6 +139,13 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
                     isOpen={!!viewingPurchase}
                     setIsOpen={() => setViewingPurchase(null)}
                     purchaseRegister={viewingPurchase}
+                />
+            )}
+             {editingPurchase && (
+                <EditPurchaseLedgerDialog
+                    isOpen={!!editingPurchase}
+                    setIsOpen={() => setEditingPurchase(null)}
+                    purchaseRegister={editingPurchase}
                 />
             )}
         </>
