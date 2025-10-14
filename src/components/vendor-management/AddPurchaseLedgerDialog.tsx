@@ -32,8 +32,8 @@ const paymentSchema = z.object({
   poNumber: z.string().optional(),
   invoiceNumber: z.string().optional(),
   deliveryNoteNumber: z.string().optional(),
-  poDate: z.date().optional(),
-  invoiceDate: z.date().optional(),
+  poDate: z.date().optional().nullable(),
+  invoiceDate: z.date().optional().nullable(),
   items: z.array(itemSchema).min(1, 'Please add at least one item.'),
   roundOff: z.coerce.number().optional(),
 });
@@ -68,7 +68,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
     const subTotal = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate), 0);
     const totalTax = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate * (item.tax / 100)), 0);
     const totalBeforeRoundOff = subTotal + totalTax;
-    const roundOffValue = parseFloat(String(watchedRoundOff)) || 0;
+    const roundOffValue = parseFloat(String(watchedRoundOff || '0'));
     const grandTotal = totalBeforeRoundOff + roundOffValue;
     return { subTotal, totalTax, grandTotal };
   }, [watchedItems, watchedRoundOff]);
@@ -89,6 +89,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
       description: 'The purchase has been logged.',
     });
     setIsOpen(false);
+    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {

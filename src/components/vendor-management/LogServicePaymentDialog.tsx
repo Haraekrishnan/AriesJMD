@@ -85,7 +85,7 @@ export default function LogServicePaymentDialog({ isOpen, setIsOpen }: LogServic
     }
     
     const totalBeforeRoundOff = subTotal + totalTax;
-    const roundOffValue = parseFloat(String(watchedRoundOff)) || 0;
+    const roundOffValue = parseFloat(String(watchedRoundOff || '0'));
     const grandTotal = totalBeforeRoundOff + roundOffValue;
     return { subTotal, totalTax, grandTotal };
   }, [watchedItems, watchedTotalAmount, watchedRoundOff]);
@@ -106,6 +106,7 @@ export default function LogServicePaymentDialog({ isOpen, setIsOpen }: LogServic
       description: 'The payment has been saved to the ledger.',
     });
     setIsOpen(false);
+    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
