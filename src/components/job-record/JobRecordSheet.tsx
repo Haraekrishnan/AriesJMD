@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -593,7 +593,7 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden">
+            <div className="relative flex flex-col h-full bg-card border rounded-lg overflow-hidden">
                 {/* --- HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
@@ -683,7 +683,7 @@ export default function JobRecordSheet() {
                 </div>
 
                 {/* --- SCROLLABLE TABLE AREA --- */}
-                <div className="flex-1 relative overflow-auto">
+                <div className="absolute top-[155px] right-0 bottom-[140px] left-0 overflow-auto">
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-card z-10">
                             <TableRow>
@@ -913,7 +913,7 @@ export default function JobRecordSheet() {
                 </div>
 
                 {/* --- FOOTER --- */}
-                <div className="shrink-0 z-20 border-t bg-card">
+                <div className="absolute bottom-0 left-0 right-0 shrink-0 z-20 border-t bg-card">
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">

@@ -24,7 +24,7 @@ export default function JobRecordPage() {
     }
 
     return (
-        <div className="h-full flex flex-col space-y-4">
+        <div className="h-[calc(100vh-10rem)] flex flex-col space-y-4">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Job Record Sheet</h1>
                 <p className="text-muted-foreground">
