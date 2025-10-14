@@ -120,7 +120,7 @@ export default function VendorManagementPage() {
                     {canAddPayment && (
                         <Button onClick={() => setIsAddPaymentOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Payment
+                            Add Purchase Ledger
                         </Button>
                     )}
                     {can.manage_vendors && (

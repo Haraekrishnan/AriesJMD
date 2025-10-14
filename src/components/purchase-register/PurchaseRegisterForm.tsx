@@ -30,11 +30,12 @@ const itemSchema = z.object({
 const purchaseSchema = z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   items: z.array(itemSchema).min(1, 'Please add at least one item.'),
-  duration: z.object({
-      from: z.date().optional(),
-      to: z.date().optional()
-  }).optional(),
-  emailSentDate: z.date().optional(),
+  poNumber: z.string().optional(),
+  invoiceNumber: z.string().optional(),
+  deliveryNoteNumber: z.string().optional(),
+  poDate: z.date().optional(),
+  invoiceDate: z.date().optional(),
+  roundOff: z.coerce.number().optional(),
 });
 
 type PurchaseFormValues = z.infer<typeof purchaseSchema>;
@@ -63,7 +64,7 @@ export default function PurchaseRegisterForm() {
 
   const form = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema),
-    defaultValues: { vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: '', unitRate: 0, tax: 0 }] }
+    defaultValues: { vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 }] }
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -72,13 +73,16 @@ export default function PurchaseRegisterForm() {
   });
 
   const watchedItems = form.watch('items');
+  const watchedRoundOff = form.watch('roundOff');
+
 
   const totals = useMemo(() => {
     const subTotal = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate), 0);
     const totalTax = watchedItems.reduce((acc, item) => acc + (item.quantity * item.unitRate * (item.tax / 100)), 0);
-    const grandTotal = subTotal + totalTax;
-    return { subTotal, totalTax, grandTotal };
-  }, [watchedItems]);
+    const totalBeforeRoundOff = subTotal + totalTax;
+    const grandTotal = totalBeforeRoundOff + (watchedRoundOff || 0);
+    return { subTotal, totalTax, totalBeforeRoundOff, grandTotal };
+  }, [watchedItems, watchedRoundOff]);
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
@@ -88,9 +92,11 @@ export default function PurchaseRegisterForm() {
         subTotal: totals.subTotal,
         totalTax: totals.totalTax,
         grandTotal: totals.grandTotal,
+        poDate: data.poDate?.toISOString(),
+        invoiceDate: data.invoiceDate?.toISOString(),
     });
     toast({ title: 'Purchase Registered', description: 'The entry has been saved and sent for approval.' });
-    form.reset({ vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: '', unitRate: 0, tax: 0 }] });
+    form.reset({ vendorId: '', items: [{ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 }] });
   };
   
   return (
@@ -133,20 +139,6 @@ export default function PurchaseRegisterForm() {
             </div>
              {form.formState.errors.vendorId && <p className="text-xs text-destructive">{form.formState.errors.vendorId.message}</p>}
         </div>
-         <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Service Duration (Optional)</Label>
-              <Controller
-                name="duration"
-                control={form.control}
-                render={({ field }) => <DateRangePicker date={field.value as DateRange} onDateChange={field.onChange} />}
-              />
-            </div>
-             <div className="space-y-2">
-                <Label>Email Sent Date (Optional)</Label>
-                <Controller name="emailSentDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-            </div>
-        </div>
       </div>
 
       <div className="space-y-4">
@@ -188,7 +180,7 @@ export default function PurchaseRegisterForm() {
         })}
       </div>
       
-      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, name: '', quantity: 1, uom: '', unitRate: 0, tax: 0 })}>
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, name: '', quantity: 1, uom: 'Nos', unitRate: 0, tax: 0 })}>
         <PlusCircle className="mr-2 h-4 w-4"/>Add Item
       </Button>
       {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}

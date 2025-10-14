@@ -98,16 +98,6 @@ export default function PurchaseRegisterPage() {
                 </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>New Purchase Entry</CardTitle>
-                    <CardDescription>Select a vendor and add the items to be purchased. The entry will be sent for approval.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <PurchaseRegisterForm />
-                </CardContent>
-            </Card>
-
             <StatCard 
                 title="Total amount for the period" 
                 value={formatCurrency(filteredTotal)} 
