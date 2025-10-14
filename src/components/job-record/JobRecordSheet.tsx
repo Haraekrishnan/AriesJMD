@@ -681,14 +681,14 @@ export default function JobRecordSheet() {
                     </TabsList>
                  </Tabs>
                 </div>
-
-                <div className="overflow-auto flex-1">
+                
+                <div className="overflow-auto flex-1 relative">
                     <Table className="min-w-full border-collapse">
-                        <thead className="sticky top-0 bg-card z-10">
+                        <thead className="sticky top-0 z-30 bg-card">
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-card z-20 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
-                                <TableHead className="sticky bg-card z-20 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
-                                <TableHead className="sticky bg-card z-20 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
+                                <TableHead className="sticky left-0 bg-card z-30 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
+                                <TableHead className="sticky bg-card z-30 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
+                                <TableHead className="sticky bg-card z-30 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
                                     <TableHead key={day} className="text-center min-w-[100px] border-r">
                                         {day}
@@ -736,7 +736,7 @@ export default function JobRecordSheet() {
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow>
-                                        <TableCell className="sticky left-0 bg-card z-10 flex items-center border-r" style={{width: '120px'}}>
+                                        <TableCell className="sticky left-0 z-20 flex items-center bg-card border-r" style={{width: '120px'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -750,11 +750,11 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky bg-card z-10 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
                                             <p>{profile.name}</p>
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
-                                        <TableCell className="sticky bg-card z-10 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
+                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
                                         <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
@@ -849,7 +849,7 @@ export default function JobRecordSheet() {
                                             <TableRow className="bg-muted/50 hover:bg-muted/50">
                                                 <TableCell
                                                     colSpan={3}
-                                                    className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-10 border-r"
+                                                    className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
                                                     style={{ left: 0, width: '470px' }}
                                                 >
                                                     Overtime Hours
@@ -877,7 +877,7 @@ export default function JobRecordSheet() {
                                              <TableRow className="bg-muted/50 hover:bg-muted/50">
                                                 <TableCell
                                                     colSpan={3}
-                                                    className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-10 border-r"
+                                                    className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
                                                     style={{ left: 0, width: '470px' }}
                                                 >
                                                     Comments
@@ -910,7 +910,6 @@ export default function JobRecordSheet() {
                         </TableBody>
                     </Table>
                 </div>
-
                 {/* --- FOOTER --- */}
                 <div className="shrink-0 z-20 border-t bg-card">
                 <Accordion type="single" collapsible className="w-full">
