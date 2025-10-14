@@ -593,8 +593,8 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="grid grid-rows-[auto,1fr,auto] h-full overflow-hidden bg-card border rounded-lg">
-                {/* --- FROZEN HEADER --- */}
+            <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden">
+                {/* --- HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -682,8 +682,8 @@ export default function JobRecordSheet() {
                  </Tabs>
                 </div>
 
-                {/* --- SCROLLABLE TABLE --- */}
-                 <div className="flex-1 overflow-auto relative">
+                {/* --- SCROLLABLE TABLE AREA --- */}
+                <div className="flex-1 relative overflow-auto">
                     <Table className="min-w-full border-collapse">
                         <thead className="sticky top-0 bg-card z-10">
                             <TableRow>
@@ -969,6 +969,8 @@ export default function JobRecordSheet() {
 );
 
 }
+
+    
 
     
 
