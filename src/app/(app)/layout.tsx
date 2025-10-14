@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -17,6 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user && pathname !== '/login') {
       router.replace('/login');
+    }
+    if (!loading && user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+      router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 
