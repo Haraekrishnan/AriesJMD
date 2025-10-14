@@ -198,7 +198,7 @@ export default function LogServicePaymentDialog({ isOpen, setIsOpen }: LogServic
                 {(!watchedItems || watchedItems.length === 0) && (
                     <div className="space-y-2">
                         <Label>Total Amount (if not itemized)</Label>
-                        <Input type="number" {...form.register('totalAmount')} />
+                        <Input type="number" {...form.register('totalAmount')} step="0.01"/>
                         {form.formState.errors.totalAmount && <p className="text-xs text-destructive">{form.formState.errors.totalAmount.message}</p>}
                     </div>
                 )}
