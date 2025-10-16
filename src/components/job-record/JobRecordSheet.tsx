@@ -396,19 +396,13 @@ export default function JobRecordSheet() {
     
     const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
 
-    const isEditableMonth = useMemo(() => isSameMonth(currentMonth, new Date()), [currentMonth]);
     const isCurrentSheetLocked = jobRecords[monthKey]?.isLocked;
     
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (isCurrentSheetLocked) return false;
         if (user.role === 'Admin') return true;
-        
-        const editableRoles = ['Supervisor', 'Junior Supervisor'];
-        if (editableRoles.includes(user.role)) return true;
-
         if (can.manage_job_record) return true;
-        
         return false;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
