@@ -401,8 +401,15 @@ export default function JobRecordSheet() {
     
     const canEditSheet = useMemo(() => {
         if (!user) return false;
+        if (isCurrentSheetLocked) return false;
         if (user.role === 'Admin') return true;
-        return can.manage_job_record && !isCurrentSheetLocked;
+        
+        const editableRoles = ['Supervisor', 'Junior Supervisor'];
+        if (editableRoles.includes(user.role)) return true;
+
+        if (can.manage_job_record) return true;
+        
+        return false;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
