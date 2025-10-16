@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -99,8 +100,9 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
       if (!manpower?.ppeHistory) return null;
       const historyArray = Array.isArray(manpower.ppeHistory) ? manpower.ppeHistory : Object.values(manpower.ppeHistory);
       return historyArray
+        .filter(h => h && h.ppeType === req.ppeType)
         .sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
-    }, [manpower]);
+    }, [manpower, req.ppeType]);
 
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     
@@ -292,7 +294,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmBulkAction}>{action}</AlertDialogAction>
+                            <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
