@@ -401,8 +401,9 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (isCurrentSheetLocked) return false;
-        if (user.role === 'Admin') return true;
-        if (can.manage_job_record) return true;
+        if (user.role === 'Admin' || can.manage_job_record) {
+            return true;
+        }
         return false;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
@@ -586,6 +587,8 @@ export default function JobRecordSheet() {
     }
 
     const searchResults = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : [];
+
+    const isEditableMonth = isAfter(startOfMonth(currentMonth), sub(new Date(), { months: 2 }));
 
     return (
         <TooltipProvider>
