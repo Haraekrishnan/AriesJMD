@@ -387,7 +387,15 @@ export default function JobRecordSheet() {
         });
     };
     
-    const allTabs = useMemo(() => ['Unassigned', ...plantProjects.map(p => p.name)], [plantProjects]);
+    const canViewUnassigned = useMemo(() => {
+        if (!user) return false;
+        return user.role === 'Admin' || can.manage_job_record;
+    }, [user, can.manage_job_record]);
+
+    const allTabs = useMemo(() => {
+        const plantTabs = plantProjects.map(p => p.name);
+        return canViewUnassigned ? ['Unassigned', ...plantTabs] : plantTabs;
+    }, [plantProjects, canViewUnassigned]);
     
     const canGoToPreviousMonth = useMemo(() => {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
@@ -401,10 +409,7 @@ export default function JobRecordSheet() {
     const canEditSheet = useMemo(() => {
         if (!user) return false;
         if (isCurrentSheetLocked) return false;
-        if (user.role === 'Admin' || can.manage_job_record) {
-            return true;
-        }
-        return false;
+        return user.role === 'Admin' || can.manage_job_record;
     }, [user, can.manage_job_record, isCurrentSheetLocked]);
     
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -972,4 +977,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
