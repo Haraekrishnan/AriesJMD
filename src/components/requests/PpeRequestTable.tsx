@@ -36,7 +36,7 @@ const statusVariant: Record<PpeRequestStatus, 'default' | 'secondary' | 'destruc
 };
 
 const RequestCard = ({ req }: { req: PpeRequest }) => {
-    const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock } = useAppContext();
+    const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock, resolvePpeDispute } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
     const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
     const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | null>(null);
@@ -68,8 +68,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             return;
         }
 
-        const finalStatus = action === 'Disputed' ? 'Rejected' : action;
-        updatePpeRequestStatus(selectedRequest.id, finalStatus, comment);
+        updatePpeRequestStatus(selectedRequest.id, action, comment);
         toast({ title: `Request ${action}` });
         setSelectedRequest(null);
         setAction(null);
@@ -94,7 +93,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const hasUpdate = isRequester && !req.viewedByRequester;
     const canApprove = isManager && req.status === 'Pending';
     const canMarkAsIssued = canIssue && req.status === 'Approved';
-    const canClaimIssue = isRequester && req.status === 'Issued';
+    const canDispute = isRequester && req.status === 'Issued';
     
     const lastIssue = useMemo(() => {
       if (!manpower?.ppeHistory) return null;
@@ -195,8 +194,14 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                  {canIssue && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
-                  {canClaimIssue && (
-                    <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
+                 {canDispute && (
+                    <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Dispute</Button>
+                 )}
+                 {canIssue && req.status === 'Disputed' && (
+                    <div className="flex gap-2">
+                        <Button size="sm" onClick={() => resolvePpeDispute(req.id, 'reissue', 'Dispute accepted. Item will be re-issued.')}>Re-issue</Button>
+                        <Button size="sm" variant="outline" onClick={() => resolvePpeDispute(req.id, 'reverse', 'Dispute rejected. Item confirmed as issued.')}>Confirm Issued</Button>
+                    </div>
                  )}
                  {(user?.role === 'Admin' || (isRequester && req.status === 'Pending')) && (
                     <DropdownMenu>

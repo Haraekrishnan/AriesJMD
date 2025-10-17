@@ -2,6 +2,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -121,10 +122,12 @@ export type PurchaseRegister = {
     subTotal: number;
     totalTax: number;
     grandTotal: number;
-    durationFrom: string | null;
-    durationTo: string | null;
-    emailSentDate: string | null;
+    roundOff?: number;
     poNumber?: string;
+    invoiceNumber?: string;
+    deliveryNoteNumber?: string;
+    poDate?: string | null; // ISO String
+    invoiceDate?: string | null; // ISO String
 };
 
 
