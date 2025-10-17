@@ -5,9 +5,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem } from '@/lib/types';
+import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem, InternalRequestItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -16,9 +16,8 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
-import Link from 'next/link';
-import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -34,9 +33,17 @@ const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'de
   Disputed: 'destructive'
 };
 
+const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondary' | 'destructive' | 'success'> = {
+    Pending: 'secondary',
+    Approved: 'default',
+    Issued: 'success',
+    Rejected: 'destructive',
+};
+
 const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment } = useAppContext();
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
+    const [itemAction, setItemAction] = useState<{ item: InternalRequestItem, status: InternalRequestItemStatus } | null>(null);
     const [comment, setComment] = useState('');
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [newComment, setNewComment] = useState('');
@@ -52,17 +59,34 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         setAction(act);
         setIsActionConfirmOpen(true);
     };
+    
+    const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
+        setItemAction({ item, status });
+        setIsActionConfirmOpen(true);
+    };
 
-    const handleConfirmBulkAction = () => {
-        if (!req || !action) return;
-        if (!comment.trim() && action !== 'Approved') {
-            toast({ title: 'Comment required', variant: 'destructive'});
-            return;
+    const handleConfirmAction = () => {
+        if (action) { // Bulk action
+            if (!req || !action) return;
+            if (!comment.trim() && action !== 'Approved') {
+                toast({ title: 'Comment required', variant: 'destructive'});
+                return;
+            }
+            updateInternalRequestStatus(req.id, action, comment);
+            toast({ title: `All items updated to ${action}` });
+        } else if (itemAction) { // Single item action
+            if (!comment.trim() && itemAction.status !== 'Approved' && itemAction.status !== 'Pending') {
+                 toast({ title: 'Comment required', variant: 'destructive'});
+                 return;
+            }
+            updateInternalRequestItemStatus(req.id, itemAction.item.id, itemAction.status, comment);
+            toast({ title: `Item status updated to ${itemAction.status}` });
         }
-        updateInternalRequestStatus(req.id, action, comment);
-        toast({ title: `All items updated to ${action}` });
+        
         setIsActionConfirmOpen(false);
         setComment('');
+        setAction(null);
+        setItemAction(null);
     }
     
     const handleAddComment = () => {
@@ -123,7 +147,20 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                         <p>{item.quantity} {item.unit} - {item.description}</p>
                                         {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
                                     </div>
-                                    <Badge variant={statusVariant[item.status] || 'secondary'} className="h-5">{item.status}</Badge>
+                                    <div className="flex items-center gap-1">
+                                        <Badge variant={itemStatusVariant[item.status] || 'secondary'} className="h-5">{item.status}</Badge>
+                                        {canApprove && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Approved')} disabled={item.status === 'Approved'}><CheckCircle className="mr-2 h-4 w-4 text-green-600"/>Approve</DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Issued')} disabled={item.status !== 'Approved'}><Truck className="mr-2 h-4 w-4 text-blue-600"/>Issue</DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Rejected')} disabled={item.status === 'Rejected'} className="text-destructive focus:text-destructive"><XCircle className="mr-2 h-4 w-4"/>Reject</DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Pending')} disabled={item.status === 'Pending'}><Undo2 className="mr-2 h-4 w-4"/>Set to Pending</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -220,24 +257,22 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     </div>
                 </CardFooter>
 
-                {isActionConfirmOpen && (
-                    <AlertDialog open={isActionConfirmOpen} onOpenChange={setIsActionConfirmOpen}>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>{action} All Items?</AlertDialogTitle>
-                                <AlertDialogDescription>Please provide a comment for this action. This will apply to all applicable items in the request.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <div>
-                                <Label htmlFor="comment">Comment {action !== 'Approved' && '(Required)'}</Label>
-                                <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
-                            </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleConfirmBulkAction}>{action}</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
+                 <AlertDialog open={isActionConfirmOpen} onOpenChange={setIsActionConfirmOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{action || itemAction?.status} {itemAction ? 'Item?' : 'All Items?'}</AlertDialogTitle>
+                            <AlertDialogDescription>Please provide a comment for this action. This will apply to {itemAction ? 'this item' : 'all applicable items in the request'}.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div>
+                            <Label htmlFor="comment">Comment {action !== 'Approved' && itemAction?.status !== 'Approved' && itemAction?.status !== 'Pending' && '(Required)'}</Label>
+                            <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleConfirmAction}>{action || itemAction?.status}</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </Card>
         </>
     )
