@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -61,8 +62,15 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
     
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
-        setItemAction({ item, status });
-        setIsActionConfirmOpen(true);
+        const needsComment = status === 'Rejected' || status === 'Issued';
+        if (needsComment) {
+            setItemAction({ item, status });
+            setIsActionConfirmOpen(true);
+        } else {
+            // Directly update status without a comment dialog
+            updateInternalRequestItemStatus(req.id, item.id, status, `Status changed to ${status}.`);
+            toast({ title: `Item status updated to ${status}` });
+        }
     };
 
     const handleConfirmAction = () => {
@@ -75,7 +83,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             updateInternalRequestStatus(req.id, action, comment);
             toast({ title: `All items updated to ${action}` });
         } else if (itemAction) { // Single item action
-            if (!comment.trim() && itemAction.status !== 'Approved' && itemAction.status !== 'Pending') {
+            if (!comment.trim() && (itemAction.status === 'Rejected' || itemAction.status === 'Issued')) {
                  toast({ title: 'Comment required', variant: 'destructive'});
                  return;
             }
