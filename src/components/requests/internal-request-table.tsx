@@ -58,7 +58,11 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     const handleBulkActionClick = (act: InternalRequestStatus) => {
         setAction(act);
-        setIsActionConfirmOpen(true);
+        if (act === 'Rejected') {
+            setIsActionConfirmOpen(true);
+        } else {
+            handleConfirmAction(act);
+        }
     };
     
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
@@ -67,21 +71,21 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             setItemAction({ item, status });
             setIsActionConfirmOpen(true);
         } else {
-            // Directly update status without a comment dialog
             updateInternalRequestItemStatus(req.id, item.id, status, `Status changed to ${status}.`);
             toast({ title: `Item status updated to ${status}` });
         }
     };
 
-    const handleConfirmAction = () => {
-        if (action) { // Bulk action
-            if (!req || !action) return;
-            if (!comment.trim() && action !== 'Approved') {
+    const handleConfirmAction = (bulkAction?: InternalRequestStatus) => {
+        const currentAction = bulkAction || action;
+        if (currentAction) { // Bulk action
+            if (!req || !currentAction) return;
+            if (!comment.trim() && currentAction === 'Rejected') {
                 toast({ title: 'Comment required', variant: 'destructive'});
                 return;
             }
-            updateInternalRequestStatus(req.id, action, comment);
-            toast({ title: `All items updated to ${action}` });
+            updateInternalRequestStatus(req.id, currentAction, comment);
+            toast({ title: `All items updated to ${currentAction}` });
         } else if (itemAction) { // Single item action
             if (!comment.trim() && (itemAction.status === 'Rejected' || itemAction.status === 'Issued')) {
                  toast({ title: 'Comment required', variant: 'destructive'});
@@ -124,7 +128,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const canClaimIssue = user?.id === req.requesterId && req.status === 'Issued';
     
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
-    const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Rejected') && !req.acknowledgedByRequester;
+    const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || (req.status === 'Rejected' && !hasUpdate)) && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
     const canAddComments = user?.role === 'Admin' || canApprove;
@@ -277,7 +281,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmAction}>{action || itemAction?.status}</AlertDialogAction>
+                            <AlertDialogAction onClick={() => handleConfirmAction()}>Confirm</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -294,13 +298,13 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     const active: InternalRequest[] = [];
     const completed: InternalRequest[] = [];
     requests.forEach(req => {
-        // A rejected request is only "completed" once the requester has acknowledged it.
-        const isRejectedAndUnseen = req.status === 'Rejected' && !req.acknowledgedByRequester;
-        if (req.status === 'Issued' || (req.status === 'Rejected' && !isRejectedAndUnseen)) {
-            completed.push(req);
-        } else {
-            active.push(req);
-        }
+      // A rejected request is "active" if it hasn't been acknowledged by the requester yet.
+      const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
+      if (req.status === 'Issued' || (req.status === 'Rejected' && !isRejectedButActive)) {
+          completed.push(req);
+      } else {
+          active.push(req);
+      }
     });
     return { activeRequests: active, completedRequests: completed };
   }, [requests]);
@@ -336,7 +340,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
           <AccordionItem value="completed-requests" className="border rounded-md">
             <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
-               Completed & Rejected Requests ({completedRequests.length})
+               Completed & Acknowledged Requests ({completedRequests.length})
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
