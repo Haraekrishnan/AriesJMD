@@ -812,7 +812,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return [];
     
     // Start with the users the current user can see
-    const visibleUsers = getVisibleUsers();
+    let assignableUsers = getVisibleUsers();
+  
+    // Exclude any user with the 'Manager' role
+    assignableUsers = assignableUsers.filter(u => u.role !== 'Manager');
   
     // From that list, filter out anyone who is a supervisor to the current user
     const supervisorChain = new Set<string>();
@@ -827,7 +830,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const assignable = visibleUsers.filter(u => !supervisorChain.has(u.id));
+    const assignable = assignableUsers.filter(u => !supervisorChain.has(u.id));
 
     return assignable;
   }, [user, users, getVisibleUsers]);
@@ -3166,7 +3169,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
@@ -3532,3 +3535,4 @@ export const useAppContext = (): AppContextType => {
 
 
   
+
