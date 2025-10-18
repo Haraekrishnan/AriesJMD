@@ -756,35 +756,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const subordinates = new Set<string>();
     const currentUser = allUsers.find(u => u.id === userId);
     if (!currentUser) return subordinates;
-
-    // Get direct subordinates of the current user
-    const directReports = allUsers.filter(u => u.supervisorId === userId);
-    directReports.forEach(report => subordinates.add(report.id));
   
-    // If the current user has a supervisor, get that supervisor's direct reports as well (peers)
-    if (currentUser.supervisorId) {
-      const supervisorReports = allUsers.filter(u => u.supervisorId === currentUser.supervisorId);
-      supervisorReports.forEach(report => subordinates.add(report.id));
-    }
-    
-    // Also include all users under direct reports
-    const queue = [...directReports.map(r => r.id)];
-    const visited = new Set<string>();
-    
-    while(queue.length > 0) {
-        const currentId = queue.shift()!;
-        if(visited.has(currentId)) continue;
-        visited.add(currentId);
-
-        const reports = allUsers.filter(u => u.supervisorId === currentId);
-        reports.forEach(report => {
-            if(!subordinates.has(report.id)) {
-                subordinates.add(report.id);
-                queue.push(report.id);
-            }
-        });
-    }
-
+    // Add direct reports
+    const directReports = allUsers.filter(u => u.supervisorId === userId);
+    directReports.forEach(report => {
+        subordinates.add(report.id);
+        // Recursively find subordinates of direct reports
+        const deeperSubordinates = getSubordinateChain(report.id, allUsers);
+        deeperSubordinates.forEach(subId => subordinates.add(subId));
+    });
+  
     return subordinates;
   }, []);
   
@@ -800,8 +781,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
     }
   
-    const subordinateIds = getSubordinateChain(user.id, users);
-    return users.filter(u => u.id === user.id || subordinateIds.has(u.id));
+    const directSupervisor = users.find(u => u.id === user.supervisorId);
+    let visibleUserIds = getSubordinateChain(user.id, users);
+  
+    // Add peers and their subordinates if they share the same direct supervisor
+    if (directSupervisor) {
+      const peers = users.filter(u => u.supervisorId === directSupervisor.id);
+      peers.forEach(peer => {
+        visibleUserIds.add(peer.id);
+        const peerSubordinates = getSubordinateChain(peer.id, users);
+        peerSubordinates.forEach(id => visibleUserIds.add(id));
+      });
+    }
+  
+    // Always include the current user
+    visibleUserIds.add(user.id);
+  
+    return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users, getSubordinateChain]);
 
   const getAssignableUsers = useCallback(() => {
@@ -848,7 +844,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const plannerNotificationCount = unreadPlannerCommentDays.length;
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending').length : 0;
-    const updatedInternalRequestCount = internalRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.acknowledgedByRequester).length;
+    const updatedInternalRequestCount = internalRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.acknowledgedByRequester).length;
 
     const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
     const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
@@ -3510,3 +3506,5 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
 
+
+  
