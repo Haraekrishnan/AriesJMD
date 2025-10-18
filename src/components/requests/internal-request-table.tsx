@@ -42,7 +42,7 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
 };
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment } = useAppContext();
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment, inventoryItems } = useAppContext();
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [itemAction, setItemAction] = useState<{ item: InternalRequestItem, status: InternalRequestItemStatus } | null>(null);
     const [comment, setComment] = useState('');
@@ -57,8 +57,9 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     }, [user, roles]);
 
     const handleBulkActionClick = (act: InternalRequestStatus) => {
-        setAction(act);
-        if (act === 'Rejected') {
+        const needsComment = act === 'Rejected';
+        if (needsComment) {
+            setAction(act);
             setIsActionConfirmOpen(true);
         } else {
             handleConfirmAction(act);
@@ -128,7 +129,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const canClaimIssue = user?.id === req.requesterId && req.status === 'Issued';
     
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
-    const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || (req.status === 'Rejected' && !hasUpdate)) && !req.acknowledgedByRequester;
+    const needsAcknowledgement = user?.id === req.requesterId && req.status !== 'Pending' && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
     const canAddComments = user?.role === 'Admin' || canApprove;
@@ -276,7 +277,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             <AlertDialogDescription>Please provide a comment for this action. This will apply to {itemAction ? 'this item' : 'all applicable items in the request'}.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <div>
-                            <Label htmlFor="comment">Comment {action !== 'Approved' && itemAction?.status !== 'Approved' && itemAction?.status !== 'Pending' && '(Required)'}</Label>
+                            <Label htmlFor="comment">Comment {action === 'Rejected' || itemAction?.status === 'Rejected' || itemAction?.status === 'Issued' ? '(Required)' : '(Optional)'}</Label>
                             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                         </div>
                         <AlertDialogFooter>
