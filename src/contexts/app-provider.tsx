@@ -754,48 +754,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
-    const currentUser = allUsers.find(u => u.id === userId);
-    if (!currentUser) return subordinates;
+    const queue = [userId];
+    const visited = new Set<string>();
   
-    // Add direct reports
-    const directReports = allUsers.filter(u => u.supervisorId === userId);
-    directReports.forEach(report => {
-        subordinates.add(report.id);
-        // Recursively find subordinates of direct reports
-        const deeperSubordinates = getSubordinateChain(report.id, allUsers);
-        deeperSubordinates.forEach(subId => subordinates.add(subId));
-    });
-  
+    while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if(visited.has(currentId)) continue;
+        visited.add(currentId);
+
+        const directReports = allUsers.filter(u => u.supervisorId === currentId);
+        directReports.forEach(report => {
+            if (!subordinates.has(report.id)) {
+                subordinates.add(report.id);
+                queue.push(report.id);
+            }
+        });
+    }
     return subordinates;
   }, []);
-  
+
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-    if (user.role === 'Admin' || user.role === 'Manager') {
-        return users;
-    }
-    if (user.role === 'Project Coordinator') {
-        return users.filter(u => u.role !== 'Manager');
-    }
-    if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
-        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+  
+    const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge'];
+    const supervisorRoles: Role[] = ['Supervisor', 'Junior Supervisor'];
+  
+    if (highLevelRoles.includes(user.role)) {
+      if (user.role === 'Manager' || user.role === 'Admin') return users;
+      if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager');
+      if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
+          return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+      }
     }
   
-    const directSupervisor = users.find(u => u.id === user.supervisorId);
-    let visibleUserIds = getSubordinateChain(user.id, users);
+    let visibleUserIds = new Set<string>([user.id]);
+    
+    // Add own subordinates
+    const mySubordinates = getSubordinateChain(user.id, users);
+    mySubordinates.forEach(id => visibleUserIds.add(id));
   
-    // Add peers and their subordinates if they share the same direct supervisor
-    if (directSupervisor) {
-      const peers = users.filter(u => u.supervisorId === directSupervisor.id);
-      peers.forEach(peer => {
-        visibleUserIds.add(peer.id);
-        const peerSubordinates = getSubordinateChain(peer.id, users);
-        peerSubordinates.forEach(id => visibleUserIds.add(id));
-      });
+    // Logic for supervisors to see peers' teams
+    if (supervisorRoles.includes(user.role) && user.supervisorId) {
+      const directSupervisor = users.find(u => u.id === user.supervisorId);
+      
+      // ONLY if the direct supervisor is ALSO a supervisor, get their reports
+      if (directSupervisor && supervisorRoles.includes(directSupervisor.role)) {
+        const supervisorSubordinates = getSubordinateChain(directSupervisor.id, users);
+        supervisorSubordinates.forEach(id => visibleUserIds.add(id));
+        visibleUserIds.add(directSupervisor.id);
+      }
     }
-  
-    // Always include the current user
-    visibleUserIds.add(user.id);
   
     return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users, getSubordinateChain]);
@@ -843,8 +851,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .map(dpc => dpc.day);
     const plannerNotificationCount = unreadPlannerCommentDays.length;
 
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending').length : 0;
-    const updatedInternalRequestCount = internalRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.acknowledgedByRequester).length;
+    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
+    const updatedInternalRequestCount = internalRequests.filter(r => {
+        const isMyRequest = r.requesterId === user.id;
+        const isUnacknowledgedUpdate = (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+        return isMyRequest && isUnacknowledgedUpdate;
+    }).length;
 
     const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
     const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
@@ -2135,9 +2147,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`internalRequests/${requestId}/approverId`] = user.id;
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    if (commentText) {
+      updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    }
 
     const updatedItems = [...requestItems];
     updatedItems[itemIndex] = { ...updatedItems[itemIndex], status: status };
@@ -2154,8 +2169,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
     } else if (updatedItems.every(i => i.status === 'Pending')) {
         updates[`internalRequests/${requestId}/status`] = 'Pending';
-    } else {
+    } else if (updatedItems.some(i => i.status === 'Approved' || i.status === 'Issued')) {
         updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+    } else if (updatedItems.every(i => i.status === 'Rejected')) {
+        updates[`internalRequests/${requestId}/status`] = 'Rejected';
     }
     
     // Deduct stock if issued
