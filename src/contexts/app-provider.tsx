@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -3313,10 +3312,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const paymentData = {
       vendorId: purchase.vendorId,
       amount: purchase.grandTotal,
-      durationFrom: purchase.durationTo,
-      emailSentDate: purchase.emailSentDate,
+      durationFrom: purchase.invoiceDate,
+      durationTo: purchase.poDate,
+      emailSentDate: new Date(), // Assuming email is sent now
       purchaseRegisterId: newRef.key!,
-      remarks: `From Purchase Register #${newRef.key?.slice(-6)}`,
+      remarks: `From Purchase Register #${newRef.key?.slice(-6)}. Invoice: ${purchase.invoiceNumber || 'N/A'}`,
     };
     addPayment(paymentData);
   }, [user, addPayment]);
@@ -3491,5 +3491,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
