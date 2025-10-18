@@ -811,24 +811,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
     
-    const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
-    if (storeRoles.includes(user.role)) {
-        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator' && u.role !== 'Manager');
+    // Start with the users the current user can see
+    const visibleUsers = getVisibleUsers();
+  
+    // From that list, filter out anyone who is a supervisor to the current user
+    const supervisorChain = new Set<string>();
+    let currentUser = user;
+    while(currentUser.supervisorId) {
+        supervisorChain.add(currentUser.supervisorId);
+        const nextSupervisor = users.find(u => u.id === currentUser.supervisorId);
+        if (nextSupervisor) {
+            currentUser = nextSupervisor;
+        } else {
+            break;
+        }
     }
 
-    if (user.role === 'Document Controller') {
-      const rolesToExclude: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
-      return users.filter(u => !rolesToExclude.includes(u.role));
-    }
+    const assignable = visibleUsers.filter(u => !supervisorChain.has(u.id));
 
-    if (user.role === 'Admin' || user.role === 'Manager' || user.role === 'Project Coordinator') {
-        return users.filter(u => u.role !== 'Manager');
-    }
-
-    const subordinateIds = getSubordinateChain(user.id, users);
-    return users.filter(u => (u.id === user.id || subordinateIds.has(u.id)) && u.role !== 'Manager');
-
-  }, [user, users, getSubordinateChain]);
+    return assignable;
+  }, [user, users, getVisibleUsers]);
 
   const computedValue = useMemo(() => {
     if (!user) return {
@@ -852,10 +854,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const plannerNotificationCount = unreadPlannerCommentDays.length;
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
+    
     const updatedInternalRequestCount = internalRequests.filter(r => {
         const isMyRequest = r.requesterId === user.id;
-        const isUnacknowledgedUpdate = (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-        return isMyRequest && isUnacknowledgedUpdate;
+        if (!isMyRequest) return false;
+    
+        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
+        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+        
+        return isRejectedButActive || isStandardUpdate;
     }).length;
 
     const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
