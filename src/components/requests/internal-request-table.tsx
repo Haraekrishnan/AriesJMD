@@ -295,12 +295,13 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
   const { user, markInternalRequestAsViewed } = useAppContext();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-    const { activeRequests, completedRequests } = useMemo(() => {
+  const { activeRequests, completedRequests } = useMemo(() => {
     const active: InternalRequest[] = [];
     const completed: InternalRequest[] = [];
     requests.forEach(req => {
-      // A rejected request is "active" if it hasn't been acknowledged by the requester yet.
+      // A rejected request is "active" if it hasn't been acknowledged by the requester.
       const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
+      
       if (req.status === 'Issued' || (req.status === 'Rejected' && !isRejectedButActive)) {
           completed.push(req);
       } else {
