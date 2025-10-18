@@ -801,7 +801,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (directSupervisor && supervisorRoles.includes(directSupervisor.role)) {
         const supervisorSubordinates = getSubordinateChain(directSupervisor.id, users);
         supervisorSubordinates.forEach(id => visibleUserIds.add(id));
-        visibleUserIds.add(directSupervisor.id);
+        // A supervisor should NOT see their own supervisor's tasks.
+        // visibleUserIds.add(directSupervisor.id); 
       }
     }
   
@@ -3535,4 +3536,5 @@ export const useAppContext = (): AppContextType => {
 
 
   
+
 
