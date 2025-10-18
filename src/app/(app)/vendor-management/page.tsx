@@ -12,7 +12,6 @@ import EditVendorDialog from '@/components/vendor-management/EditVendorDialog';
 import type { Vendor, Payment } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PaymentsTable from '@/components/payments/PaymentsTable';
-import AddPurchaseLedgerDialog from '@/components/vendor-management/AddPurchaseLedgerDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -21,15 +20,12 @@ import { format, isWithinInterval, parseISO, getYear, getMonth, startOfYear, end
 import PaymentReportDownloads from '@/components/payments/PaymentReportDownloads';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import LogServicePaymentDialog from '@/components/vendor-management/LogServicePaymentDialog';
 
 
 export default function VendorManagementPage() {
     const { user, vendors, payments, can, pendingPaymentApprovalCount } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
-    const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
-    const [isLogServiceOpen, setIsLogServiceOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
     // Filters
@@ -119,18 +115,6 @@ export default function VendorManagementPage() {
                     Vendor Ledger
                 </h1>
                 <div className="flex gap-2">
-                    {canAddPayment && (
-                        <>
-                           <Button onClick={() => setIsLogServiceOpen(true)}>
-                                <Handshake className="mr-2 h-4 w-4" />
-                                Log Service Payment
-                            </Button>
-                            <Button onClick={() => setIsAddPaymentOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Purchase Ledger
-                            </Button>
-                        </>
-                    )}
                     {can.manage_vendors && (
                         <Button variant="outline" onClick={() => setIsAddVendorOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -228,8 +212,6 @@ export default function VendorManagementPage() {
             </Tabs>
 
             <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
-            <AddPurchaseLedgerDialog isOpen={isAddPaymentOpen} setIsOpen={setIsAddPaymentOpen} />
-            <LogServicePaymentDialog isOpen={isLogServiceOpen} setIsOpen={setIsLogServiceOpen} />
             {editingVendor && (
                 <EditVendorDialog
                     isOpen={!!editingVendor}

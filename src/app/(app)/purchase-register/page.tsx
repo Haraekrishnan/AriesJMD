@@ -3,15 +3,15 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import PurchaseRegisterForm from '@/components/purchase-register/PurchaseRegisterForm';
 import { useAppContext } from '@/contexts/app-provider';
-import { AlertTriangle, IndianRupee } from 'lucide-react';
+import { AlertTriangle, IndianRupee, PlusCircle } from 'lucide-react';
 import PurchaseRegisterList from '@/components/purchase-register/PurchaseRegisterList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parseISO, getYear, getMonth, startOfYear, endOfYear, startOfMonth, endOfMonth, subYears, addYears } from 'date-fns';
 import StatCard from '@/components/dashboard/stat-card';
+import AddPurchaseLedgerDialog from '@/components/vendor-management/AddPurchaseLedgerDialog';
 
 
 export default function PurchaseRegisterPage() {
@@ -21,6 +21,7 @@ export default function PurchaseRegisterPage() {
     const [selectedYear, setSelectedYear] = useState<string>(getYear(new Date()).toString());
     const [selectedMonth, setSelectedMonth] = useState<string>((getMonth(new Date()) + 1).toString());
     const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+    const [isAddLedgerOpen, setIsAddLedgerOpen] = useState(false);
 
     const availableYears = useMemo(() => {
         const years = new Set(purchaseRegisters.map(p => getYear(parseISO(p.date))));
@@ -96,6 +97,9 @@ export default function PurchaseRegisterPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Purchase Register</h1>
                     <p className="text-muted-foreground">Log new purchases and track item costs.</p>
                 </div>
+                <Button onClick={() => setIsAddLedgerOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4"/> Add Purchase
+                </Button>
             </div>
 
             <StatCard 
@@ -151,6 +155,7 @@ export default function PurchaseRegisterPage() {
                     <PurchaseRegisterList registers={filteredPurchases} />
                 </CardContent>
             </Card>
+            <AddPurchaseLedgerDialog isOpen={isAddLedgerOpen} setIsOpen={setIsAddLedgerOpen} />
         </div>
     );
 }
