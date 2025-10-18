@@ -62,7 +62,7 @@ export default function EditManagementRequestDialog({ isOpen, setIsOpen, request
     setIsOpen(open);
   };
   
-  const possibleRecipients = users.filter(u => u.id !== request?.requesterId && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Supervisor'));
+  const possibleRecipients = users.filter(u => u.id !== request?.requesterId && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Supervisor' || u.role === 'Project Coordinator' || u.role === 'HSE' || u.role === 'Document Controller'));
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

@@ -48,7 +48,7 @@ export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewMan
     setIsOpen(open);
   };
   
-  const possibleRecipients = users.filter(u => u.id !== user?.id && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Supervisor'));
+  const possibleRecipients = users.filter(u => u.id !== user?.id && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Supervisor' || u.role === 'Project Coordinator' || u.role === 'HSE' || u.role === 'Document Controller'));
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
