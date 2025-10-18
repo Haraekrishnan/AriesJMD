@@ -753,38 +753,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, roles, loading]);
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
-    let topSupervisorId = userId;
-    let currentUser = allUsers.find(u => u.id === userId);
-    
-    // Traverse up to find the top-level supervisor
-    while (currentUser?.supervisorId) {
-        const supervisor = allUsers.find(u => u.id === currentUser!.supervisorId);
-        if (supervisor) {
-            topSupervisorId = supervisor.id;
-            currentUser = supervisor;
-        } else {
-            break; // Break if supervisor not found (shouldn't happen in consistent data)
-        }
-    }
-
-    // Now, traverse down from the top supervisor to get all subordinates
     const subordinates = new Set<string>();
-    const queue = [topSupervisorId];
-    const visited = new Set<string>();
+    const currentUser = allUsers.find(u => u.id === userId);
+    if (!currentUser) return subordinates;
 
-    while (queue.length > 0) {
+    // Get direct subordinates of the current user
+    const directReports = allUsers.filter(u => u.supervisorId === userId);
+    directReports.forEach(report => subordinates.add(report.id));
+  
+    // If the current user has a supervisor, get that supervisor's direct reports as well (peers)
+    if (currentUser.supervisorId) {
+      const supervisorReports = allUsers.filter(u => u.supervisorId === currentUser.supervisorId);
+      supervisorReports.forEach(report => subordinates.add(report.id));
+    }
+    
+    // Also include all users under direct reports
+    const queue = [...directReports.map(r => r.id)];
+    const visited = new Set<string>();
+    
+    while(queue.length > 0) {
         const currentId = queue.shift()!;
-        if (visited.has(currentId)) continue;
+        if(visited.has(currentId)) continue;
         visited.add(currentId);
 
-        const directReports = allUsers.filter(u => u.supervisorId === currentId);
-        directReports.forEach(report => {
-            if (!subordinates.has(report.id)) {
+        const reports = allUsers.filter(u => u.supervisorId === currentId);
+        reports.forEach(report => {
+            if(!subordinates.has(report.id)) {
                 subordinates.add(report.id);
                 queue.push(report.id);
             }
         });
     }
+
     return subordinates;
   }, []);
   
@@ -3509,3 +3509,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
