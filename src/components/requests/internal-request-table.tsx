@@ -124,7 +124,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const canClaimIssue = user?.id === req.requesterId && req.status === 'Issued';
     
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
-    const needsAcknowledgement = user?.id === req.requesterId && req.status === 'Issued' && !req.acknowledgedByRequester;
+    const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Rejected') && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
     const canAddComments = user?.role === 'Admin' || canApprove;
@@ -140,9 +140,9 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         <p className="text-sm text-muted-foreground">ID: {req.id ? req.id.slice(-6) : 'N/A'} &middot; {req.date ? format(parseISO(req.date), 'dd MMM yyyy') : 'No date'}</p>
                         </div>
                         {needsAcknowledgement ? (
-                        <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
+                          <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
                         ) : (
-                        <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                          <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                         )}
                     </div>
                 </CardHeader>
@@ -290,15 +290,17 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
   const { user, markInternalRequestAsViewed } = useAppContext();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
-  const { activeRequests, completedRequests } = useMemo(() => {
+    const { activeRequests, completedRequests } = useMemo(() => {
     const active: InternalRequest[] = [];
     const completed: InternalRequest[] = [];
     requests.forEach(req => {
-      if (req.status === 'Issued' || req.status === 'Rejected') {
-        completed.push(req);
-      } else {
-        active.push(req);
-      }
+        // A rejected request is only "completed" once the requester has acknowledged it.
+        const isRejectedAndUnseen = req.status === 'Rejected' && !req.acknowledgedByRequester;
+        if (req.status === 'Issued' || (req.status === 'Rejected' && !isRejectedAndUnseen)) {
+            completed.push(req);
+        } else {
+            active.push(req);
+        }
     });
     return { activeRequests: active, completedRequests: completed };
   }, [requests]);
@@ -330,11 +332,11 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
         )}
       </div>
-      {completedRequests.length > 0 && (
+       {completedRequests.length > 0 && (
         <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
           <AccordionItem value="completed-requests" className="border rounded-md">
             <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
-              Completed & Rejected Requests ({completedRequests.length})
+               Completed & Rejected Requests ({completedRequests.length})
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -343,7 +345,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      )}
+       )}
     </div>
   );
 }
