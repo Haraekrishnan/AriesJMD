@@ -753,10 +753,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, roles, loading]);
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
+    let topSupervisorId = userId;
+    let currentUser = allUsers.find(u => u.id === userId);
+    
+    // Traverse up to find the top-level supervisor
+    while (currentUser?.supervisorId) {
+        const supervisor = allUsers.find(u => u.id === currentUser!.supervisorId);
+        if (supervisor) {
+            topSupervisorId = supervisor.id;
+            currentUser = supervisor;
+        } else {
+            break; // Break if supervisor not found (shouldn't happen in consistent data)
+        }
+    }
+
+    // Now, traverse down from the top supervisor to get all subordinates
     const subordinates = new Set<string>();
-    const queue = [userId];
-    while(queue.length > 0) {
+    const queue = [topSupervisorId];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
         const currentId = queue.shift()!;
+        if (visited.has(currentId)) continue;
+        visited.add(currentId);
+
         const directReports = allUsers.filter(u => u.supervisorId === currentId);
         directReports.forEach(report => {
             if (!subordinates.has(report.id)) {
@@ -2718,18 +2738,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
     if (!user) return;
     const updates: { [key: string]: any } = {};
-    const requestsToMark = certificateRequests.filter(req => {
-        const isMyFulfilled = req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester;
-        if (!isMyFulfilled) return false;
-        if (requestType === 'store') return !!req.itemId;
-        if (requestType === 'equipment') return !!req.utMachineId || !!req.dftMachineId;
-        return false;
-    });
-    requestsToMark.forEach(req => {
+    certificateRequests.forEach(req => {
+      const isMyFulfilled = req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester;
+      if (!isMyFulfilled) return;
+      const matchesType = (requestType === 'store' && req.itemId) || (requestType === 'equipment' && (req.utMachineId || req.dftMachineId));
+      if (matchesType) {
         updates[`certificateRequests/${req.id}/viewedByRequester`] = true;
+      }
     });
     if (Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates);
+      update(ref(rtdb), updates);
     }
   }, [user, certificateRequests]);
   
@@ -3128,7 +3146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
