@@ -14,7 +14,7 @@ import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
 import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role, PpeHistoryRecord, EpNumberRecord } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -139,6 +139,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const [isAddPpeOpen, setIsAddPpeOpen] = useState(false);
   const [isChangingEp, setIsChangingEp] = useState(false);
   const [similarProfile, setSimilarProfile] = useState<ManpowerProfile | null>(null);
+  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
 
   const canAddPpe = useMemo(() => {
     if (!user) return false;
@@ -675,7 +676,16 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                           <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
                                           <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
                                           <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
-                                          <TableCell>{memo.issuedBy || 'N/A'}</TableCell>
+                                          <TableCell>
+                                            <div className='flex flex-col'>
+                                                <span>{memo.issuedBy || 'N/A'}</span>
+                                                {memo.attachmentUrl && (
+                                                    <Button type="button" variant="link" size="sm" className="p-0 h-auto text-xs justify-start" onClick={() => setViewingAttachmentUrl(memo.attachmentUrl!)}>
+                                                        <Paperclip className="h-3 w-3 mr-1"/>View Attachment
+                                                    </Button>
+                                                )}
+                                            </div>
+                                          </TableCell>
                                            {user?.role === 'Admin' && (
                                               <TableCell className="text-right">
                                                   <AlertDialog>
@@ -734,9 +744,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
               profile={profile}
           />
       )}
+      {viewingAttachmentUrl && (
+        <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Attachment Viewer</DialogTitle>
+                </DialogHeader>
+                <div className="flex items-center justify-center p-4">
+                    <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />
+                </div>
+            </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
+
 
 
 

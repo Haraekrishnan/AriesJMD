@@ -4,6 +4,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -371,6 +372,7 @@ export type MemoRecord = {
     date: string; // ISO String
     reason: string;
     issuedBy: string;
+    attachmentUrl?: string;
 };
 
 export type PpeHistoryRecord = {

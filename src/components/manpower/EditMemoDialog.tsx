@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,12 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Input } from '../ui/input';
 import type { MemoRecord, ManpowerProfile } from '@/lib/types';
+import { Paperclip, Upload, X } from 'lucide-react';
 
 const memoSchema = z.object({
   type: z.enum(['Memo', 'Warning Letter']),
   date: z.date({ required_error: 'Please select a date.' }),
   reason: z.string().min(10, 'A detailed reason is required.'),
   issuedBy: z.string().min(1, 'Issuer name is required.'),
+  attachmentUrl: z.string().optional(),
 });
 
 type MemoFormValues = z.infer<typeof memoSchema>;
@@ -34,6 +36,7 @@ interface EditMemoDialogProps {
 export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: EditMemoDialogProps) {
   const { updateMemoRecord } = useAppContext();
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<MemoFormValues>({
     resolver: zodResolver(memoSchema),
@@ -46,9 +49,41 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
         date: new Date(memo.date),
         reason: memo.reason,
         issuedBy: memo.issuedBy,
+        attachmentUrl: memo.attachmentUrl,
       });
     }
   }, [memo, isOpen, form]);
+  
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    toast({ title: 'Uploading...', description: 'Please wait while the file is uploaded.' });
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "my_unsigned_upload");
+
+    try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
+            method: "POST",
+            body: formData,
+        });
+        const data = await res.json();
+        setIsUploading(false);
+
+        if (data.secure_url) {
+            form.setValue('attachmentUrl', data.secure_url);
+            toast({ title: 'Upload Successful', description: 'File has been attached.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file.' });
+        }
+    } catch (error) {
+        setIsUploading(false);
+        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
+    }
+  };
 
   const onSubmit = (data: MemoFormValues) => {
     updateMemoRecord(profile.id, {
@@ -116,10 +151,32 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
             <Textarea {...form.register('reason')} rows={5} />
             {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
           </div>
+
+          <div className="space-y-2">
+            <Label>Attachment (Optional)</Label>
+            {form.watch('attachmentUrl') ? (
+              <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                <div className="flex items-center gap-2 truncate">
+                  <Paperclip className="h-4 w-4" />
+                  <span className="truncate">File Attached</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', '')}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Button asChild variant="outline" size="sm">
+                  <Label htmlFor="edit-memo-file-upload"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
+                </Button>
+                <Input id="edit-memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} />
+              </div>
+            )}
+          </div>
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={isUploading}>Save Changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>
