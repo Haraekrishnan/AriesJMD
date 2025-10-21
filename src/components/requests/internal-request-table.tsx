@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -42,7 +41,7 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
 };
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
-    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment, inventoryItems } = useAppContext();
+    const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment, inventoryItems, resolveInternalRequestDispute } = useAppContext();
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [itemAction, setItemAction] = useState<{ item: InternalRequestItem, status: InternalRequestItemStatus } | null>(null);
     const [comment, setComment] = useState('');
@@ -126,10 +125,11 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
     const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
     const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
-    const canClaimIssue = user?.id === req.requesterId && req.status === 'Issued';
+    const canDispute = user?.id === req.requesterId && req.status === 'Issued';
     
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
-    const needsAcknowledgement = user?.id === req.requesterId && req.status !== 'Pending' && !req.acknowledgedByRequester;
+    const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
+    const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
     const canAddComments = user?.role === 'Admin' || canApprove;
@@ -202,7 +202,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     </ScrollArea>
                 </CardContent>
                 <CardFooter className="p-2 bg-muted/50 flex flex-col items-stretch gap-2">
-                    {canAddComments && (
+                    {canApprove && (
                         <div className="relative px-2 pb-2">
                             <Textarea
                                 placeholder="Add a comment..."
@@ -230,8 +230,14 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 <Button size="sm" variant="destructive" onClick={() => handleBulkActionClick('Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
                             </>
                         )}
-                        {canClaimIssue && (
-                            <Button size="sm" variant="destructive" onClick={() => handleBulkActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Claim Issue</Button>
+                        {canDispute && (
+                            <Button size="sm" variant="destructive" onClick={() => handleBulkActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Dispute</Button>
+                        )}
+                        {canApprove && req.status === 'Disputed' && (
+                            <div className="flex gap-2">
+                                <Button size="sm" onClick={() => resolveInternalRequestDispute(req.id, 'reissue', 'Dispute accepted. Items will be re-issued.')}>Re-issue</Button>
+                                <Button size="sm" variant="outline" onClick={() => resolveInternalRequestDispute(req.id, 'reverse', 'Dispute rejected. Items confirmed as issued.')}>Confirm Issued</Button>
+                            </div>
                         )}
                         {canDelete && (
                             <AlertDialog>
@@ -301,10 +307,10 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     requests.forEach(req => {
       const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
       
-      if ((req.status === 'Issued' || req.status === 'Rejected') && !isRejectedButActive) {
-          completed.push(req);
+      if (isRejectedButActive || !['Issued', 'Rejected'].includes(req.status)) {
+        active.push(req);
       } else {
-          active.push(req);
+        completed.push(req);
       }
     });
     return { activeRequests: active, completedRequests: completed };
