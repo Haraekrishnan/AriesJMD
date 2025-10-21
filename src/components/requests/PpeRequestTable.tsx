@@ -63,7 +63,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
 
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
-        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed' || action === 'Issued')) {
+        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed')) {
             toast({ title: 'Comment required', variant: 'destructive'});
             return;
         }
@@ -191,7 +191,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
                     </>
                  )}
-                 {canIssue && req.status === 'Approved' && (
+                 {canMarkAsIssued && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
                  {canDispute && (
@@ -293,7 +293,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 )}
                             </div>
                             <div>
-                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' || action === 'Issued' ? '(Required)' : '(Optional)'}</Label>
+                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' ? '(Required)' : '(Optional)'}</Label>
                                 <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                             </div>
                         </div>

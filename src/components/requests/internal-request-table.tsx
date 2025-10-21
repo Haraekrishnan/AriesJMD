@@ -67,7 +67,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
     
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
-        const needsComment = status === 'Rejected' || status === 'Issued';
+        const needsComment = status === 'Rejected';
         if (needsComment) {
             setItemAction({ item, status });
             setIsActionConfirmOpen(true);
@@ -88,7 +88,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
             updateInternalRequestStatus(req.id, currentAction, comment);
             toast({ title: `All items updated to ${currentAction}` });
         } else if (itemAction) { // Single item action
-            if (!comment.trim() && (itemAction.status === 'Rejected' || itemAction.status === 'Issued')) {
+            if (!comment.trim() && itemAction.status === 'Rejected') {
                  toast({ title: 'Comment required', variant: 'destructive'});
                  return;
             }
@@ -277,7 +277,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                             <AlertDialogDescription>Please provide a comment for this action. This will apply to {itemAction ? 'this item' : 'all applicable items in the request'}.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <div>
-                            <Label htmlFor="comment">Comment {action === 'Rejected' || itemAction?.status === 'Rejected' || itemAction?.status === 'Issued' ? '(Required)' : '(Optional)'}</Label>
+                            <Label htmlFor="comment">Comment {action === 'Rejected' || itemAction?.status === 'Rejected' ? '(Required)' : '(Optional)'}</Label>
                             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                         </div>
                         <AlertDialogFooter>
@@ -299,10 +299,9 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     const active: InternalRequest[] = [];
     const completed: InternalRequest[] = [];
     requests.forEach(req => {
-      // A rejected request is "active" if it hasn't been acknowledged by the requester.
       const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
       
-      if (req.status === 'Issued' || (req.status === 'Rejected' && !isRejectedButActive)) {
+      if ((req.status === 'Issued' || req.status === 'Rejected') && !isRejectedButActive) {
           completed.push(req);
       } else {
           active.push(req);
