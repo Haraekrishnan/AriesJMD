@@ -40,7 +40,8 @@ export default function SchedulePage() {
                             </Select>
                         </div>
                     )}
-                    <CreateEventDialog />
+                    <CreateEventDialog isPlanning={true} />
+                    <CreateEventDialog isDelegating={true} />
                 </div>
             </div>
             

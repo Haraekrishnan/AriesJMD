@@ -1,13 +1,12 @@
 
-
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, startOfDay } from 'date-fns';
-import { PlusCircle, CalendarIcon } from 'lucide-react';
+import { PlusCircle, CalendarIcon, Users } from 'lucide-react';
 import { Label } from '../ui/label';
 
 const eventSchema = z.object({
@@ -31,7 +30,12 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
-export default function CreateEventDialog() {
+interface CreateEventDialogProps {
+  isDelegating?: boolean;
+  isPlanning?: boolean;
+}
+
+export default function CreateEventDialog({ isDelegating = false, isPlanning = false }: CreateEventDialogProps) {
   const { user, addPlannerEvent, getVisibleUsers } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,60 +51,73 @@ export default function CreateEventDialog() {
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        frequency: 'once',
+        userId: isDelegating ? '' : user?.id,
+        title: '',
+        description: '',
+      });
+    }
+  }, [isOpen, isDelegating, user, form]);
+
   const onSubmit = (data: EventFormValues) => {
     addPlannerEvent({
       ...data,
       date: data.date.toISOString(),
       creatorId: user!.id,
     });
+    const toastMessage = isDelegating ? 'Event Delegated' : 'Event Created';
     toast({
-      title: 'Event Created',
+      title: toastMessage,
       description: `"${data.title}" has been added to the schedule.`,
     });
     setIsOpen(false);
   };
   
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      form.reset({
-        title: '',
-        description: '',
-        frequency: 'once',
-        userId: user?.id,
-      });
-    }
     setIsOpen(open);
   };
+  
+  const dialogTitle = isDelegating ? "Delegate Event" : "Add Personal Planning";
+  const dialogDescription = isDelegating 
+    ? "Assign an event to another user's planner."
+    : "Add a new event or note to your own planner.";
+  const buttonText = isDelegating ? "Delegate Event" : "Add Planning";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Event
+          {isDelegating ? <Users className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+          {buttonText}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Event</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          <div>
-            <Label>Event For</Label>
-            <Controller
-              control={form.control}
-              name="userId"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
-                  <SelectContent>
-                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
-          </div>
+          {isDelegating && (
+            <div>
+              <Label>Delegate To</Label>
+              <Controller
+                control={form.control}
+                name="userId"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
+                    <SelectContent>
+                      {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
+            </div>
+          )}
 
           <div>
             <Label>Title</Label>
@@ -166,7 +183,7 @@ export default function CreateEventDialog() {
           
           <DialogFooter>
              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Event</Button>
+            <Button type="submit">{buttonText}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

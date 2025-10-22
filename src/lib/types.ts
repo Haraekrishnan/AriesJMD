@@ -5,6 +5,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -216,6 +217,7 @@ export type PlannerEvent = {
   creatorId: string; // Who created the event
   frequency: Frequency;
   comments: Comment[];
+  viewedBy?: { [userId: string]: boolean };
 };
 
 
