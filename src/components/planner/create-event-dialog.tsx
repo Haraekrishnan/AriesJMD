@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -26,34 +25,36 @@ const eventSchema = z.object({
     message: "Cannot create an event in the past."
   }),
   frequency: z.enum(['once', 'daily', 'weekly', 'weekends', 'monthly', 'daily-except-sundays']),
+  userId: z.string().min(1, 'Please select an employee for this event'),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
 export default function CreateEventDialog() {
-  const { user, addPlannerEvent } = useAppContext();
+  const { user, addPlannerEvent, getAssignableUsers } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  const assignableUsers = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       frequency: 'once',
+      userId: '',
     },
   });
 
   const onSubmit = (data: EventFormValues) => {
-    if (!user) return;
     addPlannerEvent({
       ...data,
       date: data.date.toISOString(),
-      creatorId: user.id,
-      userId: user.id,
+      creatorId: user!.id,
     });
     toast({
-      title: 'Planning Added',
-      description: `"${data.title}" has been added to your planner.`,
+      title: 'Event Delegated',
+      description: `"${data.title}" has been added to the schedule.`,
     });
     setIsOpen(false);
   };
@@ -64,6 +65,7 @@ export default function CreateEventDialog() {
         title: '',
         description: '',
         frequency: 'once',
+        userId: '',
       });
     }
     setIsOpen(open);
@@ -74,14 +76,31 @@ export default function CreateEventDialog() {
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Planning
+          Delegate Event
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Planning Event</DialogTitle>
+          <DialogTitle>Delegate Event</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          <div>
+            <Label>Delegate To</Label>
+            <Controller
+              control={form.control}
+              name="userId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
+                  <SelectContent>
+                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
+          </div>
+
           <div>
             <Label>Title</Label>
             <Input {...form.register('title')} placeholder="Event title" />
@@ -116,7 +135,7 @@ export default function CreateEventDialog() {
                         }} 
                         initialFocus 
                     />
-                  </PopoverContent>
+                    </PopoverContent>
                 </Popover>
               )}
             />
@@ -146,7 +165,7 @@ export default function CreateEventDialog() {
           
           <DialogFooter>
              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Add Planning</Button>
+            <Button type="submit">Delegate Event</Button>
           </DialogFooter>
         </form>
       </DialogContent>
