@@ -80,33 +80,31 @@ export function AppSidebar() {
             <h1 className="text-xl font-bold">{appName}</h1>
         </Link>
       </div>
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full px-2">
-            <ul className="space-y-1 p-2">
-            {navItems.map(item => (
-                item.show && (
-                <li key={item.href}>
-                    <Button
-                    asChild
-                    variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
-                    className="w-full justify-start"
-                    >
-                    <Link href={item.href} className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.label}</span>
-                        </div>
-                        {item.notificationCount > 0 && (
-                        <Badge variant="destructive" className="h-6 w-6 flex items-center justify-center p-0">{item.notificationCount}</Badge>
-                        )}
-                    </Link>
-                    </Button>
-                </li>
-                )
-            ))}
-            </ul>
-        </ScrollArea>
-      </div>
+      <ScrollArea className="flex-1 min-h-0 px-2">
+          <ul className="space-y-1 p-2">
+          {navItems.map(item => (
+              item.show && (
+              <li key={item.href}>
+                  <Button
+                  asChild
+                  variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
+                  className="w-full justify-start"
+                  >
+                  <Link href={item.href} className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                      </div>
+                      {item.notificationCount > 0 && (
+                      <Badge variant="destructive" className="h-6 w-6 flex items-center justify-center p-0">{item.notificationCount}</Badge>
+                      )}
+                  </Link>
+                  </Button>
+              </li>
+              )
+          ))}
+          </ul>
+      </ScrollArea>
       <div className="p-4 mt-auto">
         <Separator className="my-4" />
         <div className="flex items-center gap-3">
