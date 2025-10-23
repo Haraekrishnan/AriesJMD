@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -14,11 +15,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
-      router.replace('/login');
-    }
-    if (!loading && user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-      router.replace('/status');
+    if (!loading) {
+      if (!user && pathname !== '/login') {
+        router.replace('/login');
+      }
+      if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+        router.replace('/status');
+      }
     }
   }, [user, loading, router, pathname]);
 
@@ -34,6 +37,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  // If user is not loading and is authenticated, but is on a non-app page that isn't the status page,
+  // they should not see the app layout. This handles cases where they might land on /login while authenticated.
+  if (user && pathname === '/login') {
+    return null; 
+  }
+  
+  // If the user's status is locked/deactivated, show a minimal loading state or nothing, 
+  // as the status page will take over. This prevents flashing the main layout.
+  if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+      return (
+          <div className="flex h-screen w-full items-center justify-center bg-background">
+              <p>Redirecting...</p>
+          </div>
+      );
   }
 
   return (
