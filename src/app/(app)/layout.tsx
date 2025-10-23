@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -39,20 +40,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user) {
-    // If loading is done and there's still no user, we are either on the login page
-    // or should be redirected there. In either case, don't render the app layout.
-    return null; 
+  if (!user && pathname !== '/login') {
+    return null;
   }
 
-  // If user is not loading and is authenticated, but is on a non-app page that isn't the status page,
-  // they should not see the app layout. This handles cases where they might land on /login while authenticated.
+  // If user is authenticated but opens /login manually, don’t show layout
   if (user && pathname === '/login') {
     return null; 
   }
   
-  // If the user's status is locked/deactivated, show a minimal loading state or nothing, 
-  // as the status page will take over. This prevents flashing the main layout.
+  // If user is locked or deactivated, prevent layout flicker before redirect
   if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
       return (
           <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -60,6 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
       );
   }
+
 
   return (
       <div className="flex min-h-screen w-full bg-background">
@@ -76,3 +74,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
   );
 }
+

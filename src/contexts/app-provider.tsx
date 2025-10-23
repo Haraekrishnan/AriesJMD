@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -410,7 +409,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Set user based on stored ID
   // Delay marking loading=false until users are actually fetched
   useEffect(() => {
     const hasLoadedUsers = Object.keys(usersById).length > 0;
@@ -824,119 +822,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return assignable;
   }, [user, users, getVisibleUsers]);
-
-  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    
-    const commentText = status === 'Disputed' ? `Dispute raised: ${comment}` : `Bulk action: Status for all items changed to ${status}${comment ? `. Comment: ${comment}` : '.'}`;
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/approverId`] = user.id;
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-    updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
-    if (comment.trim()){
-      updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    }
-
-    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
-    
-    let itemsChanged = false;
-    const updatedItems = [...requestItems];
-
-    if (status !== 'Disputed') {
-      const applicableItems = requestItems.filter(item => {
-          if (status === 'Approved' || status === 'Rejected') return item.status === 'Pending';
-          if (status === 'Issued') return item.status === 'Approved';
-          return false;
-      });
-      
-      applicableItems.forEach((item) => {
-          itemsChanged = true;
-          const itemIndex = requestItems.findIndex(i => i.id === item.id);
-          if (itemIndex !== -1) {
-              updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
-              updatedItems[itemIndex].status = status;
-              if(status === 'Issued' && item.inventoryItemId) {
-                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
-                  if (inventoryItem && typeof inventoryItem.quantity === 'number') {
-                      const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
-                      updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
-                  }
-              }
-          }
-      });
-    }
-
-    let finalStatus = status;
-    if (itemsChanged) {
-        const allStatuses = new Set(updatedItems.map(item => item.status));
-        
-        if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
-            finalStatus = 'Issued';
-        } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
-            finalStatus = 'Approved';
-        } else if (allStatuses.has('Issued')) {
-            finalStatus = 'Partially Issued';
-        } else if (allStatuses.has('Approved')) {
-            finalStatus = 'Partially Approved';
-        } else if (updatedItems.every(i => i.status === 'Pending')) {
-             finalStatus = 'Pending';
-        } else {
-             finalStatus = 'Partially Approved';
-        }
-    }
-    updates[`internalRequests/${requestId}/status`] = finalStatus;
-
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `Update on your Internal Store Request #${requestId.slice(-6)}`,
-        `Your request status is now: ${finalStatus}`,
-        { 'Request ID': `#${requestId.slice(-6)}`, 'Updated By': user.name, 'Comment': comment },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, internalRequestsById, users, inventoryItems, addActivityLog]);
-  
-  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = internalRequestsById[requestId];
-    if (!request || request.status !== 'Disputed') return;
-  
-    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
-    
-    const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
-      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
-    
-    updateInternalRequestStatus(requestId, newStatus, actionComment);
-  
-    const requester = users.find(u => u.id === request.requesterId);
-    if(requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `Request Dispute Resolved #${requestId.slice(-6)}`,
-        'An issue you claimed has been resolved.',
-        { 
-          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
-          'Comment': comment
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, can, internalRequestsById, updateInternalRequestStatus, users]);
 
   const computedValue = useMemo(() => {
     if (!user) return {
@@ -2187,6 +2072,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, roles, users, addActivityLog]);
+
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/status`] = status;
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+  
+    if (comment.trim()) {
+      const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+      const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}. ${comment}`, date: new Date().toISOString() };
+      updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    }
+  
+    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
+    requestItems.forEach((item, index) => {
+      updates[`internalRequests/${requestId}/items/${index}/status`] = status;
+      if (status === 'Issued') {
+        if (item.inventoryItemId) {
+          const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
+          if (inventoryItem && typeof inventoryItem.quantity === 'number') {
+            const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
+            updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
+          }
+        }
+      }
+    });
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Internal Request Status Updated', `Request ID: ${requestId} to ${status}`);
+  }, [user, internalRequestsById, inventoryItems, addActivityLog]);
+  
+  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = internalRequests.find(r => r.id === requestId);
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Items will be re-issued.`
+      : `Dispute reversed by ${user.name}. Items confirmed as issued.`;
+    
+    updateInternalRequestStatus(requestId, newStatus, `${actionComment} Comment: ${comment}`);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `Internal Request Dispute Resolved: ${request.id.slice(-6)}`,
+        'A dispute you filed has been resolved.',
+        { 
+          'Request ID': `...${request.id.slice(-6)}`,
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, internalRequests, can.approve_store_requests, updateInternalRequestStatus, users]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, commentText: string) => {
     if (!user) return;
@@ -2368,10 +2317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 'Subject': request.subject,
                 'Updated By': user.name,
                 'Comment': comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'View Request'
-        );
+            }, `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`, 'View Request')
     }
   }, [user, managementRequests, users, addActivityLog]);
   
@@ -2428,7 +2374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2528,7 +2474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
     
     const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
+      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
       : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
     
     updatePpeRequestStatus(requestId, newStatus, actionComment);
@@ -3263,7 +3209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
@@ -3597,3 +3543,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
