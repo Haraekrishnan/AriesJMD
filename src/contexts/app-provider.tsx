@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -776,13 +777,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
   
-    const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge'];
+    const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
     const supervisorRoles: Role[] = ['Supervisor', 'Junior Supervisor'];
   
     if (highLevelRoles.includes(user.role)) {
       if (user.role === 'Manager' || user.role === 'Admin') return users;
       if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager');
-      if (user.role === 'Store in Charge' || user.role === 'Document Controller') {
+      if (user.role === 'Store in Charge' || user.role === 'Document Controller' || user.role === 'Assistant Store Incharge') {
           return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
       }
     }
@@ -801,23 +802,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (directSupervisor && supervisorRoles.includes(directSupervisor.role)) {
             const supervisorSubordinates = getSubordinateChain(directSupervisor.id, users);
             supervisorSubordinates.forEach(id => visibleUserIds.add(id));
-            visibleUserIds.add(directSupervisor.id);
         }
     }
   
-    return users.filter(u => visibleUserIds.has(u.id));
+    return users.filter(u => visibleUserIds.has(u.id) && u.id !== user.supervisorId);
   }, [user, users, getSubordinateChain]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
     
-    // Start with the users the current user can see
     let assignableUsers = getVisibleUsers();
   
-    // Exclude any user with the 'Manager' role
     assignableUsers = assignableUsers.filter(u => u.role !== 'Manager');
   
-    // From that list, filter out anyone who is a supervisor to the current user
     const supervisorChain = new Set<string>();
     let currentUser: User | undefined = user;
     while(currentUser?.supervisorId) {
@@ -1990,9 +1987,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, manpowerProfiles]);
 
   const addMemoOrWarning = useCallback((manpowerId: string, memo: Omit<MemoRecord, 'id'>) => {
+    if (!user) return;
     const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory`));
     set(newRef, { ...memo, id: newRef.key });
-  }, []);
+
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return;
+
+    const rolesToNotify: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+    const usersToNotify = users.filter(u => rolesToNotify.includes(u.role));
+
+    usersToNotify.forEach(recipient => {
+      if (recipient.email) {
+        createAndSendNotification(
+          recipient.email,
+          `${memo.type} Issued to ${profile.name}`,
+          `${memo.type} Issued`,
+          {
+            'Employee': profile.name,
+            'Trade': profile.trade,
+            'Type': memo.type,
+            'Reason': memo.reason,
+            'Issued By': memo.issuedBy,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/manpower-list`,
+          'View Manpower List'
+        );
+      }
+    });
+  }, [user, manpowerProfiles, users]);
   
   const updateMemoRecord = useCallback((manpowerId: string, memo: MemoRecord) => {
     update(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory/${memo.id}`), memo);
@@ -2061,7 +2084,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const commentText = status === 'Disputed' ? `Dispute raised: ${comment}` : `Bulk action: Status for all items changed to ${status}. Comment: ${comment}`;
+    
+    const commentText = status === 'Disputed' ? `Dispute raised: ${comment}` : `Bulk action: Status for all items changed to ${status}${comment ? `. Comment: ${comment}` : '.'}`;
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
 
     const updates: { [key: string]: any } = {};
@@ -2166,7 +2190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     }
   }, [user, internalRequestsById, can.approve_store_requests, updateInternalRequestStatus, users]);
-
+  
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, commentText: string) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -2178,14 +2202,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
     const itemDescription = requestItems[itemIndex].description;
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Item "${itemDescription}" status changed to ${status}. Comment: ${commentText}`, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Item "${itemDescription}" status changed to ${status}${commentText ? `. Comment: ${commentText}` : ''}`, date: new Date().toISOString() };
 
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
     updates[`internalRequests/${requestId}/approverId`] = user.id;
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
-    if (commentText) {
+    if (commentText.trim()) {
       updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     }
 
@@ -2431,7 +2455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-    const commentText = `Status changed to ${status}. Comment: ${comment}`;
+    const commentText = `Status changed to ${status}${comment ? `. Comment: ${comment}` : '.'}`;
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
 
     const updates: { [key: string]: any } = {};
@@ -2499,6 +2523,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
+  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
+      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
+    
+    updatePpeRequestStatus(requestId, newStatus, actionComment);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `PPE Dispute Resolved: ${request.ppeType}`,
+        'A dispute you filed has been resolved.',
+        { 
+          'Item': `${request.ppeType} (Size: ${request.size})`,
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
+
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
@@ -3529,40 +3583,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     return { importedCount, notFoundCount };
   }, [user, manpowerProfiles, addActivityLog]);
-  
-  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (!request || request.status !== 'Disputed') return;
-  
-    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
-    
-    const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
-      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
-    
-    updatePpeRequestStatus(requestId, newStatus, actionComment);
-  
-    const requester = users.find(u => u.id === request.requesterId);
-    if(requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `PPE Dispute Resolved: ${request.ppeType}`,
-        'A dispute you filed has been resolved.',
-        { 
-          'Item': `${request.ppeType} (Size: ${request.size})`,
-          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
-          'Comment': comment
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addPpeHistoryFromExcel, resolveInternalRequestDispute,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, can, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addPpeHistoryFromExcel,
     ...computedValue,
   };
 
@@ -3576,3 +3600,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
