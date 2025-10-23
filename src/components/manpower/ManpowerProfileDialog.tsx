@@ -1,6 +1,5 @@
-
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -140,6 +139,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const [similarProfile, setSimilarProfile] = useState<ManpowerProfile | null>(null);
   const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const canAddPpe = useMemo(() => {
     if (!user) return false;
@@ -384,6 +387,28 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
         return timeline;
     }, [liveProfile]);
+    
+    const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+        if (zoom <= 1) return;
+        e.preventDefault();
+        setIsPanning(true);
+        setStartPosition({
+            x: e.clientX - translate.x,
+            y: e.clientY - translate.y,
+        });
+    };
+
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+        if (!isPanning || !imageContainerRef.current) return;
+        e.preventDefault();
+        const x = e.clientX - startPosition.x;
+        const y = e.clientY - startPosition.y;
+        setTranslate({ x, y });
+    };
+    
+    const handleMouseUpOrLeave = () => {
+        setIsPanning(false);
+    };
 
   return (
     <>
@@ -745,7 +770,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
           />
       )}
       {viewingAttachmentUrl && (
-        <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); }}>
+        <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
             <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Attachment Viewer</DialogTitle>
@@ -757,12 +782,23 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         </a>
                     </div>
                 </DialogHeader>
-                <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                 <div 
+                  ref={imageContainerRef}
+                  className="flex-1 overflow-auto flex items-center justify-center p-4 bg-muted/50 rounded-md"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUpOrLeave}
+                  onMouseLeave={handleMouseUpOrLeave}
+                >
                     <img 
                         src={viewingAttachmentUrl} 
                         alt="Attachment" 
-                        className="transition-transform duration-200"
-                        style={{ transform: `scale(${zoom})`, maxWidth: '100%', maxHeight: '100%' }}
+                        className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                        style={{ 
+                            transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                            maxWidth: 'none', 
+                            maxHeight: 'none' 
+                        }}
                     />
                 </div>
             </DialogContent>
