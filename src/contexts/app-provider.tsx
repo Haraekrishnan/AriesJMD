@@ -411,22 +411,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   // Set user based on stored ID
+  // Delay marking loading=false until users are actually fetched
   useEffect(() => {
-    if (storedUserId && Object.keys(usersById).length > 0) {
-        const foundUser = usersById[storedUserId];
-        if (foundUser) {
-            setUser(foundUser);
-        } else {
-            // If the stored ID doesn't match any user, log out
-            setStoredUserId(null);
-            setUser(null);
-        }
-    } else if (!storedUserId) {
+    const hasLoadedUsers = Object.keys(usersById).length > 0;
+  
+    // Only proceed once Firebase users have loaded at least once
+    if (!hasLoadedUsers) return;
+  
+    if (storedUserId) {
+      const foundUser = usersById[storedUserId];
+      if (foundUser) {
+        setUser(foundUser);
+      } else {
+        setStoredUserId(null);
         setUser(null);
+      }
+    } else {
+      setUser(null);
     }
+  
     setLoading(false);
   }, [storedUserId, usersById, setUser, setStoredUserId]);
-
+  
   // Listen for status changes on the current user
   useEffect(() => {
     if (user?.id) {
@@ -902,7 +908,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     }
   }, [user, internalRequestsById, users, inventoryItems, addActivityLog]);
-
+  
   const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
     if (!user || !can.approve_store_requests) return;
     const request = internalRequestsById[requestId];
@@ -930,7 +936,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, internalRequestsById, can.approve_store_requests, updateInternalRequestStatus, users]);
+  }, [user, can, internalRequestsById, updateInternalRequestStatus, users]);
 
   const computedValue = useMemo(() => {
     if (!user) return {
