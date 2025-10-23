@@ -59,6 +59,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       );
   }
 
+  // If there's no user, we shouldn't be here based on above logic, but as a fallback, don't render the layout.
+  if (!user) {
+    return null;
+  }
+
   return (
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
