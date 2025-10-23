@@ -39,8 +39,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user && pathname !== '/login') {
-    return null; // Prevents showing login briefly while redirecting
+  if (!user) {
+    // If loading is done and there's still no user, we are either on the login page
+    // or should be redirected there. In either case, don't render the app layout.
+    return null; 
   }
 
   // If user is not loading and is authenticated, but is on a non-app page that isn't the status page,
@@ -57,11 +59,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <p>Redirecting...</p>
           </div>
       );
-  }
-
-  // If there's no user, we shouldn't be here based on above logic, but as a fallback, don't render the layout.
-  if (!user) {
-    return null;
   }
 
   return (

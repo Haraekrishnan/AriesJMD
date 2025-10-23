@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -18,7 +19,7 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
-  if (loading || user) {
+  if (loading || (!loading && user)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex items-center space-x-4">

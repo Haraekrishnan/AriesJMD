@@ -314,8 +314,8 @@ const createDataListener = <T extends {}>(
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
+  const [user, setUser] = useLocalStorage<User | null>('aries-user-session-v2', null);
+  const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v2', null);
 
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
@@ -412,15 +412,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Set user based on stored ID
   useEffect(() => {
-    if (storedUserId) {
+    if (storedUserId && Object.keys(usersById).length > 0) {
         const foundUser = usersById[storedUserId];
         if (foundUser) {
             setUser(foundUser);
+        } else {
+            // If the stored ID doesn't match any user, log out
+            setStoredUserId(null);
+            setUser(null);
         }
-    } else {
+    } else if (!storedUserId) {
         setUser(null);
     }
-  }, [storedUserId, usersById]);
+    setLoading(false);
+  }, [storedUserId, usersById, setUser, setStoredUserId]);
 
   // Listen for status changes on the current user
   useEffect(() => {
@@ -434,13 +439,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                 setUser(updatedUser);
-            }
+            setUser(updatedUser);
         });
         return () => unsubscribe();
     }
-  }, [user, setStoredUserId, router]);
+  }, [user?.id, setStoredUserId, setUser, router]);
   
   useEffect(() => {
     if (!rtdb) {
@@ -463,18 +466,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     seedData();
 
-    if (!storedUserId) {
-      setLoading(false);
-      // Clear all state when user logs out
-      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
-      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
-      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
-      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
-      clearState(setUnlockRequestsById);
-      return;
-    }
-  
+    setLoading(true);
     const listeners = [
       createDataListener('users', setUsersById),
       createDataListener('roles', setRolesById),
@@ -529,13 +521,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
   
-    setLoading(false);
-  
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [storedUserId]);
+  }, []);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -594,6 +584,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const foundUser = { id: userId, ...usersData[userId] };
 
         if (foundUser.password === pass) {
+            setUser(foundUser);
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
@@ -602,7 +593,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [addActivityLog, setStoredUserId]);
+  }, [addActivityLog, setStoredUserId, setUser]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -611,7 +602,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStoredUserId(null);
     setUser(null);
     router.push('/login');
-  }, [user, addActivityLog, setStoredUserId, router]);
+  }, [user, addActivityLog, setStoredUserId, setUser, router]);
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -624,7 +615,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
       if (user.id === updatedUser.id) setUser(updatedUser);
     }
-  }, [user, addActivityLog]);
+  }, [user, addActivityLog, setUser]);
 
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
     if (user) {
@@ -827,6 +818,119 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return assignable;
   }, [user, users, getVisibleUsers]);
+
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    
+    const commentText = status === 'Disputed' ? `Dispute raised: ${comment}` : `Bulk action: Status for all items changed to ${status}${comment ? `. Comment: ${comment}` : '.'}`;
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
+    if (comment.trim()){
+      updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    }
+
+    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
+    
+    let itemsChanged = false;
+    const updatedItems = [...requestItems];
+
+    if (status !== 'Disputed') {
+      const applicableItems = requestItems.filter(item => {
+          if (status === 'Approved' || status === 'Rejected') return item.status === 'Pending';
+          if (status === 'Issued') return item.status === 'Approved';
+          return false;
+      });
+      
+      applicableItems.forEach((item) => {
+          itemsChanged = true;
+          const itemIndex = requestItems.findIndex(i => i.id === item.id);
+          if (itemIndex !== -1) {
+              updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
+              updatedItems[itemIndex].status = status;
+              if(status === 'Issued' && item.inventoryItemId) {
+                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
+                  if (inventoryItem && typeof inventoryItem.quantity === 'number') {
+                      const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
+                      updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
+                  }
+              }
+          }
+      });
+    }
+
+    let finalStatus = status;
+    if (itemsChanged) {
+        const allStatuses = new Set(updatedItems.map(item => item.status));
+        
+        if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
+            finalStatus = 'Issued';
+        } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
+            finalStatus = 'Approved';
+        } else if (allStatuses.has('Issued')) {
+            finalStatus = 'Partially Issued';
+        } else if (allStatuses.has('Approved')) {
+            finalStatus = 'Partially Approved';
+        } else if (updatedItems.every(i => i.status === 'Pending')) {
+             finalStatus = 'Pending';
+        } else {
+             finalStatus = 'Partially Approved';
+        }
+    }
+    updates[`internalRequests/${requestId}/status`] = finalStatus;
+
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `Update on your Internal Store Request #${requestId.slice(-6)}`,
+        `Your request status is now: ${finalStatus}`,
+        { 'Request ID': `#${requestId.slice(-6)}`, 'Updated By': user.name, 'Comment': comment },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, internalRequestsById, users, inventoryItems, addActivityLog]);
+
+  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = internalRequestsById[requestId];
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
+      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
+    
+    updateInternalRequestStatus(requestId, newStatus, actionComment);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `Request Dispute Resolved #${requestId.slice(-6)}`,
+        'An issue you claimed has been resolved.',
+        { 
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, internalRequestsById, can.approve_store_requests, updateInternalRequestStatus, users]);
 
   const computedValue = useMemo(() => {
     if (!user) return {
@@ -2077,119 +2181,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, roles, users, addActivityLog]);
-  
-  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    
-    const commentText = status === 'Disputed' ? `Dispute raised: ${comment}` : `Bulk action: Status for all items changed to ${status}${comment ? `. Comment: ${comment}` : '.'}`;
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/approverId`] = user.id;
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-    updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
-    if (comment.trim()){
-      updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    }
-
-    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
-    
-    let itemsChanged = false;
-    const updatedItems = [...requestItems];
-
-    if (status !== 'Disputed') {
-      const applicableItems = requestItems.filter(item => {
-          if (status === 'Approved' || status === 'Rejected') return item.status === 'Pending';
-          if (status === 'Issued') return item.status === 'Approved';
-          return false;
-      });
-      
-      applicableItems.forEach((item) => {
-          itemsChanged = true;
-          const itemIndex = requestItems.findIndex(i => i.id === item.id);
-          if (itemIndex !== -1) {
-              updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
-              updatedItems[itemIndex].status = status;
-              if(status === 'Issued' && item.inventoryItemId) {
-                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
-                  if (inventoryItem && typeof inventoryItem.quantity === 'number') {
-                      const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
-                      updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
-                  }
-              }
-          }
-      });
-    }
-
-    let finalStatus = status;
-    if (itemsChanged) {
-        const allStatuses = new Set(updatedItems.map(item => item.status));
-        
-        if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
-            finalStatus = 'Issued';
-        } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
-            finalStatus = 'Approved';
-        } else if (allStatuses.has('Issued')) {
-            finalStatus = 'Partially Issued';
-        } else if (allStatuses.has('Approved')) {
-            finalStatus = 'Partially Approved';
-        } else if (updatedItems.every(i => i.status === 'Pending')) {
-             finalStatus = 'Pending';
-        } else {
-             finalStatus = 'Partially Approved';
-        }
-    }
-    updates[`internalRequests/${requestId}/status`] = finalStatus;
-
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `Update on your Internal Store Request #${requestId.slice(-6)}`,
-        `Your request status is now: ${finalStatus}`,
-        { 'Request ID': `#${requestId.slice(-6)}`, 'Updated By': user.name, 'Comment': comment },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, internalRequestsById, users, inventoryItems, addActivityLog]);
-  
-  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = internalRequestsById[requestId];
-    if (!request || request.status !== 'Disputed') return;
-  
-    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
-    
-    const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
-      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
-    
-    updateInternalRequestStatus(requestId, newStatus, actionComment);
-  
-    const requester = users.find(u => u.id === request.requesterId);
-    if(requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `Request Dispute Resolved #${requestId.slice(-6)}`,
-        'An issue you claimed has been resolved.',
-        { 
-          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
-          'Comment': comment
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, internalRequestsById, can.approve_store_requests, updateInternalRequestStatus, users]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, commentText: string) => {
     if (!user) return;
@@ -3600,4 +3591,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
