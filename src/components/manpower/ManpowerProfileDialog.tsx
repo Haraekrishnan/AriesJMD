@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -28,6 +29,7 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, push, set } from 'firebase/database';
 import { Switch } from '../ui/switch';
 import { Alert } from '../ui/alert';
+import { cn } from '@/lib/utils';
 
 
 const profileSchema = z.object({
@@ -807,3 +809,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
+    
