@@ -2,6 +2,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import React, { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   CheckSquare, 
@@ -43,7 +44,7 @@ export function AppSidebar() {
   const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount } = useAppContext();
   const pathname = usePathname();
   
-  const navItems = [
+  const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, show: true },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, show: true },
@@ -64,7 +65,15 @@ export function AppSidebar() {
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
-  ];
+  ], [
+    can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, 
+    pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, 
+    pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, 
+    plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, 
+    pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, 
+    pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, 
+    pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
+  ]);
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
