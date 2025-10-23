@@ -15,17 +15,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user && pathname !== '/login') {
-        router.replace('/login');
-      }
-      if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-        router.replace('/status');
-      }
+    if (loading) return; // Do nothing until context is ready
+
+    if (!user && pathname !== '/login') {
+      router.replace('/login');
+    } else if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+      router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || (!user && pathname !== '/login')) {
+  if (loading) {
+    // Still fetching user info — show skeleton loader
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -37,6 +37,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+  
+  if (!user && pathname !== '/login') {
+    return null; // Prevents showing login briefly while redirecting
   }
 
   // If user is not loading and is authenticated, but is on a non-app page that isn't the status page,
