@@ -16,7 +16,7 @@ import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentSta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { format, parse, isValid, startOfDay, parseISO } from 'date-fns';
+import { format, parse, isValid, startOfDay, parseISO, isBefore } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
@@ -759,6 +759,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
 
 
