@@ -80,7 +80,7 @@ export function AppSidebar() {
             <h1 className="text-xl font-bold">{appName}</h1>
         </Link>
       </div>
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="px-2">
         <ul className="space-y-1 p-2">
           {navItems.map(item => (
             item.show && (
