@@ -6,7 +6,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -23,6 +23,7 @@ import RejoinDialog from '@/components/manpower/RejoinDialog';
 import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
 import IssueMemoDialog from '@/components/manpower/IssueMemoDialog';
 import IssuePpeDialog from '@/components/manpower/IssuePpeDialog';
+import MemoReportDialog from '@/components/manpower/MemoReportDialog';
 
 
 export default function ManpowerListPage() {
@@ -34,6 +35,7 @@ export default function ManpowerListPage() {
     const [isExtendLeaveOpen, setIsExtendLeaveOpen] = useState(false);
     const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false);
     const [isPpeDialogOpen, setIsPpeDialogOpen] = useState(false);
+    const [isMemoReportOpen, setIsMemoReportOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -207,6 +209,7 @@ export default function ManpowerListPage() {
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
+                         <Button variant="outline" onClick={() => setIsMemoReportOpen(true)}><GanttChartSquare className="mr-2 h-4 w-4" /> Memo Report</Button>
                          <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
                          <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCog className="mr-2 h-4 w-4" /> Update Rejoin</Button>
@@ -368,6 +371,10 @@ export default function ManpowerListPage() {
                         isOpen={isImportDialogOpen}
                         setIsOpen={setIsImportDialogOpen}
                     />
+                    <MemoReportDialog
+                        isOpen={isMemoReportOpen}
+                        setIsOpen={setIsMemoReportOpen}
+                    />
                      {selectedProfile && selectedLeave && (
                         <ExtendLeaveDialog
                             isOpen={isExtendLeaveOpen}
@@ -381,6 +388,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
-    
-
