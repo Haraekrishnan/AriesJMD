@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -14,7 +13,7 @@ import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
 import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role, PpeHistoryRecord, EpNumberRecord } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO, isBefore } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -140,6 +139,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const [isChangingEp, setIsChangingEp] = useState(false);
   const [similarProfile, setSimilarProfile] = useState<ManpowerProfile | null>(null);
   const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
 
   const canAddPpe = useMemo(() => {
     if (!user) return false;
@@ -675,7 +675,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                       <TableRow key={`${memo.id}-${index}`}>
                                           <TableCell><Badge variant={memo.type === 'Warning Letter' ? 'destructive' : 'secondary'}>{memo.type}</Badge></TableCell>
                                           <TableCell>{format(new Date(memo.date), 'dd-MM-yyyy')}</TableCell>
-                                          <TableCell className="max-w-xs whitespace-pre-wrap">{memo.reason}</TableCell>
+                                          <TableCell className="max-w-xs truncate">{memo.reason}</TableCell>
                                           <TableCell>
                                             <div className='flex flex-col'>
                                                 <span>{memo.issuedBy || 'N/A'}</span>
@@ -745,13 +745,25 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
           />
       )}
       {viewingAttachmentUrl && (
-        <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
-            <DialogContent className="max-w-3xl">
+        <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); }}>
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Attachment Viewer</DialogTitle>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                        <a href={viewingAttachmentUrl} download target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                        </a>
+                    </div>
                 </DialogHeader>
-                <div className="flex items-center justify-center p-4">
-                    <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />
+                <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                    <img 
+                        src={viewingAttachmentUrl} 
+                        alt="Attachment" 
+                        className="transition-transform duration-200"
+                        style={{ transform: `scale(${zoom})`, maxWidth: '100%', maxHeight: '100%' }}
+                    />
                 </div>
             </DialogContent>
         </Dialog>
@@ -759,10 +771,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
-
-
-
-
-
-

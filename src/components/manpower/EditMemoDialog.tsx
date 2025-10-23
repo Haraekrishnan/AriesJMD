@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Input } from '../ui/input';
 import type { MemoRecord, ManpowerProfile } from '@/lib/types';
-import { Paperclip, Upload, X } from 'lucide-react';
+import { Paperclip, Upload, X, ZoomIn, ZoomOut, Download } from 'lucide-react';
 
 const memoSchema = z.object({
   type: z.enum(['Memo', 'Warning Letter']),
@@ -37,6 +37,8 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
   const { updateMemoRecord } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
 
   const form = useForm<MemoFormValues>({
     resolver: zodResolver(memoSchema),
@@ -103,6 +105,7 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -156,10 +159,10 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
             <Label>Attachment (Optional)</Label>
             {form.watch('attachmentUrl') ? (
               <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                <div className="flex items-center gap-2 truncate">
+                <button type="button" onClick={() => setViewingAttachmentUrl(form.watch('attachmentUrl')!)} className="flex items-center gap-2 truncate hover:underline">
                   <Paperclip className="h-4 w-4" />
                   <span className="truncate">File Attached</span>
-                </div>
+                </button>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', '')}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -181,5 +184,31 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
         </form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Attachment Viewer</DialogTitle>
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                    <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                    </a>
+                </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                {viewingAttachmentUrl && (
+                    <img 
+                        src={viewingAttachmentUrl} 
+                        alt="Attachment" 
+                        className="transition-transform duration-200"
+                        style={{ transform: `scale(${zoom})`, maxWidth: '100%', maxHeight: '100%' }}
+                    />
+                )}
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }

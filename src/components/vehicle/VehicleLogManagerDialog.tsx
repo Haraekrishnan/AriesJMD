@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Vehicle, MachineLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
-import { PlusCircle, Trash2, Paperclip, Upload, X } from 'lucide-react';
+import { PlusCircle, Trash2, Paperclip, Upload, X, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
@@ -55,6 +55,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
   
   const vehicleLogs = getMachineLogs(vehicle.id);
 
@@ -284,13 +285,27 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
       </DialogContent>
     </Dialog>
 
-    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
-        <DialogContent className="max-w-3xl">
+    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Attachment Viewer</DialogTitle>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                    <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                    </a>
+                </div>
             </DialogHeader>
-            <div className="flex items-center justify-center p-4">
-                {viewingAttachmentUrl && <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />}
+            <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+                {viewingAttachmentUrl && (
+                    <img 
+                        src={viewingAttachmentUrl} 
+                        alt="Attachment" 
+                        className="transition-transform duration-200"
+                        style={{ transform: `scale(${zoom})`, maxWidth: '100%', maxHeight: '100%' }}
+                    />
+                )}
             </div>
         </DialogContent>
     </Dialog>
