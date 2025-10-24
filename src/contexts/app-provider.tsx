@@ -177,7 +177,6 @@ type AppContextType = {
   addPpeHistoryRecord: (manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => void;
   updatePpeHistoryRecord: (manpowerId: string, record: PpeHistoryRecord) => void;
   deletePpeHistoryRecord: (manpowerId: string, recordId: string) => void;
-  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   addInternalRequest: (request: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => void;
   updateInternalRequestItem: (requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => void;
   resolveInternalRequestDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
@@ -902,6 +901,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, manpowerLogs, plannerEvents]);
+  
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
@@ -2042,21 +2056,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
   }, [user]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
-
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -2070,7 +2069,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         viewedByRequester: true,
         acknowledgedByRequester: false,
     };
-
     addInternalRequestComment(newRequestRef.key!, `Request created by ${user.name}.`);
 
     set(newRequestRef, newRequest);
@@ -2173,12 +2171,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const itemIndex = requestItems.findIndex(item => item.id === itemId);
     if (itemIndex === -1) return;
     
-    let fullComment = `Item "${requestItems[itemIndex].description}" status changed to ${status}.`;
-    if(commentText) fullComment += ` Comment: ${commentText}`;
+    const item = requestItems[itemIndex];
+    const updates: { [key: string]: any } = {};
 
+    // Stock check before issuing
+    if (status === 'Issued') {
+        const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || i.name.toLowerCase() === item.description.toLowerCase());
+        if (inventoryItem) {
+            const currentStock = inventoryItem.quantity || 0;
+            if (currentStock < item.quantity) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Insufficient Stock',
+                    description: `Cannot issue ${item.quantity} of ${item.description}. Only ${currentStock} available.`,
+                });
+                return;
+            }
+            updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
+        } else {
+             // If it's a custom item not in inventory, we can't check stock. Allow issuance but warn.
+             toast({
+                variant: 'default',
+                title: 'Custom Item Issued',
+                description: `"${item.description}" is not a tracked inventory item. Stock not adjusted.`,
+            });
+        }
+    }
+    
+    let fullComment = `Item "${item.description}" status changed to ${status}.`;
+    if(commentText) fullComment += ` Comment: ${commentText}`;
     addInternalRequestComment(requestId, fullComment);
 
-    const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
 
     const updatedItems = [...requestItems];
@@ -2202,19 +2225,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updates[`internalRequests/${requestId}/status`] = 'Rejected';
     }
     
-    if (status === 'Issued') {
-        const item = requestItems[itemIndex];
-        if (item.inventoryItemId) {
-            const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
-            if (inventoryItem && typeof inventoryItem.quantity === 'number') {
-                const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
-                updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
-            }
-        }
-    }
-
     update(ref(rtdb), updates);
-  }, [user, internalRequestsById, inventoryItems, addInternalRequestComment]);
+  }, [user, internalRequestsById, inventoryItems, addInternalRequestComment, toast]);
 
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
     if (!user) return;
@@ -2229,7 +2241,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (comment.trim()) {
         commentText += ` Comment: ${comment}`;
     }
-
     addInternalRequestComment(requestId, commentText);
 
     const updates: { [key: string]: any } = {};
@@ -2247,17 +2258,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return false;
       });
       
-      applicableItems.forEach((item) => {
+      let canProceed = true;
+      if (status === 'Issued') {
+        for (const item of applicableItems) {
+            const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || i.name.toLowerCase() === item.description.toLowerCase());
+            if (inventoryItem) {
+                const currentStock = inventoryItem.quantity || 0;
+                if (currentStock < item.quantity) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Insufficient Stock',
+                        description: `Cannot issue ${item.quantity} of ${item.description}. Only ${currentStock} available. Bulk issuance halted.`,
+                    });
+                    canProceed = false;
+                    break;
+                }
+            }
+        }
+      }
+
+      if (!canProceed) return;
+
+      applicableItems.forEach((item, itemIdx) => {
           itemsChanged = true;
-          const itemIndex = requestItems.findIndex(i => i.id === item.id);
-          if (itemIndex !== -1) {
-              updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
-              updatedItems[itemIndex].status = status;
-              if(status === 'Issued' && item.inventoryItemId) {
-                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId);
-                  if (inventoryItem && typeof inventoryItem.quantity === 'number') {
-                      const newQuantity = Math.max(0, inventoryItem.quantity - item.quantity);
-                      updates[`inventoryItems/${item.inventoryItemId}/quantity`] = newQuantity;
+          const originalItemIndex = requestItems.findIndex(i => i.id === item.id);
+          if (originalItemIndex !== -1) {
+              updates[`internalRequests/${requestId}/items/${originalItemIndex}/status`] = status;
+              updatedItems[originalItemIndex].status = status;
+              if(status === 'Issued') {
+                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || i.name.toLowerCase() === item.description.toLowerCase());
+                  if (inventoryItem) {
+                      const currentStock = inventoryItem.quantity || 0;
+                      updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
                   }
               }
           }
@@ -2298,7 +2330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment]);
+  }, [user, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
   
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
