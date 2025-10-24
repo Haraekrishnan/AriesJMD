@@ -130,6 +130,8 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
       setIsPanning(false);
   };
 
+  const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+
   return (
     <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -216,8 +218,12 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
             <DialogHeader>
                 <DialogTitle>Attachment Viewer</DialogTitle>
                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                    {!isPdf && (
+                        <>
+                            <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                        </>
+                    )}
                     <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
                         <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
                     </a>
@@ -232,16 +238,22 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
               onMouseLeave={handleMouseUpOrLeave}
             >
                 {viewingAttachmentUrl && (
-                    <img 
-                        src={viewingAttachmentUrl} 
-                        alt="Attachment" 
-                        className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                        style={{ 
-                            transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
-                            maxWidth: 'none', 
-                            maxHeight: 'none' 
-                        }}
-                    />
+                    isPdf ? (
+                        <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
+                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                        </object>
+                    ) : (
+                        <img 
+                            src={viewingAttachmentUrl} 
+                            alt="Attachment" 
+                            className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                            style={{ 
+                                transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                                maxWidth: 'none', 
+                                maxHeight: 'none' 
+                            }}
+                        />
+                    )
                 )}
             </div>
         </DialogContent>

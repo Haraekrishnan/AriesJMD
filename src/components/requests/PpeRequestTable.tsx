@@ -1,12 +1,10 @@
-
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -20,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, D
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
-import { Paperclip, Upload } from 'lucide-react';
+import { Paperclip, Upload, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import Link from 'next/link';
 
 interface PpeRequestTableProps {
@@ -64,7 +62,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
         if (!comment.trim() && (action === 'Rejected' || action === 'Disputed')) {
-            toast({ title: 'Comment required', variant: 'destructive'});
+            toast({ title: 'Comment required', variant = 'destructive' });
             return;
         }
 
@@ -125,6 +123,8 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     }, [selectedRequest, manpowerProfiles]);
 
     const canEditRequest = user?.role === 'Admin' || (isRequester && req.status === 'Pending');
+
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
 
     return (
         <Card className={cn("relative", hasUpdate && "border-blue-500")}>
@@ -249,7 +249,15 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                 <DialogContent className="max-w-3xl">
                     <DialogHeader><DialogTitle>Attachment Viewer</DialogTitle></DialogHeader>
                     <div className="flex items-center justify-center p-4">
-                        {viewingAttachmentUrl && <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />}
+                        {viewingAttachmentUrl && (
+                            isPdf ? (
+                                <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="500px">
+                                    <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                                </object>
+                            ) : (
+                                <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />
+                            )
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
@@ -266,7 +274,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 <div className="font-semibold">Employee:</div>
                                 <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
 
-                                <div className="font-semibold">Size & Quantity:</div>
+                                <div className="font-semibold">Size &amp; Quantity:</div>
                                 <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
                                 
                                 <div className="font-semibold">Stock Availability:</div>
@@ -364,7 +372,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
           <AccordionItem key="completed-requests" value="completed-requests" className="border rounded-md">
             <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
-               Completed & Rejected Requests ({completedRequests.length})
+               Completed &amp; Rejected Requests ({completedRequests.length})
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

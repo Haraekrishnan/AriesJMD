@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -412,6 +411,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         setIsPanning(false);
     };
 
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -422,7 +423,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
                   
                   <div className="space-y-4">
-                      <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">Personal &amp; Work Details</h3>
                       <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
                       {similarProfile && (
                           <Alert variant="destructive">
@@ -479,7 +480,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   </div>
                   
                   <div className="space-y-4">
-                      <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">Contract &amp; Policy Details</h3>
                       <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                       <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
@@ -694,7 +695,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).length > 0 && (
                       <div className="space-y-4 md:col-span-3">
                           <Separator />
-                          <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
+                          <h3 className="text-lg font-semibold border-b pb-2">Memo &amp; Warning History</h3>
                            <Table>
                               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                               <TableBody>
@@ -777,8 +778,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 <DialogHeader>
                     <DialogTitle>Attachment Viewer</DialogTitle>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                        {!isPdf && (
+                            <>
+                                <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                            </>
+                        )}
                         <a href={viewingAttachmentUrl} download target="_blank" rel="noopener noreferrer">
                             <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
                         </a>
@@ -792,16 +797,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   onMouseUp={handleMouseUpOrLeave}
                   onMouseLeave={handleMouseUpOrLeave}
                 >
-                    <img 
-                        src={viewingAttachmentUrl} 
-                        alt="Attachment" 
-                        className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                        style={{ 
-                            transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
-                            maxWidth: 'none', 
-                            maxHeight: 'none' 
-                        }}
-                    />
+                    {isPdf ? (
+                        <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
+                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                        </object>
+                    ) : (
+                        <img 
+                            src={viewingAttachmentUrl} 
+                            alt="Attachment" 
+                            className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                            style={{ 
+                                transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                                maxWidth: 'none', 
+                                maxHeight: 'none' 
+                            }}
+                        />
+                    )}
                 </div>
             </DialogContent>
         </Dialog>
@@ -809,5 +820,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
-    
