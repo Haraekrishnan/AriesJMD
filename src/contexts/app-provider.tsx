@@ -827,6 +827,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return assignable;
   }, [user, users, getVisibleUsers]);
 
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
+
   const computedValue = useMemo(() => {
     if (!user) return {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0,
@@ -901,21 +916,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, manpowerLogs, plannerEvents]);
-  
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if(!user) return;
@@ -2160,7 +2160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can.approve_store_requests, internalRequestsById, users, addInternalRequestComment]); // Changed to `updateInternalRequestStatus`
+  }, [user, can.approve_store_requests, internalRequestsById, users, addInternalRequestComment]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, commentText: string) => {
     if (!user) return;
@@ -2176,7 +2176,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Stock check before issuing
     if (status === 'Issued') {
-        const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || i.name.toLowerCase() === item.description.toLowerCase());
+        const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
         if (inventoryItem) {
             const currentStock = inventoryItem.quantity || 0;
             if (currentStock < item.quantity) {
@@ -2261,7 +2261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let canProceed = true;
       if (status === 'Issued') {
         for (const item of applicableItems) {
-            const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || i.name.toLowerCase() === item.description.toLowerCase());
+            const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
             if (inventoryItem) {
                 const currentStock = inventoryItem.quantity || 0;
                 if (currentStock < item.quantity) {
@@ -2286,7 +2286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               updates[`internalRequests/${requestId}/items/${originalItemIndex}/status`] = status;
               updatedItems[originalItemIndex].status = status;
               if(status === 'Issued') {
-                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || i.name.toLowerCase() === item.description.toLowerCase());
+                  const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
                   if (inventoryItem) {
                       const currentStock = inventoryItem.quantity || 0;
                       updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
