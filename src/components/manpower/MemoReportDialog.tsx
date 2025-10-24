@@ -1,16 +1,16 @@
-
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
-import { FileDown } from 'lucide-react';
+import { FileDown, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Badge } from '../ui/badge';
 import { MemoRecord } from '@/lib/types';
+import { Input } from '../ui/input';
 
 interface MemoReportDialogProps {
   isOpen: boolean;
@@ -24,6 +24,7 @@ interface MemoReportItem extends MemoRecord {
 
 export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialogProps) {
   const { manpowerProfiles } = useAppContext();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const allMemos = useMemo(() => {
     const memos: MemoReportItem[] = [];
@@ -42,10 +43,19 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
     return memos.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [manpowerProfiles]);
 
-  const handleDownloadExcel = () => {
-    if (allMemos.length === 0) return;
+  const filteredMemos = useMemo(() => {
+    if (!searchTerm) {
+        return allMemos;
+    }
+    return allMemos.filter(memo => 
+        memo.employeeName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allMemos, searchTerm]);
 
-    const dataToExport = allMemos.map(memo => ({
+  const handleDownloadExcel = () => {
+    if (filteredMemos.length === 0) return;
+
+    const dataToExport = filteredMemos.map(memo => ({
       'Employee Name': memo.employeeName,
       'Trade': memo.employeeTrade,
       'Type': memo.type,
@@ -68,6 +78,15 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
           <DialogTitle>Memo & Warning Letter Report</DialogTitle>
           <DialogDescription>A complete log of all memos and warning letters issued to employees.</DialogDescription>
         </DialogHeader>
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Search by employee name..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
         <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
             <Table>
@@ -81,7 +100,7 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {allMemos.map(memo => (
+                {filteredMemos.map(memo => (
                     <TableRow key={memo.id}>
                     <TableCell>
                         <p className="font-semibold">{memo.employeeName}</p>
@@ -95,12 +114,12 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
                 ))}
                 </TableBody>
             </Table>
-            {allMemos.length === 0 && <p className="text-center py-8 text-muted-foreground">No memos or warnings found.</p>}
+            {filteredMemos.length === 0 && <p className="text-center py-8 text-muted-foreground">No memos or warnings found.</p>}
             </ScrollArea>
         </div>
         <DialogFooter className="mt-auto">
             <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-            <Button onClick={handleDownloadExcel} disabled={allMemos.length === 0}>
+            <Button onClick={handleDownloadExcel} disabled={filteredMemos.length === 0}>
                 <FileDown className="mr-2 h-4 w-4" /> Export to Excel
             </Button>
         </DialogFooter>
@@ -108,4 +127,3 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
     </Dialog>
   );
 }
-
