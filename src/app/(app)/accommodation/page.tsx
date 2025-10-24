@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -12,6 +11,7 @@ import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
 import type { Building as BuildingType, Room } from '@/lib/types';
 import EditBuildingDialog from '@/components/accommodation/edit-building-dialog';
+import AccommodationReportDownloads from '@/components/accommodation/AccommodationReportDownloads';
 
 export default function AccommodationPage() {
     const { can, buildings } = useAppContext();
@@ -66,12 +66,15 @@ export default function AccommodationPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Accommodation Management</h1>
                     <p className="text-muted-foreground">Manage buildings, rooms, and bed assignments.</p>
                 </div>
-                {can.manage_accommodation && (
-                    <Button onClick={() => setIsAddBuildingOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Building
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    <AccommodationReportDownloads />
+                    {can.manage_accommodation && (
+                        <Button onClick={() => setIsAddBuildingOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Building
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
