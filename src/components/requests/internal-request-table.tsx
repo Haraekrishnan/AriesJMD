@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import EditInternalRequestItemDialog from './EditInternalRequestItemDialog';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -47,6 +48,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const [comment, setComment] = useState('');
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [newComment, setNewComment] = useState('');
+    const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     const { toast } = useToast();
     
     const canApprove = useMemo(() => {
@@ -166,6 +168,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent>
+                                                    <DropdownMenuItem onSelect={() => setEditingItem(item)}><Edit className="mr-2 h-4 w-4" />Edit Item</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Approved')} disabled={item.status === 'Approved'}><CheckCircle className="mr-2 h-4 w-4 text-green-600"/>Approve</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Issued')} disabled={item.status !== 'Approved'}><Truck className="mr-2 h-4 w-4 text-blue-600"/>Issue</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Rejected')} disabled={item.status === 'Rejected'} className="text-destructive focus:text-destructive"><XCircle className="mr-2 h-4 w-4"/>Reject</DropdownMenuItem>
@@ -293,6 +296,15 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                     </AlertDialogContent>
                 </AlertDialog>
             </Card>
+
+            {editingItem && (
+                <EditInternalRequestItemDialog
+                    isOpen={!!editingItem}
+                    setIsOpen={() => setEditingItem(null)}
+                    request={req}
+                    item={editingItem}
+                />
+            )}
         </>
     )
 }
