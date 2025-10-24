@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const [comment, setComment] = useState('');
     const { toast } = useToast();
     const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
+    const [isPanning, setIsPanning] = useState(false);
+    const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+    const [translate, setTranslate] = useState({ x: 0, y: 0 });
+    const imageContainerRef = useRef<HTMLDivElement>(null);
 
     const isManager = useMemo(() => {
         if(!user) return false;
@@ -62,7 +68,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
         if (!comment.trim() && (action === 'Rejected' || action === 'Disputed')) {
-            toast({ title: 'Comment required', variant = 'destructive' });
+            toast({ title: 'Comment required', variant: 'destructive' });
             return;
         }
 
@@ -123,6 +129,28 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     }, [selectedRequest, manpowerProfiles]);
 
     const canEditRequest = user?.role === 'Admin' || (isRequester && req.status === 'Pending');
+
+    const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+        if (zoom <= 1) return;
+        e.preventDefault();
+        setIsPanning(true);
+        setStartPosition({
+            x: e.clientX - translate.x,
+            y: e.clientY - translate.y,
+        });
+    };
+
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+        if (!isPanning || !imageContainerRef.current) return;
+        e.preventDefault();
+        const x = e.clientX - startPosition.x;
+        const y = e.clientY - startPosition.y;
+        setTranslate({ x, y });
+    };
+    
+    const handleMouseUpOrLeave = () => {
+        setIsPanning(false);
+    };
 
     const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
 
@@ -245,17 +273,46 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                  )}
             </CardFooter>
 
-            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader><DialogTitle>Attachment Viewer</DialogTitle></DialogHeader>
-                    <div className="flex items-center justify-center p-4">
+            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
+                <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Attachment Viewer</DialogTitle>
+                        <div className="flex items-center gap-2">
+                            {!isPdf && (
+                                <>
+                                    <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                                </>
+                            )}
+                            <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                            </a>
+                        </div>
+                    </DialogHeader>
+                    <div 
+                      ref={imageContainerRef}
+                      className="flex-1 overflow-auto flex items-center justify-center p-4 bg-muted/50 rounded-md"
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUpOrLeave}
+                      onMouseLeave={handleMouseUpOrLeave}
+                    >
                         {viewingAttachmentUrl && (
-                            isPdf ? (
-                                <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="500px">
+                             isPdf ? (
+                                <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
                                     <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
                                 </object>
                             ) : (
-                                <img src={viewingAttachmentUrl} alt="Attachment" className="max-w-full max-h-[70vh] rounded-md" />
+                                <img 
+                                    src={viewingAttachmentUrl} 
+                                    alt="Attachment" 
+                                    className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                                    style={{ 
+                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                                        maxWidth: 'none', 
+                                        maxHeight: 'none' 
+                                    }}
+                                />
                             )
                         )}
                     </div>
