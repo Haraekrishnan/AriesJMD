@@ -281,12 +281,6 @@ type AppContextType = {
   addFeedback: (subject: string, message: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
   markFeedbackAsViewed: () => void;
-  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
-  addPurchaseRegister: (purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => void;
-  addJobRecordPlant: (plantName: string) => void;
-  addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
-  saveJobRecord: (monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => void;
-  savePlantOrder: (monthKey: string, plantName: string, orderedIds: string[]) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -415,6 +409,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
+  // All function definitions must go before they are used in contextValue
+  
   const can = useMemo(() => {
     const permissions = new Set<Permission>();
     if (user && !loading && roles.length > 0) {
@@ -427,7 +423,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     for (const p of ALL_PERMISSIONS) canObject[p] = permissions.has(p);
     return canObject;
   }, [user, roles, loading]);
-
+  
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     const logRef = push(ref(rtdb, 'activityLogs'));
     const newLog: Omit<ActivityLog, 'id' | 'details'> & { details?: string } = {
@@ -672,6 +668,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return assignable;
   }, [user, users, getVisibleUsers]);
+  
+  const addComment = useCallback((taskId: string, commentText: string) => {
+    if(!user) return;
+    const task = tasksById[taskId];
+    if(!task) return;
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    set(newCommentRef, newComment);
+    update(ref(rtdb, `tasks/${taskId}`), { viewedByAssignee: false, viewedByApprover: false });
+  }, [user, tasksById]);
 
   const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
@@ -688,157 +695,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
   
-  const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
-    if(!user || !can.approve_store_requests) return;
-    const request = internalRequestsById[requestId];
-    if(!request) return;
-
-    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
-    const itemIndex = requestItems.findIndex(i => i.id === item.id);
-    if (itemIndex === -1) return;
-
-    let commentText = `Item updated by ${user.name}:`;
-    if (originalItem.description !== item.description) {
-        commentText += `\n- Description changed from "${originalItem.description}" to "${item.description}".`;
-    }
-    if (originalItem.quantity !== item.quantity) {
-        commentText += `\n- Quantity changed from ${originalItem.quantity} to ${item.quantity}.`;
-    }
-    if (originalItem.unit !== item.unit) {
-        commentText += `\n- Unit changed from "${originalItem.unit}" to "${item.unit}".`;
-    }
-    
-    addInternalRequestComment(requestId, commentText);
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/items/${itemIndex}`] = item;
-    update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester && requester.email) {
-        createAndSendNotification(
-            requester.email,
-            `Item Updated in Your Request #${requestId.slice(-6)}`,
-            'An item in your request was updated',
-            { 'Request ID': `#${requestId.slice(-6)}`, 'Updated Item': item.description, 'Updated By': user.name, 'Change Summary': commentText },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'View Request'
-        );
-    }
-  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users]);
-
-  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-  
-    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
-    
-    if (status === 'Issued') {
-        for (const item of requestItems) {
-            if (item.status === 'Approved') {
-                const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
-                if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
-                    const currentStock = inventoryItem.quantity || 0;
-                    if (currentStock < item.quantity) {
-                        toast({
-                            variant: 'destructive',
-                            title: 'Insufficient Stock',
-                            description: `Cannot issue ${item.quantity} of ${item.description}. Only ${currentStock} available. Bulk issuance halted.`,
-                        });
-                        return; // Halt the entire operation
-                    }
-                }
-            }
-        }
-    }
-  
-    let commentText = `Bulk action: Status for all items changed to ${status}.`;
-    if (status === 'Disputed') {
-      commentText = `Dispute raised: ${comment}`;
-    } else if (status === 'Rejected' && comment.trim()) {
-      commentText = `Request Rejected. Reason: ${comment}`;
-    } else if (comment.trim()) {
-      commentText += ` Comment: ${comment}`;
-    }
-  
-    addInternalRequestComment(requestId, commentText);
-    toast({ title: `All applicable items updated to ${status}` });
-  
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/approverId`] = user.id;
-  
-    let itemsChanged = false;
-    const updatedItems = [...requestItems];
-  
-    if (status !== 'Disputed') {
-      const applicableItems = requestItems.filter(item => {
-        if (status === 'Approved' || status === 'Rejected') return item.status === 'Pending';
-        if (status === 'Issued') return item.status === 'Approved';
-        return false;
-      });
-      
-      if(applicableItems.length === 0 && status !== 'Issued') {
-          toast({ title: 'No items to update', description: `No items were in the required state to be changed to ${status}.`});
-          return;
-      }
-  
-      applicableItems.forEach((item) => {
-        itemsChanged = true;
-        const originalItemIndex = requestItems.findIndex(i => i.id === item.id);
-        if (originalItemIndex !== -1) {
-          updates[`internalRequests/${requestId}/items/${originalItemIndex}/status`] = status;
-          updatedItems[originalItemIndex] = { ...updatedItems[originalItemIndex], status: status };
-          
-          if(status === 'Issued') {
-            const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
-            if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
-              const currentStock = inventoryItem.quantity || 0;
-              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
-            }
-          }
-        }
-      });
-    }
-  
-    let finalStatus = status;
-    if (itemsChanged) {
-      const allStatuses = new Set(updatedItems.map(item => item.status));
-      
-      if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
-        finalStatus = 'Issued';
-      } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
-        finalStatus = 'Approved';
-      } else if (allStatuses.has('Issued')) {
-        finalStatus = 'Partially Issued';
-      } else if (allStatuses.has('Approved')) {
-        finalStatus = 'Partially Approved';
-      } else if (updatedItems.every(i => i.status === 'Pending')) {
-        finalStatus = 'Pending';
-      } else if (updatedItems.some(i => i.status === 'Approved' || i.status === 'Issued')) {
-        finalStatus = 'Partially Approved';
-      } else if (updatedItems.every(i => i.status === 'Rejected')) {
-        finalStatus = 'Rejected';
-      }
-    }
-    updates[`internalRequests/${requestId}/status`] = finalStatus;
-  
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
-  
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `Update on your Internal Store Request #${requestId.slice(-6)}`,
-        `Your request status is now: ${finalStatus}`,
-        { 'Request ID': `#${requestId.slice(-6)}`, 'Updated By': user.name, 'Comment': comment },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
-
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -1103,17 +959,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, tasksById]);
 
-  const addComment = useCallback((taskId: string, commentText: string) => {
-    if(!user) return;
-    const task = tasksById[taskId];
-    if(!task) return;
-
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-    update(ref(rtdb, `tasks/${taskId}`), { viewedByAssignee: false, viewedByApprover: false });
-  }, [user, tasksById]);
-
   const markTaskAsViewed = useCallback((taskId: string) => {
     if(!user) return;
     update(ref(rtdb, `tasks/${taskId}`), { [`viewedBy/${user.id}`]: true });
@@ -1221,8 +1066,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         {
           'Event': event.title,
           'Date': format(parseISO(event.date), 'PPP'),
-          'Time': event.time,
-          'Location': event.location,
         },
         `${process.env.NEXT_PUBLIC_APP_URL}/planner`,
         'View Planner'
@@ -1315,10 +1158,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRef = push(ref(rtdb, 'achievements'));
     const newAchievement: Omit<Achievement, 'id'> = {
         ...achievement,
-        type: 'Manual',
+        type: 'manual',
         date: new Date().toISOString(),
         awardedById: user.id,
-        status: 'Approved',
+        status: 'approved',
     };
     set(newRef, newAchievement);
     addActivityLog(user.id, 'Manual Achievement Awarded', achievement.title);
@@ -1410,13 +1253,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...incident,
         reporterId: user.id,
         reportTime: new Date().toISOString(),
-        status: 'Draft',
+        status: 'New',
         isPublished: false,
         comments: [],
         reportedToUserIds: [],
+        viewedBy: { [user.id]: true },
+        lastUpdated: new Date().toISOString(),
     };
     set(newRef, newIncident);
-    addActivityLog(user.id, 'Incident Reported', incident.title);
   }, [user, addActivityLog]);
   
   const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
@@ -1428,7 +1272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newCommentRef, newComment);
 
     update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString(), comments: [newComment] });
-    addActivityLog(user.id, 'Incident Updated', incident.title);
+    addActivityLog(user.id, 'Incident Updated', incident.unitArea);
 
   }, [user, addActivityLog]);
 
@@ -1443,8 +1287,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     
-    incident.reportedToUserIds.forEach(targetUserId => {
-      updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
+    const participants = new Set([incident.reporterId, ...incident.reportedToUserIds]);
+    participants.forEach(targetUserId => {
+      if (targetUserId !== user.id) {
+        updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
+      }
     });
 
     update(ref(rtdb), updates);
@@ -1461,7 +1308,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
-    updates[`incidentReports/${incidentId}/status`] = 'Published';
+    updates[`incidentReports/${incidentId}/status`] = 'New';
     updates[`incidentReports/${incidentId}/isPublished`] = true;
     updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`incidentReports/${incidentId}/viewedBy/${user.id}`] = true; // mark viewed by publishing user
@@ -1472,20 +1319,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     
     update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Incident Published', incident.title);
+    addActivityLog(user.id, 'Incident Published', incident.unitArea);
     
     if(reporter && reporter.supervisorId) {
         const supervisor = users.find(u => u.id === reporter.supervisorId);
         if (supervisor && supervisor.email) {
             createAndSendNotification(
                 supervisor.email,
-                `New Incident Report: ${incident.title}`,
+                `New Incident Report: ${incident.unitArea}`,
                 'Incident Report',
                 {
                     'Reporter': reporter.name,
-                    'Title': incident.title,
-                    'Location': incident.location,
-                    'Details': incident.details,
+                    'Location': incident.unitArea,
+                    'Details': incident.incidentDetails,
                 },
                 `${process.env.NEXT_PUBLIC_APP_URL}/incident-reports`,
                 'View Incident'
@@ -1514,13 +1360,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (targetUser && targetUser.email) {
         createAndSendNotification(
           targetUser.email,
-          `New Incident Report: ${incident.title}`,
+          `New Incident Report: ${incident.unitArea}`,
           'Incident Report',
           {
-            'Reporter': user.name,
-            'Title': incident.title,
-            'Location': incident.location,
-            'Details': incident.details,
+            'Reporter': users.find(u => u.id === incident.reporterId)?.name,
+            'Location': incident.unitArea,
+            'Details': incident.incidentDetails,
           },
           `${process.env.NEXT_PUBLIC_APP_URL}/incident-reports`,
           'View Incident'
@@ -1663,8 +1508,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const leaveRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory`));
       const leaveData: Omit<LeaveRecord, 'id'> = {
         leaveType,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        leaveStartDate: startDate.toISOString(),
+        plannedEndDate: endDate.toISOString(),
         remarks,
       };
       updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveRef.key}`] = { ...leaveData, id: leaveRef.key };
@@ -1674,17 +1519,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const extendLeave = useCallback((manpowerId: string, leaveId: string, newEndDate: Date) => {
     if(!user) return;
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), { endDate: newEndDate.toISOString() });
+    update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), { plannedEndDate: newEndDate.toISOString() });
   }, [user]);
 
   const rejoinFromLeave = useCallback((manpowerId: string, leaveId: string, rejoinedDate: Date) => {
     if(!user) return;
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), { rejoinedDate: rejoinedDate.toISOString() });
+    const updates: { [key: string]: any } = {};
+    updates[`manpowerProfiles/${manpowerId}/status`] = 'Working';
+    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/rejoinedDate`] = rejoinedDate.toISOString();
+    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/leaveEndDate`] = rejoinedDate.toISOString();
+    update(ref(rtdb), updates);
   }, [user]);
 
   const confirmManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
     if(!user) return;
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), { status: 'Confirmed' });
+    const updates: { [key: string]: any } = {};
+    updates[`manpowerProfiles/${manpowerId}/status`] = 'On Leave';
+    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/leaveEndDate`] = null;
+    updates[`manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}/rejoinedDate`] = null;
+
+    update(ref(rtdb), updates);
   }, [user]);
 
   const cancelManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
@@ -1732,6 +1586,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deletePpeHistoryRecord = useCallback((manpowerId: string, recordId: string) => {
     remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
   }, []);
+  
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    if (!user) return { importedCount: 0, notFoundCount: 0 };
+    
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    for (const row of data) {
+        const employeeName = row['Employee Name']?.trim();
+        const size = row['Size']?.toString().trim();
+        const issueDateRaw = row['Date'];
+
+        if (!employeeName || !size || !issueDateRaw) {
+            console.warn('Skipping row due to missing data:', row);
+            continue;
+        }
+
+        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
+
+        if (!profile) {
+            console.warn(`Employee not found: ${employeeName}`);
+            notFoundCount++;
+            continue;
+        }
+
+        let issueDate: Date;
+        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
+            issueDate = issueDateRaw;
+        } else {
+            const parsed = parseISO(issueDateRaw)
+            if (isValid(parsed)) {
+                issueDate = parsed;
+            } else {
+                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
+                continue;
+            }
+        }
+
+        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
+            ppeType: 'Coverall',
+            size: size,
+            issueDate: issueDate.toISOString(),
+            requestType: 'New', // Default for bulk import
+            issuedById: user.id,
+            remarks: 'Bulk imported from Excel.'
+        };
+
+        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
+        importedCount++;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(rtdb), updates);
+      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
+    }
+    
+    return { importedCount, notFoundCount };
+  }, [user, manpowerProfiles, addActivityLog]);
 
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
@@ -1765,6 +1679,194 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
+  
+  const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+    const itemsArray = Array.isArray(request.items) ? request.items : Object.values(request.items || {});
+    const itemIndex = itemsArray.findIndex(i => i.id === item.id);
+    if (itemIndex === -1) return;
+    const updatedItems = [...itemsArray];
+    updatedItems[itemIndex] = item;
+    
+    let comment = `Item updated by ${user.name}:`;
+    if (originalItem.description !== item.description) comment += ` Description changed from "${originalItem.description}" to "${item.description}".`;
+    if (originalItem.quantity !== item.quantity) comment += ` Quantity changed from ${originalItem.quantity} to ${item.quantity}.`;
+    if (originalItem.unit !== item.unit) comment += ` Unit changed from "${originalItem.unit}" to "${item.unit}".`;
+    
+    addInternalRequestComment(requestId, comment);
+
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/items`] = updatedItems;
+    update(ref(rtdb), updates);
+
+    toast({ title: 'Item Updated', description: 'The request item has been modified.' });
+  }, [user, internalRequestsById, addInternalRequestComment, toast]);
+  
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+  
+    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
+    
+    if (status === 'Issued') {
+        for (const item of requestItems) {
+            if (item.status === 'Approved') {
+                const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
+                if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
+                    const currentStock = inventoryItem.quantity || 0;
+                    if (currentStock < item.quantity) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Insufficient Stock',
+                            description: `Cannot issue ${item.quantity} of ${item.description}. Only ${currentStock} available. Bulk issuance halted.`,
+                        });
+                        return; // Halt the entire operation
+                    }
+                }
+            }
+        }
+    }
+  
+    let commentText = `Bulk action: Status for all items changed to ${status}.`;
+    if (status === 'Disputed') {
+      commentText = `Dispute raised: ${comment}`;
+    } else if (status === 'Rejected' && comment.trim()) {
+      commentText = `Request Rejected. Reason: ${comment}`;
+    } else if (comment.trim()) {
+      commentText += ` Comment: ${comment}`;
+    }
+  
+    addInternalRequestComment(requestId, commentText);
+  
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+  
+    let itemsChanged = false;
+    const updatedItems = [...requestItems];
+  
+    if (status !== 'Disputed') {
+      const applicableItems = requestItems.filter(item => {
+        if (status === 'Approved' || status === 'Rejected') return item.status === 'Pending';
+        if (status === 'Issued') return item.status === 'Approved';
+        return false;
+      });
+      
+      if(applicableItems.length === 0 && status !== 'Issued') {
+          toast({ title: 'No items to update', description: `No items were in the required state to be changed to ${status}.`});
+          return;
+      }
+  
+      applicableItems.forEach((item) => {
+        itemsChanged = true;
+        const originalItemIndex = requestItems.findIndex(i => i.id === item.id);
+        if (originalItemIndex !== -1) {
+          updates[`internalRequests/${requestId}/items/${originalItemIndex}/status`] = status;
+          updatedItems[originalItemIndex] = { ...updatedItems[originalItemIndex], status: status };
+          
+          if(status === 'Issued') {
+            const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
+            if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
+              const currentStock = inventoryItem.quantity || 0;
+              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
+            }
+          }
+        }
+      });
+    }
+  
+    let finalStatus = status;
+    if (itemsChanged) {
+      const allStatuses = new Set(updatedItems.map(item => item.status));
+      
+      if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
+        finalStatus = 'Issued';
+      } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
+        finalStatus = 'Approved';
+      } else if (allStatuses.has('Issued')) {
+        finalStatus = 'Partially Issued';
+      } else if (allStatuses.has('Approved')) {
+        finalStatus = 'Partially Approved';
+      } else if (updatedItems.every(i => i.status === 'Pending')) {
+        finalStatus = 'Pending';
+      } else if (updatedItems.some(i => i.status === 'Approved' || i.status === 'Issued')) {
+        finalStatus = 'Partially Approved';
+      } else if (updatedItems.every(i => i.status === 'Rejected')) {
+        finalStatus = 'Rejected';
+      }
+    }
+    updates[`internalRequests/${requestId}/status`] = finalStatus;
+  
+    update(ref(rtdb), updates);
+    toast({ title: `All applicable items updated to ${status}` });
+    addActivityLog(user.id, 'Store Request Status Updated', `Request ID: ${requestId} to ${status}`);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `Update on your Internal Store Request #${requestId.slice(-6)}`,
+        `Your request status is now: ${finalStatus}`,
+        { 'Request ID': `#${requestId.slice(-6)}`, 'Updated By': user.name, 'Comment': comment },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
+
+  const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
+    if(!user) return;
+    const request = internalRequestsById[requestId];
+    if(!request) return;
+
+    const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
+    const itemIndex = requestItems.findIndex(i => i.id === itemId);
+    if (itemIndex === -1) return;
+
+    if (status === 'Issued' && requestItems[itemIndex].status !== 'Approved') {
+        toast({
+            variant: 'destructive',
+            title: 'Action Not Allowed',
+            description: 'Only approved items can be marked as issued.',
+        });
+        return;
+    }
+
+    addInternalRequestComment(requestId, `Item "${requestItems[itemIndex].description}" status changed to ${status}. Reason: ${comment}`);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
+    
+    const updatedItems = [...requestItems];
+    updatedItems[itemIndex] = { ...updatedItems[itemIndex], status: status };
+    
+    const allStatuses = new Set(updatedItems.map(item => item.status));
+    let newOverallStatus: InternalRequestStatus;
+
+    if (updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected')) {
+      newOverallStatus = 'Issued';
+    } else if (updatedItems.every(i => i.status === 'Approved' || i.status === 'Rejected')) {
+      newOverallStatus = 'Approved';
+    } else if (allStatuses.has('Issued')) {
+      newOverallStatus = 'Partially Issued';
+    } else if (allStatuses.has('Approved')) {
+      newOverallStatus = 'Partially Approved';
+    } else if (updatedItems.every(i => i.status === 'Pending')) {
+      newOverallStatus = 'Pending';
+    } else if (updatedItems.some(i => i.status === 'Approved' || i.status === 'Issued')) {
+      newOverallStatus = 'Partially Approved';
+    } else if (updatedItems.every(i => i.status === 'Rejected')) {
+      newOverallStatus = 'Rejected';
+    } else {
+      newOverallStatus = 'Partially Approved'; // Fallback
+    }
+
+    updates[`internalRequests/${requestId}/status`] = newOverallStatus;
+    update(ref(rtdb), updates);
+
+  }, [user, internalRequestsById, addInternalRequestComment, toast]);
   
   const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -2984,66 +3086,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, feedback, can.manage_feedback]);
 
-  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
-    if (!user) return { importedCount: 0, notFoundCount: 0 };
-    
-    let importedCount = 0;
-    let notFoundCount = 0;
-    const updates: { [key: string]: any } = {};
-
-    for (const row of data) {
-        const employeeName = row['Employee Name']?.trim();
-        const size = row['Size']?.toString().trim();
-        const issueDateRaw = row['Date'];
-
-        if (!employeeName || !size || !issueDateRaw) {
-            console.warn('Skipping row due to missing data:', row);
-            continue;
-        }
-
-        const profile = manpowerProfiles.find(p => p.name.toLowerCase() === employeeName.toLowerCase());
-
-        if (!profile) {
-            console.warn(`Employee not found: ${employeeName}`);
-            notFoundCount++;
-            continue;
-        }
-
-        let issueDate: Date;
-        if (issueDateRaw instanceof Date && isValid(issueDateRaw)) {
-            issueDate = issueDateRaw;
-        } else {
-            const parsed = parseISO(issueDateRaw)
-            if (isValid(parsed)) {
-                issueDate = parsed;
-            } else {
-                console.warn(`Skipping row due to invalid date format for ${employeeName}:`, issueDateRaw);
-                continue;
-            }
-        }
-
-        const newRecord: Omit<PpeHistoryRecord, 'id'> = {
-            ppeType: 'Coverall',
-            size: size,
-            issueDate: issueDate.toISOString(),
-            requestType: 'New', // Default for bulk import
-            issuedById: user.id,
-            remarks: 'Bulk imported from Excel.'
-        };
-
-        const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
-        updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
-        importedCount++;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await update(ref(rtdb), updates);
-      addActivityLog(user.id, 'Bulk PPE Import', `Imported ${importedCount} coverall records.`);
-    }
-    
-    return { importedCount, notFoundCount };
-  }, [user, manpowerProfiles, addActivityLog]);
-
   const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'purchaseRegisters'));
@@ -3134,11 +3176,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteJobCode = useCallback((jobCodeId: string) => {
     remove(ref(rtdb, `jobCodes/${jobCodeId}`));
   }, []);
-
-  const contextValue: AppContextType = {
-    user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
-    can,
-    ...useMemo(() => {
+  
+  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount } = useMemo(() => {
     if (!user) return {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0,
     };
@@ -3211,8 +3250,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount
     };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, manpowerLogs, plannerEvents]),
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
+  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, manpowerLogs, plannerEvents]);
+
+  const contextValue: AppContextType = {
+    user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, appName, appLogo,
+    can,
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegisterPoNumber, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed
   };
 
   // Set user based on stored ID
@@ -3388,4 +3432,3 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
 
-    
