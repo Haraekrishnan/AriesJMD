@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -11,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { DftMachine, MachineLog } from '@/lib/types';
 import { format, formatDistanceToNow } from 'date-fns';
-import { PlusCircle, Trash2, Paperclip, Upload, X, ZoomIn, ZoomOut, Download } from 'lucide-react';
+import { PlusCircle, Trash2, Paperclip, Upload, X, ZoomIn, ZoomOut, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '../ui/table';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
@@ -20,6 +21,12 @@ import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+
 
 const logSchema = z.object({
   date: z.string().min(1, 'Date is required'),
@@ -58,6 +65,12 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
   const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
 
   const machineLogs = getMachineLogs(machine.id);
 
@@ -295,7 +308,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
         </div>
       </DialogContent>
     </Dialog>
-    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
+    <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Attachment Viewer</DialogTitle>
@@ -305,6 +318,13 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
                           <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
                           <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
                         </>
+                    )}
+                     {isPdf && numPages && (
+                        <div className="flex items-center gap-2 text-sm">
+                            <Button variant="outline" size="icon" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-4 w-4" /></Button>
+                            <span>Page {pageNumber} of {numPages}</span>
+                            <Button variant="outline" size="icon" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-4 w-4" /></Button>
+                        </div>
                     )}
                     <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
                         <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
@@ -321,9 +341,13 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
             >
                 {viewingAttachmentUrl && (
                     isPdf ? (
-                        <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
-                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
-                        </object>
+                        <Document
+                            file={viewingAttachmentUrl}
+                            onLoadSuccess={onDocumentLoadSuccess}
+                            className="flex justify-center"
+                        >
+                            <Page pageNumber={pageNumber} />
+                        </Document>
                     ) : (
                         <img 
                             src={viewingAttachmentUrl} 
