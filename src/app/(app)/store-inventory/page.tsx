@@ -11,7 +11,7 @@ import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role } from '@/lib/types';
-import { isAfter, isBefore, addDays, parseISO } from 'date-fns';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,8 @@ export default function StoreInventoryPage() {
         name: 'all',
         status: 'all',
         projectId: 'all',
-        search: ''
+        search: '',
+        updatedDateRange: undefined,
     });
 
     const canManageInventory = useMemo(() => {
@@ -62,7 +63,7 @@ export default function StoreInventoryPage() {
       const isPrivileged = user ? privilegedRoles.includes(user.role) : false;
 
       return generalItems.filter(item => {
-        const { name, status, projectId, search } = filters;
+        const { name, status, projectId, search, updatedDateRange } = filters;
         if (name !== 'all' && item.name !== name) return false;
         if (search && !(item.serialNumber.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
             return false;
@@ -87,6 +88,16 @@ export default function StoreInventoryPage() {
             }
         }
         
+        if (updatedDateRange?.from) {
+            if (!item.lastUpdated) return false;
+            const updatedDate = parseISO(item.lastUpdated);
+            const from = updatedDateRange.from;
+            const to = updatedDateRange.to || from;
+            if (!isWithinInterval(updatedDate, { start: from, end: to })) {
+                return false;
+            }
+        }
+
         if (!isPrivileged && user?.projectId && item.projectId !== user.projectId) {
           return false;
         }

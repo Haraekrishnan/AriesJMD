@@ -10,6 +10,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import type { InventoryItemStatus } from '@/lib/types';
 import { X } from 'lucide-react';
 import type { InventoryItem } from '@/lib/types';
+import { DateRangePicker } from '../ui/date-range-picker';
 
 
 export interface InventoryFilterValues {
@@ -17,6 +18,7 @@ export interface InventoryFilterValues {
     status: string;
     projectId: string;
     search: string;
+    updatedDateRange: DateRange | undefined;
 }
 
 interface InventoryFiltersProps {
@@ -38,12 +40,13 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
     const [status, setStatus] = useState('all');
     const [projectId, setProjectId] = useState('all');
     const [search, setSearch] = useState('');
+    const [updatedDateRange, setUpdatedDateRange] = useState<DateRange | undefined>();
 
     const itemNames = Array.from(new Set(inventoryItems.map(item => item.name)));
     
     useEffect(() => {
-        onApplyFilters({ name, status, projectId, search });
-    }, [name, status, projectId, search, onApplyFilters]);
+        onApplyFilters({ name, status, projectId, search, updatedDateRange });
+    }, [name, status, projectId, search, updatedDateRange, onApplyFilters]);
 
 
     const handleClear = () => {
@@ -51,6 +54,7 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
         setStatus('all');
         setProjectId('all');
         setSearch('');
+        setUpdatedDateRange(undefined);
     };
 
     return (
@@ -59,11 +63,12 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
                 placeholder="Search by serial, aries id, or croll no..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
-                className="w-full md:w-auto"
+                className="w-full sm:w-auto"
             />
-            <Select value={name} onValueChange={setName}><SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by item..." /></SelectTrigger><SelectContent><SelectItem value="all">All Items</SelectItem>{itemNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent></Select>
-            <Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by status..." /></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem>{statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
-            <Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger><SelectContent><SelectItem value="all">All Projects</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={name} onValueChange={setName}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by item..." /></SelectTrigger><SelectContent><SelectItem value="all">All Items</SelectItem>{itemNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent></Select>
+            <Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by status..." /></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem>{statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
+            <Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger><SelectContent><SelectItem value="all">All Projects</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+            <DateRangePicker placeholder="Filter by updated date..." date={updatedDateRange} onDateChange={setUpdatedDateRange} />
 
             <div className="flex gap-2 ml-auto">
                 <Button variant="secondary" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>

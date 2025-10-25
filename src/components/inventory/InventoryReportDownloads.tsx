@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 
 interface InventoryReportDownloadsProps {
   items: InventoryItem[];
@@ -20,6 +20,12 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
   const handleDownloadExcel = () => {
     let dataToExport;
     let worksheet;
+    
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return 'N/A';
+        const date = parseISO(dateString);
+        return isValid(date) ? format(date, 'dd-MM-yyyy') : 'N/A';
+    }
 
     if (isSummary) {
       dataToExport = (summaryData || []).map(row => {
@@ -39,9 +45,14 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
         'Chest Croll No': item.chestCrollNo || 'N/A',
         'Status': item.status,
         'Location': projects.find(p => p.id === item.projectId)?.name || 'N/A',
-        'Inspection Date': item.inspectionDate ? format(new Date(item.inspectionDate), 'dd-MM-yyyy') : 'N/A',
-        'Inspection Due Date': item.inspectionDueDate ? format(new Date(item.inspectionDueDate), 'dd-MM-yyyy') : 'N/A',
-        'TP Inspection Due Date': item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A',
+        'Inspection Date': formatDate(item.inspectionDate),
+        'Inspection Due Date': formatDate(item.inspectionDueDate),
+        'TP Inspection Due Date': formatDate(item.tpInspectionDueDate),
+        'Last Updated': formatDate(item.lastUpdated),
+        'Category': item.category || 'General',
+        'Quantity': item.quantity ?? (item.category === 'General' ? 1 : 'N/A'),
+        'Unit': item.unit || 'N/A',
+        'Remarks': item.remarks || 'N/A',
       }));
        worksheet = XLSX.utils.json_to_sheet(dataToExport);
     }
