@@ -25,13 +25,14 @@ interface InventoryFiltersProps {
   onApplyFilters: (filters: InventoryFilterValues) => void;
 }
 
-const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Expired', label: string}[] = [
+const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Expired' | 'Not Verified', label: string}[] = [
     { value: 'In Use', label: 'In Use' },
     { value: 'In Store', label: 'In Store' },
     { value: 'Damaged', label: 'Damaged' },
     { value: 'Expired', label: 'Expired (Item)' },
     { value: 'Inspection Expired', label: 'Inspection Expired' },
     { value: 'TP Expired', label: 'TP Expired' },
+    { value: 'Not Verified', label: 'Not Verified (30+ days)' },
 ];
 
 export default function InventoryFilters({ onApplyFilters }: InventoryFiltersProps) {

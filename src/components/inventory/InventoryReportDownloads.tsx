@@ -82,7 +82,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
        (doc as any).autoTable({ head, body, startY: 20 });
     } else {
       (doc as any).autoTable({
-        head: [['Item Name', 'Serial No.', 'Status', 'Location', 'Insp. Due', 'TP Insp. Due']],
+        head: [['Item Name', 'Serial No.', 'Status', 'Location', 'Insp. Due', 'TP Insp. Due', 'Last Updated']],
         body: items.map(item => [
           item.name,
           item.serialNumber,
@@ -90,6 +90,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
           projects.find(p => p.id === item.projectId)?.name || 'N/A',
           item.inspectionDueDate ? format(new Date(item.inspectionDueDate), 'dd-MM-yyyy') : 'N/A',
           item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A',
+          item.lastUpdated ? format(new Date(item.lastUpdated), 'dd-MM-yyyy') : 'N/A'
         ]),
         startY: 20,
       });

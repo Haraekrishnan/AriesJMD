@@ -11,7 +11,7 @@ import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role } from '@/lib/types';
-import { isAfter, isBefore, addDays, parseISO, isWithinInterval } from 'date-fns';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -83,6 +83,10 @@ export default function StoreInventoryPage() {
                 if (!inspectionExpired) return false;
             } else if (status === 'TP Expired') {
                 if (!tpInspectionExpired) return false;
+            } else if (status === 'Not Verified') {
+                if (!item.lastUpdated) return true; // Treat items without an update date as "not verified"
+                const thirtyDaysAgo = subDays(now, 30);
+                if (isAfter(parseISO(item.lastUpdated), thirtyDaysAgo)) return false;
             } else {
                 if (item.status !== status) return false;
             }
