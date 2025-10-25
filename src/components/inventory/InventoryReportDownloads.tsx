@@ -50,9 +50,6 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
         'TP Inspection Due Date': formatDate(item.tpInspectionDueDate),
         'Last Updated': formatDate(item.lastUpdated),
         'Category': item.category || 'General',
-        'Quantity': item.quantity ?? (item.category === 'General' ? 1 : 'N/A'),
-        'Unit': item.unit || 'N/A',
-        'Remarks': item.remarks || 'N/A',
       }));
        worksheet = XLSX.utils.json_to_sheet(dataToExport);
     }
