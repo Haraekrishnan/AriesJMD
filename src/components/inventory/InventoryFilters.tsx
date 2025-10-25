@@ -32,7 +32,7 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
     { value: 'Expired', label: 'Expired (Item)' },
     { value: 'Inspection Expired', label: 'Inspection Expired' },
     { value: 'TP Expired', label: 'TP Expired' },
-    { value: 'Not Verified', label: 'Not Verified (30+ days)' },
+    { value: 'Not Verified', label: 'Not Verified (15+ days)' },
 ];
 
 export default function InventoryFilters({ onApplyFilters }: InventoryFiltersProps) {

@@ -85,9 +85,9 @@ export default function StoreInventoryPage() {
                 if (!tpInspectionExpired) return false;
             } else if (status === 'Not Verified') {
                 if (!item.lastUpdated) return true; // Show items with no lastUpdated date
-                const thirtyDaysAgo = subDays(now, 30);
-                if (isBefore(parseISO(item.lastUpdated), thirtyDaysAgo)) return true; // Show items updated more than 30 days ago
-                return false; // Hide items updated within the last 30 days
+                const fifteenDaysAgo = subDays(now, 15);
+                if (isBefore(parseISO(item.lastUpdated), fifteenDaysAgo)) return true; // Show items updated more than 15 days ago
+                return false; // Hide items updated within the last 15 days
             } else {
                 if (item.status !== status) return false;
             }
