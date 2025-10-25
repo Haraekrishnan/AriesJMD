@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
@@ -23,7 +23,7 @@ interface InventoryTableProps {
   items: InventoryItem[];
 }
 
-const ItemCard = ({ item, onEdit, onRequest, onDelete }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; }) => {
+const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; onVerify: () => void; }) => {
     const { can, user, projects } = useAppContext();
     
     const getProjectName = (projectId: string) => {
@@ -88,6 +88,9 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete }: { item: InventoryItem; 
                           <DropdownMenuItem onSelect={onEdit}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
+                           <DropdownMenuItem onSelect={onVerify}>
+                            <CheckCircle className="mr-2 h-4 w-4" /> Mark as Verified
+                          </DropdownMenuItem>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
@@ -116,7 +119,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete }: { item: InventoryItem; 
 };
 
 export default function InventoryTable({ items }: InventoryTableProps) {
-    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects } = useAppContext();
+    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
@@ -184,6 +187,14 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         setIsRenameOpen(true);
     };
 
+    const handleVerify = (item: InventoryItem) => {
+        updateInventoryItem(item);
+        toast({
+            title: "Item Verified",
+            description: `"${item.name}" (SN: ${item.serialNumber}) has been marked as verified.`
+        });
+    };
+
     const handleDelete = (itemId: string) => {
         deleteInventoryItem(itemId);
         toast({ variant: 'destructive', title: 'Item Deleted' });
@@ -244,6 +255,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                         onEdit={() => handleEditClick(item)}
                                         onRequest={() => handleRequestClick(item)}
                                         onDelete={() => handleDelete(item.id)}
+                                        onVerify={() => handleVerify(item)}
                                     />
                                 ))}
                             </AccordionContent>
@@ -343,6 +355,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                                     <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
                                                                         {canManage && <DropdownMenuItem onSelect={() => handleEditClick(item)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>}
+                                                                        {canManage && <DropdownMenuItem onSelect={() => handleVerify(item)}><CheckCircle className="mr-2 h-4 w-4"/>Mark as Verified</DropdownMenuItem>}
                                                                         <DropdownMenuItem onSelect={() => handleRequestClick(item)}><ShieldQuestion className="mr-2 h-4 w-4"/>Request Certificate</DropdownMenuItem>
                                                                         {canManage && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></AlertDialogTrigger>}
                                                                     </DropdownMenuContent>
@@ -370,3 +383,4 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         </>
     );
 }
+
