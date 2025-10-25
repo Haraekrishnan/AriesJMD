@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1713,6 +1712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     const requestItems = request.items ? (Array.isArray(request.items) ? request.items : Object.values(request.items)) : [];
     
+    // Pre-flight check for "Issue All"
     if (status === 'Issued') {
         const itemsToIssue = requestItems.filter(item => item.status === 'Approved');
         for (const item of itemsToIssue) {
@@ -1834,11 +1834,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         return;
     }
+    
+    // Stock Check before issuing
+    if (status === 'Issued') {
+        const itemToIssue = requestItems[itemIndex];
+        const inventoryItem = inventoryItems.find(i => i.id === itemToIssue.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === itemToIssue.description.toLowerCase()));
+
+        if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
+            const currentStock = inventoryItem.quantity || 0;
+            if (currentStock < itemToIssue.quantity) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Insufficient Stock',
+                    description: `Cannot issue ${itemToIssue.quantity} of ${itemToIssue.description}. Only ${currentStock} available.`,
+                });
+                return; 
+            }
+        }
+    }
+
 
     addInternalRequestComment(requestId, `Item "${requestItems[itemIndex].description}" status changed to ${status}. Reason: ${comment}`);
     
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
+
+    // Deduct stock if issued
+    if (status === 'Issued') {
+        const itemToIssue = requestItems[itemIndex];
+        const inventoryItem = inventoryItems.find(i => i.id === itemToIssue.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === itemToIssue.description.toLowerCase()));
+        if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
+            updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, (inventoryItem.quantity || 0) - itemToIssue.quantity);
+        }
+    }
     
     const updatedItems = [...requestItems];
     updatedItems[itemIndex] = { ...updatedItems[itemIndex], status: status };
@@ -1867,7 +1895,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`internalRequests/${requestId}/status`] = newOverallStatus;
     update(ref(rtdb), updates);
 
-  }, [user, internalRequestsById, addInternalRequestComment, toast]);
+  }, [user, internalRequestsById, inventoryItems, addInternalRequestComment, toast]);
   
   const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -2111,7 +2139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request || request.status !== 'Disputed') return;
   
-    const newStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    const newStatus: PpeRequestStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
     
     const actionComment = resolution === 'reissue'
       ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
@@ -3442,5 +3470,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-

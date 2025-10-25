@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -118,14 +116,10 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
                         render={({ field: controllerField }) => (
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <div className="relative">
-                                      <Input
-                                        {...controllerField}
-                                        placeholder="Select or type item..."
-                                        className="pr-8"
-                                      />
-                                      <ChevronsUpDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50"/>
-                                    </div>
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                        <span className="truncate">{controllerField.value || "Select or type item..."}</span>
+                                        <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
+                                    </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                     <Command>
