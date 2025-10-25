@@ -16,10 +16,12 @@ import { Badge } from '@/components/ui/badge';
 import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
 import PpeRequestTable from '@/components/requests/PpeRequestTable';
 import { Role } from '@/lib/types';
+import NewConsumableRequestDialog from '@/components/requests/NewConsumableRequestDialog';
 
 export default function MyRequestsPage() {
     const { user, roles, internalRequests, managementRequests, ppeRequests, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount, can } = useAppContext();
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
+    const [isNewConsumableRequestDialogOpen, setIsNewConsumableRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
     const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
 
@@ -130,10 +132,16 @@ export default function MyRequestsPage() {
                                     Create new requests and track their status.
                                 </CardDescription>
                             </div>
-                            <Button onClick={() => setIsNewRequestDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New Store Request
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setIsNewConsumableRequestDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Request Consumables
+                                </Button>
+                                <Button onClick={() => setIsNewRequestDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    New General Request
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <InternalRequestTable requests={visibleInternalRequests} />
@@ -163,6 +171,7 @@ export default function MyRequestsPage() {
 
 
             <NewInternalRequestDialog isOpen={isNewRequestDialogOpen} setIsOpen={setIsNewRequestDialogOpen} />
+            <NewConsumableRequestDialog isOpen={isNewConsumableRequestDialogOpen} setIsOpen={setIsNewConsumableRequestDialogOpen} />
             <NewManagementRequestDialog isOpen={isNewMgmtRequestDialogOpen} setIsOpen={setIsNewMgmtRequestDialogOpen} />
             <NewPpeRequestDialog isOpen={isNewPpeRequestDialogOpen} setIsOpen={setIsNewPpeRequestDialogOpen} />
         </div>

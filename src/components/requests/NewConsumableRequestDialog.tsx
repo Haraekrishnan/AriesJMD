@@ -10,11 +10,17 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { Textarea } from '../ui/textarea';
+import { PlusCircle, Trash2, ChevronsUpDown } from 'lucide-react';
+import { useMemo } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
+
 
 const requestItemSchema = z.object({
   id: z.string(),
+  inventoryItemId: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   unit: z.string().min(1, 'Unit is required. (e.g., pcs, box, m)'),
@@ -27,16 +33,20 @@ const internalRequestSchema = z.object({
 
 type InternalRequestFormValues = z.infer<typeof internalRequestSchema>;
 
-interface NewInternalRequestDialogProps {
+interface NewConsumableRequestDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
 
 const generateNewItemId = () => `item-${Date.now()}-${Math.random()}`;
 
-export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInternalRequestDialogProps) {
-  const { addInternalRequest } = useAppContext();
+export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewConsumableRequestDialogProps) {
+  const { addInternalRequest, inventoryItems } = useAppContext();
   const { toast } = useToast();
+
+  const consumableItems = useMemo(() => {
+    return inventoryItems.filter(item => item.category === 'Daily Consumable' || item.category === 'Job Consumable');
+  }, [inventoryItems]);
 
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
@@ -66,15 +76,28 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
     setIsOpen(open);
   };
 
+  const handleItemSelect = (index: number, itemName: string) => {
+    const item = consumableItems.find(i => i.name === itemName);
+    if(item) {
+        form.setValue(`items.${index}.description`, item.name);
+        form.setValue(`items.${index}.inventoryItemId`, item.id);
+        if(item.unit) {
+            form.setValue(`items.${index}.unit`, item.unit);
+        }
+    } else {
+        form.setValue(`items.${index}.description`, itemName);
+        form.setValue(`items.${index}.inventoryItemId`, undefined);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>New General Store Request</DialogTitle>
-          <DialogDescription>List the items you need from the internal store.</DialogDescription>
+          <DialogTitle>New Consumables Request</DialogTitle>
+          <DialogDescription>Select the consumables you need from the list.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          {/* Static Header for the list */}
           <div className="grid grid-cols-12 gap-2 items-center px-4 pb-2 shrink-0">
             <div className="col-span-5"><Label className="text-xs">Item Description</Label></div>
             <div className="col-span-2"><Label className="text-xs">Quantity</Label></div>
@@ -82,14 +105,47 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
             <div className="col-span-2"><Label className="text-xs">Remarks</Label></div>
             <div className="col-span-1"></div>
           </div>
-
-          {/* Scrollable Area for the items */}
           <ScrollArea className="flex-1 px-4">
             <div className="space-y-4">
               {fields.map((field, index) => (
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
                   <div className="col-span-5">
-                    <Input id={`items.${index}.description`} {...form.register(`items.${index}.description`)} placeholder="e.g., Grinding Wheel" />
+                    <Controller
+                        name={`items.${index}.description`}
+                        control={form.control}
+                        render={({ field: controllerField }) => (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                        <span className="truncate">{controllerField.value || "Select item..."}</span>
+                                        <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput 
+                                            placeholder="Search items..." 
+                                            onValueChange={(value) => handleItemSelect(index, value)}
+                                        />
+                                        <CommandList>
+                                            <CommandEmpty>No item found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {consumableItems.map(item => (
+                                                <CommandItem
+                                                    key={item.id}
+                                                    value={item.name}
+                                                    onSelect={() => handleItemSelect(index, item.name)}
+                                                >
+                                                    {item.name}
+                                                </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                    />
                     {form.formState.errors.items?.[index]?.description && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.description?.message}</p>}
                   </div>
                   <div className="col-span-2">
@@ -112,8 +168,6 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
               ))}
             </div>
           </ScrollArea>
-           
-           {/* Static Footer with buttons */}
           <div className="px-4 pt-4 shrink-0">
                 <Button type="button" variant="outline" size="sm" onClick={() => append({ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -121,7 +175,6 @@ export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInter
                 </Button>
                 {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
           </div>
-
           <DialogFooter className="pt-4 mt-auto border-t px-6 pb-6 shrink-0">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Submit Request</Button>
