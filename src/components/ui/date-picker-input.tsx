@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,6 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
   React.useEffect(() => {
-    // This effect synchronizes the input field when the `value` prop changes from the outside.
     if (value && isValid(value)) {
       setTextValue(format(value, 'dd-MM-yyyy'));
     } else {
@@ -34,22 +34,19 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     const str = e.target.value;
     setTextValue(str);
 
-    // Try parsing the date with different formats only if it looks like a full date
-    const formats = ['dd-MM-yyyy', 'dd/MM/yyyy'];
+    const formats = ['dd-MM-yyyy', 'dd/MM/yyyy', 'd-M-yy', 'd/M/yy'];
     let parsedDate: Date | undefined;
 
     for (const fmt of formats) {
-      // Check if the string length is plausible for a full date
-      if (str.length >= fmt.length - 2) { 
-        const parsed = parse(str, fmt, new Date());
-        if (isValid(parsed)) {
-          parsedDate = parsed;
-          break;
-        }
+      const parsed = parse(str, fmt, new Date());
+      // Check if parsing was successful and if the formatted date matches the input
+      // This helps avoid partial matches like '12' becoming a valid date
+      if (isValid(parsed) && format(parsed, fmt).padStart(fmt.length, '0') === str.padStart(fmt.length, '0')) {
+        parsedDate = parsed;
+        break;
       }
     }
     
-    // Only update the parent form's state if a valid date is parsed or if the field is cleared
     if (parsedDate) {
       onChange(parsedDate);
     } else if (str === '') {
@@ -62,21 +59,9 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
     if (value && isValid(value)) {
       setTextValue(format(value, 'dd-MM-yyyy'));
     } else {
-        // If there's no valid date, but text is present, clear it.
         if (textValue !== '') {
-           const formats = ['dd-MM-yyyy', 'dd/MM/yyyy'];
-           let isValidInput = false;
-           for (const fmt of formats) {
-               const parsed = parse(textValue, fmt, new Date());
-               if (isValid(parsed) && format(parsed, fmt) === textValue) {
-                   isValidInput = true;
-                   break;
-               }
-           }
-           if (!isValidInput) {
-               setTextValue('');
-               onChange(undefined);
-           }
+            onChange(undefined);
+            setTextValue('');
         }
     }
   };
@@ -102,36 +87,35 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
         onChange={handleInputChange}
         onBlur={handleBlur}
         disabled={disabled}
-        className="pr-10"
+        className="pr-16"
       />
-      <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center">
-        {value && !disabled ? (
+      <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 flex items-center">
+        {value && !disabled && (
             <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={handleClear}>
               <X className="h-4 w-4 text-muted-foreground" />
             </Button>
-        ) : (
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                <PopoverTrigger asChild>
-                <Button
-                    type="button"
-                    variant={'ghost'}
-                    size="icon"
-                    className={cn('h-8 w-8', disabled && 'hidden')}
-                    disabled={disabled}
-                >
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                <Calendar
-                    mode="single"
-                    selected={value}
-                    onSelect={handleDateSelect}
-                    initialFocus
-                />
-                </PopoverContent>
-            </Popover>
         )}
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <PopoverTrigger asChild>
+            <Button
+                type="button"
+                variant={'ghost'}
+                size="icon"
+                className={cn('h-8 w-8', disabled && 'hidden')}
+                disabled={disabled}
+            >
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+            <Calendar
+                mode="single"
+                selected={value}
+                onSelect={handleDateSelect}
+                initialFocus
+            />
+            </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

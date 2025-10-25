@@ -114,94 +114,96 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit: {item.name}</DialogTitle>
           <DialogDescription>Update the details for this item.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-             <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="name">Item Name</Label>
-                    <Input id="name" {...form.register('name')} placeholder="e.g., Harness or select" list="item-names" />
-                    <datalist id="item-names">
-                        {itemNames.map(n => <option key={n} value={n} />)}
-                    </datalist>
-                    {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
-                </div>
-                 <div>
-                    <Label>Category</Label>
-                    <Controller control={form.control} name="category" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categoryOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
-                </div>
-            </div>
-            <div>
-              <Label htmlFor="serialNumber">Serial Number</Label>
-              <Input id="serialNumber" {...form.register('serialNumber')} disabled={category !== 'General'}/>
-              {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
-            </div>
-
-            {itemName?.toLowerCase() === 'harness' && category === 'General' && (
+        <div className="flex-1 overflow-y-auto -mr-6 pr-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="ariesId">Aries ID (sl no)</Label>
-                        <Input id="ariesId" {...form.register('ariesId')} />
+                        <Label htmlFor="name">Item Name</Label>
+                        <Input id="name" {...form.register('name')} placeholder="e.g., Harness or select" list="item-names" />
+                        <datalist id="item-names">
+                            {itemNames.map(n => <option key={n} value={n} />)}
+                        </datalist>
+                        {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                     </div>
                     <div>
-                        <Label htmlFor="chestCrollNo">Chest Croll No</Label>
-                        <Input id="chestCrollNo" {...form.register('chestCrollNo')} />
+                        <Label>Category</Label>
+                        <Controller control={form.control} name="category" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categoryOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
                     </div>
                 </div>
-            )}
-             {category !== 'General' && (
+                <div>
+                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Input id="serialNumber" {...form.register('serialNumber')} disabled={category !== 'General'}/>
+                {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+                </div>
+
+                {itemName?.toLowerCase() === 'harness' && category === 'General' && (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="ariesId">Aries ID (sl no)</Label>
+                            <Input id="ariesId" {...form.register('ariesId')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="chestCrollNo">Chest Croll No</Label>
+                            <Input id="chestCrollNo" {...form.register('chestCrollNo')} />
+                        </div>
+                    </div>
+                )}
+                {category !== 'General' && (
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="quantity">Quantity</Label>
+                            <Input id="quantity" type="number" {...form.register('quantity')} />
+                        </div>
+                        <div>
+                            <Label htmlFor="unit">Unit</Label>
+                            <Input id="unit" {...form.register('unit')} placeholder="e.g., pcs, box, m" />
+                        </div>
+                    </div>
+                )}
+                
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="quantity">Quantity</Label>
-                        <Input id="quantity" type="number" {...form.register('quantity')} />
+                        <Label>Status</Label>
+                        <Controller control={form.control} name="status" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
                     </div>
                     <div>
-                        <Label htmlFor="unit">Unit</Label>
-                        <Input id="unit" {...form.register('unit')} placeholder="e.g., pcs, box, m" />
+                        <Label>Location</Label>
+                        <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                        {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
                     </div>
                 </div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4">
+
+                {showPlantUnit && (
                 <div>
-                    <Label>Status</Label>
-                    <Controller control={form.control} name="status" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
+                    <Label htmlFor="plantUnit">Plant/Unit</Label>
+                    <Input id="plantUnit" {...form.register('plantUnit')} placeholder="e.g., Unit A" />
                 </div>
+                )}
+                
+                {category === 'General' && (
+                <>
+                    <div><Label>Inspection Date</Label><Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
+                    <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
+                    <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
+                </>
+                )}
+
                 <div>
-                    <Label>Location</Label>
-                    <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
-                    {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+                    <Label>Remarks (Description)</Label>
+                    <Textarea {...form.register('remarks')} placeholder="Add any notes..." />
                 </div>
-            </div>
 
-            {showPlantUnit && (
-              <div>
-                <Label htmlFor="plantUnit">Plant/Unit</Label>
-                <Input id="plantUnit" {...form.register('plantUnit')} placeholder="e.g., Unit A" />
-              </div>
-            )}
-            
-            {category === 'General' && (
-              <>
-                <div><Label>Inspection Date</Label><Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
-                <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
-                <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
-              </>
-            )}
-
-            <div>
-                <Label>Remarks (Description)</Label>
-                <Textarea {...form.register('remarks')} placeholder="Add any notes..." />
-            </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Save Changes</Button>
-          </DialogFooter>
-        </form>
+                <DialogFooter className="pt-4 sticky bottom-0 bg-background">
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button type="submit">Save Changes</Button>
+                </DialogFooter>
+            </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
