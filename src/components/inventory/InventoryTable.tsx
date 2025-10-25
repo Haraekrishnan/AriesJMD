@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -24,7 +23,11 @@ interface InventoryTableProps {
 }
 
 const ItemCard = ({ item, onEdit, onRequest, onDelete }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; }) => {
-    const { getProjectName, can, user } = useAppContext();
+    const { can, user, projects } = useAppContext();
+
+    const getProjectName = (projectId: string) => {
+        return projects.find(p => p.id === projectId)?.name || 'N/A';
+    };
 
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd-MM-yyyy') : 'N/A';
 
