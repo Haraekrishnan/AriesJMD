@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -7,11 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
-import { format, isPast, parseISO, differenceInDays } from 'date-fns';
+import { format, isPast, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import RequestCertificateDialog from './RequestCertificateDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -24,7 +25,7 @@ interface InventoryTableProps {
 
 const ItemCard = ({ item, onEdit, onRequest, onDelete }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; }) => {
     const { can, user, projects } = useAppContext();
-
+    
     const getProjectName = (projectId: string) => {
         return projects.find(p => p.id === projectId)?.name || 'N/A';
     };
@@ -67,6 +68,10 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete }: { item: InventoryItem; 
                 <div>
                     <div className="text-muted-foreground">TP Insp. Due</div>
                     <div className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</div>
+                </div>
+                 <div>
+                    <div className="text-muted-foreground">Last Updated</div>
+                    <div>{item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}</div>
                 </div>
             </div>
              <div className="flex justify-end gap-2 pt-2">
@@ -118,6 +123,8 @@ export default function InventoryTable({ items }: InventoryTableProps) {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [selectedItemGroup, setSelectedItemGroup] = useState<string | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: 'lastUpdated', direction: 'ascending' | 'descending' } | null>(null);
+
 
     const canManage = useMemo(() => {
         if (!user) return false;
@@ -130,14 +137,37 @@ export default function InventoryTable({ items }: InventoryTableProps) {
     };
 
     const groupedItems = useMemo(() => {
-        return items.reduce<Record<string, InventoryItem[]>>((acc, item) => {
+        const sortedItems = [...items];
+        if (sortConfig) {
+            sortedItems.sort((a, b) => {
+                const dateA = a.lastUpdated ? parseISO(a.lastUpdated).getTime() : 0;
+                const dateB = b.lastUpdated ? parseISO(b.lastUpdated).getTime() : 0;
+                if (dateA < dateB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (dateA > dateB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        
+        return sortedItems.reduce<Record<string, InventoryItem[]>>((acc, item) => {
             if (!acc[item.name]) {
                 acc[item.name] = [];
             }
             acc[item.name].push(item);
             return acc;
         }, {});
-    }, [items]);
+    }, [items, sortConfig]);
+
+    const requestSort = (key: 'lastUpdated') => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const handleEditClick = (item: InventoryItem) => {
         setSelectedItem(item);
@@ -285,6 +315,12 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                 <TableHead>Location</TableHead>
                                                 <TableHead>Insp. Due</TableHead>
                                                 <TableHead>TP Insp. Due</TableHead>
+                                                 <TableHead>
+                                                    <Button variant="ghost" onClick={() => requestSort('lastUpdated')} className="px-0 hover:bg-transparent">
+                                                        Last Updated
+                                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                    </Button>
+                                                </TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -298,6 +334,9 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                     <TableCell>{getProjectName(item.projectId)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
+                                                    <TableCell className="text-xs text-muted-foreground">
+                                                        {item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}
+                                                    </TableCell>
                                                     <TableCell className="text-right">
                                                             <AlertDialog>
                                                                 <DropdownMenu>
