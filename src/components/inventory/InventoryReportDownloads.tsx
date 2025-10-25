@@ -45,11 +45,11 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
         'Chest Croll No': item.chestCrollNo || 'N/A',
         'Status': item.status,
         'Location': projects.find(p => p.id === item.projectId)?.name || 'N/A',
+        'Plant/Unit': item.plantUnit || 'N/A',
         'Inspection Date': formatDate(item.inspectionDate),
         'Inspection Due Date': formatDate(item.inspectionDueDate),
         'TP Inspection Due Date': formatDate(item.tpInspectionDueDate),
         'Last Updated': formatDate(item.lastUpdated),
-        'Category': item.category || 'General',
       }));
        worksheet = XLSX.utils.json_to_sheet(dataToExport);
     }
