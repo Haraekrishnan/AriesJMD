@@ -27,7 +27,9 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
     const { can, user, projects } = useAppContext();
     
     const getProjectName = (projectId: string) => {
-        return projects.find(p => p.id === projectId)?.name || 'N/A';
+        const project = projects.find(p => p.id === projectId);
+        if (!project) return 'N/A';
+        return item.plantUnit ? `${project.name} / ${item.plantUnit}` : project.name;
     };
 
     const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd-MM-yyyy') : 'N/A';
@@ -135,8 +137,10 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         return userRole?.permissions.includes('manage_inventory') ?? false;
     }, [user, roles]);
     
-    const getProjectName = (projectId: string) => {
-        return projects.find(p => p.id === projectId)?.name || 'N/A';
+    const getProjectName = (item: InventoryItem) => {
+        const project = projects.find(p => p.id === item.projectId);
+        if (!project) return 'N/A';
+        return item.plantUnit ? `${project.name} / ${item.plantUnit}` : project.name;
     };
 
     const groupedItems = useMemo(() => {
@@ -343,7 +347,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                     <TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                     {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
                                                     <TableCell><Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
-                                                    <TableCell>{getProjectName(item.projectId)}</TableCell>
+                                                    <TableCell>{getProjectName(item)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
                                                     <TableCell className="text-xs text-muted-foreground">
@@ -383,4 +387,3 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         </>
     );
 }
-

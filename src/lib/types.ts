@@ -6,6 +6,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -577,6 +578,7 @@ export type InventoryItem = {
   chestCrollNo?: string;
   status: InventoryItemStatus;
   projectId: string;
+  plantUnit?: string;
   inspectionDate?: string; // ISO string
   inspectionDueDate?: string; // ISO string
   tpInspectionDueDate?: string; // ISO string

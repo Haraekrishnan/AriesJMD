@@ -1,7 +1,7 @@
 
 
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ const itemSchema = z.object({
   chestCrollNo: z.string().optional(),
   status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired']),
   projectId: z.string().min(1, 'Location is required'),
+  plantUnit: z.string().optional(),
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
@@ -51,6 +52,8 @@ interface EditItemDialogProps {
 
 const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired'];
 const categoryOptions: InventoryCategory[] = ['General', 'Daily Consumable', 'Job Consumable'];
+const excludedLocations = ['Store', 'Office', 'Kitchen Duty'];
+
 
 export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDialogProps) {
   const { updateInventoryItem, projects, inventoryItems } = useAppContext();
@@ -64,6 +67,22 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
   
   const itemName = form.watch('name');
   const category = form.watch('category');
+  const selectedProjectId = form.watch('projectId');
+
+  const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+
+  const showPlantUnit = useMemo(() => {
+    if (!selectedProject) return false;
+    return !excludedLocations.includes(selectedProject.name);
+  }, [selectedProject]);
+
+
+  useEffect(() => {
+    if (!showPlantUnit) {
+      form.setValue('plantUnit', '');
+    }
+  }, [showPlantUnit, form]);
+
 
   useEffect(() => {
     if(item && isOpen) {
@@ -157,6 +176,13 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                     {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
                 </div>
             </div>
+
+            {showPlantUnit && (
+              <div>
+                <Label htmlFor="plantUnit">Plant/Unit</Label>
+                <Input id="plantUnit" {...form.register('plantUnit')} placeholder="e.g., Unit A" />
+              </div>
+            )}
             
             {category === 'General' && (
               <>
