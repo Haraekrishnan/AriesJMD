@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,16 +57,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         return userRole?.permissions.includes('approve_store_requests');
     }, [user, roles]);
 
-    const handleBulkActionClick = (act: InternalRequestStatus) => {
-        const needsComment = act === 'Rejected';
-        if (needsComment) {
-            setAction(act);
-            setIsActionConfirmOpen(true);
-        } else {
-            handleConfirmAction(act);
-        }
-    };
-    
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
         const needsComment = status === 'Rejected';
         if (needsComment) {
@@ -78,17 +68,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         }
     };
 
-    const handleConfirmAction = (bulkAction?: InternalRequestStatus) => {
-        const currentAction = bulkAction || action;
-        if (currentAction) { // Bulk action
-            if (!req || !currentAction) return;
-            if (!comment.trim() && currentAction === 'Rejected') {
-                toast({ title: 'Comment required', variant: 'destructive'});
-                return;
-            }
-            updateInternalRequestStatus(req.id, currentAction, comment);
-            toast({ title: `All items updated to ${currentAction}` });
-        } else if (itemAction) { // Single item action
+    const handleConfirmAction = () => {
+        if (itemAction) { // Single item action
             if (!comment.trim() && itemAction.status === 'Rejected') {
                  toast({ title: 'Comment required', variant: 'destructive'});
                  return;
@@ -226,15 +207,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         </div>
                     )}
                     <div className="flex flex-wrap justify-end gap-2 px-2">
-                        {canApprove && (
-                            <>
-                                <Button size="sm" variant="outline" onClick={() => handleBulkActionClick('Approved')} disabled={!canBulkApprove}><CheckCircle className="mr-2 h-4 w-4" /> Approve All</Button>
-                                <Button size="sm" variant="secondary" onClick={() => handleBulkActionClick('Issued')} disabled={!canBulkIssue}><Truck className="mr-2 h-4 w-4" /> Issue All</Button>
-                                <Button size="sm" variant="destructive" onClick={() => handleBulkActionClick('Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject All</Button>
-                            </>
-                        )}
                         {canDispute && (
-                            <Button size="sm" variant="destructive" onClick={() => handleBulkActionClick('Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Dispute</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleItemActionClick(req.items[0], 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Dispute</Button>
                         )}
                         {canApprove && req.status === 'Disputed' && (
                             <div className="flex gap-2">
