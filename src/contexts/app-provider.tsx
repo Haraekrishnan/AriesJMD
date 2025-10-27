@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1651,14 +1652,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
+    
+    // Ensure `inventoryItemId` is null if it's undefined
+    const sanitizedItems = requestData.items.map(item => ({
+        ...item,
+        inventoryItemId: item.inventoryItemId || null,
+    }));
+
     const newRequest: Omit<InternalRequest, 'id'> = {
         ...requestData,
+        items: sanitizedItems,
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
         comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString() }],
         viewedByRequester: true,
     };
+
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
 
@@ -2142,7 +2152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newStatus: PpeRequestStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
     
     const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Item will be re-issued. Comment: ${comment}`
+      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
       : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
     
     updatePpeRequestStatus(requestId, newStatus, actionComment);
