@@ -59,7 +59,7 @@ export default function StoreInventoryPage() {
     }, [inventoryItems]);
 
     const filteredItems = useMemo(() => {
-      const privilegedRoles: Role[] = ['Admin', 'Manager', 'Store in Charge', 'Assistant Store Incharge'];
+      const privilegedRoles: Role[] = ['Admin', 'Manager', 'Store in Charge', 'Assistant Store Incharge', 'Project Coordinator', 'Document Controller'];
       const isPrivileged = user ? privilegedRoles.includes(user.role) : false;
 
       return generalItems.filter(item => {
