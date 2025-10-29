@@ -129,18 +129,20 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                         <Controller control={form.control} name="category" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categoryOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
                     </div>
                 </div>
-                <div>
-                    <Label htmlFor="serialNumber">Serial Number</Label>
-                    <Input id="serialNumber" {...form.register('serialNumber')} disabled={category !== 'General'} />
-                    {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="serialNumber">Serial Number</Label>
+                        <Input id="serialNumber" {...form.register('serialNumber')} disabled={category !== 'General'} />
+                        {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="ariesId">Aries ID</Label>
+                        <Input id="ariesId" {...form.register('ariesId')} />
+                    </div>
                 </div>
 
                 {itemName?.toLowerCase() === 'harness' && category === 'General' && (
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="ariesId">Aries ID (sl no)</Label>
-                            <Input id="ariesId" {...form.register('ariesId')} />
-                        </div>
                         <div>
                             <Label htmlFor="chestCrollNo">Chest Croll No</Label>
                             <Input id="chestCrollNo" {...form.register('chestCrollNo')} />
