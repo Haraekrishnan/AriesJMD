@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -432,7 +431,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     {!attachment && !taskToDisplay.attachment &&
                       <div className="relative mt-1">
                         <Button asChild variant="outline" size="sm"><Label htmlFor="file-upload"><Upload className="mr-2"/>Upload File</Label></Button>
-                        <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden"/>
+                        <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png"/>
                       </div>
                     }
                     {attachment && (

@@ -198,7 +198,7 @@ export default function AccountPage() {
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="avatar-upload">Change Profile Picture</Label>
-                    <Input id="avatar-upload" type="file" onChange={handleFileChange} accept="image/*" />
+                    <Input id="avatar-upload" type="file" onChange={handleFileChange} accept=".jpg, .jpeg, .png" />
                 </div>
                 </CardContent>
                 <CardFooter>
@@ -243,7 +243,7 @@ export default function AccountPage() {
                         <Layers className="h-8 w-8 text-muted-foreground" />
                     )}
                   </div>
-                  <Input id="logo-upload" type="file" onChange={handleLogoFileChange} accept="image/*" />
+                  <Input id="logo-upload" type="file" onChange={handleLogoFileChange} accept=".jpg, .jpeg, .png" />
                 </div>
               </div>
             </CardContent>

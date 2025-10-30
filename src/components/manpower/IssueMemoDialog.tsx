@@ -207,7 +207,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
                 <Button asChild variant="outline" size="sm">
                   <Label htmlFor="memo-file-upload"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
                 </Button>
-                <Input id="memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} />
+                <Input id="memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".jpg, .jpeg, .png" />
               </div>
             )}
           </div>

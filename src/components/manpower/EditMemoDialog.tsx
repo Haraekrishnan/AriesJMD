@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -200,7 +201,7 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
                 <Button asChild variant="outline" size="sm">
                   <Label htmlFor="edit-memo-file-upload"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
                 </Button>
-                <Input id="edit-memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} />
+                <Input id="edit-memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".jpg, .jpeg, .png" />
               </div>
             )}
           </div>
