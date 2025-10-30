@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -445,18 +446,18 @@ export default function JobRecordSheet() {
     
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
-    
+
         allTabs.forEach(plant => {
             const profiles = filteredAndGroupedProfiles[plant];
             if (!profiles || profiles.length === 0) return;
-    
-            const ws_data: any[][] = [];
+
+            const ws_data: (string | number | null)[][] = [];
             ws_data.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
             ws_data.push([]);
             const dayHeadersExcel = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
             const header = ['S.No', 'Name', ...dayHeadersExcel.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
             ws_data.push(header);
-    
+
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                 const employeeRecord = record.days || {};
@@ -475,19 +476,19 @@ export default function JobRecordSheet() {
                     if (workCodes.includes(code) || code === 'KD') acc.workDays++;
                     return acc;
                 }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
-                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (Number(hours) || 0), 0);
                 const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
                 const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-    
-                const rowData: any[] = [rIndex + 1, profile.name];
+
+                const rowData: (string | number | null)[] = [rIndex + 1, profile.name];
                 dayHeadersExcel.forEach(day => {
                     rowData.push(employeeRecord[day] || '');
                 });
                 rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
                 ws_data.push(rowData);
             });
-    
-            const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
             
             // Apply conditional formatting
             profiles.forEach((profile, rIndex) => {
@@ -499,15 +500,15 @@ export default function JobRecordSheet() {
                 dayHeadersExcel.forEach((day, cIndex) => {
                     const code = employeeRecord[day];
                     const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                    const cell = ws[cellAddress] || { t: 's', v: code || ''};
                     
                     if (code) {
                         const colorInfo = JOB_CODE_COLORS[code];
                         if (colorInfo && colorInfo.excelFill) {
-                            if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
-                             ws[cellAddress].s = {
-                                fill: { fgColor: { rgb: colorInfo.excelFill.fgColor } },
-                                font: colorInfo.excelFill.font,
-                             };
+                            cell.s = {
+                                fill: { patternType: "solid", fgColor: { rgb: colorInfo.excelFill.fgColor } },
+                                ...colorInfo.excelFill.font && { font: colorInfo.excelFill.font }
+                            };
                         }
                     }
                     
@@ -518,21 +519,21 @@ export default function JobRecordSheet() {
                     if (commentForDay) comments.push({ a: "Comment", t: commentForDay });
 
                     if (comments.length > 0) {
-                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code || '' };
-                        const cell = ws[cellAddress];
                         const commentsText = comments.map(com => `${com.a}: ${com.t}`).join('\n');
                         if (!cell.c) cell.c = [];
                         if (!cell.c.some(c => c.t === commentsText)) {
                             cell.c.push({a: "Note", t: commentsText});
                         }
                     }
+
+                    ws[cellAddress] = cell;
                 });
             });
 
             ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeadersExcel.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
     
             const legendStartRow = ws_data.length + 2;
-            XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
+            XLSX.utils.sheet_add_aoa(ws, [[]], { origin: { r: legendStartRow, c: 0} }); 
             XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
             XLSX.utils.sheet_add_aoa(ws, [['Code', 'Job Details', 'Man-Days']], { origin: -1 });
             
@@ -983,3 +984,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
