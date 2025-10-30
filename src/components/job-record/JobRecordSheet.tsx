@@ -445,208 +445,227 @@ export default function JobRecordSheet() {
       }, [jobCodes, jobCodeSearchTerm]);
 
     
-    const exportToExcel = async () => {
-    try {
-        const workbook = new ExcelJS.Workbook();
-
-        for (const plant of allTabs) {
-            const profiles = filteredAndGroupedProfiles[plant];
-            if (!profiles || profiles.length === 0) continue;
-
-            const sheet = workbook.addWorksheet(plant);
-            const totalDays = getDaysInMonth(currentMonth);
-
-            // ---- Header Row ----
-            const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
-            const header = [
-                "S.No",
-                "Name",
-                ...dayHeadersExcel.map(String),
-                "Total OFF",
-                "Total Leave",
-                "Total ML",
-                "Over Time",
-                "Total Standby/Training",
-                "Total Working Days",
-                "Total Rept/Office",
-                "Salary Days",
-                "Additional Sunday Duty",
-            ];
-
-            sheet.addRow([`Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plant}`]);
-            sheet.addRow([]);
-            sheet.addRow(header);
-
-            // Style header
-            const headerRow = sheet.getRow(3);
-            headerRow.font = { bold: true };
-            headerRow.alignment = { vertical: "middle", horizontal: "center" };
-            headerRow.eachCell(cell => {
-                cell.border = {
-                    top: { style: "thin" },
-                    left: { style: "thin" },
-                    bottom: { style: "thin" },
-                    right: { style: "thin" },
-                };
-                cell.fill = {
-                    type: "pattern",
-                    pattern: "solid",
-                    fgColor: { argb: "FFDDEBF7" },
-                };
-            });
-
-            // ---- Data Rows ----
-            profiles.forEach((profile, index) => {
-                const record = jobRecords[monthKey]?.records?.[profile.id] || {};
-                const employeeRecord = record.days || {};
-                const dailyOvertime = record.dailyOvertime || {};
-                const dailyComments = record.dailyComments || {};
-
-                const offCodes = ["OFF", "PH", "OS"];
-                const leaveCodes = ["L", "X", "NWS"];
-                const standbyCodes = ["ST", "TR", "EP", "PD", "Q"];
-                const workCodes = jobCodes
-                    ? jobCodes
-                          .filter(
-                              jc =>
-                                  ![
-                                      "X",
-                                      "Q",
-                                      "ST",
-                                      "NWS",
-                                      "R",
-                                      "OS",
-                                      "ML",
-                                      "L",
-                                      "TR",
-                                      "PD",
-                                      "EP",
-                                      "OFF",
-                                      "PH",
-                                      "S",
-                                      "CQ",
-                                      "RST",
-                                  ].includes(jc.code)
-                          )
-                          .map(jc => jc.code)
-                    : [];
-
-                // Summary calculations
-                const summary = dayHeadersExcel.reduce(
-                    (acc, day) => {
-                        const code = employeeRecord[day];
-                        if (offCodes.includes(code)) acc.offDays++;
-                        else if (leaveCodes.includes(code)) acc.leaveDays++;
-                        else if (code === "ML") acc.medicalLeave++;
-                        else if (standbyCodes.includes(code)) acc.standbyTraining++;
-                        else if (code === "R") acc.reptOffice++;
-                        else if (workCodes.includes(code) || code === "KD") acc.workDays++;
-                        return acc;
-                    },
-                    { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 }
-                );
-
-                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
-                const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
-                const salaryDays =
-                    additionalSundays +
-                    summary.offDays +
-                    summary.medicalLeave +
-                    summary.standbyTraining +
-                    summary.reptOffice +
-                    summary.workDays;
-
-                // Build row data
-                const rowData = [
-                    index + 1,
-                    profile.name,
-                    ...dayHeadersExcel.map(day => employeeRecord[day] || ""),
-                    summary.offDays,
-                    summary.leaveDays,
-                    summary.medicalLeave,
-                    totalOvertime,
-                    summary.standbyTraining,
-                    summary.workDays,
-                    summary.reptOffice,
-                    salaryDays,
-                    additionalSundays,
+      const exportToExcel = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+    
+            for (const plant of allTabs) {
+                const profiles = filteredAndGroupedProfiles[plant];
+                if (!profiles || profiles.length === 0) continue;
+    
+                const sheet = workbook.addWorksheet(plant);
+                const totalDays = getDaysInMonth(currentMonth);
+    
+                // ---- Header Row ----
+                const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
+                const header = [
+                    "S.No",
+                    "Name",
+                    ...dayHeadersExcel.map(String),
+                    "Total OFF",
+                    "Total Leave",
+                    "Total ML",
+                    "Over Time",
+                    "Total Standby/Training",
+                    "Total Working Days",
+                    "Total Rept/Office",
+                    "Salary Days",
+                    "Additional Sunday Duty",
                 ];
-
-                const row = sheet.addRow(rowData);
-
-                // ---- Apply Conditional Formatting (color by JOB_CODE_COLORS) ----
-                dayHeadersExcel.forEach((day, dIndex) => {
-                    const code = employeeRecord[day];
-                    const colorInfo = JOB_CODE_COLORS[code];
-                    if (colorInfo) {
-                        const excelColor = colorInfo.bg.replace("#", "");
-                        const cell = row.getCell(dIndex + 3);
-                        cell.fill = {
-                            type: "pattern",
-                            pattern: "solid",
-                            fgColor: { argb: excelColor.startsWith("FF") ? excelColor : `FF${excelColor}` },
-                        };
-                        cell.font = {
-                            bold: true,
-                            color: { argb: colorInfo.text?.replace("#", "") || "FF000000" },
-                        };
-                    }
-                });
-
-                // ---- Add Notes for Overtime / Comments ----
-                dayHeadersExcel.forEach((day, dIndex) => {
-                    const cell = row.getCell(dIndex + 3);
-                    const notes: string[] = [];
-                    if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
-                    if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
-                    if (notes.length > 0) {
-                        cell.note = notes.join("\n");
-                    }
-                });
-
-                // Borders
-                row.eachCell(cell => {
+    
+                sheet.addRow([`Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plant}`]);
+                sheet.addRow([]);
+                sheet.addRow(header);
+    
+                // Style header
+                const headerRow = sheet.getRow(3);
+                headerRow.font = { bold: true };
+                headerRow.alignment = { vertical: "middle", horizontal: "center" };
+                headerRow.eachCell(cell => {
                     cell.border = {
                         top: { style: "thin" },
                         left: { style: "thin" },
                         bottom: { style: "thin" },
                         right: { style: "thin" },
                     };
+                    cell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFDDEBF7" },
+                    };
                 });
-            });
-
-            // Auto column width
-            sheet.columns.forEach(column => {
-                column.width = column.header ? Math.max(10, String(column.header).length + 2) : 10;
-            });
-
-            // ---- Job Code Legend ----
-            sheet.addRow([]);
-            sheet.addRow(["Job Code Legend & Man-Days Count"]);
-            sheet.addRow(["Code", "Job Details", "Man-Days"]);
-
-            const manDaysCount: Record<string, number> = {};
-            jobCodes.forEach(jc => (manDaysCount[jc.code] = 0));
-            profiles.forEach(p => {
-                const record = jobRecords[monthKey]?.records?.[p.id];
-                const days = record?.days || {};
-                Object.values(days).forEach(code => {
-                    if (manDaysCount[code as string] !== undefined) manDaysCount[code as string]++;
+    
+                // ---- Data Rows ----
+                profiles.forEach((profile, index) => {
+                    const record = jobRecords[monthKey]?.records?.[profile.id] || {};
+                    const employeeRecord = record.days || {};
+                    const dailyOvertime = record.dailyOvertime || {};
+                    const dailyComments = record.dailyComments || {};
+    
+                    const offCodes = ["OFF", "PH", "OS"];
+                    const leaveCodes = ["L", "X", "NWS"];
+                    const standbyCodes = ["ST", "TR", "EP", "PD", "Q"];
+                    const workCodes = jobCodes
+                        ? jobCodes
+                              .filter(
+                                  jc =>
+                                      ![
+                                          "X",
+                                          "Q",
+                                          "ST",
+                                          "NWS",
+                                          "R",
+                                          "OS",
+                                          "ML",
+                                          "L",
+                                          "TR",
+                                          "PD",
+                                          "EP",
+                                          "OFF",
+                                          "PH",
+                                          "S",
+                                          "CQ",
+                                          "RST",
+                                      ].includes(jc.code)
+                              )
+                              .map(jc => jc.code)
+                        : [];
+    
+                    // Summary calculations
+                    const summary = dayHeadersExcel.reduce(
+                        (acc, day) => {
+                            const code = employeeRecord[day];
+                            if (offCodes.includes(code)) acc.offDays++;
+                            else if (leaveCodes.includes(code)) acc.leaveDays++;
+                            else if (code === "ML") acc.medicalLeave++;
+                            else if (standbyCodes.includes(code)) acc.standbyTraining++;
+                            else if (code === "R") acc.reptOffice++;
+                            else if (workCodes.includes(code) || code === "KD") acc.workDays++;
+                            return acc;
+                        },
+                        { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0 }
+                    );
+    
+                    const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+                    const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
+                    const salaryDays =
+                        additionalSundays +
+                        summary.offDays +
+                        summary.medicalLeave +
+                        summary.standbyTraining +
+                        summary.reptOffice +
+                        summary.workDays;
+    
+                    // Build row data
+                    const rowData = [
+                        index + 1,
+                        profile.name,
+                        ...dayHeadersExcel.map(day => employeeRecord[day] || ""),
+                        summary.offDays,
+                        summary.leaveDays,
+                        summary.medicalLeave,
+                        totalOvertime,
+                        summary.standbyTraining,
+                        summary.workDays,
+                        summary.reptOffice,
+                        salaryDays,
+                        additionalSundays,
+                    ];
+    
+                    const row = sheet.addRow(rowData);
+    
+                    // ---- Apply Conditional Formatting (color by JOB_CODE_COLORS) ----
+                    dayHeadersExcel.forEach((day, dIndex) => {
+                        const code = (employeeRecord[day] || "").toUpperCase();
+                        const cell = row.getCell(dIndex + 3);
+                    
+                        // default style
+                        cell.font = { bold: true, color: { argb: "FF000000" } };
+                    
+                        // color mapping (from your screenshot)
+                        const colorMap: Record<string, { bg: string; text?: string }> = {
+                            "X": { bg: "FFFF0000", text: "FFFFFFFF" }, // Red
+                            "EP": { bg: "FF00B0F0" },                 // Light Blue
+                            "PD": { bg: "FF00FF00" },                 // Bright Green
+                            "ML": { bg: "FFFFFF00" },                 // Yellow
+                            "OFF": { bg: "FFBFBFBF" },                // Gray
+                            "ST": { bg: "FF00B0F0" },                 // Teal blue
+                            "PH": { bg: "FF92D050" },                 // Light Green
+                            "KD": { bg: "FFFFC000" },                 // Orange Yellow
+                            "Q": { bg: "FF00B0F0" },                  // Light Blue
+                            "TR": { bg: "FFEAD1DC" },                 // Pink
+                            "OS": { bg: "FFFF9900" },                 // Orange
+                            "L": { bg: "FFFF0000", text: "FFFFFFFF" },// Red
+                            "NWS": { bg: "FF7030A0", text: "FFFFFFFF" }, // Purple
+                        };
+                    
+                        const matchKey = Object.keys(colorMap).find(k =>
+                            k === code ||
+                            (k.length === 2 && code.includes(k)) ||
+                            (k.length === 3 && code.startsWith(k))
+                        );
+                    
+                        if (matchKey) {
+                            const { bg, text } = colorMap[matchKey];
+                            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
+                            if (text) cell.font = { bold: true, color: { argb: text } };
+                        }
+                    });
+    
+                    // ---- Add Notes for Overtime / Comments ----
+                    dayHeadersExcel.forEach((day, dIndex) => {
+                        const cell = row.getCell(dIndex + 3);
+                        const notes: string[] = [];
+                        if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
+                        if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
+                        if (notes.length > 0) {
+                            cell.note = notes.join("\n");
+                        }
+                    });
+    
+                    // Borders
+                    row.eachCell(cell => {
+                        cell.border = {
+                            top: { style: "thin" },
+                            left: { style: "thin" },
+                            bottom: { style: "thin" },
+                            right: { style: "thin" },
+                        };
+                    });
                 });
-            });
-            jobCodes.forEach(jc => {
-                sheet.addRow([jc.code, jc.details, manDaysCount[jc.code] || 0]);
-            });
+    
+                // Auto column width
+                sheet.columns.forEach(column => {
+                    column.width = column.header ? Math.max(10, String(column.header).length + 2) : 10;
+                });
+    
+                // ---- Job Code Legend ----
+                sheet.addRow([]);
+                sheet.addRow(["Job Code Legend & Man-Days Count"]);
+                sheet.addRow(["Code", "Job Details", "Man-Days"]);
+    
+                const manDaysCount: Record<string, number> = {};
+                jobCodes.forEach(jc => (manDaysCount[jc.code] = 0));
+                profiles.forEach(p => {
+                    const record = jobRecords[monthKey]?.records?.[p.id];
+                    const days = record?.days || {};
+                    Object.values(days).forEach(code => {
+                        if (manDaysCount[code as string] !== undefined) manDaysCount[code as string]++;
+                    });
+                });
+                jobCodes.forEach(jc => {
+                    sheet.addRow([jc.code, jc.details, manDaysCount[jc.code] || 0]);
+                });
+            }
+    
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), `JobRecord_${monthKey}.xlsx`);
+            toast({ title: "Exported Successfully", description: "Excel file with colors and notes created." });
+        } catch (err) {
+            console.error(err);
+            toast({ variant: "destructive", title: "Export Failed", description: "Error generating Excel file." });
         }
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `JobRecord_${monthKey}.xlsx`);
-        toast({ title: "Exported Successfully", description: "Excel file with colors and notes created." });
-    } catch (err) {
-        console.error(err);
-        toast({ variant: "destructive", title: "Export Failed", description: "Error generating Excel file." });
-    }
-};
+    };
     
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
         const currentProfiles = filteredAndGroupedProfiles[activeTab];
@@ -1065,5 +1084,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
+    
 
     
