@@ -19,18 +19,18 @@ export default {
       colors: {
         'job-code-red-light': '#ff0000',
         'job-code-blue': '#bde2ff',
-        'job-code-violet': '#8A2BE2',
-        'job-code-bright-blue': '#0000FF',
+        'job-code-violet': '#9400D3',
+        'job-code-bright-blue': '#00BFFF',
         'job-code-fluorescent-blue': '#00BFFF',
         'job-code-dark-orange': '#FF8C00',
-        'job-code-sandal': '#E5A1AD',
-        'job-code-pink': '#DB7093',
-        'job-code-light-pink': '#FFB6C1', // Lighter Pink
+        'job-code-light-orange': '#FFDAB9',
+        'job-code-pink': '#FF69B4',
+        'job-code-light-pink': '#FFB6C1', 
         'job-code-dark-blue': '#add8e6',
-        'job-code-light-blue': '#B0C4DE', // Lighter Blue
+        'job-code-light-blue': '#ADD8E6', 
         'job-code-dark-green': '#98FB98',
-        'job-code-green': '#22C55E', // Standard Green
-        'job-code-dark-gray': '#A9A9A9',
+        'job-code-green': '#90EE90',
+        'job-code-dark-gray': '#D3D3D3',
         'job-code-fluorescent-green': '#00FF00',
         'job-code-yellow': '#FFFF00',
         background: 'hsl(var(--background))',
