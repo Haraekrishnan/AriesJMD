@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -9,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, sub } from 'date-fns';
-import * as XLSX from 'xlsx';
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '../ui/input';
@@ -444,120 +444,129 @@ export default function JobRecordSheet() {
       }, [jobCodes, jobCodeSearchTerm]);
 
     
-    const exportToExcel = () => {
-        const wb = XLSX.utils.book_new();
-    
+    const exportToExcel = async () => {
+        const allData = [];
         allTabs.forEach(plant => {
             const profiles = filteredAndGroupedProfiles[plant];
-            if (!profiles || profiles.length === 0) return;
-    
-            const ws_data: any[][] = [];
-            ws_data.push([`Job Record for ${format(currentMonth, 'MMMM yyyy')} - Plant: ${plant}`]);
-            ws_data.push([]);
+            if (profiles && profiles.length > 0) {
+                profiles.forEach(profile => allData.push(profile));
+            }
+        });
+
+        if (allData.length === 0) {
+            alert("No data available to export!");
+            return;
+        }
+
+        const workbook = new ExcelJS.Workbook();
+
+        for (const plant of allTabs) {
+            const profiles = filteredAndGroupedProfiles[plant];
+            if (!profiles || profiles.length === 0) continue;
+
+            const worksheet = workbook.addWorksheet(plant);
             const dayHeadersExcel = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+
+            // Add header row
             const header = ['S.No', 'Name', ...dayHeadersExcel.map(String), 'Total OFF', 'Total Leave', 'Total ML', 'Over Time', 'Total Standby/Training', 'Total working Days', 'Total Rept/Office', 'Salary Days', 'Additional Sunday Duty'];
-            ws_data.push(header);
-    
+            worksheet.addRow(header);
+
+            // Add data rows
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
-                const dailyComments = record.dailyComments || {};
+
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
                 const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
+                
                 const summary = dayHeadersExcel.reduce((acc, day) => {
                     const code = employeeRecord[day];
                     if (offCodes.includes(code)) acc.offDays++;
-                    if (leaveCodes.includes(code)) acc.leaveDays++;
-                    if (code === 'ML') acc.medicalLeave++;
-                    if (standbyCodes.includes(code)) acc.standbyTraining++;
-                    if (code === 'R') acc.reptOffice++;
-                    if (workCodes.includes(code) || code === 'KD') acc.workDays++;
+                    else if (leaveCodes.includes(code)) acc.leaveDays++;
+                    else if (code === 'ML') acc.medicalLeave++;
+                    else if (standbyCodes.includes(code)) acc.standbyTraining++;
+                    else if (code === 'R') acc.reptOffice++;
+                    else if (workCodes.includes(code) || code === 'KD') acc.workDays++;
                     return acc;
                 }, { offDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0, workDays: 0, leaveDays: 0 });
-                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (hours || 0), 0);
+
+                const totalOvertime = Object.values(dailyOvertime).reduce((sum, hours) => sum + (Number(hours) || 0), 0);
                 const additionalSundays = Number(sundayDutyStates[profile.id] || record.additionalSundayDuty || 0);
-                const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
-    
-                const rowData: any[] = [rIndex + 1, profile.name];
-                dayHeadersExcel.forEach(day => {
-                    rowData.push(employeeRecord[day] || '');
-                });
-                rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime, summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays);
-                ws_data.push(rowData);
+                const salaryDays = (additionalSundays || 0) + (summary.offDays || 0) + (summary.medicalLeave || 0) + (summary.standbyTraining || 0) + (summary.reptOffice || 0) + (summary.workDays || 0);
+                
+                const rowData = [
+                    rIndex + 1,
+                    profile.name,
+                    ...dayHeadersExcel.map(day => employeeRecord[day] || ''),
+                    summary.offDays,
+                    summary.leaveDays,
+                    summary.medicalLeave,
+                    totalOvertime,
+                    summary.standbyTraining,
+                    summary.workDays,
+                    summary.reptOffice,
+                    salaryDays,
+                    additionalSundays
+                ];
+                worksheet.addRow(rowData);
             });
-    
-            const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
-            
-            profiles.forEach((profile, rIndex) => {
-                const record = jobRecords[monthKey]?.records?.[profile.id] || {};
-                const dailyOvertime = record.dailyOvertime || {};
-                const dailyComments = record.dailyComments || {};
 
-                dayHeadersExcel.forEach((day, cIndex) => {
-                    const overtimeForDay = dailyOvertime[day];
-                    const commentForDay = dailyComments[day];
-                    
-                    const comments: { a: string, t: string }[] = [];
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        comments.push({ a: "Overtime", t: `${overtimeForDay} Hours`});
-                    }
-                    if (commentForDay) {
-                         comments.push({ a: "Comment", t: commentForDay });
-                    }
-                    
-                    if (comments.length > 0) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
-                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' }; // Ensure cell exists
-                        const cell = ws[cellAddress];
+            // Header styling
+            const headerRow = worksheet.getRow(1);
+            headerRow.height = 20;
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "305496" } };
+                cell.alignment = { vertical: "middle", horizontal: "center" };
+                cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+            });
 
-                        const commentsText = comments.map(com => `${com.a}: ${com.t}`).join('\n');
-                        if (!cell.c) cell.c = [];
-                        // Check if a note with the exact same text already exists
-                        if (!cell.c.some(c => c.t === commentsText)) {
-                            cell.c.push({a: "Note", t: commentsText});
+            // Apply conditional formatting
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) return;
+                row.eachCell((cell, colNumber) => {
+                    if (colNumber > 2 && colNumber <= 2 + dayHeadersExcel.length) {
+                        const value = String(cell.value ?? "").trim().toUpperCase();
+                        const colorInfo = JOB_CODE_COLORS[value];
+                        if (colorInfo && colorInfo.excelFill) {
+                            cell.fill = {
+                                type: "pattern",
+                                pattern: "solid",
+                                fgColor: { argb: colorInfo.excelFill.fgColor.rgb },
+                            };
+                            if (colorInfo.excelFill.font) {
+                                cell.font = colorInfo.excelFill.font;
+                            }
                         }
                     }
+                    cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+                    cell.alignment = { vertical: "middle", horizontal: "center" };
                 });
             });
 
-            ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...dayHeadersExcel.map(() => ({ wch: 7 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }];
-    
-            const legendStartRow = ws_data.length + 2;
-            XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); 
-            XLSX.utils.sheet_add_aoa(ws, [['Job Code Legend & Man-Days Count']], { origin: -1 });
-            XLSX.utils.sheet_add_aoa(ws, [['Code', 'Job Details', 'Man-Days']], { origin: -1 });
-            
-            if (jobCodes) {
-              const manDaysCount = jobCodes.reduce((acc, jc) => {
-                  acc[jc.code] = 0;
-                  return acc;
-              }, {} as {[key: string]: number});
-              
-              profiles.forEach(p => {
-                  const record = jobRecords[monthKey]?.records?.[p.id];
-                  const days = record?.days || {};
-                  Object.values(days).forEach(code => {
-                      if (manDaysCount.hasOwnProperty(code as string)) {
-                          manDaysCount[code as string]++;
-                      }
-                  });
-              });
-              jobCodes.forEach(jc => {
-                 XLSX.utils.sheet_add_aoa(ws, [[jc.code, jc.details, manDaysCount[jc.code] || 0]], { origin: -1 });
-              });
-            }
-    
-            XLSX.utils.book_append_sheet(wb, ws, plant);
-        });
-    
-        if(wb.SheetNames.length > 0) {
-            XLSX.writeFile(wb, `JobRecord_${monthKey}.xlsx`);
-        } else {
-            toast({ variant: 'destructive', title: 'No Data', description: `No employees assigned to any plant to export.` });
+             // Auto-fit column widths
+            worksheet.columns.forEach((col, index) => {
+                let maxLen = 10;
+                col.eachCell({ includeEmpty: true }, (cell) => {
+                    const len = cell.value ? cell.value.toString().length : 0;
+                    if (len > maxLen) maxLen = len;
+                });
+                if (index > 1 && index <= 1 + dayHeadersExcel.length) {
+                    col.width = 5;
+                } else if (index === 1) {
+                    col.width = 25;
+                } else {
+                    col.width = maxLen + 2;
+                }
+            });
         }
+    
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        saveAs(blob, `JobRecord_${monthKey}.xlsx`);
     };
     
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
@@ -977,4 +986,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
