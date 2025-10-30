@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -462,7 +461,6 @@ export default function JobRecordSheet() {
                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                 const employeeRecord = record.days || {};
                 const dailyOvertime = record.dailyOvertime || {};
-                const dailyComments = record.dailyComments || {};
                 const offCodes = ['OFF', 'PH', 'OS'];
                 const leaveCodes = ['L', 'X', 'NWS'];
                 const standbyCodes = ['ST', 'TR', 'EP', 'PD', 'Q'];
@@ -491,31 +489,39 @@ export default function JobRecordSheet() {
     
             const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellStyles: true });
             
+            // Apply conditional formatting
             profiles.forEach((profile, rIndex) => {
                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
-                const dailyOvertime = record.dailyOvertime || {};
+                const employeeRecord = record.days || {};
                 const dailyComments = record.dailyComments || {};
-
+                const dailyOvertime = record.dailyOvertime || {};
+                
                 dayHeadersExcel.forEach((day, cIndex) => {
+                    const code = employeeRecord[day];
+                    const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
+                    
+                    if (code) {
+                        const colorInfo = JOB_CODE_COLORS[code];
+                        if (colorInfo && colorInfo.excelFill) {
+                            if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code };
+                             ws[cellAddress].s = {
+                                fill: { fgColor: { rgb: colorInfo.excelFill.fgColor } },
+                                font: colorInfo.excelFill.font,
+                             };
+                        }
+                    }
+                    
                     const overtimeForDay = dailyOvertime[day];
                     const commentForDay = dailyComments[day];
-                    
                     const comments: { a: string, t: string }[] = [];
-                    if (overtimeForDay && overtimeForDay > 0) {
-                        comments.push({ a: "Overtime", t: `${overtimeForDay} Hours`});
-                    }
-                    if (commentForDay) {
-                         comments.push({ a: "Comment", t: commentForDay });
-                    }
-                    
-                    if (comments.length > 0) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rIndex + 3, c: cIndex + 2 });
-                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' }; // Ensure cell exists
-                        const cell = ws[cellAddress];
+                    if (overtimeForDay && overtimeForDay > 0) comments.push({ a: "Overtime", t: `${overtimeForDay} Hours`});
+                    if (commentForDay) comments.push({ a: "Comment", t: commentForDay });
 
+                    if (comments.length > 0) {
+                        if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: code || '' };
+                        const cell = ws[cellAddress];
                         const commentsText = comments.map(com => `${com.a}: ${com.t}`).join('\n');
                         if (!cell.c) cell.c = [];
-                        // Check if a note with the exact same text already exists
                         if (!cell.c.some(c => c.t === commentsText)) {
                             cell.c.push({a: "Note", t: commentsText});
                         }
@@ -977,5 +983,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-
