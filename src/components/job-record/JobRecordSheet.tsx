@@ -445,7 +445,7 @@ export default function JobRecordSheet() {
       }, [jobCodes, jobCodeSearchTerm]);
 
     
-const exportToExcel = async () => {
+    const exportToExcel = async () => {
     try {
         const workbook = new ExcelJS.Workbook();
 
@@ -530,9 +530,22 @@ const exportToExcel = async () => {
                         .filter(
                             jc =>
                                 ![
-                                    "X", "Q", "ST", "NWS", "R", "OS",
-                                    "ML", "L", "TR", "PD", "EP",
-                                    "OFF", "PH", "S", "CQ", "RST",
+                                    "X",
+                                    "Q",
+                                    "ST",
+                                    "NWS",
+                                    "R",
+                                    "OS",
+                                    "ML",
+                                    "L",
+                                    "TR",
+                                    "PD",
+                                    "EP",
+                                    "OFF",
+                                    "PH",
+                                    "S",
+                                    "CQ",
+                                    "RST",
                                 ].includes(jc.code)
                         )
                         .map(jc => jc.code)
@@ -580,21 +593,20 @@ const exportToExcel = async () => {
 
                 const row = sheet.addRow(rowData);
 
-                // ---- Apply color coding ----
+                // ---- Apply colors & notes ----
                 dayHeadersExcel.forEach((day, dIndex) => {
                     const code = (employeeRecord[day] || "").toUpperCase();
                     const cell = row.getCell(dIndex + 3);
-                    
-                    const matchKey = Object.keys(colorMap).find(k => code === k);
+                    const color = colorMap[code];
 
-                    if (matchKey) {
-                        const { bg, text } = colorMap[matchKey];
-                        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
-                        if (text) cell.font = { bold: true, color: { argb: text } };
-                    } else {
-                         cell.font = { bold: true, color: { argb: 'FF000000' } };
+                    if (color) {
+                        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.bg } };
+                        cell.font = {
+                            bold: true,
+                            color: { argb: color.text || "FF000000" },
+                        };
                     }
-                    
+
                     // Add comments/notes
                     const notes: string[] = [];
                     if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
@@ -615,43 +627,50 @@ const exportToExcel = async () => {
             });
 
             // ---- Column Widths ----
+            const nameColIndex = 2;
+            const startDayIndex = 3;
+            const endDayIndex = startDayIndex + totalDays - 1;
+
+            sheet.getColumn(nameColIndex).width = 25;
+            for (let i = startDayIndex; i <= endDayIndex; i++) {
+                sheet.getColumn(i).width = 7;
+            }
             sheet.columns.forEach((col, i) => {
-                if (i === 1) { // Name column
-                    col.width = 25;
-                } else if (i >= 2 && i < 2 + totalDays) { // Day columns
-                    col.width = 7;
-                } else { // Summary columns
-                    let maxLen = 10;
-                    col.eachCell({ includeEmpty: true }, (cell) => {
-                        const len = cell.value ? cell.value.toString().length : 0;
-                        if (len > maxLen) maxLen = len;
-                    });
-                    col.width = Math.min(Math.max(12, maxLen + 2), 30);
-                }
+                if (i > endDayIndex && col.width < 12) col.width = 12;
             });
 
-            // ---- Legend Section ----
+            // ---- Job Code Legend ----
             sheet.addRow([]);
-            const legendStartRow = sheet.lastRow.number + 1;
-            const legendStartCol = 5;
+            const lastDataRow = sheet.lastRow.number + 1;
+            const legendStartCol = 5; // offset for center placement
             const legendColumns = ["Code", "Job Details", "Job No", "Man-Days"];
-            
+
+            // Title
             const titleRow = sheet.addRow([]);
-            sheet.mergeCells(titleRow.number, legendStartCol, titleRow.number, legendStartCol + legendColumns.length - 1);
-            const legendTitleCell = sheet.getCell(titleRow.number, legendStartCol);
+            const startMerge = legendStartCol;
+            const endMerge = legendStartCol + legendColumns.length - 1;
+            sheet.mergeCells(titleRow.number, startMerge, titleRow.number, endMerge);
+            const legendTitleCell = sheet.getCell(titleRow.number, startMerge);
             legendTitleCell.value = "Job Code Legend";
             legendTitleCell.font = { bold: true, size: 13 };
             legendTitleCell.alignment = { horizontal: "center", vertical: "middle" };
 
+            // Header
             const legendHeaderRow = sheet.addRow([]);
             legendColumns.forEach((col, i) => {
                 const cell = legendHeaderRow.getCell(legendStartCol + i);
                 cell.value = col;
                 cell.font = { bold: true };
                 cell.alignment = { horizontal: "center" };
-                cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+                cell.border = {
+                    top: { style: "thin" },
+                    left: { style: "thin" },
+                    bottom: { style: "thin" },
+                    right: { style: "thin" },
+                };
             });
 
+            // Data rows
             const manDaysCount: Record<string, number> = {};
             jobCodes.forEach(jc => (manDaysCount[jc.code] = 0));
             profiles.forEach(p => {
@@ -665,23 +684,53 @@ const exportToExcel = async () => {
             jobCodes.forEach(jc => {
                 const count = manDaysCount[jc.code] || 0;
                 if (count > 0) {
-                    const r = sheet.addRow([]);
-                    const cells = [
-                        { val: jc.code, color: colorMap[jc.code] },
-                        { val: jc.details },
-                        { val: jc.jobNo || "" },
-                        { val: count },
-                    ];
-                    cells.forEach((c, idx) => {
-                        const cell = r.getCell(legendStartCol + idx);
-                        cell.value = c.val;
-                        if (c.color) {
-                            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: c.color.bg } };
-                            cell.font = { bold: true, color: { argb: c.color.text || "FF000000" } };
-                        }
-                        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-                        cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+                    const row = sheet.addRow([]);
+                    const startCol = legendStartCol;
+            
+                    // Base columns
+                    const codeCol = startCol;
+                    const detailsCol = startCol + 1;
+                    const jobNoCol = detailsCol + 15;   // merge width for Job Details = 15
+                    const manDayCol = jobNoCol + 2;     // merge width for Job No = 2, then Man-Days = 3
+            
+                    // Merge cells for formatting
+                    sheet.mergeCells(row.number, detailsCol, row.number, jobNoCol - 1); // merge 15 for details
+                    sheet.mergeCells(row.number, jobNoCol, row.number, jobNoCol + 1);   // merge 2 for job no
+                    sheet.mergeCells(row.number, manDayCol, row.number, manDayCol + 2); // merge 3 for man-days
+            
+                    // Assign values
+                    const codeCell = sheet.getCell(row.number, codeCol);
+                    const detailsCell = sheet.getCell(row.number, detailsCol);
+                    const jobNoCell = sheet.getCell(row.number, jobNoCol);
+                    const manDayCell = sheet.getCell(row.number, manDayCol);
+            
+                    codeCell.value = jc.code;
+                    detailsCell.value = jc.details;
+                    jobNoCell.value = jc.jobNo || "";
+                    manDayCell.value = count;
+            
+                    // Apply color to code column
+                    const color = colorMap[jc.code];
+                    if (color) {
+                      codeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.bg } };
+                      codeCell.font = { bold: true, color: { argb: color.text || "FF000000" } };
+                    } else {
+                      codeCell.font = { bold: true };
+                    }
+            
+                    // Apply styling and borders
+                    [codeCell, detailsCell, jobNoCell, manDayCell].forEach(c => {
+                      c.border = {
+                        top: { style: "thin" },
+                        left: { style: "thin" },
+                        bottom: { style: "thin" },
+                        right: { style: "thin" },
+                      };
+                      c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
                     });
+            
+                    // Adjust font for details
+                    detailsCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
                 }
             });
         }
@@ -694,7 +743,7 @@ const exportToExcel = async () => {
         toast({
             variant: "destructive",
             title: "Export Failed",
-            description: "An error generating Excel file occurred.",
+            description: "Error generating Excel file.",
         });
     }
 };
