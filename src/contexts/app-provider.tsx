@@ -693,9 +693,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-    update(ref(rtdb, `tasks/${taskId}`), { viewedByAssignee: false, viewedByApprover: false });
-  }, [user, tasksById]);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+    const allParticipants = new Set(task.participants || []);
+    if (task.creatorId) allParticipants.add(task.creatorId);
+    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
+        }
+    });
+
+    update(ref(rtdb), updates);
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            const participant = users.find(u => u.id === participantId);
+            if (participant && participant.email) {
+                createAndSendNotification(
+                    participant.email,
+                    `New comment on task: ${task.title}`,
+                    `New comment from ${user.name}`,
+                    {
+                        'Task': task.title,
+                        'Comment': commentText
+                    },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                    'View Task'
+                );
+            }
+        }
+    });
+  }, [user, tasksById, users]);
 
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
@@ -1806,6 +1838,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         finalStatus = 'Partially Approved';
       } else if (updatedItems.every(i => i.status === 'Rejected')) {
         finalStatus = 'Rejected';
+      } else {
+        finalStatus = 'Partially Approved'; // Fallback
       }
     }
     updates[`internalRequests/${requestId}/status`] = finalStatus;
@@ -3480,3 +3514,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
