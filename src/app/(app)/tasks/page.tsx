@@ -70,7 +70,7 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
-      // Show pending approval tasks only to their approver or requester
+      // ✅ Show pending approval tasks only to their approver or requester
       if (task.status === 'Pending Approval') {
         if (task.approverId !== user?.id && task.statusRequest?.requestedBy !== user?.id) {
           return false;
@@ -140,9 +140,9 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
+      const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done' && t.status !== 'Pending Approval');
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
-      const regularTasks = filteredTasks.filter(t => !overdueTaskIds.has(t.id));
+      const regularTasks = filteredTasks.filter(t => !overdueTaskIds.has(t.id) && t.status !== 'Pending Approval');
       return { overdue: overdueTasks, regular: regularTasks };
   }, [filteredTasks]);
 

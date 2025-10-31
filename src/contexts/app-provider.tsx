@@ -813,7 +813,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, tasksById]);
   
-  const requestTaskStatusChange = useCallback(
+ const requestTaskStatusChange = useCallback(
     async (
       taskId: string,
       newStatus: TaskStatus,
@@ -821,25 +821,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       attachment?: Task['attachment']
     ) => {
       if (!user) return;
-  
+
       const task = tasksById[taskId];
       if (!task) return;
-  
+
+      const { approverId } = task;
+
       // ✅ Allow "In Progress" to update directly without approval
       if (newStatus === 'In Progress') {
         const updates: Record<string, any> = {};
-        updates[`tasks/${taskId}/status`] = 'In Progress';
         updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
-        updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
-  
+        updates[`tasks/${taskId}/updatedAt`] = new Date().toISOString();
+
+        // Check if main task status needs update
+        const currentSubtasks = task.subtasks || {};
+        const otherSubtasks = Object.values(currentSubtasks).filter(st => st.userId !== user.id);
+        const isFirstToStart = otherSubtasks.every(st => st.status === 'To Do');
+        if (isFirstToStart || task.status === 'To Do') {
+           updates[`tasks/${taskId}/status`] = 'In Progress';
+        }
+
         await update(ref(rtdb), updates);
-        addComment(taskId, comment || 'Started progress');
+        addComment(taskId, comment || 'Started progress on task.');
         toast({ title: 'Task status updated to In Progress' });
         return;
       }
-  
+
       // ✅ For "Done" or "Completed", approval is required
-      const { approverId } = task;
       if (!approverId) {
         toast({
           variant: 'destructive',
@@ -847,9 +855,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-  
+
       const updates: Record<string, any> = {};
-  
+
       // 🟢 This is crucial — statusRequest object ensures it appears in both panels
       const statusRequest = {
         requestedBy: user.id,
@@ -859,20 +867,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         date: new Date().toISOString(),
         status: 'Pending',
       };
-  
+
       updates[`tasks/${taskId}/statusRequest`] = statusRequest;
-  
+
       // 🟢 Update a consistent field name that your UI listens for
       updates[`tasks/${taskId}/approvalState`] = 'status_pending';
-  
+
       // 🟢 Keep main task status as 'Pending Approval' temporarily for Kanban view
       updates[`tasks/${taskId}/status`] = 'Pending Approval';
-  
+
       await update(ref(rtdb), updates);
-  
+
       addActivityLog(user.id, 'Task Completion Requested', task.title);
       addComment(taskId, comment || 'Marked for completion approval');
-  
+
       // ✅ Send email to approver
       const approver = users.find((u) => u.id === approverId);
       if (approver?.email) {
@@ -891,7 +899,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           'View Task'
         );
       }
-  
+
       toast({ title: 'Completion request sent for approval' });
     },
     [user, users, tasksById, addActivityLog, addComment, toast]
@@ -902,7 +910,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const task = tasksById[taskId];
     if (!task || !task.statusRequest || task.status !== 'Pending Approval') return;
 
-    const { newStatus, attachment } = task.statusRequest;
+    const { newStatus, attachment, requestedBy } = task.statusRequest;
 
     if (newStatus !== 'Done') {
         toast({ variant: 'destructive', title: 'Invalid Approval Action', description: 'This approval is not for task completion.' });
@@ -917,18 +925,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addComment(taskId, updatedComment);
 
     const updates: { [key: string]: any } = {};
-    updates[`tasks/${taskId}/status`] = 'Done';
-    updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
-    updates[`tasks/${taskId}/approvalState`] = 'none';
-    updates[`tasks/${taskId}/statusRequest`] = null;
-    if (attachment) {
-      updates[`tasks/${taskId}/attachment`] = attachment;
+    
+    // Update the subtask of the requester
+    if (requestedBy) {
+      updates[`tasks/${taskId}/subtasks/${requestedBy}/status`] = 'Done';
+    }
+
+    // Check if ALL subtasks are now 'Done'
+    const currentSubtasks = task.subtasks || {};
+    const updatedSubtasks = {
+      ...currentSubtasks,
+      [requestedBy]: { ...currentSubtasks[requestedBy], status: 'Done' }
+    };
+
+    const allDone = Object.values(updatedSubtasks).every(st => st.status === 'Done');
+
+    if (allDone) {
+      updates[`tasks/${taskId}/status`] = 'Done';
+      updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
+    } else {
+      updates[`tasks/${taskId}/status`] = 'In Progress'; // Or 'Partially Completed' if you have such a status
     }
     
-    if (task.subtasks) {
-        for (const subtaskUserId in task.subtasks) {
-            updates[`tasks/${taskId}/subtasks/${subtaskUserId}/status`] = 'Done';
-        }
+    updates[`tasks/${taskId}/approvalState`] = 'none';
+    updates[`tasks/${taskId}/statusRequest`] = null;
+
+    if (attachment) {
+      updates[`tasks/${taskId}/attachment`] = attachment;
     }
     
     update(ref(rtdb), updates);
@@ -1045,23 +1068,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const returnTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if (!user) return;
     const task = tasksById[taskId];
-    if (!task) return;
-
+    if (!task || !task.statusRequest) return;
+  
     addComment(taskId, `Status change to 'Done' rejected by ${user.name}. Reason: ${comment}`);
-
+  
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/approvalState`] = 'returned';
     updates[`tasks/${taskId}/statusRequest`] = null;
-    updates[`tasks/${taskId}/status`] = 'In Progress'; // Revert main status
     
-    if (task.subtasks) {
-        for (const subtaskUserId in task.subtasks) {
-            updates[`tasks/${taskId}/subtasks/${subtaskUserId}/status`] = 'In Progress'; // Revert all subtasks
-        }
+    const allSubtasksDone = Object.values(task.subtasks || {}).every(st => st.status === 'Done');
+    updates[`tasks/${taskId}/status`] = allSubtasks ? 'Done' : 'In Progress';
+  
+    // Revert only the requester's subtask
+    const requesterId = task.statusRequest.requestedBy;
+    if (requesterId && task.subtasks?.[requesterId]) {
+      updates[`tasks/${taskId}/subtasks/${requesterId}/status`] = 'In Progress';
     }
     
     update(ref(rtdb), updates);
-}, [user, tasksById, addComment]);
+    toast({ title: 'Task Returned', description: 'The task has been returned to the assignee for modifications.' });
+  }, [user, tasksById, addComment, toast]);
 
   const markTaskAsViewed = useCallback((taskId: string) => {
     if(!user) return;
@@ -3335,9 +3361,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0,
     };
     
-    const pendingTaskApprovalCount = tasks.filter(t => t.status === 'Pending Approval' && t.approverId === user.id).length;
+    const pendingTaskApprovalCount = tasks.filter(t => t.approvalState === 'status_pending' && t.approverId === user.id).length;
     const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
-    const myPendingTaskRequestCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && t.approvalState === 'returned').length;
+    const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
 
     const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
     const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
@@ -3584,7 +3610,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
-
-    
