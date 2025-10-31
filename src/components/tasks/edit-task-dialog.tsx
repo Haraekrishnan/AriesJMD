@@ -65,7 +65,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const canEditCoreFields = isCreator || isAdmin;
   const canEditDueDate = isCreator || isAdmin;
-  const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Supervisor' || user?.role === 'HSE' || user?.role === 'Store in Charge') && (!isCompleted || isAdmin);
+  const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Supervisor' || user?.role === 'Senior Safety Supervisor' || user?.role === 'Store in Charge') && (!isCompleted || isAdmin);
   
   const assignableUsers = useMemo(() => {
     return getAssignableUsers().map(u => ({value: u.id, label: u.name}));

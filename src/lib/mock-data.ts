@@ -52,7 +52,7 @@ export const ROLES: RoleDefinition[] = [
   },
   {
     id: 'role-hse',
-    name: 'HSE',
+    name: 'Senior Safety Supervisor',
     permissions: [
       'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status'
     ],
@@ -66,7 +66,7 @@ export const ROLES: RoleDefinition[] = [
   },
   {
     id: 'role-jr-hse',
-    name: 'Junior HSE',
+    name: 'Safety Supervisor',
     permissions: ['view_performance_reports'],
     isEditable: false,
   },
@@ -148,8 +148,8 @@ export const USERS: User[] = [
   { id: '17', name: 'Amaldas M', email: 'amaldas@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=17', supervisorId: '6', projectId: 'proj-4', planningScore: 0, status: 'active' },
   { id: '18', name: 'Sajin Soman', email: 'sajin@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=18', supervisorId: '6', projectId: 'proj-4', planningScore: 0, status: 'active' },
   { id: '19', name: 'Aparna M R', email: 'aparna@ariesmarine.com', password: 'password', role: 'Team Member', avatar: 'https://i.pravatar.cc/150?u=19', supervisorId: '11', projectId: 'proj-1', planningScore: 0, status: 'active' },
-  { id: '20', name: 'John Safety', email: 'john.safety@ariesmarine.com', password: 'password', role: 'HSE', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2', projectId: 'proj-6', planningScore: 0, status: 'active' },
-  { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Junior HSE', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20', projectId: 'proj-6', planningScore: 0, status: 'active' },
+  { id: '20', name: 'John Safety', email: 'john.safety@ariesmarine.com', password: 'password', role: 'Senior Safety Supervisor', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2', projectId: 'proj-6', planningScore: 0, status: 'active' },
+  { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Safety Supervisor', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20', projectId: 'proj-6', planningScore: 0, status: 'active' },
     { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2', projectId: 'proj-6', planningScore: 0, status: 'active' },
   { id: '23', name: 'Asst. Store Keeper', email: 'asst.store@ariesmarine.com', password: 'password', role: 'Assistant Store Incharge', avatar: 'https://i.pravatar.cc/150?u=23', supervisorId: '22', projectId: 'proj-6', planningScore: 0, status: 'active' },
 ];
@@ -369,7 +369,7 @@ export const VEHICLES: Vehicle[] = [
     { id: 'vh-2', vehicleNumber: 'SHJ 54321', driverId: 'd-2', seatingCapacity: 7, vapValidity: add(new Date(), { days: 25 }).toISOString(), insuranceValidity: add(new Date(), { months: 8 }).toISOString(), fitnessValidity: add(new Date(), { years: 1 }).toISOString(), taxValidity: add(new Date(), { months: 2 }).toISOString(), puccValidity: add(new Date(), { months: 4 }).toISOString() },
 ];
 
-export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor', 'HSE', 'Supervisor', 'Document Controller', 'Cook', 'Others'];
+export const TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor', 'Senior Safety Supervisor', 'Safety Supervisor', 'Document Controller', 'Cook', 'Others'];
 export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
 export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
 

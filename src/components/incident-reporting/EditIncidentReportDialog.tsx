@@ -60,7 +60,7 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
   const reporter = useMemo(() => incident ? users.find(u => u.id === incident.reporterId) : null, [users, incident]);
   const project = useMemo(() => incident ? projects.find(p => p.id === incident.projectId) : null, [projects, incident]);
   
-  const canManageIncident = useMemo(() => ['Admin', 'HSE'].includes(user?.role || ''), [user]);
+  const canManageIncident = useMemo(() => ['Admin', 'Senior Safety Supervisor'].includes(user?.role || ''), [user]);
 
   const participants = useMemo(() => {
     if (!incident) return [];
@@ -70,14 +70,14 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
   
   const canAddUsers = useMemo(() => {
     if (!user || !incident) return false;
-    const allowedRoles: Role[] = ['Admin', 'Manager', 'HSE', 'Supervisor'];
+    const allowedRoles: Role[] = ['Admin', 'Manager', 'Senior Safety Supervisor', 'Supervisor'];
     return allowedRoles.includes(user.role);
   }, [user, incident]);
 
   const availableUsersToAdd = useMemo(() => {
     if (!canAddUsers) return [];
     const participantIds = new Set(participants.map(p => p.id));
-    const allowedRoles: Role[] = ['Admin', 'Manager', 'HSE', 'Supervisor'];
+    const allowedRoles: Role[] = ['Admin', 'Manager', 'Senior Safety Supervisor', 'Supervisor'];
     return users
       .filter(u => !participantIds.has(u.id) && allowedRoles.includes(u.role))
       .map(u => ({ value: u.id, label: `${u.name} (${u.role})` }));

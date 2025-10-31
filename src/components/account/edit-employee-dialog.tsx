@@ -40,7 +40,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
   });
 
   const possibleSupervisors = useMemo(() => {
-    return users.filter(u => u.id !== userToEdit.id && (u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor' || u.role === 'HSE'));
+    return users.filter(u => u.id !== userToEdit.id && (u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor' || u.role === 'Senior Safety Supervisor'));
   }, [users, userToEdit]);
 
   useEffect(() => {
