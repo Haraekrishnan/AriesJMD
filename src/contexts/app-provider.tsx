@@ -819,22 +819,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     // If the status change is to 'In Progress', do not require approval
     if (newStatus === 'In Progress') {
-        // Directly update the status to 'In Progress'
         const updates: { [key: string]: any } = {};
         updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
         updates[`tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
-  
-        const subtasks = task.subtasks || {};
+    
+        // Check if main task status should be updated
+        const subtasks = { ...task.subtasks, [user.id]: { ...task.subtasks?.[user.id], status: 'In Progress' } };
         const allInProgressOrDone = Object.values(subtasks).every(st => st.status === 'In Progress' || st.status === 'Done');
         
-        if (allInProgressOrDone) {
+        if (allInProgressOrDone || task.status === 'To Do') {
             updates[`tasks/${taskId}/status`] = 'In Progress';
         }
         
         update(ref(rtdb), updates);
         addComment(taskId, comment || `Status updated to ${newStatus}`);
         toast({ title: 'Task status updated to In Progress' });
-        return; // Prevent triggering approval for 'In Progress'
+        return; 
     }
   
     // If the status change is to 'Done', it requires approval
@@ -871,11 +871,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if (!user) return;
     const task = tasksById[taskId];
-    if (!task) return;
+    if (!task || !task.statusRequest) return;
   
     const { newStatus } = task.statusRequest;
   
-    // Ensure we only handle the "Done" status change here
     if (newStatus !== 'Done') {
         toast({ variant: 'destructive', title: 'Status Change Not Required' });
         return;
@@ -888,15 +887,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-  
+    
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/status`] = newStatus;
+    updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
     updates[`tasks/${taskId}/approvalState`] = 'none';
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key! };
     updates[`tasks/${taskId}/statusRequest`] = null;
+
+    // Also update all subtasks to 'Done'
+    if (task.subtasks) {
+        for (const subtaskUserId in task.subtasks) {
+            updates[`tasks/${taskId}/subtasks/${subtaskUserId}/status`] = 'Done';
+        }
+    }
+    
     update(ref(rtdb), updates);
-  }, [user, tasksById]);
+  }, [user, tasksById, toast]);
 
   const submitTaskForApproval = useCallback((taskId: string) => {
     if(!user) return;
