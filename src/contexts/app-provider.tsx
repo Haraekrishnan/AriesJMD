@@ -797,20 +797,104 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, tasks, addActivityLog, toast]);
 
   const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
-    if(!user) return;
+    if (!user) return;
     const task = tasksById[taskId];
-    if(!task) return;
-
-    const userId = user.id;
+    if (!task) return;
+  
     const updates: { [key: string]: any } = {};
-
     updates[`tasks/${taskId}/status`] = newStatus;
-
+  
     if (task.subtasks) {
-      for (const assigneeId in task.subtasks) {
-        updates[`tasks/${taskId}/subtasks/${assigneeId}/status`] = newStatus;
-      }
+        for (const assigneeId in task.subtasks) {
+            updates[`tasks/${taskId}/subtasks/${assigneeId}/status`] = newStatus;
+        }
     }
+    update(ref(rtdb), updates);
+  }, [user, tasksById]);
+  
+  const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task) return;
+  
+    // If the status change is to 'In Progress', do not require approval
+    if (newStatus === 'In Progress') {
+        // Directly update the status to 'In Progress'
+        const updates: { [key: string]: any } = {};
+        updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
+        updates[`tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
+  
+        const subtasks = task.subtasks || {};
+        const allInProgressOrDone = Object.values(subtasks).every(st => st.status === 'In Progress' || st.status === 'Done');
+        
+        if (allInProgressOrDone) {
+            updates[`tasks/${taskId}/status`] = 'In Progress';
+        }
+        
+        update(ref(rtdb), updates);
+        addComment(taskId, comment || `Status updated to ${newStatus}`);
+        toast({ title: 'Task status updated to In Progress' });
+        return; // Prevent triggering approval for 'In Progress'
+    }
+  
+    // If the status change is to 'Done', it requires approval
+    const { approverId } = task;
+    if (!approverId) {
+        toast({ variant: 'destructive', title: 'No approver set for this task.' });
+        return;
+    }
+  
+    const newRequest = { newStatus, comment, attachment, date: new Date().toISOString(), status: 'Pending' };
+    update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'status_pending', statusRequest: newRequest });
+    addActivityLog(user.id, 'Task Status Change Requested', task.title);
+  
+    const approver = users.find(u => u.id === approverId);
+    if (approver && approver.email) {
+        createAndSendNotification(
+            approver.email,
+            `Task Status Change Requested: ${task.title}`,
+            'A task status change requires your approval!',
+            {
+                'Task': task.title,
+                'Requested by': user.name,
+                'Due Date': format(new Date(task.dueDate), 'PPP'),
+                'Priority': task.priority,
+                'New Status': newStatus,
+                'Comment': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+            'View Task'
+        );
+    }
+  }, [user, users, tasksById, addActivityLog, addComment, toast]);
+  
+  const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task) return;
+  
+    const { newStatus } = task.statusRequest;
+  
+    // Ensure we only handle the "Done" status change here
+    if (newStatus !== 'Done') {
+        toast({ variant: 'destructive', title: 'Status Change Not Required' });
+        return;
+    }
+  
+    let updatedComment = `Status change approved by ${user.name} to ${newStatus}.`;
+    if (comment.trim()) {
+        updatedComment += ` Comment: ${comment}`;
+    }
+  
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
+    set(newCommentRef, newComment);
+  
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/status`] = newStatus;
+    updates[`tasks/${taskId}/approvalState`] = 'none';
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`tasks/${taskId}/statusRequest`] = null;
     update(ref(rtdb), updates);
   }, [user, tasksById]);
 
@@ -920,86 +1004,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
   }, [user, users, tasksById, addActivityLog]);
-
-  const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
-    if (!user) return;
-    const task = tasksById[taskId];
-    if (!task) return;
-
-    if (newStatus === 'In Progress') {
-        // No approval needed, just update the status
-        const updates: { [key: string]: any } = {};
-        updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
-        updates[`tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
-
-        // Check if all subtasks are now done to update main task status
-        const subtasks = task.subtasks || {};
-        const allInProgressOrDone = Object.values(subtasks).every(st => st.status === 'In Progress' || st.status === 'Done');
-
-        if (allInProgressOrDone) {
-            updates[`tasks/${taskId}/status`] = 'In Progress';
-        }
-        
-        update(ref(rtdb), updates);
-        addComment(taskId, comment || `Status updated to ${newStatus}`);
-        toast({ title: 'Task status updated to In Progress' });
-        return;
-    }
-
-    // For "Done" status, it requires approval
-    const { approverId } = task;
-    if (!approverId) {
-        toast({ variant: 'destructive', title: 'No approver set for this task.' });
-        return;
-    }
-
-    const newRequest = { newStatus, comment, attachment, date: new Date().toISOString(), status: 'Pending' };
-    update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'status_pending', statusRequest: newRequest });
-    addActivityLog(user.id, 'Task Status Change Requested', task.title);
-
-    const approver = users.find(u => u.id === approverId);
-    if (approver && approver.email) {
-        createAndSendNotification(
-            approver.email,
-            `Task Status Change Requested: ${task.title}`,
-            'A task status change requires your approval!',
-            {
-                'Task': task.title,
-                'Requested by': user.name,
-                'Due Date': format(new Date(task.dueDate), 'PPP'),
-                'Priority': task.priority,
-                'New Status': newStatus,
-                'Comment': comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-            'View Task'
-        );
-    }
-  }, [user, users, tasksById, addActivityLog, addComment, toast]);
-
-  const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
-    if(!user) return;
-    const task = tasksById[taskId];
-    if(!task) return;
-
-    const { newStatus } = task.statusRequest;
-    let updatedComment = `Status change approved by ${user.name} to ${newStatus}.`;
-    if (comment.trim()) {
-        updatedComment += ` Comment: ${comment}`;
-    }
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-    
-    const updates: { [key: string]: any } = {};
-    updates[`tasks/${taskId}/status`] = newStatus;
-    updates[`tasks/${taskId}/approvalState`] = 'none';
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`tasks/${taskId}/statusRequest`] = null;
-    update(ref(rtdb), updates);
-
-  }, [user, tasksById]);
-
+  
   const returnTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if(!user) return;
     const task = tasksById[taskId];
