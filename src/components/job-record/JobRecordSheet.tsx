@@ -445,7 +445,7 @@ export default function JobRecordSheet() {
       }, [jobCodes, jobCodeSearchTerm]);
 
     
-    const exportToExcel = async () => {
+      const exportToExcel = async () => {
         try {
             const workbook = new ExcelJS.Workbook();
     
@@ -472,12 +472,31 @@ export default function JobRecordSheet() {
                 const sheet = workbook.addWorksheet(plant);
                 const totalDays = getDaysInMonth(currentMonth);
     
-                // ---- Title ----
-                sheet.mergeCells("A1", "N1");
-                const titleCell = sheet.getCell("A1");
-                titleCell.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plant}`;
-                titleCell.font = { bold: true, size: 14 };
-                titleCell.alignment = { horizontal: "center", vertical: "middle" };
+                // ---- Add Merged Header Section ----
+                const totalCols = 2 + getDaysInMonth(currentMonth) + 9; // S.No + Name + Dates + Totals
+                const endCol = totalCols;
+
+                // Row 1: Main Project Title
+                const row1 = sheet.addRow([]);
+                ws.mergeCells(row1.number, 1, row1.number, endCol);
+                const cell1 = ws.getCell(row1.number, 1);
+                cell1.value = "RIL JMD PROJECT";
+                cell1.font = { bold: true, size: 16 };
+                cell1.alignment = { horizontal: "center", vertical: "middle" };
+                cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
+
+                // Row 2: Month + Plant
+                const row2 = sheet.addRow([]);
+                ws.mergeCells(row2.number, 1, row2.number, endCol);
+                const cell2 = ws.getCell(row2.number, 1);
+                cell2.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plant}`;
+                cell2.font = { bold: true, size: 13 };
+                cell2.alignment = { horizontal: "center", vertical: "middle" };
+                cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
+
+                // Optional: blank spacer row
+                ws.addRow([]);
+
     
                 // ---- Headers ----
                 const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
@@ -655,7 +674,6 @@ export default function JobRecordSheet() {
                   });
                 });
     
-                // ---- Job Code Legend ----
                 // ------------------ LEGEND (REPLACEMENT BLOCK) ------------------ //
                 // Compute man-days count only for current plant (profiles array)
                 const manDaysCount: Record<string, number> = {};
@@ -700,13 +718,14 @@ export default function JobRecordSheet() {
                 const totalColsUsed = header.length; // header is the header array used earlier to create columns
                 // Center the legend: pick startCol so legend block is centered across totalColsUsed
                 const legendStartCol = Math.floor((totalColsUsed - legendWidth) / 2) + 1;
+                const legendEndCol = legendStartCol + legendWidth - 1;
                 
                 // Blank row separator
                 sheet.addRow([]);
                 
                 // Title row: merge across legendWidth and center
                 const titleRow = sheet.addRow([]);
-                sheet.mergeCells(titleRow.number, legendStartCol, titleRow.number, legendStartCol + legendWidth - 1);
+                sheet.mergeCells(titleRow.number, legendStartCol, titleRow.number, legendEndCol);
                 const legendTitleCell = sheet.getCell(titleRow.number, legendStartCol);
                 legendTitleCell.value = "Job Code Legend";
                 legendTitleCell.font = { bold: true, size: 13 };
@@ -718,19 +737,23 @@ export default function JobRecordSheet() {
                     right: { style: "thin" }
                 };
                 
-                // Header row for the legend
+                // Header row for the legend (Code | Job Details | Job No | Man-Days)
                 const legendHeaderRow = sheet.addRow([]);
+                // merge header columns exactly like the data rows will be merged
                 const detailsStart = legendStartCol + legendColsConfig.code;
                 const detailsEnd = detailsStart + legendColsConfig.details - 1;
                 const jobNoStart = detailsEnd + 1;
                 const jobNoEnd = jobNoStart + legendColsConfig.jobNo - 1;
                 const manDaysStart = jobNoEnd + 1;
+                const manDaysEnd = manDaysStart + legendColsConfig.manDays - 1;
                 
-                sheet.mergeCells(legendHeaderRow.number, legendStartCol, legendHeaderRow.number, legendStartCol);
-                sheet.mergeCells(legendHeaderRow.number, detailsStart, legendHeaderRow.number, detailsEnd);
-                sheet.mergeCells(legendHeaderRow.number, jobNoStart, legendHeaderRow.number, jobNoEnd);
-                sheet.mergeCells(legendHeaderRow.number, manDaysStart, legendHeaderRow.number, manDaysStart + legendColsConfig.manDays - 1);
+                // Merge header cells
+                sheet.mergeCells(legendHeaderRow.number, legendStartCol, legendHeaderRow.number, legendStartCol); // Code (single)
+                sheet.mergeCells(legendHeaderRow.number, detailsStart, legendHeaderRow.number, detailsEnd); // Details (15)
+                sheet.mergeCells(legendHeaderRow.number, jobNoStart, legendHeaderRow.number, jobNoEnd); // Job No (2)
+                sheet.mergeCells(legendHeaderRow.number, manDaysStart, legendHeaderRow.number, manDaysEnd); // Man-Days (3)
                 
+                // Set header values and styles
                 const codeHeaderCell = sheet.getCell(legendHeaderRow.number, legendStartCol);
                 const detailsHeaderCell = sheet.getCell(legendHeaderRow.number, detailsStart);
                 const jobNoHeaderCell = sheet.getCell(legendHeaderRow.number, jobNoStart);
@@ -750,14 +773,17 @@ export default function JobRecordSheet() {
                     };
                 });
                 
-                // Add legend data rows
+                // Add legend rows (only codes with count > 0), merging columns per row exactly like header
                 legendRows.forEach(({ jc, count }) => {
                     const r = sheet.addRow([]);
-                    sheet.mergeCells(r.number, legendStartCol, r.number, legendStartCol);
-                    sheet.mergeCells(r.number, detailsStart, r.number, detailsEnd);
-                    sheet.mergeCells(r.number, jobNoStart, r.number, jobNoEnd);
-                    sheet.mergeCells(r.number, manDaysStart, r.number, manDaysStart + legendColsConfig.manDays - 1);
                 
+                    // Merge data cells per the same ranges
+                    sheet.mergeCells(r.number, legendStartCol, r.number, legendStartCol); // Code (single)
+                    sheet.mergeCells(r.number, detailsStart, r.number, detailsEnd); // Details (15)
+                    sheet.mergeCells(r.number, jobNoStart, r.number, jobNoEnd); // Job No (2)
+                    sheet.mergeCells(r.number, manDaysStart, r.number, manDaysEnd); // Man-Days (3)
+                
+                    // Assign cell objects
                     const codeCell = sheet.getCell(r.number, legendStartCol);
                     const detailsCell = sheet.getCell(r.number, detailsStart);
                     const jobNoCell = sheet.getCell(r.number, jobNoStart);
@@ -768,6 +794,7 @@ export default function JobRecordSheet() {
                     jobNoCell.value = jc.jobNo || "";
                     manDaysCell.value = count;
                 
+                    // Color only the Code cell (use same colorMap)
                     const jobColor = colorMap[jc.code];
                     if (jobColor) {
                       codeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: jobColor.bg } };
@@ -776,11 +803,13 @@ export default function JobRecordSheet() {
                       codeCell.font = { bold: true };
                     }
                 
+                    // Styling for other cells
                     [detailsCell, jobNoCell, manDaysCell].forEach(c => {
                       c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
                       c.font = { size: 11 };
                     });
                 
+                    // Borders for all
                     [codeCell, detailsCell, jobNoCell, manDaysCell].forEach(c => {
                       c.border = {
                         top: { style: "thin" }, left: { style: "thin" },
