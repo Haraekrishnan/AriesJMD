@@ -813,97 +813,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, tasksById]);
   
- const requestTaskStatusChange = useCallback(
-    async (
-      taskId: string,
-      newStatus: TaskStatus,
-      comment: string,
-      attachment?: Task['attachment']
-    ) => {
-      if (!user) return;
+  const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
+    if (!user) return;
 
-      const task = tasksById[taskId];
-      if (!task) return;
+    const task = tasksById[taskId];
+    if (!task) return;
 
-      const { approverId } = task;
-
-      // ✅ Allow "In Progress" to update directly without approval
-      if (newStatus === 'In Progress') {
-        const updates: Record<string, any> = {};
+    // Directly update the status to 'In Progress' without approval
+    if (newStatus === 'In Progress') {
+        const updates: { [key: string]: any } = {};
         updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
         updates[`tasks/${taskId}/updatedAt`] = new Date().toISOString();
 
-        // Check if main task status needs update
-        const currentSubtasks = task.subtasks || {};
-        const otherSubtasks = Object.values(currentSubtasks).filter(st => st.userId !== user.id);
-        const isFirstToStart = otherSubtasks.every(st => st.status === 'To Do');
-        if (isFirstToStart || task.status === 'To Do') {
-           updates[`tasks/${taskId}/status`] = 'In Progress';
+        // If the main task is 'To Do', update it to 'In Progress'
+        if (task.status === 'To Do') {
+            updates[`tasks/${taskId}/status`] = 'In Progress';
         }
 
         await update(ref(rtdb), updates);
-        addComment(taskId, comment || 'Started progress on task.');
+        addComment(taskId, comment || `Status updated to In Progress`);
         toast({ title: 'Task status updated to In Progress' });
         return;
-      }
+    }
 
-      // ✅ For "Done" or "Completed", approval is required
-      if (!approverId) {
-        toast({
-          variant: 'destructive',
-          title: 'No approver set for this task.',
-        });
+    // For 'Done', require approval
+    const { approverId } = task;
+    if (!approverId) {
+        toast({ variant: 'destructive', title: 'No approver set for this task.' });
         return;
-      }
+    }
 
-      const updates: Record<string, any> = {};
-
-      // 🟢 This is crucial — statusRequest object ensures it appears in both panels
-      const statusRequest = {
+    const updates: Record<string, any> = {};
+    const statusRequest = {
         requestedBy: user.id,
         newStatus,
         comment,
         attachment: attachment || null,
         date: new Date().toISOString(),
         status: 'Pending',
-      };
+    };
+    updates[`tasks/${taskId}/statusRequest`] = statusRequest;
+    updates[`tasks/${taskId}/approvalState`] = 'status_pending';
+    updates[`tasks/${taskId}/status`] = 'Pending Approval';
+    updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'Pending Approval';
 
-      updates[`tasks/${taskId}/statusRequest`] = statusRequest;
+    await update(ref(rtdb), updates);
 
-      // 🟢 Update a consistent field name that your UI listens for
-      updates[`tasks/${taskId}/approvalState`] = 'status_pending';
+    addActivityLog(user.id, 'Task Completion Requested', task.title);
+    addComment(taskId, comment || 'Marked for completion approval');
 
-      // 🟢 Keep main task status as 'Pending Approval' temporarily for Kanban view
-      updates[`tasks/${taskId}/status`] = 'Pending Approval';
-
-      await update(ref(rtdb), updates);
-
-      addActivityLog(user.id, 'Task Completion Requested', task.title);
-      addComment(taskId, comment || 'Marked for completion approval');
-
-      // ✅ Send email to approver
-      const approver = users.find((u) => u.id === approverId);
-      if (approver?.email) {
+    const approver = users.find((u) => u.id === approverId);
+    if (approver?.email) {
         createAndSendNotification(
-          approver.email,
-          `Approval Required: ${task.title}`,
-          'A task has been marked as completed and awaits your approval.',
-          {
-            Task: task.title,
-            RequestedBy: user.name,
-            DueDate: format(new Date(task.dueDate), 'PPP'),
-            Priority: task.priority,
-            Comment: comment,
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-          'View Task'
+            approver.email,
+            `Approval Required: ${task.title}`,
+            'A task has been marked as completed and awaits your approval.',
+            {
+                Task: task.title,
+                RequestedBy: user.name,
+                DueDate: format(new Date(task.dueDate), 'PPP'),
+                Priority: task.priority,
+                Comment: comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+            'View Task'
         );
-      }
-
-      toast({ title: 'Completion request sent for approval' });
-    },
-    [user, users, tasksById, addActivityLog, addComment, toast]
-  );
+    }
+    toast({ title: 'Completion request sent for approval' });
+  }, [user, users, tasksById, addActivityLog, addComment, toast]);
   
   const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if (!user) return;
@@ -1075,9 +1052,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/approvalState`] = 'returned';
     updates[`tasks/${taskId}/statusRequest`] = null;
-    
-    const allSubtasksDone = Object.values(task.subtasks || {}).every(st => st.status === 'Done');
-    updates[`tasks/${taskId}/status`] = allSubtasks ? 'Done' : 'In Progress';
+    updates[`tasks/${taskId}/status`] = 'In Progress'; // Revert main status
   
     // Revert only the requester's subtask
     const requesterId = task.statusRequest.requestedBy;
@@ -3610,3 +3585,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
