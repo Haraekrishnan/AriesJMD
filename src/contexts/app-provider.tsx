@@ -825,14 +825,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const task = tasksById[taskId];
       if (!task) return;
   
-      const { approverId } = task;
-  
       // ✅ Allow "In Progress" to update directly without approval
       if (newStatus === 'In Progress') {
         const updates: Record<string, any> = {};
-        updates[`tasks/${taskId}/status`] = 'In Progress'; // ADDED THIS LINE
+        updates[`tasks/${taskId}/status`] = 'In Progress';
         updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
-        updates[`tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
+        updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
   
         await update(ref(rtdb), updates);
         addComment(taskId, comment || 'Started progress');
@@ -841,6 +839,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
   
       // ✅ For "Done" or "Completed", approval is required
+      const { approverId } = task;
       if (!approverId) {
         toast({
           variant: 'destructive',
@@ -851,6 +850,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
       const updates: Record<string, any> = {};
   
+      // 🟢 This is crucial — statusRequest object ensures it appears in both panels
       const statusRequest = {
         requestedBy: user.id,
         newStatus,
@@ -861,7 +861,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
   
       updates[`tasks/${taskId}/statusRequest`] = statusRequest;
-      updates[`tasks/${taskId}/approvalState`] = 'status_pending'; // This was already here, but good to confirm.
+  
+      // 🟢 Update a consistent field name that your UI listens for
+      updates[`tasks/${taskId}/approvalState`] = 'status_pending';
+  
+      // 🟢 Keep main task status as 'Pending Approval' temporarily for Kanban view
       updates[`tasks/${taskId}/status`] = 'Pending Approval';
   
       await update(ref(rtdb), updates);
@@ -869,6 +873,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addActivityLog(user.id, 'Task Completion Requested', task.title);
       addComment(taskId, comment || 'Marked for completion approval');
   
+      // ✅ Send email to approver
       const approver = users.find((u) => u.id === approverId);
       if (approver?.email) {
         createAndSendNotification(
@@ -1045,7 +1050,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addComment(taskId, `Status change to 'Done' rejected by ${user.name}. Reason: ${comment}`);
 
     const updates: { [key: string]: any } = {};
-    updates[`tasks/${taskId}/approvalState`] = 'none';
+    updates[`tasks/${taskId}/approvalState`] = 'returned';
     updates[`tasks/${taskId}/statusRequest`] = null;
     updates[`tasks/${taskId}/status`] = 'In Progress'; // Revert main status
     
@@ -3579,5 +3584,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
 
     

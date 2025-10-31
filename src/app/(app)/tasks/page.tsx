@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -196,7 +197,7 @@ export default function TasksPage() {
             <ScrollArea className="max-h-[70vh] p-1">
                  <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
-                       const assignee = users.find(u => u.id === task.assigneeIds[0]);
+                       const assignee = users.find(u => u.id === task.statusRequest?.requestedBy);
                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                        return (
                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
@@ -262,5 +263,7 @@ export default function TasksPage() {
     </>
   );
 }
+
+    
 
     
