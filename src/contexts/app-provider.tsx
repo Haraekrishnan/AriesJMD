@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -923,35 +922,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, users, tasksById, addActivityLog]);
 
   const requestTaskStatusChange = useCallback((taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
-    if(!user) return;
+    if (!user) return;
     const task = tasksById[taskId];
-    if(!task) return;
-    if (!task.approverId) return;
+    if (!task) return;
+
+    if (newStatus === 'In Progress') {
+        // No approval needed, just update the status
+        const updates: { [key: string]: any } = {};
+        updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
+        updates[`tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
+
+        // Check if all subtasks are now done to update main task status
+        const subtasks = task.subtasks || {};
+        const allInProgressOrDone = Object.values(subtasks).every(st => st.status === 'In Progress' || st.status === 'Done');
+
+        if (allInProgressOrDone) {
+            updates[`tasks/${taskId}/status`] = 'In Progress';
+        }
+        
+        update(ref(rtdb), updates);
+        addComment(taskId, comment || `Status updated to ${newStatus}`);
+        toast({ title: 'Task status updated to In Progress' });
+        return;
+    }
+
+    // For "Done" status, it requires approval
+    const { approverId } = task;
+    if (!approverId) {
+        toast({ variant: 'destructive', title: 'No approver set for this task.' });
+        return;
+    }
 
     const newRequest = { newStatus, comment, attachment, date: new Date().toISOString(), status: 'Pending' };
     update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'status_pending', statusRequest: newRequest });
     addActivityLog(user.id, 'Task Status Change Requested', task.title);
 
-    const approver = users.find(u => u.id === task.approverId);
+    const approver = users.find(u => u.id === approverId);
     if (approver && approver.email) {
-      createAndSendNotification(
-        approver.email,
-        `Task Status Change Requested: ${task.title}`,
-        'A task status change requires your approval!',
-        {
-          'Task': task.title,
-          'Requested by': user.name,
-          'Due Date': format(new Date(task.dueDate), 'PPP'),
-          'Priority': task.priority,
-          'New Status': newStatus,
-          'Comment': comment,
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-        'View Task'
-      );
+        createAndSendNotification(
+            approver.email,
+            `Task Status Change Requested: ${task.title}`,
+            'A task status change requires your approval!',
+            {
+                'Task': task.title,
+                'Requested by': user.name,
+                'Due Date': format(new Date(task.dueDate), 'PPP'),
+                'Priority': task.priority,
+                'New Status': newStatus,
+                'Comment': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+            'View Task'
+        );
     }
-
-  }, [user, users, tasksById, addActivityLog]);
+  }, [user, users, tasksById, addActivityLog, addComment, toast]);
 
   const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if(!user) return;
@@ -3514,5 +3538,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
