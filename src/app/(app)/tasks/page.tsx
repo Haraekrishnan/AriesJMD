@@ -39,16 +39,18 @@ export default function TasksPage() {
 
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
-    return tasks.filter(task => {
-        if (task.status !== 'Pending Approval' || !task.approverId) return false;
-        return task.approverId === user.id;
-    });
+    return tasks.filter(task => 
+      task.approverId === user.id &&
+      task.status === 'Pending Approval' &&
+      task.approvalState === 'status_pending' &&
+      task.statusRequest?.status === 'Pending'
+    );
   }, [tasks, user]);
   
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        const isMySubmittedTask = task.assigneeIds?.includes(user.id) && task.status === 'Pending Approval';
+        const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
         const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
         return isMySubmittedTask || isReturnedToMe;
     });
@@ -68,6 +70,7 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
+      // Exclude tasks that are pending approval from the main board view
       if (task.status === 'Pending Approval') {
         return false;
       }
@@ -193,7 +196,7 @@ export default function TasksPage() {
             <ScrollArea className="max-h-[70vh] p-1">
                  <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
-                       const assignee = users.find(u => u.id === task.assigneeId);
+                       const assignee = users.find(u => u.id === task.assigneeIds[0]);
                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                        return (
                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
@@ -259,3 +262,5 @@ export default function TasksPage() {
     </>
   );
 }
+
+    
