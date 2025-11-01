@@ -51,7 +51,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   const filteredItems = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) {
-      // If nothing typed, show top 10 items (helpful for quick selection)
       return allSearchableItems.slice(0, 10);
     }
     return allSearchableItems.filter(item => {
