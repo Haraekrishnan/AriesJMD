@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -104,12 +105,12 @@ export default function TpCertificationPage() {
                                                 </div>
                                             </AccordionTrigger>
                                             <div className="flex items-center gap-2 pl-4">
-                                                <Button size="sm" variant="outline" onClick={() => handleGenerateSingleFile(list, 'excel')}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
-                                                <Button size="sm" variant="outline" onClick={() => handleGenerateSingleFile(list, 'pdf')}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
                                                 {user?.role === 'Admin' && (
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button size="icon" variant="destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                            <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>

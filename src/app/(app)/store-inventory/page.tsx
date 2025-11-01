@@ -2,10 +2,11 @@
 
 'use client';
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus } from 'lucide-react';
+import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus, FileText } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -184,6 +185,7 @@ export default function StoreInventoryPage() {
                     <p className="text-muted-foreground">Manage and track all equipment and items.</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/>TP Certification Lists</Link></Button>
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
                     {canManageInventory && (
                         <>
