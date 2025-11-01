@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
@@ -45,6 +45,7 @@ import AddOtherEquipmentDialog from '@/components/other-equipment/AddOtherEquipm
 import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEquipmentDialog';
 import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
 import EquipmentSummary from '@/components/equipment/EquipmentSummary';
+import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 
 
 export default function EquipmentStatusPage() {
@@ -88,6 +89,7 @@ export default function EquipmentStatusPage() {
     const [selectedOtherEquipment, setSelectedOtherEquipment] = useState<OtherEquipment | null>(null);
 
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
+    const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
     
     // Report State
     const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
@@ -274,6 +276,11 @@ export default function EquipmentStatusPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Equipment</h1>
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
+                {canManageStore && (
+                    <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline">
+                        <FilePlus className="mr-2 h-4 w-4"/> Generate TP Cert List
+                    </Button>
+                )}
             </div>
 
             <EquipmentSummary />
@@ -585,6 +592,7 @@ export default function EquipmentStatusPage() {
             {canAddEquipment && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
             {selectedOtherEquipment && can.manage_equipment_status && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
 
+            <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
