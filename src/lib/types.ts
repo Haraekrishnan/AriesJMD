@@ -815,6 +815,7 @@ export type TpCertList = {
         materialName: string;
         manufacturerSrNo: string;
     }[];
+    isEditable?: boolean;
 };
 
 export const TRANSFER_REASONS = [

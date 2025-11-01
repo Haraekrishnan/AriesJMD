@@ -7,10 +7,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, SendToBack } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
 
 export default function PendingTransfers() {
   const { inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can } = useAppContext();
@@ -79,23 +80,51 @@ export default function PendingTransfers() {
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                    
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                             <Button size="sm">
-                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve...
                             </Button>
-                        </AlertDialogTrigger>
-                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Approve Transfer?</AlertDialogTitle>
-                                <AlertDialogDescription>This will move {req.items.length} item(s) to {toProject?.name}. This action is final.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => approveInventoryTransferRequest(req)}>Confirm Approval</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={e => e.preventDefault()}>Approve Transfer</DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Approve Transfer?</AlertDialogTitle>
+                                        <AlertDialogDescription>This will move {req.items.length} item(s) to {toProject?.name}. This action is final.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => approveInventoryTransferRequest(req, false)}>Confirm Approval</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={e => e.preventDefault()} disabled={req.reason !== 'For TP certification'}>
+                                        <SendToBack className="mr-2 h-4 w-4"/> Approve &amp; Send to TP
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Approve &amp; Create TP List?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will move the items and automatically create a new, one-time editable TP Certification list.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => approveInventoryTransferRequest(req, true)}>Confirm &amp; Create List</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                  </div>
               </div>
               <div className="mt-2 text-sm">
@@ -115,4 +144,3 @@ export default function PendingTransfers() {
     </Card>
   );
 }
-
