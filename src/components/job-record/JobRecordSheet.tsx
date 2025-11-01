@@ -91,24 +91,21 @@ export default function JobRecordSheet() {
                 const order = currentOrder || prevOrder;
 
                 groups[plantName].sort((a, b) => {
-                    const plantForA_current = jobRecords[monthKey]?.records?.[a.id]?.plant;
-                    const plantForA_prev = jobRecords[prevMonthKey]?.records?.[a.id]?.plant;
-                    const a_isNew = plantForA_current && plantForA_current !== plantForA_prev && plantForA_prev !== undefined;
-
-                    const plantForB_current = jobRecords[monthKey]?.records?.[b.id]?.plant;
-                    const plantForB_prev = jobRecords[prevMonthKey]?.records?.[b.id]?.plant;
-                    const b_isNew = plantForB_current && plantForB_current !== plantForB_prev && plantForB_prev !== undefined;
-                    
-                    if (a_isNew && !b_isNew) return 1;
-                    if (!a_isNew && b_isNew) return -1;
-                    
                     if (order && Array.isArray(order)) {
                         const indexA = order.indexOf(a.id);
                         const indexB = order.indexOf(b.id);
+                        
+                        // If both are in the order array, sort by their index
                         if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                        
+                        // If only A is in the order array, it comes first
                         if (indexA !== -1) return -1;
+
+                        // If only B is in the order array, it comes first
                         if (indexB !== -1) return 1;
                     }
+
+                    // For any items not in the order array, sort by their original index in manpowerProfiles
                     const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
                     const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
                     return originalAIndex - originalBIndex;
@@ -1037,7 +1034,7 @@ export default function JobRecordSheet() {
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
                                         <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
-                                        <Select defaultValue={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                        <Select value={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Unassigned">Unassigned</SelectItem>
