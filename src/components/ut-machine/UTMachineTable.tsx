@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -90,6 +91,7 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
               <TableHead>Location</TableHead>
               <TableHead>Calibration Due</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Certificate</TableHead>
               <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -103,18 +105,20 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
                   {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
               </TableCell>
               <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
+              <TableCell>
+                  {machine.certificateUrl && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button asChild variant="ghost" size="icon">
+                                <a href={machine.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View Certificate</TooltipContent>
+                    </Tooltip>
+                  )}
+              </TableCell>
               <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                      {machine.certificateUrl && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button asChild variant="ghost" size="icon">
-                                    <a href={machine.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>View Certificate</TooltipContent>
-                        </Tooltip>
-                      )}
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleCertRequest(machine)}><BadgeHelp className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Request Certificate</p></TooltipContent></Tooltip>
                       {can.manage_equipment_status && (

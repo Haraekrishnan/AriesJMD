@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -341,6 +340,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                         <ArrowUpDown className="ml-2 h-4 w-4" />
                                                     </Button>
                                                 </TableHead>
+                                                <TableHead>Certificate</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -357,14 +357,21 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                     <TableCell className="text-xs text-muted-foreground">
                                                         {item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}
                                                     </TableCell>
+                                                    <TableCell>
+                                                        {item.certificateUrl && (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button asChild variant="ghost" size="icon">
+                                                                        <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>View Certificate</TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell className="text-right">
                                                             <div className="flex items-center justify-end gap-2">
-                                                                {item.certificateUrl && (
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild><Button asChild variant="ghost" size="icon"><a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a></Button></TooltipTrigger>
-                                                                        <TooltipContent><p>View Certificate</p></TooltipContent>
-                                                                    </Tooltip>
-                                                                )}
+                                                                
                                                                 <AlertDialog>
                                                                     <DropdownMenu>
                                                                         <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
