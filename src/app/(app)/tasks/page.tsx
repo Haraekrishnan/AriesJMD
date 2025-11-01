@@ -69,9 +69,12 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
-      // Exclude tasks that are pending approval from the main board view
+      // Exclude tasks that are pending approval from the main board view for non-involved users
       if (task.status === 'Pending Approval') {
-        return false;
+        // Show to approver or requester
+        const isApprover = task.approverId === user?.id;
+        const isRequester = task.statusRequest?.requestedBy === user?.id;
+        return isApprover || isRequester;
       }
       
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
@@ -137,9 +140,10 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      const overdueTasks = filteredTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done' && t.status !== 'Pending Approval');
+      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval');
+      const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
-      const regularTasks = filteredTasks.filter(t => !overdueTaskIds.has(t.id) && t.status !== 'Pending Approval');
+      const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
       return { overdue: overdueTasks, regular: regularTasks };
   }, [filteredTasks]);
 

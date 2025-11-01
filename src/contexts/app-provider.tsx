@@ -815,70 +815,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
     if (!user) return;
-
     const task = tasksById[taskId];
     if (!task) return;
-
+  
     // Directly update the status to 'In Progress' without approval
     if (newStatus === 'In Progress') {
-        const updates: { [key: string]: any } = {};
-        updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
-        updates[`tasks/${taskId}/updatedAt`] = new Date().toISOString();
-
-        // If the main task is 'To Do', update it to 'In Progress'
-        if (task.status === 'To Do') {
-            updates[`tasks/${taskId}/status`] = 'In Progress';
-        }
-
-        await update(ref(rtdb), updates);
-        addComment(taskId, comment || `Status updated to In Progress`);
-        toast({ title: 'Task status updated to In Progress' });
-        return;
+      const updates: { [key: string]: any } = {};
+      updates[`tasks/${taskId}/status`] = 'In Progress';
+      updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
+      updates[`tasks/${taskId}/updatedAt`] = new Date().toISOString();
+  
+      await update(ref(rtdb), updates);
+      addComment(taskId, comment || `Status updated to In Progress`);
+      toast({ title: 'Task status updated to In Progress' });
+      return;
     }
-
+  
     // For 'Done', require approval
     const { approverId } = task;
     if (!approverId) {
-        toast({ variant: 'destructive', title: 'No approver set for this task.' });
-        return;
+      toast({ variant: 'destructive', title: 'No approver set for this task.' });
+      return;
     }
-
+  
     const updates: Record<string, any> = {};
+  
+    // This is crucial — statusRequest object ensures it appears in both panels
     const statusRequest = {
-        requestedBy: user.id,
-        newStatus,
-        comment,
-        attachment: attachment || null,
-        date: new Date().toISOString(),
-        status: 'Pending',
+      requestedBy: user.id,
+      newStatus,
+      comment,
+      attachment: attachment || null,
+      date: new Date().toISOString(),
+      status: 'Pending',
     };
+  
     updates[`tasks/${taskId}/statusRequest`] = statusRequest;
+  
+    // Update a consistent field name that your UI listens for
     updates[`tasks/${taskId}/approvalState`] = 'status_pending';
+  
+    // Keep main task status as 'Pending Approval' temporarily for Kanban view
     updates[`tasks/${taskId}/status`] = 'Pending Approval';
-    updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'Pending Approval';
-
+  
     await update(ref(rtdb), updates);
-
+  
     addActivityLog(user.id, 'Task Completion Requested', task.title);
     addComment(taskId, comment || 'Marked for completion approval');
-
+  
+    // Send email to approver
     const approver = users.find((u) => u.id === approverId);
     if (approver?.email) {
-        createAndSendNotification(
-            approver.email,
-            `Approval Required: ${task.title}`,
-            'A task has been marked as completed and awaits your approval.',
-            {
-                Task: task.title,
-                RequestedBy: user.name,
-                DueDate: format(new Date(task.dueDate), 'PPP'),
-                Priority: task.priority,
-                Comment: comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-            'View Task'
-        );
+      createAndSendNotification(
+        approver.email,
+        `Approval Required: ${task.title}`,
+        'A task has been marked as completed and awaits your approval.',
+        {
+          Task: task.title,
+          RequestedBy: user.name,
+          DueDate: format(new Date(task.dueDate), 'PPP'),
+          Priority: task.priority,
+          Comment: comment,
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+        'View Task'
+      );
     }
+  
     toast({ title: 'Completion request sent for approval' });
   }, [user, users, tasksById, addActivityLog, addComment, toast]);
   
@@ -1550,7 +1553,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
 
   const addMultipleManpowerProfiles = useCallback((profiles: any[]): number => {
-    let addedCount = 0;
+    let importedCount = 0;
     const updates: { [key: string]: any } = {};
 
     profiles.forEach(profile => {
@@ -3336,7 +3339,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0,
     };
     
-    const pendingTaskApprovalCount = tasks.filter(t => t.approvalState === 'status_pending' && t.approverId === user.id).length;
+    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.status === 'Pending Approval' && t.statusRequest?.status === 'Pending').length;
     const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
     const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
 
@@ -3585,5 +3588,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
