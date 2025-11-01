@@ -17,6 +17,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Input } from '../ui/input';
 import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const broadcastSchema = z.object({
   message: z.string().min(1, 'Message is required'),
@@ -104,6 +105,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
           <DialogTitle>New Broadcast</DialogTitle>
           <DialogDescription>Send a scrolling message and an email to selected users.</DialogDescription>
         </DialogHeader>
+        <TooltipProvider>
         <ScrollArea className="max-h-[70vh] p-1">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-4 py-2">
               <div>
@@ -187,6 +189,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
             </DialogFooter>
           </form>
         </ScrollArea>
+        </TooltipProvider>
       </DialogContent>
     </Dialog>
   );
