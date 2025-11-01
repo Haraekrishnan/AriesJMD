@@ -49,9 +49,10 @@ export default function TasksPage() {
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
-        const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
-        const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
-        return isMySubmittedTask || isReturnedToMe;
+      const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
+      const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
+      const isAwaitingCompletionApproval = task.status === 'Pending Approval' && task.statusRequest?.requestedBy === user.id;
+      return isMySubmittedTask || isReturnedToMe || isAwaitingCompletionApproval;
     });
   }, [tasks, user]);
 
@@ -69,12 +70,9 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
-      // Exclude tasks that are pending approval from the main board view for non-involved users
+      // Exclude tasks that are pending approval from the main board view
       if (task.status === 'Pending Approval') {
-        // Show to approver or requester
-        const isApprover = task.approverId === user?.id;
-        const isRequester = task.statusRequest?.requestedBy === user?.id;
-        return isApprover || isRequester;
+        return false;
       }
       
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
