@@ -26,6 +26,7 @@ import { InventoryItem, UTMachine, DftMachine, TpCertList } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
+import { Input } from '@/components/ui/input';
 
 interface GenerateTpCertDialogProps {
   isOpen: boolean;
@@ -68,9 +69,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   }, [selectedItemName, allSearchableItems]);
 
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return itemsOfSelectedName;
+    const itemsToShow = itemsOfSelectedName;
+    if (!searchTerm) return itemsToShow;
     const term = searchTerm.toLowerCase();
-    return itemsOfSelectedName.filter(item => 
+    return itemsToShow.filter(item => 
         (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
         ('ariesId' in item && item.ariesId && item.ariesId.toLowerCase().includes(term))
     );
@@ -98,9 +100,9 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
       return;
     }
 
-    const listToSave: Omit<TpCertList, 'id' | 'date' | 'creatorId'> = {
+    const listToSave: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> & {date: string} = {
       name: listName,
-      createdAt: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
       items: selectedItems.map(item => ({
         materialName: getItemName(item),
         manufacturerSrNo: item.serialNumber,
@@ -173,23 +175,22 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                     onValueChange={setSearchTerm}
                     disabled={!selectedItemName}
                     />
-                    <CommandList>
-                      {filteredItems.length === 0 ? (
-                          <CommandEmpty>No results found.</CommandEmpty>
-                      ) : (
-                        <CommandGroup>
-                            {filteredItems.map(item => (
-                            <CommandItem
-                                key={`${item.id}-${item.itemType}`}
-                                onSelect={() => handleSelect(item)}
-                                className="cursor-pointer"
-                            >
-                                {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
-                            </CommandItem>
-                            ))}
-                        </CommandGroup>
-                      )}
-                    </CommandList>
+                    {searchTerm && filteredItems.length > 0 && (
+                        <CommandList>
+                            <CommandEmpty>No results found.</CommandEmpty>
+                            <CommandGroup>
+                                {filteredItems.map(item => (
+                                <CommandItem
+                                    key={`${item.id}-${item.itemType}`}
+                                    onSelect={() => handleSelect(item)}
+                                    className="cursor-pointer"
+                                >
+                                    {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
+                                </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    )}
                 </Command>
              </div>
         </div>
