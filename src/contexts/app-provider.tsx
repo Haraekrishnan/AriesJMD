@@ -1183,58 +1183,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `plannerEvents/${eventId}`), { viewedBy: { [user.id]: true } });
   }, [user, plannerEventsById]);
   
-  const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
-    if(!user) return;
-    const dayKey = format(day, 'yyyy-MM-dd');
-
-    const relevantComments = dailyPlannerComments.filter(dpc => dpc.plannerUserId === plannerUserId && dpc.day === dayKey && !dpc.viewedBy?.[user.id]);
+  const addDailyPlannerComment = useCallback(async (plannerUserId: string, day: Date, text: string) => {
+    if (!user) return;
+    const dayKey = `${format(day, 'yyyy-MM-dd')}_${plannerUserId}`;
     
-    const updates: { [key: string]: any } = {};
-    relevantComments.forEach(comment => {
-        updates[`dailyPlannerComments/${comment.id}/viewedBy/${user.id}`] = true;
-    });
+    const dayRef = ref(rtdb, `dailyPlannerComments/${dayKey}`);
+    const snapshot = await get(dayRef);
 
-    if (Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates);
-    }
-  }, [user, dailyPlannerComments]);
-
-  const addDailyPlannerComment = useCallback((plannerUserId: string, day: Date, text: string) => {
-    if(!user) return;
-    const dayKey = format(day, 'yyyy-MM-dd');
-    const newRef = push(ref(rtdb, 'dailyPlannerComments'));
-    const newComment: Omit<DailyPlannerComment, 'id'> = {
-        plannerUserId,
-        day: dayKey,
-        text: text,
-        userId: user.id,
-        date: new Date().toISOString(),
-        viewedBy: { [user.id]: true }
+    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayKey}/comments`));
+    const newComment: Comment = {
+      id: newCommentRef.key!,
+      userId: user.id,
+      text,
+      date: new Date().toISOString(),
     };
-    set(newRef, newComment);
-  }, [user]);
+
+    if (snapshot.exists()) {
+      await set(newCommentRef, newComment);
+    } else {
+      const newDayComment: DailyPlannerComment = {
+        id: dayKey,
+        plannerUserId,
+        day: format(day, 'yyyy-MM-dd'),
+        comments: { [newCommentRef.key!]: newComment },
+        lastUpdated: new Date().toISOString(),
+        viewedBy: { [user.id]: true },
+      };
+      await set(dayRef, newDayComment);
+    }
+    
+    // Unread flag for the other user
+    if (plannerUserId !== user.id) {
+      await update(ref(rtdb, `dailyPlannerComments/${dayKey}/viewedBy`), { [plannerUserId]: false });
+      const plannerUser = users.find(u => u.id === plannerUserId);
+      if (plannerUser?.email) {
+          createAndSendNotification(
+              plannerUser.email,
+              `New Comment on Your Planner`,
+              `New comment from ${user.name} on your planner for ${format(day, 'PPP')}`,
+              { 'Comment': text },
+              `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+              'View Planner'
+          );
+      }
+    }
+  }, [user, users, createAndSendNotification]);
 
   const updateDailyPlannerComment = useCallback((commentId: string, dayKey: string, newText: string) => {
     if(!user) return;
-    const comment = dailyPlannerComments.find(dpc => dpc.id === commentId && dpc.day === dayKey);
-    if(!comment) return;
-    update(ref(rtdb, `dailyPlannerComments/${commentId}`), { text: newText, viewedBy: { [user.id]: true } });
-  }, [user, dailyPlannerComments]);
+    update(ref(rtdb, `dailyPlannerComments/${dayKey}/comments/${commentId}`), { text: newText });
+    update(ref(rtdb, `dailyPlannerComments/${dayKey}`), { lastUpdated: new Date().toISOString() });
+  }, [user]);
 
   const deleteDailyPlannerComment = useCallback((commentId: string, dayKey: string) => {
-    const comment = dailyPlannerComments.find(dpc => dpc.id === commentId && dpc.day === dayKey);
-    if(comment) {
-        remove(ref(rtdb, `dailyPlannerComments/${commentId}`));
-    }
-  }, [dailyPlannerComments]);
-
+    remove(ref(rtdb, `dailyPlannerComments/${dayKey}/comments/${commentId}`));
+  }, []);
+  
   const deleteAllDailyPlannerComments = useCallback((dayKey: string) => {
-    dailyPlannerComments.forEach(comment => {
-      if (comment.day === dayKey) {
-          remove(ref(rtdb, `dailyPlannerComments/${comment.id}`));
-      }
-    });
-  }, [dailyPlannerComments]);
+    remove(ref(rtdb, `dailyPlannerComments/${dayKey}/comments`));
+  }, []);
+
+  const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
+    if(!user) return;
+    const dayKey = `${format(day, 'yyyy-MM-dd')}_${plannerUserId}`;
+    update(ref(rtdb, `dailyPlannerComments/${dayKey}/viewedBy`), { [user.id]: true });
+  }, [user]);
 
   const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (!user) return;

@@ -71,11 +71,11 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     }, [expandedEvents, selectedDate]);
     
     const selectedDayComments = useMemo(() => {
-        if (!selectedDate) return [];
-        const dayKey = `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`;
-        const entry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
-        return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
-    }, [dailyPlannerComments, selectedDate, selectedUserId]);
+      if (!selectedDate) return [];
+      const dayKey = `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`;
+      const entry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
+      return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
+  }, [dailyPlannerComments, selectedDate, selectedUserId]);
     
     const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
         const subordinates = new Set<string>();
@@ -302,5 +302,3 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
-
-    
