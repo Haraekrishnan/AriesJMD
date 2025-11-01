@@ -810,6 +810,7 @@ export type TpCertList = {
     name: string;
     date: string; // YYYY-MM-DD
     creatorId: string;
+    createdAt: string; // ISO String
     items: {
         materialName: string;
         manufacturerSrNo: string;
