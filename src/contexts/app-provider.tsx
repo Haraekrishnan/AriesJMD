@@ -2411,7 +2411,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'inventoryItems'));
-    set(newRef, { ...itemData, lastUpdated: new Date().toISOString() });
+    const dataToSave = { 
+      ...itemData, 
+      lastUpdated: new Date().toISOString(),
+      movedToProjectId: itemData.movedToProjectId || null,
+    };
+    set(newRef, dataToSave);
     addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
   }, [user, addActivityLog]);
 
@@ -2479,9 +2484,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }, [user, inventoryItems, projects, addActivityLog]);
 
   const updateInventoryItem = useCallback((item: InventoryItem) => {
+    if(!user) return;
     const { id, ...data } = item;
-    update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
-    if(user) addActivityLog(user.id, 'Inventory Item Updated', item.name);
+    const dataToSave = { 
+      ...data,
+      lastUpdated: new Date().toISOString(),
+      movedToProjectId: data.movedToProjectId || null,
+    };
+    update(ref(rtdb, `inventoryItems/${id}`), dataToSave);
+    addActivityLog(user.id, 'Inventory Item Updated', item.name);
   }, [user, addActivityLog]);
 
   const updateInventoryItemGroup = useCallback((itemName: string, itemUpdates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
@@ -2607,14 +2618,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'utMachines'));
-    set(newRef, machine);
+    const dataToSave = { ...machine, movedToProjectId: machine.movedToProjectId || null };
+    set(newRef, dataToSave);
     addActivityLog(user.id, 'UT Machine Added', machine.machineName);
   }, [user, addActivityLog]);
 
   const updateUTMachine = useCallback((machine: UTMachine) => {
     if(!user) return;
     const { id, ...data } = machine;
-    update(ref(rtdb, `utMachines/${id}`), data);
+    const dataToSave = { ...data, movedToProjectId: data.movedToProjectId || null };
+    update(ref(rtdb, `utMachines/${id}`), dataToSave);
     addActivityLog(user.id, 'UT Machine Updated', machine.machineName);
   }, [user, addActivityLog]);
 
@@ -2630,14 +2643,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'dftMachines'));
-    set(newRef, machine);
+    const dataToSave = { ...machine, movedToProjectId: machine.movedToProjectId || null };
+    set(newRef, dataToSave);
     addActivityLog(user.id, 'DFT Machine Added', machine.machineName);
   }, [user, addActivityLog]);
   
   const updateDftMachine = useCallback((machine: DftMachine) => {
     if(!user) return;
     const { id, ...data } = machine;
-    update(ref(rtdb, `dftMachines/${id}`), data);
+    const dataToSave = { ...data, movedToProjectId: data.movedToProjectId || null };
+    update(ref(rtdb, `dftMachines/${id}`), dataToSave);
     addActivityLog(user.id, 'DFT Machine Updated', machine.machineName);
   }, [user, addActivityLog]);
 
@@ -3586,3 +3601,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
