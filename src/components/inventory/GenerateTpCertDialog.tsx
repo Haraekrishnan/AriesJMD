@@ -47,24 +47,18 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     return items;
   }, [inventoryItems, utMachines, dftMachines]);
 
-  // Updated search: show items even if some fields missing
   const filteredItems = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return allSearchableItems.slice(0, 10);
-    }
+    if (!searchTerm) return allSearchableItems; // ✅ show all by default
     return allSearchableItems.filter(item => {
-      const candidates: string[] = [];
-
-      if ('name' in item && item.name) candidates.push(String(item.name).toLowerCase());
-      if ('machineName' in item && item.machineName) candidates.push(String(item.machineName).toLowerCase());
-      if ('serialNumber' in item && item.serialNumber) candidates.push(String(item.serialNumber).toLowerCase());
-      if ('ariesId' in item && item.ariesId) candidates.push(String(item.ariesId).toLowerCase());
-      if (item.itemType) candidates.push(item.itemType.toLowerCase());
-
-      // match if any candidate includes the term
-      return candidates.some(c => c.includes(term));
-    }).slice(0, 50); // limit results for performance
+      const name = ('name' in item ? item.name : item.machineName || '').toLowerCase();
+      const serial = 'serialNumber' in item ? item.serialNumber.toLowerCase() : '';
+      const ariesId = 'ariesId' in item && item.ariesId ? item.ariesId.toLowerCase() : '';
+      return (
+        name.includes(searchTerm.toLowerCase()) ||
+        serial.includes(searchTerm.toLowerCase()) ||
+        ariesId.includes(searchTerm.toLowerCase())
+      );
+    }).slice(0, 50); // show up to 50 results
   }, [searchTerm, allSearchableItems]);
 
   const handleSelect = (item: CertItem) => {
@@ -88,18 +82,14 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     const exportData = selectedItems.map(item => ({
       materialName: 'name' in item && item.name ? item.name : ('machineName' in item ? item.machineName : 'Unknown Item'),
       manufacturerSrNo: 'serialNumber' in item && item.serialNumber ? item.serialNumber : '',
-      newOrOld: 'OLD', // default value — change if you want to use a different field
     }));
 
     try {
-      // NOTE: header image path — place image at public/images/aries-header.png
-      const headerImagePath = '/images/aries-header.png';
-
       if (type === 'excel') {
-        await generateTpCertExcel(exportData, headerImagePath);
+        await generateTpCertExcel(exportData);
         toast({ title: 'Excel generated', variant: 'default' });
       } else {
-        await generateTpCertPdf(exportData, headerImagePath);
+        await generateTpCertPdf(exportData);
         toast({ title: 'PDF generated', variant: 'default' });
       }
     } catch (err) {
