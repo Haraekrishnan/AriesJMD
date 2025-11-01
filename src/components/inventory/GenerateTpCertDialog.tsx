@@ -43,14 +43,14 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   }, [searchTerm, allSearchableItems]);
 
   const handleSelect = (item: CertItem) => {
-    if (!selectedItems.some(i => i.id === item.id)) {
+    if (!selectedItems.some(i => i.id === item.id && i.itemType === item.itemType)) {
       setSelectedItems(prev => [...prev, item]);
     }
     setSearchTerm('');
   };
 
-  const handleRemove = (itemId: string) => {
-    setSelectedItems(prev => prev.filter(item => item.id !== itemId));
+  const handleRemove = (itemId: string, itemType: string) => {
+    setSelectedItems(prev => prev.filter(item => !(item.id === itemId && item.itemType === itemType)));
   };
   
   const handleExport = (type: 'excel' | 'pdf') => {
@@ -68,6 +68,16 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     } else {
         generateTpCertPdf(exportData);
     }
+  };
+
+  const getItemName = (item: CertItem) => {
+    if ('name' in item && item.name) {
+      return item.name;
+    }
+    if ('machineName' in item && item.machineName) {
+      return item.machineName;
+    }
+    return 'Unknown Item';
   };
 
   return (
@@ -93,11 +103,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                     <CommandGroup>
                         {filteredItems.map(item => (
                         <CommandItem
-                            key={item.id}
+                            key={`${item.id}-${item.itemType}`}
                             onSelect={() => handleSelect(item)}
                             className="cursor-pointer"
                         >
-                            { 'name' in item ? item.name : item.machineName } (SN: {item.serialNumber})
+                           {getItemName(item)} (SN: {item.serialNumber})
                         </CommandItem>
                         ))}
                     </CommandGroup>
@@ -120,12 +130,12 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={`${item.id}-${item.itemType}`}>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{'name' in item ? item.name : item.machineName}</TableCell>
+                      <TableCell>{getItemName(item)}</TableCell>
                       <TableCell>{item.serialNumber}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove(item.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemove(item.id, item.itemType)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TableCell>
