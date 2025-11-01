@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -36,19 +35,20 @@ export default function TpCertificationPage() {
     }, [selectedDate, tpCertLists]);
 
     const handleGenerateWorkbook = async () => {
-        if (groupedLists.length === 0) {
-            toast({ title: "No lists found for this date.", variant: 'destructive' });
+        if (!tpCertLists || tpCertLists.length === 0) {
+            toast({ title: "No lists found to generate a workbook.", variant: 'destructive' });
             return;
         }
 
         const workbook = new ExcelJS.Workbook();
         
-        for (const list of groupedLists) {
+        // Iterate over all lists, not just the grouped ones
+        for (const list of tpCertLists) {
             await generateTpCertExcel(list.items, workbook, list.name);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `TP_Cert_Workbook_${format(selectedDate!, 'yyyy-MM-dd')}.xlsx`);
+        saveAs(new Blob([buffer]), `TP_Cert_Master_Workbook.xlsx`);
     };
 
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
@@ -83,8 +83,8 @@ export default function TpCertificationPage() {
                     <CardTitle>View Saved Lists</CardTitle>
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                         <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
-                        <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
-                            <FileText className="mr-2 h-4 w-4" /> Generate Day's Workbook
+                        <Button onClick={handleGenerateWorkbook} disabled={tpCertLists.length === 0}>
+                            <FileText className="mr-2 h-4 w-4" /> Generate Master Workbook
                         </Button>
                     </div>
                 </CardHeader>
