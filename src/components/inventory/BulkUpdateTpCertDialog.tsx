@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -11,14 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { DatePickerInput } from '../ui/date-picker-input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ChevronsUpDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { format, parseISO } from 'date-fns';
 
 const bulkUpdateSchema = z.object({
   itemName: z.string().min(1, 'Please select an item name.'),
-  tpInspectionDueDate: z.date({ required_error: 'TP Inspection Due Date is required' }),
+  tpInspectionDueDate: z.string({ required_error: 'TP Inspection Due Date is required' }),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }),
 });
 
@@ -40,9 +40,22 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
     resolver: zodResolver(bulkUpdateSchema),
   });
 
+  const watchItemName = form.watch('itemName');
+
+  const availableDates = useMemo(() => {
+    if (!watchItemName) return [];
+    const dates = new Set<string>();
+    inventoryItems.forEach(item => {
+      if (item.name === watchItemName && item.tpInspectionDueDate) {
+        dates.add(item.tpInspectionDueDate);
+      }
+    });
+    return Array.from(dates).sort((a,b) => parseISO(a).getTime() - parseISO(b).getTime());
+  }, [watchItemName, inventoryItems]);
+
   const onSubmit = (data: BulkUpdateFormValues) => {
     updateInventoryItemGroup(data.itemName, {
-      tpInspectionDueDate: data.tpInspectionDueDate.toISOString(),
+      tpInspectionDueDate: data.tpInspectionDueDate,
       certificateUrl: data.certificateUrl,
     });
     toast({
@@ -95,6 +108,7 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
                               value={name}
                               onSelect={() => {
                                 form.setValue("itemName", name);
+                                form.setValue("tpInspectionDueDate", ""); // Reset date on item change
                                 setIsItemPopoverOpen(false);
                               }}
                             >
@@ -112,8 +126,25 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
           </div>
 
           <div className="space-y-2">
-            <Label>New TP Inspection Due Date</Label>
-            <Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+            <Label>TP Inspection Due Date to Update</Label>
+            <Controller
+                name="tpInspectionDueDate"
+                control={form.control}
+                render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!watchItemName || availableDates.length === 0}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a due date..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableDates.map(date => (
+                                <SelectItem key={date} value={date}>
+                                    {format(parseISO(date), 'dd-MM-yyyy')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+            />
             {form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}
           </div>
 
