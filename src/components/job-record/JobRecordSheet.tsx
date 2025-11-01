@@ -85,33 +85,27 @@ export default function JobRecordSheet() {
         });
 
         if (!searchTerm) {
-            Object.keys(groups).forEach(plantName => {
-                const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
-                const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
-                const order = currentOrder || prevOrder;
-
-                groups[plantName].sort((a, b) => {
-                    if (order && Array.isArray(order)) {
-                        const indexA = order.indexOf(a.id);
-                        const indexB = order.indexOf(b.id);
-                        
-                        // If both are in the order array, sort by their index
-                        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                        
-                        // If only A is in the order array, it comes first
-                        if (indexA !== -1) return -1;
-
-                        // If only B is in the order array, it comes first
-                        if (indexB !== -1) return 1;
-                    }
-
-                    // For any items not in the order array, sort by their original index in manpowerProfiles
-                    const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
-                    const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
-                    return originalAIndex - originalBIndex;
-                });
-            });
-        }
+          Object.keys(groups).forEach(plantName => {
+              const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
+              const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
+              const order = currentOrder || prevOrder;
+      
+              groups[plantName].sort((a, b) => {
+                  if (order && Array.isArray(order)) {
+                      const indexA = order.indexOf(a.id);
+                      const indexB = order.indexOf(b.id);
+      
+                      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                      if (indexA !== -1) return -1;
+                      if (indexB !== -1) return 1;
+                  }
+                  // Fallback to original index if not in any order list
+                  const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
+                  const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
+                  return originalAIndex - originalBIndex;
+              });
+          });
+      }
         
         return groups;
 
