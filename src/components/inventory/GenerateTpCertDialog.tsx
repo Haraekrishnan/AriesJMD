@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -23,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileDown, Trash2 } from 'lucide-react';
 import { generateTpCertExcel, generateTpCertPdf } from './generateTpCertReport';
-import { InventoryItem, UTMachine, DftMachine } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, TpCertList } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
@@ -36,11 +35,12 @@ interface GenerateTpCertDialogProps {
 type CertItem = (InventoryItem | UTMachine | DftMachine) & { itemType: string };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCertDialogProps) {
-  const { inventoryItems, utMachines, dftMachines } = useAppContext();
+  const { inventoryItems, utMachines, dftMachines, addTpCertList } = useAppContext();
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<CertItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [listName, setListName] = useState('');
 
   const allSearchableItems = useMemo(() => {
     const items: CertItem[] = [];
@@ -68,7 +68,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   }, [selectedItemName, allSearchableItems]);
 
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return [];
+    if (!searchTerm) return itemsOfSelectedName;
     const term = searchTerm.toLowerCase();
     return itemsOfSelectedName.filter(item => 
         (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
@@ -81,10 +81,37 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     if (!selectedItems.some(i => i.id === item.id && i.itemType === item.itemType)) {
       setSelectedItems(prev => [...prev, item]);
     }
+    setSearchTerm('');
   };
 
   const handleRemove = (itemId: string, itemType: string) => {
     setSelectedItems(prev => prev.filter(item => !(item.id === itemId && item.itemType === itemType)));
+  };
+  
+  const handleSaveList = () => {
+    if (selectedItems.length === 0) {
+      toast({ title: 'No items in the list', variant: 'destructive' });
+      return;
+    }
+    if (!listName.trim()) {
+      toast({ title: 'List name required', description: 'Please provide a name for this list.', variant: 'destructive'});
+      return;
+    }
+
+    const listToSave: Omit<TpCertList, 'id' | 'date' | 'creatorId'> = {
+      name: listName,
+      createdAt: new Date().toISOString(),
+      items: selectedItems.map(item => ({
+        materialName: getItemName(item),
+        manufacturerSrNo: item.serialNumber,
+      })),
+    };
+
+    addTpCertList(listToSave);
+    toast({ title: 'List Saved', description: 'Your certification list has been saved.'});
+    setListName('');
+    setSelectedItems([]);
+    setSelectedItemName(null);
   };
 
   const handleExport = async (type: 'excel' | 'pdf') => {
@@ -101,11 +128,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     try {
       if (type === 'excel') {
         await generateTpCertExcel(exportData);
-        toast({ title: 'Excel generated', variant: 'default' });
       } else {
         await generateTpCertPdf(exportData);
-        toast({ title: 'PDF generated', variant: 'default' });
       }
+      toast({ title: `${type.toUpperCase()} Generated`, variant: 'default' });
     } catch (err) {
       console.error(err);
       toast({ title: 'Export failed', description: String(err), variant: 'destructive' });
@@ -147,24 +173,23 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                     onValueChange={setSearchTerm}
                     disabled={!selectedItemName}
                     />
-                    {searchTerm && (
-                      <CommandList>
-                      {filteredItems.length === 0 && searchTerm ? (
+                    <CommandList>
+                      {filteredItems.length === 0 ? (
                           <CommandEmpty>No results found.</CommandEmpty>
-                      ) : null}
-                      <CommandGroup>
-                          {filteredItems.map(item => (
-                          <CommandItem
-                              key={`${item.id}-${item.itemType}`}
-                              onSelect={() => handleSelect(item)}
-                              className="cursor-pointer"
-                          >
-                              {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
-                          </CommandItem>
-                          ))}
-                      </CommandGroup>
-                      </CommandList>
-                    )}
+                      ) : (
+                        <CommandGroup>
+                            {filteredItems.map(item => (
+                            <CommandItem
+                                key={`${item.id}-${item.itemType}`}
+                                onSelect={() => handleSelect(item)}
+                                className="cursor-pointer"
+                            >
+                                {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
+                            </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
                 </Command>
              </div>
         </div>
@@ -206,9 +231,20 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
           </ScrollArea>
         </div>
 
-        <DialogFooter className="pt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+        <DialogFooter className="pt-4 justify-between">
+          <div className='flex gap-2 items-center'>
+            <Input 
+              placeholder="Enter list name..." 
+              value={listName} 
+              onChange={(e) => setListName(e.target.value)} 
+              className="w-48"
+            />
+            <Button variant="outline" onClick={handleSaveList} disabled={selectedItems.length === 0 || !listName.trim()}>
+              Save List
+            </Button>
+          </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
             <Button onClick={() => handleExport('excel')}>
               <FileDown className="mr-2 h-4 w-4" /> Export Excel
             </Button>
