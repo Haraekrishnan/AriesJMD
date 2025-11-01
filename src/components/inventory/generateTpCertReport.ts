@@ -1,4 +1,4 @@
-// generateTpCertReport.ts
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -9,190 +9,150 @@ interface CertItem {
   manufacturerSrNo: string;
 }
 
-export async function generateTpCertExcel(items: CertItem[]) {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("TP Certification List", {
+async function fetchImageAsBase64(imgPath: string): Promise<string> {
+    const resp = await fetch(imgPath);
+    if (!resp.ok) throw new Error('Failed to fetch header image');
+    const buffer = await resp.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return 'data:image/png;base64,' + btoa(binary);
+}
+
+
+export async function generateTpCertExcel(items: CertItem[], headerImagePath: string, existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
+  const workbook = existingWorkbook || new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName || "TP Certification List", {
     pageSetup: { paperSize: 9, orientation: "portrait" }, // A4 Portrait
   });
 
-  // Header image
-  const image = await fetch("/images/aries-header.png").then((r) => r.blob());
-  const buffer = await image.arrayBuffer();
+  const response = await fetch(headerImagePath);
+  const imageBuffer = await response.arrayBuffer();
+  
   const imageId = workbook.addImage({
-    buffer,
+    buffer: imageBuffer,
     extension: "png",
   });
 
   worksheet.addImage(imageId, {
     tl: { col: 0, row: 0 },
-    ext: { width: 620, height: 100 },
+    br: { col: 8, row: 3 },
+    editAs: 'oneCell',
   });
 
-  // Add spacing after image
-  const startRow = 6;
+  const startRow = 5; 
 
-  worksheet.getCell(`A${startRow}`).value =
-    "Trivedi & Associates Technical Services (P.) Ltd.";
+  worksheet.mergeCells(`A${startRow}:H${startRow}`);
+  worksheet.getCell(`A${startRow}`).value = "Trivedi & Associates Technical Services (P.) Ltd.";
+  worksheet.getCell(`A${startRow}`).font = { bold: true, size: 12 };
+  worksheet.getCell(`A${startRow}`).alignment = { horizontal: 'center' };
+
+  worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`);
   worksheet.getCell(`A${startRow + 1}`).value = "Jamnagar.";
+  worksheet.getCell(`A${startRow + 1}`).font = { bold: true, size: 12 };
+  worksheet.getCell(`A${startRow + 1}`).alignment = { horizontal: 'center' };
+  
+  worksheet.mergeCells(`A${startRow + 3}:H${startRow + 3}`);
   worksheet.getCell(`A${startRow + 3}`).value = "Subject : Testing & Certification";
+  worksheet.getCell(`A${startRow + 3}`).font = { bold: true, size: 12 };
+  worksheet.getCell(`A${startRow + 3}`).alignment = { horizontal: 'left' };
 
-  // Bold and center title
-  [startRow, startRow + 1, startRow + 3].forEach((r) => {
-    const row = worksheet.getRow(r);
-    row.eachCell((cell) => {
-      cell.font = { bold: true, size: 12 };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
-    });
-    worksheet.mergeCells(`A${r}:H${r}`);
-  });
-
-  // Table headers
   const headerRow = startRow + 5;
   const headers = [
-    "SR. No.",
-    "Material Name",
-    "Manufacturer Sr. No.",
-    "Cap. in MT",
-    "Qty in Nos",
-    "New or Old",
-    "Valid upto if Renewal",
+    "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT",
+    "Qty in Nos", "New or Old", "Valid upto if Renewal",
     "Submit Last Testing Report (Form No.10/12/Any Other)",
   ];
 
-  worksheet.addRow(headers);
-
-  const header = worksheet.getRow(headerRow);
-  header.eachCell((cell) => {
+  worksheet.columns = headers.map(h => ({
+    header: h,
+    key: h.toLowerCase().replace(/ /g, '_'),
+    width: 20
+  }));
+  
+  const hr = worksheet.getRow(headerRow);
+  hr.values = headers;
+  hr.eachCell((cell) => {
     cell.font = { bold: true };
     cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    cell.border = {
-      top: { style: "thin" },
-      left: { style: "thin" },
-      bottom: { style: "thin" },
-      right: { style: "thin" },
-    };
+    cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
   });
-
-  // Body rows
+  
   items.forEach((item, index) => {
-    const rowValues = [
-      index + 1,
-      item.materialName,
-      item.manufacturerSrNo,
-      "",
-      "",
-      "OLD",
-      "",
-      "",
-    ];
-    const row = worksheet.addRow(rowValues);
-    row.eachCell((cell) => {
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-      cell.alignment = { wrapText: true, vertical: "middle" };
+    worksheet.addRow([
+      index + 1, item.materialName, item.manufacturerSrNo, '', '', 'OLD', '', ''
+    ]).eachCell(cell => {
+      cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
+      cell.alignment = { vertical: 'middle', wrapText: true };
     });
   });
 
-  // Footer section
   const footerStart = worksheet.lastRow!.number + 2;
   const footerLines = [
-    "Company Authorised Contact Person",
-    "Name : VIJAY SAI",
-    "Contact Number : 919662095558",
-    "Site : RELIANCE INDUSTRIES LTD",
-    "Email id: ariesril@ariesmar.com",
+    "Company Authorised Contact Person", "Name : VIJAY SAI", "Contact Number : 919662095558",
+    "Site : RELIANCE INDUSTRIES LTD", "email id: ariesril@ariesmar.com",
     'Note : For "New Materials only" Manufacturer Test Certificates submitted.',
   ];
 
   footerLines.forEach((text, i) => {
     const cell = worksheet.getCell(`A${footerStart + i}`);
     cell.value = text;
-    cell.font = { size: 11 };
-    if (i === 0) cell.font = { bold: true, size: 11 };
+    cell.font = { size: 11, bold: i === 0 };
     worksheet.mergeCells(`A${footerStart + i}:H${footerStart + i}`);
   });
 
-  // Auto-fit columns
-  worksheet.columns.forEach((col) => {
-    let maxLength = 0;
-    col.eachCell({ includeEmpty: true }, (cell) => {
-      const len = cell.value ? cell.value.toString().length : 10;
-      if (len > maxLength) maxLength = len;
-    });
-    col.width = maxLength < 15 ? 15 : maxLength;
-  });
-
-  const bufferExcel = await workbook.xlsx.writeBuffer();
-  saveAs(new Blob([bufferExcel]), "TP_Certification_List.xlsx");
+  if (!existingWorkbook) {
+    const bufferExcel = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([bufferExcel]), "TP_Certification_List.xlsx");
+  }
 }
 
-export async function generateTpCertPdf(items: CertItem[]) {
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "pt",
-    format: "a4",
-  });
 
-  // Header image
-  const img = new Image();
-  img.src = "/images/aries-header.png";
-  await new Promise((resolve) => {
-    img.onload = resolve;
-  });
-  doc.addImage(img, "PNG", 40, 20, 520, 80);
+export async function generateTpCertPdf(items: CertItem[], headerImagePath: string) {
+    const imgDataUrl = await fetchImageAsBase64(headerImagePath);
 
-  doc.setFontSize(12);
-  doc.text("Trivedi & Associates Technical Services (P.) Ltd.", 40, 130);
-  doc.text("Jamnagar.", 40, 145);
-  doc.text("Subject : Testing & Certification", 40, 170);
+    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-  const tableColumn = [
-    "SR. No.",
-    "Material Name",
-    "Manufacturer Sr. No.",
-    "Cap. in MT",
-    "Qty in Nos",
-    "New or Old",
-    "Valid upto if Renewal",
-    "Submit Last Testing Report (Form No.10/12/Any Other)",
-  ];
+    doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
 
-  const tableRows = items.map((item, index) => [
-    index + 1,
-    item.materialName,
-    item.manufacturerSrNo,
-    "",
-    "",
-    "OLD",
-    "",
-    "",
-  ]);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Trivedi & Associates Technical Services (P.) Ltd.", pageWidth / 2, 110, { align: 'center' });
+    doc.text("Jamnagar.", pageWidth / 2, 125, { align: 'center' });
+    
+    doc.setFont("helvetica", "normal");
+    doc.text("Subject : Testing & Certification", 40, 155);
 
-  (doc as any).autoTable({
-    head: [tableColumn],
-    body: tableRows,
-    startY: 190,
-    styles: { fontSize: 8, lineColor: [0, 0, 0], lineWidth: 0.3 },
-    headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-    theme: "grid",
-  });
+    const tableColumn = [
+        "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old",
+        "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)",
+    ];
+    const tableRows = items.map((item, index) => [
+        index + 1, item.materialName, item.manufacturerSrNo, "", "", "OLD", "", ""
+    ]);
 
-  const finalY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(10);
-  doc.text("Company Authorised Contact Person", 300, finalY);
-  doc.text("Name : VIJAY SAI", 300, finalY + 15);
-  doc.text("Contact Number : 919662095558", 300, finalY + 30);
-  doc.text("Site : RELIANCE INDUSTRIES LTD", 300, finalY + 45);
-  doc.text("email id: ariesril@ariesmar.com", 300, finalY + 60);
-  doc.text(
-    'Note : For "New Materials only" Manufacturer Test Certificates submitted.',
-    40,
-    finalY + 85
-  );
+    (doc as any).autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 170,
+        theme: "grid",
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
+        columnStyles: { 1: { cellWidth: 100 }, 2: { cellWidth: 100 } }
+    });
 
-  doc.save("TP_Certification_List.pdf");
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+
+    doc.setFontSize(10);
+    doc.text("Company Authorised Contact Person", 40, finalY);
+    doc.text("Name : VIJAY SAI", 40, finalY + 15);
+    doc.text("Contact Number : 919662095558", 40, finalY + 30);
+    doc.text("Site : RELIANCE INDUSTRIES LTD", 40, finalY + 45);
+    doc.text("email id: ariesril@ariesmar.com", 40, finalY + 60);
+    doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', 40, finalY + 80);
+
+    doc.save("TP_Certification_List.pdf");
 }

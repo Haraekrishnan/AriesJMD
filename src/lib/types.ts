@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -448,7 +449,7 @@ export type ManpowerProfile = {
   
   // Leave and Termination
   leaveHistory?: { [key: string]: LeaveRecord };
-  memoHistory?: MemoRecord[];
+  memoHistory?: { [key: string]: MemoRecord };
   ppeHistory?: { [key: string]: PpeHistoryRecord };
 
   terminationDate?: string | null; // ISO
@@ -802,4 +803,15 @@ export type Feedback = {
 export type JobRecordPlant = {
   id: string;
   name: string;
+};
+
+export type TpCertList = {
+    id: string;
+    name: string;
+    date: string; // YYYY-MM-DD
+    creatorId: string;
+    items: {
+        materialName: string;
+        manufacturerSrNo: string;
+    }[];
 };
