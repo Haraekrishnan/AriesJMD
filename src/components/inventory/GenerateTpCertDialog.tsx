@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +22,6 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2 } from 'lucide-react';
-import { generateTpCertExcel, generateTpCertPdf } from './generateTpCertReport';
 import { InventoryItem, UTMachine, DftMachine, TpCertList } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -32,23 +31,42 @@ import { Input } from '@/components/ui/input';
 interface GenerateTpCertDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  existingList?: TpCertList | null;
 }
 
 type CertItem = (InventoryItem | UTMachine | DftMachine) & { itemType: string };
 
-export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCertDialogProps) {
-  const { inventoryItems, utMachines, dftMachines, addTpCertList } = useAppContext();
+export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
+  const { inventoryItems, utMachines, dftMachines, addTpCertList, updateTpCertList } = useAppContext();
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<CertItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [listName, setListName] = useState('');
 
+  useEffect(() => {
+    if (existingList) {
+      setListName(existingList.name);
+      // We can't perfectly reconstruct the CertItem objects, but we can set the names/SNs for display.
+      // The logic for adding new items will still work independently.
+      const initialItems = existingList.items.map(item => {
+        // Find the original item to get its full data, if possible.
+        return allSearchableItems.find(i => i.serialNumber === item.manufacturerSrNo) || {
+          id: item.manufacturerSrNo, // fallback id
+          name: item.materialName,
+          serialNumber: item.manufacturerSrNo,
+          itemType: 'Inventory' // Fallback type
+        }
+      }) as CertItem[];
+      setSelectedItems(initialItems);
+    }
+  }, [existingList]);
+
   const allSearchableItems = useMemo(() => {
     const items: CertItem[] = [];
     inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
-    utMachines?.forEach(item => items.push({ ...item, itemType: 'UT Machine' }));
-    dftMachines?.forEach(item => items.push({ ...item, itemType: 'DFT Machine' }));
+    utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
+    dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
     return items;
   }, [inventoryItems, utMachines, dftMachines]);
   
@@ -102,48 +120,44 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
       return;
     }
 
-    const listToSave: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> & {date: string} = {
-      name: listName,
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-      items: selectedItems.map(item => ({
-        materialName: getItemName(item),
-        manufacturerSrNo: item.serialNumber,
-      })),
-    };
+    const itemsToSave = selectedItems.map(item => ({
+      materialName: getItemName(item),
+      manufacturerSrNo: item.serialNumber,
+    }));
+    
+    if (existingList) {
+      updateTpCertList({ ...existingList, name: listName, items: itemsToSave });
+      toast({ title: 'List Updated', description: 'Your certification list has been updated.' });
+    } else {
+      const listToSave: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> = {
+        name: listName,
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        items: itemsToSave,
+      };
+      addTpCertList(listToSave);
+      toast({ title: 'List Saved', description: 'Your certification list has been saved.'});
+    }
+    
+    handleClose();
+  };
 
-    addTpCertList(listToSave);
-    toast({ title: 'List Saved', description: 'Your certification list has been saved.'});
+  const handleClose = () => {
     setListName('');
     setSelectedItems([]);
     setSelectedItemName(null);
-  };
+    setSearchTerm('');
+    setIsOpen(false);
+  }
 
   const handleOpenChange = (open: boolean) => {
     if (open) {
       setIsOpen(true);
     } else {
-      handleCloseAttempt();
+      handleClose();
     }
   };
 
-  const handleCloseAttempt = () => {
-    if (selectedItems.length > 0) {
-      toast({
-        title: 'Save Required',
-        description: 'Please save the list before closing.',
-        variant: 'destructive',
-      });
-    } else {
-      // Clear state on close
-      setListName('');
-      setSelectedItems([]);
-      setSelectedItemName(null);
-      setSearchTerm('');
-      setIsOpen(false);
-    }
-  };
-
-  const getItemName = (item: CertItem) => {
+  const getItemName = (item: Partial<CertItem>) => {
     if ('name' in item && item.name) return item.name;
     if ('machineName' in item && item.machineName) return item.machineName;
     return 'Unknown Item';
@@ -153,15 +167,9 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent 
         className="max-w-4xl h-[90vh] flex flex-col"
-        onInteractOutside={(e) => {
-            if (selectedItems.length > 0) {
-                e.preventDefault();
-                handleCloseAttempt();
-            }
-        }}
       >
         <DialogHeader>
-          <DialogTitle>Generate TP Certification List</DialogTitle>
+          <DialogTitle>{existingList ? "Edit TP Certification List" : "Generate TP Certification List"}</DialogTitle>
           <DialogDescription>
             Search and add items to generate a list for third-party certification.
           </DialogDescription>
@@ -249,12 +257,12 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
               onChange={(e) => setListName(e.target.value)} 
               className="w-48"
             />
-            <Button variant="outline" onClick={handleSaveList} disabled={selectedItems.length === 0 || !listName.trim()}>
-              Save List
-            </Button>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCloseAttempt} disabled={selectedItems.length > 0 && !listName.trim()}>Close</Button>
+            <Button variant="outline" onClick={handleClose}>Cancel</Button>
+             <Button variant="default" onClick={handleSaveList} disabled={selectedItems.length === 0 || !listName.trim()}>
+              {existingList ? 'Save Changes' : 'Save List'}
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>

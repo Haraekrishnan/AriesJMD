@@ -38,19 +38,19 @@ export default function TpCertificationPage() {
     }, [selectedDate, tpCertLists]);
 
     const handleGenerateWorkbook = async () => {
-        if (!tpCertLists || tpCertLists.length === 0) {
-            toast({ title: "No lists found to generate a workbook.", variant: 'destructive' });
+        if (groupedLists.length === 0) {
+            toast({ title: "No lists found for this date.", variant: 'destructive' });
             return;
         }
 
         const workbook = new ExcelJS.Workbook();
         
-        for (const list of tpCertLists) {
+        for (const list of groupedLists) {
             await generateTpCertExcel(list.items, workbook, list.name);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `Master_TP_Cert_Workbook.xlsx`);
+        saveAs(new Blob([buffer]), `TP_Cert_Workbook_${format(selectedDate!, 'yyyy-MM-dd')}.xlsx`);
     };
 
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
@@ -90,8 +90,8 @@ export default function TpCertificationPage() {
                     <CardTitle>View Saved Lists</CardTitle>
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                         <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
-                        <Button onClick={handleGenerateWorkbook} disabled={!tpCertLists || tpCertLists.length === 0}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Generate Master Workbook
+                        <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Generate Day's Workbook
                         </Button>
                     </div>
                 </CardHeader>
@@ -100,7 +100,7 @@ export default function TpCertificationPage() {
                         <Accordion type="multiple" className="w-full space-y-4">
                             {groupedLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
-                                const canEditList = list.isEditable && (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller' || can.approve_store_requests);
+                                const canEditList = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller' || can.approve_store_requests;
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
                                         <div className="flex justify-between items-center p-4">
