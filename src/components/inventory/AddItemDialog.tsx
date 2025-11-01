@@ -28,6 +28,7 @@ const itemSchema = z.object({
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
+  certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   category: z.enum(['General', 'Daily Consumable', 'Job Consumable']).default('General'),
   remarks: z.string().optional(),
   quantity: z.coerce.number().optional(),
@@ -186,6 +187,11 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                     <div><Label>Inspection Date</Label><Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
                     <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
                     <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
+                    <div>
+                        <Label htmlFor="certificateUrl">Certificate URL</Label>
+                        <Input id="certificateUrl" {...form.register('certificateUrl')} placeholder="https://..." />
+                        {form.formState.errors.certificateUrl && <p className="text-xs text-destructive">{form.formState.errors.certificateUrl.message}</p>}
+                    </div>
                 </>
                 )}
 

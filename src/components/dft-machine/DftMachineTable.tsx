@@ -8,7 +8,7 @@ import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { MoreHorizontal, Edit, Trash2, BookMarked, FileText, BadgeHelp } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, BookMarked, FileText, BadgeHelp, Link as LinkIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import type { DftMachine } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -97,6 +97,16 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
                           <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                                  {machine.certificateUrl && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button asChild variant="ghost" size="icon">
+                                          <a href={machine.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>View Certificate</TooltipContent>
+                                    </Tooltip>
+                                  )}
                                   <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
                                   <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleCertRequest(machine)}><BadgeHelp className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Request Certificate</p></TooltipContent></Tooltip>
                                   {can.manage_equipment_status && (

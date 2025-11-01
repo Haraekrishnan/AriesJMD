@@ -1,13 +1,4 @@
 
-
-
-
-
-
-
-
-
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -199,8 +190,14 @@ export type Task = {
   };
   approvalState: ApprovalState;
   approverId?: string;
-  pendingStatus?: TaskStatus | null;
-  previousStatus?: TaskStatus | null;
+  statusRequest?: {
+    requestedBy: string;
+    newStatus: TaskStatus;
+    comment: string;
+    attachment?: Task['attachment'];
+    date: string; // ISO String
+    status: 'Pending' | 'Approved' | 'Rejected';
+  }
   completionDate?: string;
   pendingAssigneeId?: string | null;
   viewedByApprover?: boolean;
@@ -583,6 +580,7 @@ export type InventoryItem = {
   inspectionDate?: string; // ISO string
   inspectionDueDate?: string; // ISO string
   tpInspectionDueDate?: string; // ISO string
+  certificateUrl?: string;
   lastUpdated: string; // ISO string
   remarks?: string;
   category?: InventoryCategory;
@@ -600,6 +598,7 @@ export type UTMachine = {
   probeDetails: string;
   cableDetails: string;
   status: string;
+  certificateUrl?: string;
 };
 
 export type DftMachine = {
@@ -612,6 +611,7 @@ export type DftMachine = {
     probeDetails: string;
     cableDetails: string;
     status: string;
+    certificateUrl?: string;
 };
 
 export type DigitalCamera = {

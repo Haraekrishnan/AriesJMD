@@ -23,6 +23,7 @@ const machineSchema = z.object({
   probeDetails: z.string().min(1, 'Probe details are required'),
   cableDetails: z.string().min(1, 'Cable details are required'),
   status: z.string().min(1, 'Status is required'),
+  certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 });
 
 type MachineFormValues = z.infer<typeof machineSchema>;
@@ -85,6 +86,11 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Probe Details</Label><Input {...form.register('probeDetails')} />{form.formState.errors.probeDetails && <p className="text-xs text-destructive">{form.formState.errors.probeDetails.message}</p>}</div>
             <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} />{form.formState.errors.cableDetails && <p className="text-xs text-destructive">{form.formState.errors.cableDetails.message}</p>}</div>
+          </div>
+          <div>
+            <Label>Certificate URL</Label>
+            <Input {...form.register('certificateUrl')} placeholder="https://..." />
+            {form.formState.errors.certificateUrl && <p className="text-xs text-destructive">{form.formState.errors.certificateUrl.message}</p>}
           </div>
            <div><Label>Status</Label>
             <Controller control={form.control} name="status" render={({ field }) => (
