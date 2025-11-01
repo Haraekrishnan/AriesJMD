@@ -245,7 +245,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
     }
 
     return (
-        <>
+        <TooltipProvider>
             {/* Mobile View */}
             <div className="md:hidden">
                 <Accordion type="multiple" className="w-full space-y-2">
@@ -287,7 +287,6 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                     </div>
                                 </AccordionTrigger>
                                 {user?.role === 'Admin' && (
-                                    <TooltipProvider>
                                     <div className="flex items-center gap-1 pl-4">
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -322,7 +321,6 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     </div>
-                                    </TooltipProvider>
                                 )}
                             </div>
                             <AccordionContent>
@@ -398,6 +396,6 @@ export default function InventoryTable({ items }: InventoryTableProps) {
             {selectedItem && canManage && <EditItemDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} item={selectedItem} />}
             {selectedItem && <RequestCertificateDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} item={selectedItem} />}
             {selectedItemGroup && <RenameItemGroupDialog isOpen={isRenameOpen} setIsOpen={setIsRenameOpen} currentItemName={selectedItemGroup} />}
-        </>
+        </TooltipProvider>
     );
 }
