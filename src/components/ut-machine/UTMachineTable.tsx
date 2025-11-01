@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -28,22 +27,22 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
         case 'Idle': return 'warning';
         case 'Damaged': return 'destructive';
         case 'Out of Service': return 'destructive';
-        default: 'outline';
+        default: return 'outline';
     }
 }
 
 export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableProps) {
-  const { can, utMachines, projects, deleteUTMachine } = useAppContext();
-  const { toast } = useToast();
-  const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
-  const [selectedMachineForCert, setSelectedMachineForCert] = useState<UTMachine | null>(null);
+    const { can, utMachines, projects, deleteUTMachine } = useAppContext();
+    const { toast } = useToast();
+    const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
+    const [selectedMachineForCert, setSelectedMachineForCert] = useState<UTMachine | null>(null);
 
-  const machinesWithProject = useMemo(() => {
-    return utMachines.map(machine => ({
-        ...machine,
-        projectName: projects.find(p => p.id === machine.projectId)?.name || 'N/A'
-    }));
-  }, [utMachines, projects]);
+    const machinesWithProject = useMemo(() => {
+        return utMachines.map(machine => ({
+            ...machine,
+            projectName: projects.find(p => p.id === machine.projectId)?.name || 'N/A'
+        }));
+    }, [utMachines, projects]);
     
   const getDateStyles = (dateString?: string): string => {
     if (!dateString) return '';
@@ -81,8 +80,8 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
 
   return (
     <>
+    <TooltipProvider>
     <div className="overflow-x-auto">
-      <TooltipProvider>
       <Table>
         <TableHeader>
           <TableRow>
@@ -136,8 +135,8 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
           ))}
         </TableBody>
       </Table>
-      </TooltipProvider>
     </div>
+    </TooltipProvider>
      {selectedMachineForCert && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} utMachine={selectedMachineForCert} />}
     </>
   );
