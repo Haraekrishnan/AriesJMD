@@ -100,7 +100,7 @@ export default function TpCertificationPage() {
                         <Accordion type="multiple" className="w-full space-y-4">
                             {groupedLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
-                                const canEditList = list.isEditable && (user?.role === 'Admin' || can.approve_store_requests);
+                                const canEditList = list.isEditable && (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller' || can.approve_store_requests);
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
                                         <div className="flex justify-between items-center p-4">
