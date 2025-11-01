@@ -25,7 +25,7 @@ import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialo
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed } = useAppContext();
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
@@ -43,9 +43,9 @@ export default function StoreInventoryPage() {
 
     const canManageInventory = useMemo(() => {
         if (!user) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('manage_inventory') ?? false;
-    }, [user, roles]);
+        // Combines Admin check with permission check
+        return user.role === 'Admin' || can.manage_inventory;
+    }, [user, can]);
 
     const { generalItems, dailyConsumables, jobConsumables } = useMemo(() => {
         const general: InventoryItem[] = [];
@@ -185,10 +185,10 @@ export default function StoreInventoryPage() {
                     <p className="text-muted-foreground">Manage and track all equipment and items.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/>TP Certification Lists</Link></Button>
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
                     {canManageInventory && (
                         <>
+                            <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/>TP Certification Lists</Link></Button>
                             <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
                             <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button>
@@ -343,5 +343,3 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
-
-    
