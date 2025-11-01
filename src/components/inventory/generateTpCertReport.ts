@@ -11,10 +11,12 @@ interface CertItem {
 }
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
+  // Construct the full URL if it's a relative path
   const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error('Failed to fetch header image');
   const buffer = await resp.arrayBuffer();
+  // convert to base64 for jsPDF
   const bytes = new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
@@ -23,7 +25,7 @@ async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: A
 }
 
 export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
-  const headerImagePath = '/aries-header.png';
+  const headerImagePath = '/images/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
@@ -105,7 +107,7 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
 
 
 export async function generateTpCertPdf(items: CertItem[]) {
-    const headerImagePath = '/aries-header.png';
+    const headerImagePath = '/images/aries-header.png';
     const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
