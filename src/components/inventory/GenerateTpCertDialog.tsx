@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileDown, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { generateTpCertExcel, generateTpCertPdf } from './generateTpCertReport';
 import { InventoryItem, UTMachine, DftMachine, TpCertList } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -118,27 +118,28 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     setSelectedItemName(null);
   };
 
-  const handleExport = async (type: 'excel' | 'pdf') => {
-    if (selectedItems.length === 0) {
-      toast({ title: 'No items to export', variant: 'destructive' });
-      return;
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      setIsOpen(true);
+    } else {
+      handleCloseAttempt();
     }
+  };
 
-    const exportData = selectedItems.map(item => ({
-      materialName: 'name' in item && item.name ? item.name : ('machineName' in item ? item.machineName : 'Unknown Item'),
-      manufacturerSrNo: 'serialNumber' in item && item.serialNumber ? item.serialNumber : '',
-    }));
-
-    try {
-      if (type === 'excel') {
-        await generateTpCertExcel(exportData);
-      } else {
-        await generateTpCertPdf(exportData);
-      }
-      toast({ title: `${type.toUpperCase()} Generated`, variant: 'default' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Export failed', description: String(err), variant: 'destructive' });
+  const handleCloseAttempt = () => {
+    if (selectedItems.length > 0) {
+      toast({
+        title: 'Save Required',
+        description: 'Please save the list before closing.',
+        variant: 'destructive',
+      });
+    } else {
+      // Clear state on close
+      setListName('');
+      setSelectedItems([]);
+      setSelectedItemName(null);
+      setSearchTerm('');
+      setIsOpen(false);
     }
   };
 
@@ -149,8 +150,16 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent 
+        className="max-w-4xl h-[90vh] flex flex-col"
+        onInteractOutside={(e) => {
+            if (selectedItems.length > 0) {
+                e.preventDefault();
+                handleCloseAttempt();
+            }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Generate TP Certification List</DialogTitle>
           <DialogDescription>
@@ -172,27 +181,25 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                 <Label>2. Search & Add (by Serial No. or Aries ID)</Label>
                  <Command className="rounded-lg border shadow-md">
                     <CommandInput
-                    placeholder="Search within selected item..."
-                    value={searchTerm}
-                    onValueChange={setSearchTerm}
-                    disabled={!selectedItemName}
+                      placeholder="Search within selected item..."
+                      value={searchTerm}
+                      onValueChange={setSearchTerm}
+                      disabled={!selectedItemName}
                     />
-                    {searchTerm && (
-                        <CommandList>
-                            <CommandEmpty>No results found.</CommandEmpty>
-                            <CommandGroup>
-                                {filteredItems.map(item => (
-                                <CommandItem
-                                    key={`${item.id}-${item.itemType}`}
-                                    onSelect={() => handleSelect(item)}
-                                    className="cursor-pointer"
-                                >
-                                    {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
-                                </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    )}
+                    <CommandList>
+                        <CommandEmpty>No results found.</CommandEmpty>
+                        <CommandGroup>
+                            {filteredItems.map(item => (
+                            <CommandItem
+                                key={`${item.id}-${item.itemType}`}
+                                onSelect={() => handleSelect(item)}
+                                className="cursor-pointer"
+                            >
+                                {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
+                            </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
                 </Command>
              </div>
         </div>
@@ -247,13 +254,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
             </Button>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-            <Button onClick={() => handleExport('excel')}>
-              <FileDown className="mr-2 h-4 w-4" /> Export Excel
-            </Button>
-            <Button onClick={() => handleExport('pdf')}>
-              <FileDown className="mr-2 h-4 w-4" /> Export PDF
-            </Button>
+            <Button variant="outline" onClick={handleCloseAttempt} disabled={selectedItems.length > 0 && !listName.trim()}>Close</Button>
           </div>
         </DialogFooter>
       </DialogContent>
