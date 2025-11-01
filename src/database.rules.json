@@ -5,9 +5,11 @@
     ".read": false,
     ".write": false,
     "users": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": "email"
+      ".indexOn": "email",
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
     },
     "roles": {
       ".read": true,
@@ -42,6 +44,10 @@
       ".write": true
     },
     "inventoryItems": {
+      ".read": true,
+      ".write": true
+    },
+    "inventoryTransferRequests": {
       ".read": true,
       ".write": true
     },
@@ -168,11 +174,12 @@
     },
     "feedback": {
         ".read": true,
-        ".write": true
+        ".write": "auth != null"
     },
     "unlockRequests": {
-        ".read": true,
+        ".read": "auth != null",
         ".write": true
     }
   }
 }
+

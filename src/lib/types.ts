@@ -816,3 +816,23 @@ export type TpCertList = {
         manufacturerSrNo: string;
     }[];
 };
+
+export type InventoryTransferRequest = {
+    id: string;
+    requesterId: string;
+    requestDate: string; // ISO
+    fromProjectId: string;
+    toProjectId: string;
+    reason: string;
+    items: {
+      itemId: string;
+      itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
+      name: string;
+      serialNumber: string;
+    }[];
+    status: 'Pending' | 'Approved' | 'Rejected';
+    approverId?: string;
+    approvalDate?: string;
+    comments: Comment[];
+    viewedByRequester?: boolean;
+};
