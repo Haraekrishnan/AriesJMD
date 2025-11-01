@@ -27,7 +27,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
         case 'Idle': return 'warning';
         case 'Damaged': return 'destructive';
         case 'Out of Service': return 'destructive';
-        default: 'outline';
+        default: return 'outline';
     }
 }
 
