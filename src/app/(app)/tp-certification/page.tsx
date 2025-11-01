@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, FileText, Trash2 } from 'lucide-react';
+import { FileDown, Trash2, Workbook, Edit } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -21,11 +21,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
+
 
 export default function TpCertificationPage() {
-    const { user, users, tpCertLists, deleteTpCertList } = useAppContext();
+    const { user, users, can, tpCertLists, deleteTpCertList } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const { toast } = useToast();
+    const [editingList, setEditingList] = useState<TpCertList | null>(null);
 
     const groupedLists = useMemo(() => {
         if (!selectedDate || !tpCertLists) return [];
@@ -35,20 +38,19 @@ export default function TpCertificationPage() {
     }, [selectedDate, tpCertLists]);
 
     const handleGenerateWorkbook = async () => {
-        if (!tpCertLists || tpCertLists.length === 0) {
-            toast({ title: "No lists found to generate a workbook.", variant: 'destructive' });
+        if (groupedLists.length === 0) {
+            toast({ title: "No lists found for this date.", variant: 'destructive' });
             return;
         }
 
         const workbook = new ExcelJS.Workbook();
         
-        // Iterate over all lists, not just the grouped ones
-        for (const list of tpCertLists) {
+        for (const list of groupedLists) {
             await generateTpCertExcel(list.items, workbook, list.name);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `TP_Cert_Master_Workbook.xlsx`);
+        saveAs(new Blob([buffer]), `TP_Cert_Workbook_${format(selectedDate!, 'yyyy-MM-dd')}.xlsx`);
     };
 
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
@@ -69,7 +71,12 @@ export default function TpCertificationPage() {
         toast({ title: 'List Deleted', variant: 'destructive' });
     };
 
+    const handleEditList = (list: TpCertList) => {
+        setEditingList(list);
+    };
+
     return (
+        <>
         <div className="space-y-8">
             <div className="flex justify-between items-center">
                 <div>
@@ -83,8 +90,8 @@ export default function TpCertificationPage() {
                     <CardTitle>View Saved Lists</CardTitle>
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                         <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
-                        <Button onClick={handleGenerateWorkbook} disabled={tpCertLists.length === 0}>
-                            <FileText className="mr-2 h-4 w-4" /> Generate Master Workbook
+                        <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
+                            <Workbook className="mr-2 h-4 w-4" /> Generate Day's Workbook
                         </Button>
                     </div>
                 </CardHeader>
@@ -93,39 +100,43 @@ export default function TpCertificationPage() {
                         <Accordion type="multiple" className="w-full space-y-4">
                             {groupedLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
+                                const canEditList = list.isEditable && (user?.role === 'Admin' || can.approve_store_requests);
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
-                                        <div className="flex justify-between w-full items-center p-4">
-                                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                        <AccordionTrigger className="p-4 hover:no-underline">
+                                            <div className="flex justify-between w-full items-center">
                                                 <div>
                                                     <p className="font-semibold text-lg">{list.name}</p>
                                                     <p className="text-sm text-muted-foreground">
                                                         Created by {creator?.name || 'Unknown'} at {format(parseISO(list.createdAt), 'p')}
                                                     </p>
                                                 </div>
-                                            </AccordionTrigger>
-                                            <div className="flex items-center gap-2 pl-4">
-                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
-                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
-                                                {user?.role === 'Admin' && (
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Delete this list?</AlertDialogTitle>
-                                                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteList(list.id)}>Delete</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    {canEditList && (
+                                                        <Button size="sm" variant="secondary" onClick={(e) => {e.stopPropagation(); handleEditList(list)}}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                    )}
+                                                    <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
+                                                    <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
+                                                    {user?.role === 'Admin' && (
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete this list?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteList(list.id)}>Delete</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
+                                        </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-0">
                                             <Table>
                                                 <TableHeader>
@@ -156,5 +167,13 @@ export default function TpCertificationPage() {
                 </CardContent>
             </Card>
         </div>
+        {editingList && (
+            <GenerateTpCertDialog 
+                isOpen={!!editingList} 
+                setIsOpen={() => setEditingList(null)}
+                existingList={editingList}
+            />
+        )}
+        </>
     );
 }
