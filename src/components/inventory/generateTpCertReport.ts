@@ -24,7 +24,8 @@ async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: A
   return { buffer, base64 };
 }
 
-export async function generateTpCertExcel(items: CertItem[], headerImagePath: string, existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
+export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
+  const headerImagePath = '/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
@@ -105,7 +106,8 @@ export async function generateTpCertExcel(items: CertItem[], headerImagePath: st
 }
 
 
-export async function generateTpCertPdf(items: CertItem[], headerImagePath: string) {
+export async function generateTpCertPdf(items: CertItem[]) {
+    const headerImagePath = '/aries-header.png';
     const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });

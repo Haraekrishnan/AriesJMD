@@ -68,7 +68,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   }, [selectedItemName, allSearchableItems]);
 
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return itemsOfSelectedName;
+    if (!searchTerm) return [];
     const term = searchTerm.toLowerCase();
     return itemsOfSelectedName.filter(item => 
         (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
@@ -147,23 +147,23 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                     onValueChange={setSearchTerm}
                     disabled={!selectedItemName}
                     />
-                    {selectedItemName && (
-                        <CommandList>
-                        {filteredItems.length === 0 && searchTerm ? (
-                            <CommandEmpty>No results found.</CommandEmpty>
-                        ) : null}
-                        <CommandGroup>
-                            {filteredItems.map(item => (
-                            <CommandItem
-                                key={`${item.id}-${item.itemType}`}
-                                onSelect={() => handleSelect(item)}
-                                className="cursor-pointer"
-                            >
-                                {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
-                            </CommandItem>
-                            ))}
-                        </CommandGroup>
-                        </CommandList>
+                    {searchTerm && (
+                      <CommandList>
+                      {filteredItems.length === 0 && searchTerm ? (
+                          <CommandEmpty>No results found.</CommandEmpty>
+                      ) : null}
+                      <CommandGroup>
+                          {filteredItems.map(item => (
+                          <CommandItem
+                              key={`${item.id}-${item.itemType}`}
+                              onSelect={() => handleSelect(item)}
+                              className="cursor-pointer"
+                          >
+                              {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
+                          </CommandItem>
+                          ))}
+                      </CommandGroup>
+                      </CommandList>
                     )}
                 </Command>
              </div>
