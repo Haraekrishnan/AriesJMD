@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -69,10 +70,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   }, [selectedItemName, allSearchableItems]);
 
   const filteredItems = useMemo(() => {
-    const itemsToShow = itemsOfSelectedName;
-    if (!searchTerm) return itemsToShow;
+    if (!searchTerm) {
+        return itemsOfSelectedName;
+    }
     const term = searchTerm.toLowerCase();
-    return itemsToShow.filter(item => 
+    return itemsOfSelectedName.filter(item => 
         (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
         ('ariesId' in item && item.ariesId && item.ariesId.toLowerCase().includes(term))
     );
@@ -175,7 +177,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                     onValueChange={setSearchTerm}
                     disabled={!selectedItemName}
                     />
-                    {searchTerm && filteredItems.length > 0 && (
+                    {searchTerm && (
                         <CommandList>
                             <CommandEmpty>No results found.</CommandEmpty>
                             <CommandGroup>
