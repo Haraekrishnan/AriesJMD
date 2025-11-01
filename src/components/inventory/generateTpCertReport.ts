@@ -11,12 +11,10 @@ interface CertItem {
 }
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
-  // Construct the full URL if it's a relative path
   const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error('Failed to fetch header image');
   const buffer = await resp.arrayBuffer();
-  // convert to base64 for jsPDF
   const bytes = new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
