@@ -1,5 +1,6 @@
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -366,7 +367,7 @@ export type ManpowerTrade = {
 
 export type Trade = string;
 export const RA_TRADES: Trade[] = ['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'];
-export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
+export const MANDATORY_DOCS = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
 
 export type MemoRecord = {
     id: string;
@@ -826,6 +827,8 @@ export const TRANSFER_REASONS = [
 
 export type TransferReason = (typeof TRANSFER_REASONS)[number];
 
+export type InventoryTransferStatus = 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+
 export type InventoryTransferRequest = {
     id: string;
     requesterId: string;
@@ -840,9 +843,13 @@ export type InventoryTransferRequest = {
       name: string;
       serialNumber: string;
     }[];
-    status: 'Pending' | 'Approved' | 'Rejected';
-    approverId?: string;
-    approvalDate?: string; // ISO
+    status: InventoryTransferStatus;
+    storeApproverId?: string;
+    storeApprovalDate?: string; // ISO
+    supervisorAcknowledgeId?: string;
+    supervisorAcknowledgeDate?: string; // ISO
     comments?: Comment[];
     viewedByRequester?: boolean;
 };
+
+      
