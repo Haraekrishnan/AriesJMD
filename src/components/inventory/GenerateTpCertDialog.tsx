@@ -1,10 +1,23 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileDown, Trash2 } from 'lucide-react';
@@ -25,21 +38,34 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   const [selectedItems, setSelectedItems] = useState<CertItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Compose unified list of items with itemType
   const allSearchableItems = useMemo(() => {
     const items: CertItem[] = [];
-    inventoryItems.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
-    utMachines.forEach(item => items.push({ ...item, itemType: 'UT Machine' }));
-    dftMachines.forEach(item => items.push({ ...item, itemType: 'DFT Machine' }));
+    inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
+    utMachines?.forEach(item => items.push({ ...item, itemType: 'UT Machine' }));
+    dftMachines?.forEach(item => items.push({ ...item, itemType: 'DFT Machine' }));
     return items;
   }, [inventoryItems, utMachines, dftMachines]);
 
+  // Updated search: show items even if some fields missing
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return [];
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      // If nothing typed, show top 10 items (helpful for quick selection)
+      return allSearchableItems.slice(0, 10);
+    }
     return allSearchableItems.filter(item => {
-      const serial = 'serialNumber' in item ? item.serialNumber.toLowerCase() : '';
-      const ariesId = 'ariesId' in item && item.ariesId ? item.ariesId.toLowerCase() : '';
-      return serial.includes(searchTerm.toLowerCase()) || ariesId.includes(searchTerm.toLowerCase());
-    }).slice(0, 10); // Limit results for performance
+      const candidates: string[] = [];
+
+      if ('name' in item && item.name) candidates.push(String(item.name).toLowerCase());
+      if ('machineName' in item && item.machineName) candidates.push(String(item.machineName).toLowerCase());
+      if ('serialNumber' in item && item.serialNumber) candidates.push(String(item.serialNumber).toLowerCase());
+      if ('ariesId' in item && item.ariesId) candidates.push(String(item.ariesId).toLowerCase());
+      if (item.itemType) candidates.push(item.itemType.toLowerCase());
+
+      // match if any candidate includes the term
+      return candidates.some(c => c.includes(term));
+    }).slice(0, 50); // limit results for performance
   }, [searchTerm, allSearchableItems]);
 
   const handleSelect = (item: CertItem) => {
@@ -52,31 +78,40 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   const handleRemove = (itemId: string, itemType: string) => {
     setSelectedItems(prev => prev.filter(item => !(item.id === itemId && item.itemType === itemType)));
   };
-  
-  const handleExport = (type: 'excel' | 'pdf') => {
+
+  const handleExport = async (type: 'excel' | 'pdf') => {
     if (selectedItems.length === 0) {
-      toast({ title: "No items to export", variant: "destructive" });
+      toast({ title: 'No items to export', variant: 'destructive' });
       return;
     }
+
+    // map to the minimal shape required by generators
     const exportData = selectedItems.map(item => ({
-        materialName: 'name' in item ? item.name : item.machineName,
-        manufacturerSrNo: item.serialNumber,
+      materialName: 'name' in item && item.name ? item.name : ('machineName' in item ? item.machineName : 'Unknown Item'),
+      manufacturerSrNo: 'serialNumber' in item && item.serialNumber ? item.serialNumber : '',
+      newOrOld: 'OLD', // default value — change if you want to use a different field
     }));
-    
-    if (type === 'excel') {
-        generateTpCertExcel(exportData);
-    } else {
-        generateTpCertPdf(exportData);
+
+    try {
+      // NOTE: header image path — place image at public/images/aries-header.png
+      const headerImagePath = '/images/aries-header.png';
+
+      if (type === 'excel') {
+        await generateTpCertExcel(exportData, headerImagePath);
+        toast({ title: 'Excel generated', variant: 'default' });
+      } else {
+        await generateTpCertPdf(exportData, headerImagePath);
+        toast({ title: 'PDF generated', variant: 'default' });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Export failed', description: String(err), variant: 'destructive' });
     }
   };
 
   const getItemName = (item: CertItem) => {
-    if ('name' in item && item.name) {
-      return item.name;
-    }
-    if ('machineName' in item && item.machineName) {
-      return item.machineName;
-    }
+    if ('name' in item && item.name) return item.name;
+    if ('machineName' in item && item.machineName) return item.machineName;
     return 'Unknown Item';
   };
 
@@ -89,30 +124,31 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
             Search and add items to generate a list for third-party certification.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="relative">
           <Command className="rounded-lg border shadow-md">
-            <CommandInput 
-              placeholder="Search by Serial No or Aries ID..."
+            <CommandInput
+              placeholder="Search by name, Serial No, Aries ID or type..."
               value={searchTerm}
               onValueChange={setSearchTerm}
             />
-            {filteredItems.length > 0 && (
-                <CommandList>
-                    <CommandEmpty>No results found.</CommandEmpty>
-                    <CommandGroup>
-                        {filteredItems.map(item => (
-                        <CommandItem
-                            key={`${item.id}-${item.itemType}`}
-                            onSelect={() => handleSelect(item)}
-                            className="cursor-pointer"
-                        >
-                           {getItemName(item)} (SN: {item.serialNumber})
-                        </CommandItem>
-                        ))}
-                    </CommandGroup>
-                </CommandList>
-            )}
+            <CommandList>
+              {filteredItems.length === 0 ? (
+                <CommandEmpty>No results found.</CommandEmpty>
+              ) : (
+                <CommandGroup>
+                  {filteredItems.map(item => (
+                    <CommandItem
+                      key={`${item.id}-${item.itemType}`}
+                      onSelect={() => handleSelect(item)}
+                      className="cursor-pointer"
+                    >
+                      {getItemName(item)} — (SN: {item.serialNumber || 'N/A'}) — [{item.itemType}]
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
           </Command>
         </div>
 
@@ -133,7 +169,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
                     <TableRow key={`${item.id}-${item.itemType}`}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{getItemName(item)}</TableCell>
-                      <TableCell>{item.serialNumber}</TableCell>
+                      <TableCell>{item.serialNumber || '-'}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleRemove(item.id, item.itemType)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -156,8 +192,12 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
         <DialogFooter className="pt-4">
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
           <div className="flex gap-2">
-            <Button onClick={() => handleExport('excel')}><FileDown className="mr-2 h-4 w-4" /> Export Excel</Button>
-            <Button onClick={() => handleExport('pdf')}><FileDown className="mr-2 h-4 w-4" /> Export PDF</Button>
+            <Button onClick={() => handleExport('excel')}>
+              <FileDown className="mr-2 h-4 w-4" /> Export Excel
+            </Button>
+            <Button onClick={() => handleExport('pdf')}>
+              <FileDown className="mr-2 h-4 w-4" /> Export PDF
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
