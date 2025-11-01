@@ -104,7 +104,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       return;
     }
 
-    if (newStatus === 'Completed' && taskToDisplay.requiresAttachmentForCompletion && !attachment && !taskToDisplay.attachment) {
+    if (newStatus === 'Done' && taskToDisplay.requiresAttachmentForCompletion && !attachment && !taskToDisplay.attachment) {
       toast({ variant: 'destructive', title: 'Attachment required', description: 'This task requires a file attachment for completion.' });
       return;
     }
@@ -118,14 +118,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 url: e.target?.result as string,
             };
             requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, fileData);
-            setNewComment('');
-            if (setIsOpen) setIsOpen(false);
         };
         reader.readAsDataURL(attachment);
     } else {
         requestTaskStatusChange(taskToDisplay.id, newStatus, newComment);
-        setNewComment('');
     }
+    
+    setNewComment('');
+    setIsOpen(false);
     toast({ title: 'Status Change Requested', description: 'Your request has been sent for approval.' });
   };
   
@@ -197,7 +197,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
 
   const renderActionButtons = () => {
-    if (taskToDisplay.status === 'Pending Approval') {
+    if (taskToDisplay.approvalState === 'status_pending') {
         if (isApprover) {
             return (
                 <div className='flex gap-2'>
@@ -234,7 +234,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           <DialogDescription>
             Assigned by <span className='font-semibold'>{creator?.name}</span> to <span className='font-semibold'>{assignees.map(a => a.name).join(', ')}</span>.
           </DialogDescription>
-          {taskToDisplay.status === 'Pending Approval' && (
+          {taskToDisplay.approvalState === 'status_pending' && (
              <Alert variant="default" className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700">
                 <BellRing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertTitle className="text-blue-800 dark:text-blue-300">Approval Pending</AlertTitle>
