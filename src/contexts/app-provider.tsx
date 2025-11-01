@@ -817,30 +817,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasksById[taskId];
     if (!task) return;
-  
-    // Directly update the status to 'In Progress' without approval
+
+    // In-progress change continues to be direct
     if (newStatus === 'In Progress') {
-      const updates: { [key: string]: any } = {};
+      const updates: Record<string, any> = {};
       updates[`tasks/${taskId}/status`] = 'In Progress';
       updates[`tasks/${taskId}/subtasks/${user.id}/status`] = 'In Progress';
-      updates[`tasks/${taskId}/updatedAt`] = new Date().toISOString();
-  
+      updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
       await update(ref(rtdb), updates);
-      addComment(taskId, comment || `Status updated to In Progress`);
+      addComment(taskId, comment || 'Started progress');
       toast({ title: 'Task status updated to In Progress' });
       return;
     }
-  
-    // For 'Done', require approval
-    const { approverId } = task;
+
+    // For completion -> create statusRequest object
+    const approverId = task.approverId;
     if (!approverId) {
       toast({ variant: 'destructive', title: 'No approver set for this task.' });
       return;
     }
-  
-    const updates: Record<string, any> = {};
-  
-    // This is crucial — statusRequest object ensures it appears in both panels
+
     const statusRequest = {
       requestedBy: user.id,
       newStatus,
@@ -849,22 +845,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       date: new Date().toISOString(),
       status: 'Pending',
     };
-  
+
+    // Write the request and set approvalState; do NOT overwrite other fields unnecessarily
+    const updates: Record<string, any> = {};
     updates[`tasks/${taskId}/statusRequest`] = statusRequest;
-  
-    // Update a consistent field name that your UI listens for
     updates[`tasks/${taskId}/approvalState`] = 'status_pending';
-  
-    // Keep main task status as 'Pending Approval' temporarily for Kanban view
-    updates[`tasks/${taskId}/status`] = 'Pending Approval';
-  
+    updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+    // Do NOT force task.status here — rely on statusRequest to show it as pending. (Optional: you may set a transient flag.)
     await update(ref(rtdb), updates);
-  
+
     addActivityLog(user.id, 'Task Completion Requested', task.title);
     addComment(taskId, comment || 'Marked for completion approval');
-  
-    // Send email to approver
-    const approver = users.find((u) => u.id === approverId);
+
+    const approver = users.find(u => u.id === approverId);
     if (approver?.email) {
       createAndSendNotification(
         approver.email,
@@ -881,61 +874,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Task'
       );
     }
-  
     toast({ title: 'Completion request sent for approval' });
   }, [user, users, tasksById, addActivityLog, addComment, toast]);
   
   const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if (!user) return;
     const task = tasksById[taskId];
-    if (!task || !task.statusRequest || task.status !== 'Pending Approval') return;
+    if (!task || !task.statusRequest || task.statusRequest.status !== 'Pending') return;
 
-    const { newStatus, attachment, requestedBy } = task.statusRequest;
+    const { newStatus, requestedBy, attachment } = task.statusRequest;
 
     if (newStatus !== 'Done') {
-        toast({ variant: 'destructive', title: 'Invalid Approval Action', description: 'This approval is not for task completion.' });
+        toast({ variant: 'destructive', title: 'Invalid Approval Action' });
         return;
     }
-    
-    let updatedComment = `Status change to '${newStatus}' approved by ${user.name}.`;
-    if (comment.trim()) {
-        updatedComment += ` Comment: ${comment}`;
-    }
 
-    addComment(taskId, updatedComment);
+    const approvalComment = `Status change to '${newStatus}' approved by ${user.name}. ${comment ? 'Comment: ' + comment : ''}`;
+    addComment(taskId, approvalComment);
 
-    const updates: { [key: string]: any } = {};
-    
-    // Update the subtask of the requester
+    const updates: Record<string, any> = {};
+    // mark requester subtask done
     if (requestedBy) {
       updates[`tasks/${taskId}/subtasks/${requestedBy}/status`] = 'Done';
     }
 
-    // Check if ALL subtasks are now 'Done'
+    // compute if all subtasks are done (we'll construct a provisional object)
     const currentSubtasks = task.subtasks || {};
-    const updatedSubtasks = {
-      ...currentSubtasks,
-      [requestedBy]: { ...currentSubtasks[requestedBy], status: 'Done' }
-    };
-
-    const allDone = Object.values(updatedSubtasks).every(st => st.status === 'Done');
+    const provisional = { ...currentSubtasks, [requestedBy]: { ...(currentSubtasks[requestedBy] || {}), status: 'Done' } };
+    const allDone = Object.values(provisional).every((st: any) => st.status === 'Done');
 
     if (allDone) {
       updates[`tasks/${taskId}/status`] = 'Done';
       updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
     } else {
-      updates[`tasks/${taskId}/status`] = 'In Progress'; // Or 'Partially Completed' if you have such a status
+      updates[`tasks/${taskId}/status`] = 'In Progress';
     }
-    
-    updates[`tasks/${taskId}/approvalState`] = 'none';
-    updates[`tasks/${taskId}/statusRequest`] = null;
 
-    if (attachment) {
-      updates[`tasks/${taskId}/attachment`] = attachment;
-    }
-    
+    updates[`tasks/${taskId}/statusRequest`] = null;
+    updates[`tasks/${taskId}/approvalState`] = 'none';
+    if (attachment) updates[`tasks/${taskId}/attachment`] = attachment;
+
     update(ref(rtdb), updates);
-    toast({ title: 'Task Completed' });
+    toast({ title: allDone ? 'Task Completed' : 'Subtask marked done, task still in progress' });
   }, [user, tasksById, addComment, toast]);
 
   const submitTaskForApproval = useCallback((taskId: string) => {
@@ -1050,21 +1030,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const task = tasksById[taskId];
     if (!task || !task.statusRequest) return;
   
-    addComment(taskId, `Status change to 'Done' rejected by ${user.name}. Reason: ${comment}`);
+    addComment(taskId, `Status change to '${task.statusRequest.newStatus}' rejected by ${user.name}. Reason: ${comment}`);
   
-    const updates: { [key: string]: any } = {};
+    const requesterId = task.statusRequest.requestedBy;
+  
+    const updates: Record<string, any> = {};
     updates[`tasks/${taskId}/approvalState`] = 'returned';
     updates[`tasks/${taskId}/statusRequest`] = null;
-    updates[`tasks/${taskId}/status`] = 'In Progress'; // Revert main status
+    updates[`tasks/${taskId}/status`] = 'In Progress';
   
-    // Revert only the requester's subtask
-    const requesterId = task.statusRequest.requestedBy;
-    if (requesterId && task.subtasks?.[requesterId]) {
+    if (requesterId) {
       updates[`tasks/${taskId}/subtasks/${requesterId}/status`] = 'In Progress';
     }
-    
+  
     update(ref(rtdb), updates);
-    toast({ title: 'Task Returned', description: 'The task has been returned to the assignee for modifications.' });
+    toast({ title: 'Task Returned', description: 'The task has been returned to the assignee for updates.' });
   }, [user, tasksById, addComment, toast]);
 
   const markTaskAsViewed = useCallback((taskId: string) => {

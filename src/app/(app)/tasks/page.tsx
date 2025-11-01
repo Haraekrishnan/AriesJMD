@@ -39,19 +39,23 @@ export default function TasksPage() {
 
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
+    // Show tasks where I am the approver and there's a pending statusRequest
     return tasks.filter(task => 
       task.approverId === user.id &&
-      task.status === 'Pending Approval' &&
-      task.statusRequest?.status === 'Pending'
+      task.statusRequest?.status === 'Pending' &&
+      task.statusRequest?.newStatus === 'Done' // optional safety check
     );
   }, [tasks, user]);
   
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
+      // A submission request by me that's still pending
       const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
+      // Returned tasks to me (explicit returned state)
       const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
-      const isAwaitingCompletionApproval = task.status === 'Pending Approval' && task.statusRequest?.requestedBy === user.id;
+      // Also include tasks where I requested completion and the statusRequest still present
+      const isAwaitingCompletionApproval = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
       return isMySubmittedTask || isReturnedToMe || isAwaitingCompletionApproval;
     });
   }, [tasks, user]);
@@ -70,9 +74,11 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
-      // Exclude tasks that are pending approval from the main board view
-      if (task.status === 'Pending Approval') {
-        return false;
+      // If there's a pending statusRequest for completion, show it only to approver/requester.
+      if (task.statusRequest?.status === 'Pending') {
+        const isApprover = task.approverId === user?.id;
+        const isRequester = task.statusRequest?.requestedBy === user?.id;
+        return isApprover || isRequester;
       }
       
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
