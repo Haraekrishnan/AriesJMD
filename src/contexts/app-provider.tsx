@@ -1201,7 +1201,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     await set(newCommentRef, newComment);
     
-    // Also update lastUpdated and viewedBy status
     const updates: {[key: string]: any} = {
         lastUpdated: new Date().toISOString(),
         [`viewedBy/${user.id}`]: true,
@@ -2495,19 +2494,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Item Updated', item.name);
   }, [user, addActivityLog]);
 
-  const updateInventoryItemGroup = useCallback((itemName: string, itemUpdates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
-    if(!user || user.role !== 'Admin') return;
-    const updates: { [key: string]: any } = {};
-    inventoryItems.forEach(item => {
-      if (item.name === itemName) {
-        updates[`inventoryItems/${item.id}/tpInspectionDueDate`] = itemUpdates.tpInspectionDueDate;
-        updates[`inventoryItems/${item.id}/certificateUrl`] = itemUpdates.certificateUrl;
-        updates[`inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
-      }
+  const updateInventoryItemGroup = useCallback((itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
+    if (!user || user.role !== 'Admin') return;
+    const dbUpdates: { [key: string]: any } = {};
+    const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === updates.tpInspectionDueDate);
+
+    if (itemsToUpdate.length === 0) {
+      toast({ title: 'No Matching Items', description: 'No items were found with that name and TP due date.', variant: 'destructive' });
+      return;
+    }
+
+    itemsToUpdate.forEach(item => {
+        dbUpdates[`inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
+        dbUpdates[`inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
     });
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Bulk TP Cert Update', `Updated ${Object.keys(updates).length / 3} items for ${itemName}`);
-  }, [user, inventoryItems, addActivityLog]);
+    update(ref(rtdb), dbUpdates);
+    addActivityLog(user.id, 'Bulk TP Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
+    toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
+}, [user, inventoryItems, addActivityLog, toast]);
 
   const deleteInventoryItem = useCallback((itemId: string) => {
     const item = inventoryItems.find(i => i.id === itemId);
