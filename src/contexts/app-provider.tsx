@@ -1647,19 +1647,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addMemoOrWarning = useCallback((manpowerId: string, memo: Omit<MemoRecord, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/memoRecords`));
-    const newRecord: Omit<MemoRecord, 'id'> = { ...memo, date: new Date().toISOString() };
-    set(newRef, newRecord);
+    if (!user) return;
+    const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory`));
+    const newRecordWithId: MemoRecord = {
+      ...memo,
+      id: newRef.key!,
+      date: new Date().toISOString()
+    };
+    set(newRef, newRecordWithId);
   }, [user]);
 
   const updateMemoRecord = useCallback((manpowerId: string, memo: MemoRecord) => {
     const { id, ...data } = memo;
-    update(ref(rtdb, `manpowerProfiles/${manpowerId}/memoRecords/${id}`), data);
+    update(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory/${id}`), data);
   }, []);
 
   const deleteMemoRecord = useCallback((manpowerId: string, memoId: string) => {
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/memoRecords/${memoId}`));
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory/${memoId}`));
   }, []);
 
   const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
@@ -2486,7 +2490,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!user) return;
     const { id, ...data } = item;
     const dataToSave = { 
-      ...data,
+      ...data, 
       lastUpdated: new Date().toISOString(),
       movedToProjectId: data.movedToProjectId || null,
     };
