@@ -56,7 +56,7 @@ export default function TpCertificationPage() {
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
         try {
             if (type === 'excel') {
-                await generateTpCertExcel(list.items);
+                await generateTpCertExcel(list.items, undefined, list.name);
             } else {
                 await generateTpCertPdf(list.items);
             }
@@ -103,40 +103,40 @@ export default function TpCertificationPage() {
                                 const canEditList = list.isEditable && (user?.role === 'Admin' || can.approve_store_requests);
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
-                                        <AccordionTrigger className="p-4 hover:no-underline">
-                                            <div className="flex justify-between w-full items-center">
+                                        <div className="flex justify-between items-center p-4">
+                                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
                                                 <div>
                                                     <p className="font-semibold text-lg">{list.name}</p>
                                                     <p className="text-sm text-muted-foreground">
                                                         Created by {creator?.name || 'Unknown'} at {format(parseISO(list.createdAt), 'p')}
                                                     </p>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    {canEditList && (
-                                                        <Button size="sm" variant="secondary" onClick={(e) => {e.stopPropagation(); handleEditList(list)}}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
-                                                    )}
-                                                    <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
-                                                    <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
-                                                    {user?.role === 'Admin' && (
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Delete this list?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteList(list.id)}>Delete</AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    )}
-                                                </div>
+                                            </AccordionTrigger>
+                                            <div className="flex items-center gap-2 pl-4">
+                                                {canEditList && (
+                                                    <Button size="sm" variant="secondary" onClick={() => handleEditList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                )}
+                                                <Button size="sm" variant="outline" onClick={() => handleGenerateSingleFile(list, 'excel')}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
+                                                <Button size="sm" variant="outline" onClick={() => handleGenerateSingleFile(list, 'pdf')}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
+                                                {user?.role === 'Admin' && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button size="icon" variant="destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete this list?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteList(list.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
                                             </div>
-                                        </AccordionTrigger>
+                                        </div>
                                         <AccordionContent className="p-4 pt-0">
                                             <Table>
                                                 <TableHeader>
