@@ -16,7 +16,7 @@ export async function generateTpCertExcel(items: CertItem[]) {
   });
 
   // Header image
-  const image = await fetch("/aries-header.png").then((r) => r.blob());
+  const image = await fetch("/images/aries-header.png").then((r) => r.blob());
   const buffer = await image.arrayBuffer();
   const imageId = workbook.addImage({
     buffer,
@@ -139,7 +139,7 @@ export async function generateTpCertPdf(items: CertItem[]) {
 
   // Header image
   const img = new Image();
-  img.src = "/aries-header.png";
+  img.src = "/images/aries-header.png";
   await new Promise((resolve) => {
     img.onload = resolve;
   });

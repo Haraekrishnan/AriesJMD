@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -24,6 +25,8 @@ import { FileDown, Trash2 } from 'lucide-react';
 import { generateTpCertExcel, generateTpCertPdf } from './generateTpCertReport';
 import { InventoryItem, UTMachine, DftMachine } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Label } from '../ui/label';
 
 interface GenerateTpCertDialogProps {
   isOpen: boolean;
@@ -36,9 +39,9 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
   const { inventoryItems, utMachines, dftMachines } = useAppContext();
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<CertItem[]>([]);
+  const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Compose unified list of items with itemType
   const allSearchableItems = useMemo(() => {
     const items: CertItem[] = [];
     inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
@@ -46,26 +49,38 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
     dftMachines?.forEach(item => items.push({ ...item, itemType: 'DFT Machine' }));
     return items;
   }, [inventoryItems, utMachines, dftMachines]);
+  
+  const uniqueItemNames = useMemo(() => {
+    const names = new Set<string>();
+    allSearchableItems.forEach(item => {
+        const name = 'name' in item ? item.name : ('machineName' in item ? item.machineName : null);
+        if (name) names.add(name);
+    });
+    return Array.from(names).sort();
+  }, [allSearchableItems]);
+
+  const itemsOfSelectedName = useMemo(() => {
+    if (!selectedItemName) return [];
+    return allSearchableItems.filter(item => {
+        const name = 'name' in item ? item.name : ('machineName' in item ? item.machineName : '');
+        return name === selectedItemName;
+    });
+  }, [selectedItemName, allSearchableItems]);
 
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return allSearchableItems; // ✅ show all by default
-    return allSearchableItems.filter(item => {
-      const name = ('name' in item ? item.name : item.machineName || '').toLowerCase();
-      const serial = 'serialNumber' in item ? item.serialNumber.toLowerCase() : '';
-      const ariesId = 'ariesId' in item && item.ariesId ? item.ariesId.toLowerCase() : '';
-      return (
-        name.includes(searchTerm.toLowerCase()) ||
-        serial.includes(searchTerm.toLowerCase()) ||
-        ariesId.includes(searchTerm.toLowerCase())
-      );
-    }).slice(0, 50); // show up to 50 results
-  }, [searchTerm, allSearchableItems]);
+    if (!searchTerm) return itemsOfSelectedName;
+    const term = searchTerm.toLowerCase();
+    return itemsOfSelectedName.filter(item => 
+        (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
+        ('ariesId' in item && item.ariesId && item.ariesId.toLowerCase().includes(term))
+    );
+  }, [searchTerm, itemsOfSelectedName]);
+
 
   const handleSelect = (item: CertItem) => {
     if (!selectedItems.some(i => i.id === item.id && i.itemType === item.itemType)) {
       setSelectedItems(prev => [...prev, item]);
     }
-    setSearchTerm('');
   };
 
   const handleRemove = (itemId: string, itemType: string) => {
@@ -78,7 +93,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
       return;
     }
 
-    // map to the minimal shape required by generators
     const exportData = selectedItems.map(item => ({
       materialName: 'name' in item && item.name ? item.name : ('machineName' in item ? item.machineName : 'Unknown Item'),
       manufacturerSrNo: 'serialNumber' in item && item.serialNumber ? item.serialNumber : '',
@@ -114,31 +128,45 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen }: GenerateTpCe
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative">
-          <Command className="rounded-lg border shadow-md">
-            <CommandInput
-              placeholder="Search by name, Serial No, Aries ID or type..."
-              value={searchTerm}
-              onValueChange={setSearchTerm}
-            />
-            <CommandList>
-              {filteredItems.length === 0 ? (
-                <CommandEmpty>No results found.</CommandEmpty>
-              ) : (
-                <CommandGroup>
-                  {filteredItems.map(item => (
-                    <CommandItem
-                      key={`${item.id}-${item.itemType}`}
-                      onSelect={() => handleSelect(item)}
-                      className="cursor-pointer"
-                    >
-                      {getItemName(item)} — (SN: {item.serialNumber || 'N/A'}) — [{item.itemType}]
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-            </CommandList>
-          </Command>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label>1. Select Item Type</Label>
+                <Select onValueChange={setSelectedItemName} value={selectedItemName || ''}>
+                    <SelectTrigger><SelectValue placeholder="Select an item..." /></SelectTrigger>
+                    <SelectContent>
+                        {uniqueItemNames.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="space-y-2">
+                <Label>2. Search & Add (by Serial No. or Aries ID)</Label>
+                 <Command className="rounded-lg border shadow-md">
+                    <CommandInput
+                    placeholder="Search within selected item..."
+                    value={searchTerm}
+                    onValueChange={setSearchTerm}
+                    disabled={!selectedItemName}
+                    />
+                    {selectedItemName && (
+                        <CommandList>
+                        {filteredItems.length === 0 && searchTerm ? (
+                            <CommandEmpty>No results found.</CommandEmpty>
+                        ) : null}
+                        <CommandGroup>
+                            {filteredItems.map(item => (
+                            <CommandItem
+                                key={`${item.id}-${item.itemType}`}
+                                onSelect={() => handleSelect(item)}
+                                className="cursor-pointer"
+                            >
+                                {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
+                            </CommandItem>
+                            ))}
+                        </CommandGroup>
+                        </CommandList>
+                    )}
+                </Command>
+             </div>
         </div>
 
         <div className="flex-1 mt-4 border rounded-md overflow-hidden">
