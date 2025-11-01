@@ -988,6 +988,8 @@ export default function JobRecordSheet() {
                         <TableBody>
                             {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || [])).map((profile, index) => {
                                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
+                                const prevMonthRecord = jobRecords[prevMonthKey]?.records?.[profile.id] || {};
+                                const plant = record.plant ?? prevMonthRecord.plant ?? 'Unassigned';
                                 const employeeRecord = record.days || {};
                                 const dailyOvertime = record.dailyOvertime || {};
                                 const dailyComments = record.dailyComments || {};
@@ -1035,7 +1037,7 @@ export default function JobRecordSheet() {
                                             <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                         </TableCell>
                                         <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
-                                        <Select defaultValue={record.plant || 'Unassigned'} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                        <Select defaultValue={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Unassigned">Unassigned</SelectItem>
@@ -1248,5 +1250,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-    
