@@ -64,51 +64,51 @@ export default function JobRecordSheet() {
         const filtered = searchTerm
             ? manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
             : manpowerProfiles;
-        
+    
         const groups: { [key: string]: ManpowerProfile[] } = {};
-        const plantProjects = (jobRecordPlants || []).map(p => p.name);
-        const availablePlants = new Set(plantProjects);
+        const plantNames = (jobRecordPlants || []).map(p => p.name);
+        const availablePlants = new Set(plantNames);
         availablePlants.add('Unassigned');
-
-        availablePlants.forEach(p => groups[p] = []);
-
+    
+        availablePlants.forEach(p => { groups[p] = []; });
+    
         filtered.forEach(profile => {
             const plantForCurrentMonth = jobRecords[monthKey]?.records?.[profile.id]?.plant;
             const plantForPrevMonth = jobRecords[prevMonthKey]?.records?.[profile.id]?.plant;
             const plantAssignment = plantForCurrentMonth ?? plantForPrevMonth ?? 'Unassigned';
-
+    
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
             } else {
                 groups['Unassigned'].push(profile);
             }
         });
-
+    
+        // Apply sorting only if not searching
         if (!searchTerm) {
-          Object.keys(groups).forEach(plantName => {
-              const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
-              const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
-              const order = currentOrder || prevOrder;
-      
-              groups[plantName].sort((a, b) => {
-                  if (order && Array.isArray(order)) {
-                      const indexA = order.indexOf(a.id);
-                      const indexB = order.indexOf(b.id);
-      
-                      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                      if (indexA !== -1) return -1;
-                      if (indexB !== -1) return 1;
-                  }
-                  // Fallback to original index if not in any order list
-                  const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
-                  const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
-                  return originalAIndex - originalBIndex;
-              });
-          });
-      }
+            Object.keys(groups).forEach(plantName => {
+                const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
+                const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
+                const order = currentOrder || prevOrder;
+    
+                groups[plantName].sort((a, b) => {
+                    if (order && Array.isArray(order)) {
+                        const indexA = order.indexOf(a.id);
+                        const indexB = order.indexOf(b.id);
+                        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                        if (indexA !== -1) return -1;
+                        if (indexB !== -1) return 1;
+                    }
+                    // If not in any order list, maintain original relative order from manpowerProfiles
+                    const originalAIndex = manpowerProfiles.findIndex(p => p.id === a.id);
+                    const originalBIndex = manpowerProfiles.findIndex(p => p.id === b.id);
+                    return originalAIndex - originalBIndex;
+                });
+            });
+        }
         
         return groups;
-
+    
     }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
 
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
