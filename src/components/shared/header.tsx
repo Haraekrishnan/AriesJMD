@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList } from 'lucide-react';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList, FileText } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
@@ -28,6 +29,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount, show: true },
+      { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: true },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: true },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
       { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
