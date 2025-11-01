@@ -5,12 +5,12 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, FileText, Trash2, Workbook } from 'lucide-react';
+import { FileDown, FileText, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/inventory/generateTpCertReport';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import type { TpCertList } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +28,7 @@ export default function TpCertificationPage() {
     const { toast } = useToast();
 
     const groupedLists = useMemo(() => {
-        if (!selectedDate) return [];
+        if (!selectedDate || !tpCertLists) return [];
         const dateKey = format(selectedDate, 'yyyy-MM-dd');
         return (tpCertLists || []).filter(list => list.date === dateKey)
             .sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
@@ -41,10 +41,9 @@ export default function TpCertificationPage() {
         }
 
         const workbook = new ExcelJS.Workbook();
-        const headerImagePath = '/aries-header.png';
         
         for (const list of groupedLists) {
-            await generateTpCertExcel(list.items, headerImagePath, workbook, list.name);
+            await generateTpCertExcel(list.items, workbook, list.name);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -52,12 +51,11 @@ export default function TpCertificationPage() {
     };
 
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
-        const headerImagePath = '/aries-header.png';
         try {
             if (type === 'excel') {
-                await generateTpCertExcel(list.items, headerImagePath);
+                await generateTpCertExcel(list.items);
             } else {
-                await generateTpCertPdf(list.items, headerImagePath);
+                await generateTpCertPdf(list.items);
             }
             toast({ title: `${type.toUpperCase()} Generated` });
         } catch (error) {
@@ -85,7 +83,7 @@ export default function TpCertificationPage() {
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                         <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
                         <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
-                            <Workbook className="mr-2 h-4 w-4" /> Generate Day's Workbook
+                            <FileText className="mr-2 h-4 w-4" /> Generate Day's Workbook
                         </Button>
                     </div>
                 </CardHeader>
