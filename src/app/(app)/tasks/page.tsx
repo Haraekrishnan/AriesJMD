@@ -41,7 +41,7 @@ export default function TasksPage() {
     if (!user) return [];
     return tasks.filter(task => 
       task.approverId === user.id &&
-      task.approvalState === 'status_pending' &&
+      task.status === 'Pending Approval' &&
       task.statusRequest?.status === 'Pending'
     );
   }, [tasks, user]);
@@ -69,11 +69,9 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
-      // ✅ Show pending approval tasks only to their approver or requester
+      // Exclude tasks that are pending approval from the main board view
       if (task.status === 'Pending Approval') {
-        if (task.approverId !== user?.id && task.statusRequest?.requestedBy !== user?.id) {
-          return false;
-        }
+        return false;
       }
       
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
@@ -263,5 +261,3 @@ export default function TasksPage() {
     </>
   );
 }
-
-    
