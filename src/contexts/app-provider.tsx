@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem, TpCertList, InventoryTransferRequest } from '../lib/types';
+import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem, TpCertList, InventoryTransferRequest, TRANSFER_REASONS } from '../lib/types';
 import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -216,6 +216,8 @@ type AppContextType = {
   deleteInventoryItemGroup: (itemName: string) => void;
   renameInventoryItemGroup: (oldName: string, newName: string) => void;
   addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => void;
+  approveInventoryTransferRequest: (request: InventoryTransferRequest) => void;
+  rejectInventoryTransferRequest: (requestId: string, comment: string) => void;
   addCertificateRequest: (requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
   addCertificateRequestComment: (requestId: string, comment: string) => void;
@@ -2164,6 +2166,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
   }, [user]);
 
+  const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+    if (!user) return;
+
+    const newRequestRef = push(ref(rtdb, 'ppeRequests'));
+    
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request Created', date: new Date().toISOString() };
+    const newCommentRef = push(ref(rtdb, `ppeRequests/${newRequestRef.key}/comments`));
+
+    const newRequest: Omit<PpeRequest, 'id'> = {
+        ...requestData,
+        requesterId: user.id,
+        date: new Date().toISOString(),
+        status: 'Pending',
+        comments: { [newCommentRef.key!]: { ...newComment, id: newCommentRef.key! } },
+        viewedByRequester: true,
+    };
+
+    set(newRequestRef, newRequest);
+    
+    const employee = manpowerProfiles.find(p => p.id === requestData.manpowerId);
+    const employeeName = employee?.name || 'Unknown Employee';
+    
+    addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${employeeName}`);
+    
+    const historyArray = Array.isArray(employee?.ppeHistory) ? employee.ppeHistory : Object.values(employee?.ppeHistory || {});
+    const lastIssue = historyArray
+      .filter(h => h && h.ppeType === requestData.ppeType)
+      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+
+    const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
+    const stockInfo = requestData.ppeType === 'Coverall' && stockItem && 'sizes' in stockItem && stockItem.sizes
+      ? `${stockItem.sizes[requestData.size] || 0} in stock`
+      : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
+
+    const emailData = {
+        requesterName: user.name,
+        employeeName,
+        ppeType: requestData.ppeType,
+        size: requestData.size,
+        quantity: requestData.quantity || 1,
+        requestType: requestData.requestType,
+        remarks: requestData.remarks,
+        attachmentUrl: requestData.attachmentUrl,
+        joiningDate: employee?.joiningDate ? format(parseISO(employee.joiningDate), 'dd MMM, yyyy') : 'N/A',
+        rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
+        lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
+        stockInfo,
+        eligibility: requestData.eligibility,
+        newRequestJustification: requestData.newRequestJustification,
+    };
+
+    sendPpeRequestEmail(emailData);
+
+  }, [user, manpowerProfiles, ppeStock, addActivityLog, toast]);
+
   const updatePpeRequest = useCallback((request: PpeRequest) => {
     if (!user) return;
     const { id, ...data } = request;
@@ -3310,61 +3367,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, feedback, can.manage_feedback]);
 
-  const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
-    if (!user) return;
-
-    const newRequestRef = push(ref(rtdb, 'ppeRequests'));
-    
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request Created', date: new Date().toISOString() };
-    const newCommentRef = push(ref(rtdb, `ppeRequests/${newRequestRef.key}/comments`));
-
-    const newRequest: Omit<PpeRequest, 'id'> = {
-        ...requestData,
-        requesterId: user.id,
-        date: new Date().toISOString(),
-        status: 'Pending',
-        comments: { [newCommentRef.key!]: { ...newComment, id: newCommentRef.key! } },
-        viewedByRequester: true,
-    };
-
-    set(newRequestRef, newRequest);
-    
-    const employee = manpowerProfiles.find(p => p.id === requestData.manpowerId);
-    const employeeName = employee?.name || 'Unknown Employee';
-    
-    addActivityLog(user.id, 'PPE Request Created', `Requested ${requestData.ppeType} for ${employeeName}`);
-    
-    const historyArray = Array.isArray(employee?.ppeHistory) ? employee.ppeHistory : Object.values(employee?.ppeHistory || {});
-    const lastIssue = historyArray
-      .filter(h => h && h.ppeType === requestData.ppeType)
-      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
-
-    const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
-    const stockInfo = requestData.ppeType === 'Coverall' && stockItem && 'sizes' in stockItem && stockItem.sizes
-      ? `${stockItem.sizes[requestData.size] || 0} in stock`
-      : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
-
-    const emailData = {
-        requesterName: user.name,
-        employeeName,
-        ppeType: requestData.ppeType,
-        size: requestData.size,
-        quantity: requestData.quantity || 1,
-        requestType: requestData.requestType,
-        remarks: requestData.remarks,
-        attachmentUrl: requestData.attachmentUrl,
-        joiningDate: employee?.joiningDate ? format(parseISO(employee.joiningDate), 'dd MMM, yyyy') : 'N/A',
-        rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
-        lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
-        stockInfo,
-        eligibility: requestData.eligibility,
-        newRequestJustification: requestData.newRequestJustification,
-    };
-
-    sendPpeRequestEmail(emailData);
-
-  }, [user, manpowerProfiles, ppeStock, addActivityLog, toast]);
-
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -3383,7 +3385,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'TP Certification List Deleted', `List ID: ${listId}`);
   }, [user, addActivityLog]);
 
-  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status' | 'approverId' | 'approvalDate' | 'comments' | 'viewedByRequester'>) => {
+  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
@@ -3396,6 +3398,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Transfer Request Created');
   }, [user, addActivityLog]);
    
+  const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest) => {
+    if (!user) return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
+    updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
+    updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
+  
+    request.items.forEach(item => {
+      let path: string;
+      switch (item.itemType) {
+        case 'Inventory': path = `inventoryItems/${item.itemId}`; break;
+        case 'UTMachine': path = `utMachines/${item.itemId}`; break;
+        case 'DftMachine': path = `dftMachines/${item.itemId}`; break;
+        default: return;
+      }
+      updates[`${path}/projectId`] = request.toProjectId;
+      updates[`${path}/lastUpdated`] = new Date().toISOString();
+    });
+  
+    if (request.reason === 'For TP certification') {
+      const newListData = {
+        name: `Transfer to TP - ${format(new Date(), 'dd-MM-yyyy')}`,
+        date: new Date().toISOString().split('T')[0],
+        items: request.items.map(item => ({
+          materialName: item.name,
+          manufacturerSrNo: item.serialNumber,
+        })),
+      };
+      addTpCertList(newListData);
+    }
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
+  }, [user, addActivityLog, addTpCertList]);
+
+  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
+    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+    updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
+    
+    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString() };
+    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
+  }, [user, addActivityLog]);
+
+
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useMemo(() => {
     if (!user) return {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0,
@@ -3478,7 +3532,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
     can,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, deleteTpCertList
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment, deleteAllDailyPlannerComments, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, deleteTpCertList
   };
 
   // Set user based on stored ID
@@ -3656,4 +3710,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-

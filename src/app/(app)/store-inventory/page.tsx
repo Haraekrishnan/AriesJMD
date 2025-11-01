@@ -24,6 +24,7 @@ import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialog';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
+import PendingTransfers from '@/components/requests/PendingTransfers';
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
@@ -203,6 +204,8 @@ export default function StoreInventoryPage() {
                     )}
                 </div>
             </div>
+            
+            <PendingTransfers />
 
             {canManageInventory && inventoryNotifications.length > 0 && (
                  <Card>
@@ -350,3 +353,4 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+

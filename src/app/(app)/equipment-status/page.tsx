@@ -47,6 +47,7 @@ import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTabl
 import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
+import PendingTransfers from '@/components/requests/PendingTransfers';
 
 
 export default function EquipmentStatusPage() {
@@ -291,6 +292,7 @@ export default function EquipmentStatusPage() {
                 </div>
             </div>
 
+            <PendingTransfers />
             <EquipmentSummary />
             
             {expiringMachines.length > 0 && (
@@ -606,3 +608,4 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+
