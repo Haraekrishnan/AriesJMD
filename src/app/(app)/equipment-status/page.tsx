@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, ArrowRightLeft } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
@@ -46,10 +46,11 @@ import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEqui
 import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
 import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
+import NewInventoryTransferRequestDialog from '@/components/requests/NewInventoryTransferRequestDialog';
 
 
 export default function EquipmentStatusPage() {
-    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs } = useAppContext();
+    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs, pendingInventoryTransferRequestCount } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -90,6 +91,7 @@ export default function EquipmentStatusPage() {
 
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
+    const [isTransferRequestOpen, setIsTransferRequestOpen] = useState(false);
     
     // Report State
     const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
@@ -276,11 +278,17 @@ export default function EquipmentStatusPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Equipment</h1>
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
-                {canManageStore && (
-                    <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline">
-                        <FilePlus className="mr-2 h-4 w-4"/> Generate TP Cert List
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setIsTransferRequestOpen(true)} className="relative">
+                        <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
+                        {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive" className="absolute -top-2 -right-2">{pendingInventoryTransferRequestCount}</Badge>}
                     </Button>
-                )}
+                    {canManageStore && (
+                        <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline">
+                            <FilePlus className="mr-2 h-4 w-4"/> Generate TP Cert List
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <EquipmentSummary />
@@ -593,6 +601,7 @@ export default function EquipmentStatusPage() {
             {selectedOtherEquipment && can.manage_equipment_status && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
 
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
+            <NewInventoryTransferRequestDialog isOpen={isTransferRequestOpen} setIsOpen={setIsTransferRequestOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );

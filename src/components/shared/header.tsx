@@ -18,7 +18,7 @@ import { Badge } from '../ui/badge';
 import NewBroadcastDialog from '../announcements/NewBroadcastDialog';
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
-    const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount } = useAppContext();
+    const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useAppContext();
     const pathname = usePathname();
     
     const navItems = [
@@ -28,11 +28,10 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
-      { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount, show: true },
-      { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
+      { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, show: true },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: true },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
-      { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
+      { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length + pendingInventoryTransferRequestCount, show: true },
       { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
       { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: plannerNotificationCount, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
@@ -43,6 +42,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
       { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
       { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
+      { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
     ];
   
     return (
@@ -101,6 +101,7 @@ export default function Header() {
   
   const getPageTitle = () => {
     if (pathname.startsWith('/schedule')) return 'Planner';
+    if (pathname.startsWith('/tp-certification')) return 'TP Certification Lists';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     return name.charAt(0).toUpperCase() + name.slice(1);
