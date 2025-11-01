@@ -46,7 +46,7 @@ import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEqui
 import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
 import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
-import NewInventoryTransferRequestDialog from '@/components/requests/NewInventoryTransferRequestDialog';
+import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 
 
 export default function EquipmentStatusPage() {

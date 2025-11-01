@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -22,7 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialog';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
-import NewInventoryTransferRequestDialog from '@/components/requests/NewInventoryTransferRequestDialog';
+import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
