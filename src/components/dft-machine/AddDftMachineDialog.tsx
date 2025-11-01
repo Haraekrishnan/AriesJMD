@@ -22,6 +22,7 @@ const machineSchema = z.object({
   cableDetails: z.string().min(1, 'Cable details are required'),
   status: z.string().min(1, 'Status is required'),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  movedToProjectId: z.string().optional(),
 });
 
 type MachineFormValues = z.infer<typeof machineSchema>;
@@ -31,7 +32,7 @@ interface AddDftMachineDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
+const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service", "Moved to another project"];
 
 export default function AddDftMachineDialog({ isOpen, setIsOpen }: AddDftMachineDialogProps) {
   const { projects, addDftMachine } = useAppContext();
@@ -41,6 +42,8 @@ export default function AddDftMachineDialog({ isOpen, setIsOpen }: AddDftMachine
     resolver: zodResolver(machineSchema),
     defaultValues: { status: 'In Service' },
   });
+
+  const watchStatus = form.watch('status');
 
   const onSubmit = (data: MachineFormValues) => {
     addDftMachine({
@@ -97,6 +100,12 @@ export default function AddDftMachineDialog({ isOpen, setIsOpen }: AddDftMachine
             )}/>
             {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
            </div>
+            {watchStatus === 'Moved to another project' && (
+                <div>
+                    <Label>Moved To Project (Optional)</Label>
+                    <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                </div>
+            )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Add Machine</Button>

@@ -22,8 +22,9 @@ const itemSchema = z.object({
   serialNumber: z.string().optional(),
   ariesId: z.string().optional(),
   chestCrollNo: z.string().optional(),
-  status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired']),
+  status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project']),
   projectId: z.string().min(1, 'Location is required'),
+  movedToProjectId: z.string().optional(),
   plantUnit: z.string().optional(),
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
@@ -51,7 +52,7 @@ interface AddItemDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired'];
+const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project'];
 const categoryOptions: InventoryCategory[] = ['General', 'Daily Consumable', 'Job Consumable'];
 const excludedLocations = ['Store', 'Office', 'Kitchen Duty'];
 
@@ -73,6 +74,7 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
   const itemName = form.watch('name');
   const category = form.watch('category');
   const selectedProjectId = form.watch('projectId');
+  const status = form.watch('status');
 
   const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
 
@@ -174,6 +176,12 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                         {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
                     </div>
                 </div>
+                {status === 'Moved to another project' && (
+                    <div>
+                        <Label>Moved To Project (Optional)</Label>
+                        <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                    </div>
+                )}
                 {showPlantUnit && (
                 <div>
                     <Label htmlFor="plantUnit">Plant/Unit</Label>

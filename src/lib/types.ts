@@ -160,7 +160,7 @@ export type UnlockRequest = {
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pending Approval' | 'Overdue' | 'Completed';
 export type Priority = 'Low' | 'Medium' | 'High';
-export type ApprovalState = 'none' | 'pending' | 'approved' | 'returned';
+export type ApprovalState = 'none' | 'pending' | 'approved' | 'returned' | 'status_pending';
 
 export type Subtask = {
     userId: string;
@@ -565,7 +565,7 @@ export type PpeRequest = {
 };
 
 
-export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired';
+export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired' | 'Moved to another project';
 export type InventoryCategory = 'General' | 'Daily Consumable' | 'Job Consumable';
 
 export type InventoryItem = {
@@ -586,6 +586,7 @@ export type InventoryItem = {
   category?: InventoryCategory;
   quantity?: number;
   unit?: string;
+  movedToProjectId?: string;
 };
 
 export type UTMachine = {
@@ -599,6 +600,7 @@ export type UTMachine = {
   cableDetails: string;
   status: string;
   certificateUrl?: string;
+  movedToProjectId?: string;
 };
 
 export type DftMachine = {
@@ -612,6 +614,7 @@ export type DftMachine = {
     cableDetails: string;
     status: string;
     certificateUrl?: string;
+    movedToProjectId?: string;
 };
 
 export type DigitalCamera = {

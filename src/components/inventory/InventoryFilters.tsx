@@ -30,6 +30,7 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
     { value: 'In Store', label: 'In Store' },
     { value: 'Damaged', label: 'Damaged' },
     { value: 'Expired', label: 'Expired (Item)' },
+    { value: 'Moved to another project', label: 'Moved to another project' },
     { value: 'Inspection Expired', label: 'Inspection Expired' },
     { value: 'TP Expired', label: 'TP Expired' },
     { value: 'Not Verified', label: 'Not Verified (15+ days)' },

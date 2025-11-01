@@ -24,6 +24,7 @@ const machineSchema = z.object({
   cableDetails: z.string().min(1, 'Cable details are required'),
   status: z.string().min(1, 'Status is required'),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  movedToProjectId: z.string().optional(),
 });
 
 type MachineFormValues = z.infer<typeof machineSchema>;
@@ -34,7 +35,7 @@ interface EditDftMachineDialogProps {
   machine: DftMachine;
 }
 
-const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
+const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service", "Moved to another project"];
 
 export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: EditDftMachineDialogProps) {
   const { projects, updateDftMachine } = useAppContext();
@@ -43,6 +44,8 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
   const form = useForm<MachineFormValues>({
     resolver: zodResolver(machineSchema),
   });
+
+  const watchStatus = form.watch('status');
 
   useEffect(() => {
     if (machine && isOpen) {
@@ -103,6 +106,12 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
             )}/>
             {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
            </div>
+            {watchStatus === 'Moved to another project' && (
+                <div>
+                    <Label>Moved To Project (Optional)</Label>
+                    <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                </div>
+            )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>
