@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { useMemo, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import type { InventoryItem, UTMachine, DftMachine } from '@/lib/types';
+import type { InventoryItem, UTMachine, DftMachine, TransferReason } from '@/lib/types';
+import { TRANSFER_REASONS } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { X } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -22,7 +23,8 @@ type SearchableItem = (InventoryItem | UTMachine | DftMachine) & { itemType: 'In
 const transferRequestSchema = z.object({
   fromProjectId: z.string().min(1, 'Origin project is required'),
   toProjectId: z.string().min(1, 'Destination project is required'),
-  reason: z.string().min(10, 'A detailed reason is required'),
+  reason: z.enum(TRANSFER_REASONS, { required_error: 'A reason for transfer is required.' }),
+  remarks: z.string().optional(),
   items: z.array(z.object({
     itemId: z.string(),
     itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine']),
@@ -95,7 +97,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ fromProjectId: user?.projectId, items: [], toProjectId: undefined, reason: '' });
+      form.reset({ fromProjectId: user?.projectId, items: [], toProjectId: undefined, reason: undefined, remarks: '' });
     }
     setIsOpen(open);
   };
@@ -138,10 +140,23 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                  {form.formState.errors.toProjectId && <p className="text-xs text-destructive">{form.formState.errors.toProjectId.message}</p>}
               </div>
             </div>
+             <div className="space-y-2">
+                <Label>Reason for Transfer</Label>
+                 <Controller
+                  name="reason"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue placeholder="Select a reason..." /></SelectTrigger>
+                      <SelectContent>{TRANSFER_REASONS.map(reason => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+            </div>
             <div className="space-y-2">
-              <Label>Reason for Transfer</Label>
-              <Textarea {...form.register('reason')} />
-              {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+              <Label>Remarks (Optional)</Label>
+              <Textarea {...form.register('remarks')} />
             </div>
             <div className="space-y-2">
               <Label>Search & Add Items</Label>

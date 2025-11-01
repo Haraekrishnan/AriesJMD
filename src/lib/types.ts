@@ -817,13 +817,23 @@ export type TpCertList = {
     }[];
 };
 
+export const TRANSFER_REASONS = [
+  "For TP certification",
+  "Transfer to another project as requested by",
+  "Material out request by store/office",
+  "Expired materials",
+] as const;
+
+export type TransferReason = (typeof TRANSFER_REASONS)[number];
+
 export type InventoryTransferRequest = {
     id: string;
     requesterId: string;
     requestDate: string; // ISO
     fromProjectId: string;
     toProjectId: string;
-    reason: string;
+    reason: TransferReason;
+    remarks?: string;
     items: {
       itemId: string;
       itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
@@ -832,7 +842,7 @@ export type InventoryTransferRequest = {
     }[];
     status: 'Pending' | 'Approved' | 'Rejected';
     approverId?: string;
-    approvalDate?: string;
-    comments: Comment[];
+    approvalDate?: string; // ISO
+    comments?: Comment[];
     viewedByRequester?: boolean;
 };
