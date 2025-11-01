@@ -829,7 +829,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
     }
   
-    const approverId = task.creatorId;
+    const approverId = task.approverId;
     if (!approverId) {
         toast({ variant: 'destructive', title: 'No approver set for this task.' });
         return;
@@ -846,10 +846,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     const updates: Record<string, any> = {};
     updates[`tasks/${taskId}/statusRequest`] = statusRequest;
-    updates[`tasks/${taskId}/status`] = 'Pending Approval'; 
-    updates[`tasks/${taskId}/approverId`] = approverId;
     updates[`tasks/${taskId}/approvalState`] = 'status_pending';
     updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+    updates[`tasks/${taskId}/status`] = 'Pending Approval';
     await update(ref(rtdb), updates);
   
     addActivityLog(user.id, 'Task Completion Requested', task.title);
@@ -872,6 +871,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             'View Task'
         );
     }
+    toast({ title: 'Completion request sent for approval' });
   }, [user, users, tasksById, addActivityLog, addComment, toast]);
   
   const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {

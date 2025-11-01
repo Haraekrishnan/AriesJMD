@@ -61,7 +61,7 @@ export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: Edit
       ...machine,
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
-      movedToProjectId: data.movedToProjectId === 'none' ? undefined : data.movedToProjectId
+      movedToProjectId: data.movedToProjectId
     });
     toast({ title: 'Machine Updated', description: `${data.machineName} has been updated.` });
     setIsOpen(false);
@@ -110,7 +110,7 @@ export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: Edit
             {watchStatus === 'Moved to another project' && (
                 <div>
                     <Label>Moved To Project (Optional)</Label>
-                    <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                    <Input {...form.register('movedToProjectId')} placeholder="Enter destination project..." />
                 </div>
             )}
           <DialogFooter>

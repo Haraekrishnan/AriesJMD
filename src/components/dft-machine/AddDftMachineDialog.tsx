@@ -49,7 +49,7 @@ export default function AddDftMachineDialog({ isOpen, setIsOpen }: AddDftMachine
     addDftMachine({
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
-      movedToProjectId: data.movedToProjectId === 'none' ? undefined : data.movedToProjectId
+      movedToProjectId: data.movedToProjectId,
     });
     toast({ title: 'Machine Added', description: `${data.machineName} has been added.` });
     setIsOpen(false);
@@ -104,7 +104,7 @@ export default function AddDftMachineDialog({ isOpen, setIsOpen }: AddDftMachine
             {watchStatus === 'Moved to another project' && (
                 <div>
                     <Label>Moved To Project (Optional)</Label>
-                    <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                    <Input {...form.register('movedToProjectId')} placeholder="Enter destination project..." />
                 </div>
             )}
           <DialogFooter>
