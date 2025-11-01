@@ -107,6 +107,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
         inspectionDate: data.inspectionDate ? data.inspectionDate.toISOString() : '',
         inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
         tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
+        movedToProjectId: data.movedToProjectId === 'none' ? undefined : data.movedToProjectId
     });
     toast({
       title: 'Item Updated',
@@ -185,7 +186,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                  {status === 'Moved to another project' && (
                     <div>
                         <Label>Moved To Project (Optional)</Label>
-                        <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                        <Controller control={form.control} name="movedToProjectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select destination project..."/></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
                     </div>
                 )}
                 {showPlantUnit && (
