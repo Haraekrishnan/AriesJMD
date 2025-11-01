@@ -4,6 +4,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { TpCertList } from '@/lib/types';
+import { format } from 'date-fns';
 
 interface CertItem {
   materialName: string;
@@ -43,6 +44,14 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
     br: { col: 8, row: 3 },
     editAs: 'oneCell',
   });
+
+  // Add Date Row
+  const dateRow = worksheet.getRow(4);
+  worksheet.mergeCells('A4:H4');
+  dateRow.getCell('H').value = `Date: ${format(new Date(), 'dd-MM-yyyy')}`;
+  dateRow.getCell('H').alignment = { horizontal: 'right' };
+  dateRow.getCell('H').font = { bold: true };
+
 
   const startRow = 5; 
 
@@ -114,6 +123,11 @@ export async function generateTpCertPdf(items: CertItem[]) {
     const pageWidth = doc.internal.pageSize.getWidth();
 
     doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Date: ${format(new Date(), 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
+
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
