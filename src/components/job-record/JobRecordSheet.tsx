@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -438,34 +439,34 @@ export default function JobRecordSheet() {
       }, [jobCodes, jobCodeSearchTerm]);
 
     
-    const exportToExcel = async () => {
+      const exportToExcel = async () => {
         try {
             const workbook = new ExcelJS.Workbook();
             const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
-            
+    
             const jobCodeColors: Record<string, { bg: string; text?: string }> = {
-                "X": { bg: "FFFF0000", text: "FFFFFFFF" },
-                "EP": { bg: "FF00B0F0" },
-                "PD": { bg: "FF00FF00" },
-                "ML": { bg: "FFFFFF00" },
-                "OFF": { bg: "FFBFBFBF" },
-                "ST": { bg: "FF7030A0", text: "FFFFFFFF" },
-                "PH": { bg: "FF92D050" },
-                "KD": { bg: "FFFFC000" },
-                "Q": { bg: "FF0070C0", text: "FFFFFFFF" },
-                "TR": { bg: "FFEAD1DC" },
-                "OS": { bg: "FFED7D31" },
-                "L": { bg: "FFFF0000", text: "FFFFFFFF" },
-                "NWS": { bg: "FF7030A0", text: "FFFFFFFF" },
+              "X": { bg: "FFFF0000", text: "FFFFFFFF" },
+              "EP": { bg: "FF00B0F0" },
+              "PD": { bg: "FF00FF00" },
+              "ML": { bg: "FFFFFF00" },
+              "OFF": { bg: "FFBFBFBF" },
+              "ST": { bg: "FF00B0F0" },
+              "PH": { bg: "FF92D050" },
+              "KD": { bg: "FFFFC000" },
+              "Q": { bg: "FF00B0F0" },
+              "TR": { bg: "FFEAD1DC" },
+              "OS": { bg: "FFFF9900" },
+              "L": { bg: "FFFF0000", text: "FFFFFFFF" },
+              "NWS": { bg: "FF7030A0", text: "FFFFFFFF" },
             };
-
+    
             for (const plant of allTabs) {
                 const profiles = filteredAndGroupedProfiles[plant];
                 if (!profiles || profiles.length === 0) continue;
     
                 const sheet = workbook.addWorksheet(plant);
-                
-                // ---- ADD LOGO ----
+                const totalDays = getDaysInMonth(currentMonth);
+
                 const logoId = workbook.addImage({
                     buffer: logoBuffer,
                     extension: "png",
@@ -476,34 +477,41 @@ export default function JobRecordSheet() {
                   ext: { width: 160, height: 60 },
                 });
     
-                // ---- ADD MERGED HEADERS ----
-                const totalDays = getDaysInMonth(currentMonth);
-                const endCol = 2 + totalDays + 9;
+                const totalCols = 2 + totalDays + 9;
+                const endCol = totalCols;
     
-                sheet.addRow([]);
-                sheet.addRow([]);
-                const row1 = sheet.getRow(1);
+                const row1 = sheet.addRow([]);
                 sheet.mergeCells(row1.number, 1, row1.number, endCol);
                 const cell1 = sheet.getCell(row1.number, 1);
                 cell1.value = "RIL JMD PROJECT";
                 cell1.font = { bold: true, size: 16 };
                 cell1.alignment = { horizontal: "center", vertical: "middle" };
-                cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F0D4" } };
+                cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
     
-                const row2 = sheet.getRow(2);
+                const row2 = sheet.addRow([]);
                 sheet.mergeCells(row2.number, 1, row2.number, endCol);
                 const cell2 = sheet.getCell(row2.number, 1);
                 cell2.value = `${format(currentMonth, "MMMM yyyy")}`;
                 cell2.font = { bold: true, size: 13 };
                 cell2.alignment = { horizontal: "center", vertical: "middle" };
-                cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F0D4" } };
+                cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
     
                 sheet.addRow([]);
     
                 const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
                 const header = [
-                    "S.No", "Name", ...dayHeadersExcel.map(String), "Total OFF", "Total Leave", "Total ML", 
-                    "Over Time", "Total Standby/Training", "Total Working Days", "Total Rept/Office", "Salary Days", "Additional Sunday Duty",
+                    "S.No",
+                    "Name",
+                    ...dayHeadersExcel.map(String),
+                    "Total OFF",
+                    "Total Leave",
+                    "Total ML",
+                    "Over Time",
+                    "Total Standby/Training",
+                    "Total Working Days",
+                    "Total Rept/Office",
+                    "Salary Days",
+                    "Additional Sunday Duty",
                 ];
     
                 const headerRow = sheet.addRow(header);
@@ -542,19 +550,27 @@ export default function JobRecordSheet() {
                     const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + summary.workDays;
     
                     const rowData = [
-                        index + 1, profile.name, ...dayHeadersExcel.map(day => employeeRecord[day] || ""), summary.offDays, summary.leaveDays, summary.medicalLeave,
-                        totalOvertime > 0 ? `${totalOvertime} Hours OT` : "", summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays,
+                        index + 1,
+                        profile.name,
+                        ...dayHeadersExcel.map(day => employeeRecord[day] || ""),
+                        summary.offDays,
+                        summary.leaveDays,
+                        summary.medicalLeave,
+                        totalOvertime > 0 ? `${totalOvertime} Hours OT` : "",
+                        summary.standbyTraining,
+                        summary.workDays,
+                        summary.reptOffice,
+                        salaryDays,
                         additionalSundays > 0 ? additionalSundays : "",
                     ];
     
                     const row = sheet.addRow(rowData);
     
                     dayHeadersExcel.forEach((day, dIndex) => {
-                        const cell = row.getCell(dIndex + 3);
                         const notes: string[] = [];
                         if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
                         if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
-                        if (notes.length > 0) cell.note = notes.join("\n");
+                        if (notes.length > 0) row.getCell(dIndex + 3).note = notes.join("\n");
                     });
     
                     row.eachCell(cell => {
@@ -570,36 +586,26 @@ export default function JobRecordSheet() {
                 for (let i = 3 + totalDays; i <= header.length; i++) {
                     sheet.getColumn(i).width = 12;
                 }
-    
-                // ---- Apply Conditional Job Code Colors ----
+
                 sheet.eachRow((row, rowNumber) => {
-                    // Skip header rows
-                    if (rowNumber <= 4) return;
-                  row.eachCell((cell, colNumber) => {
-                    if (typeof cell.value === "string") {
-                      const val = cell.value.trim().toUpperCase();
-                
-                      for (const key in jobCodeColors) {
-                        const color = jobCodeColors[key as keyof typeof jobCodeColors];
-                        if (
-                          val === key
-                        ) {
-                          cell.fill = {
-                            type: "pattern",
-                            pattern: "solid",
-                            fgColor: { argb: color.bg.replace("#","") },
-                          };
-                          if (color.text) {
-                            cell.font = { color: { argb: color.text.replace("#","") } };
-                          }
-                          break;
+                    row.eachCell((cell, colNumber) => {
+                        if (typeof cell.value === "string") {
+                            const val = cell.value.trim().toUpperCase();
+                            const colorInfo = jobCodeColors[val as keyof typeof JOB_CODE_COLORS];
+                            if (colorInfo) {
+                                cell.fill = {
+                                    type: "pattern",
+                                    pattern: "solid",
+                                    fgColor: { argb: colorInfo.bg.replace(/^bg-/, '') },
+                                };
+                                if (colorInfo.text) {
+                                    cell.font = { color: { argb: colorInfo.text.replace(/^text-/, '') } };
+                                }
+                            }
                         }
-                      }
-                    }
-                  });
+                    });
                 });
 
-                // Man-Days Legend
                 const manDaysCount: Record<string, number> = {};
                 const uniqueJobCodes = Array.from(new Map(jobCodes.map(item => [item.code, item])).values());
                 uniqueJobCodes.forEach(jc => (manDaysCount[jc.code] = 0));
@@ -636,8 +642,8 @@ export default function JobRecordSheet() {
                         const codeCell = r.getCell(1);
                         const colorInfo = JOB_CODE_COLORS[jc.code];
                         if (colorInfo) {
-                            codeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorInfo.bg.replace('#', '') } };
-                            if (colorInfo.text) codeCell.font = { color: { argb: colorInfo.text.replace('#','') } };
+                            codeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorInfo.bg.replace(/^bg-/, '') } };
+                            if (colorInfo.text) codeCell.font = { color: { argb: colorInfo.text.replace(/^text-/, '') } };
                         }
                         r.eachCell(c => c.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } });
                     });
