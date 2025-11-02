@@ -371,10 +371,11 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
                             src={viewingAttachmentUrl} 
                             alt="Attachment" 
                             className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                            style={{ 
-                                transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
-                                maxWidth: 'none', 
-                                maxHeight: 'none' 
+                            style={{
+                                transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
+                                maxWidth: zoom > 1 ? 'none' : '100%',
+                                maxHeight: zoom > 1 ? 'none' : '100%',
+                                objectFit: 'contain'
                             }}
                         />
                     )
@@ -385,3 +386,5 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
     </>
   );
 }
+
+    

@@ -289,7 +289,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                             </a>
                         </div>
                     </DialogHeader>
-                    <div 
+                     <div 
                       ref={imageContainerRef}
                       className="flex-1 overflow-auto flex items-center justify-center p-4 bg-muted/50 rounded-md"
                       onMouseDown={handleMouseDown}
@@ -307,10 +307,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                     src={viewingAttachmentUrl} 
                                     alt="Attachment" 
                                     className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                                    style={{ 
-                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
-                                        maxWidth: 'none', 
-                                        maxHeight: 'none' 
+                                    style={{
+                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
+                                        maxWidth: zoom > 1 ? 'none' : '100%',
+                                        maxHeight: zoom > 1 ? 'none' : '100%',
+                                        objectFit: 'contain'
                                     }}
                                 />
                             )
@@ -427,7 +428,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
       </div>
        {completedRequests.length > 0 && (
         <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
-          <AccordionItem key="completed-requests" value="completed-requests" className="border rounded-md">
+          <AccordionItem value="completed-requests" className="border rounded-md">
             <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
                Completed &amp; Rejected Requests ({completedRequests.length})
             </AccordionTrigger>
@@ -442,3 +443,5 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
+
+    
