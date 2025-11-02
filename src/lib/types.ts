@@ -815,7 +815,6 @@ export type TpCertList = {
         materialName: string;
         manufacturerSrNo: string;
     }[];
-    isEditable?: boolean;
 };
 
 export const TRANSFER_REASONS = [
@@ -827,7 +826,7 @@ export const TRANSFER_REASONS = [
 
 export type TransferReason = (typeof TRANSFER_REASONS)[number];
 
-export type InventoryTransferStatus = 'Pending' | 'Approved' | 'Completed' | 'Rejected';
+export type InventoryTransferStatus = 'Pending' | 'Approved' | 'Completed' | 'Rejected' | 'Disputed';
 
 export type InventoryTransferRequest = {
     id: string;
@@ -845,8 +844,8 @@ export type InventoryTransferRequest = {
       serialNumber: string;
     }[];
     status: InventoryTransferStatus;
-    storeApproverId?: string;
-    storeApprovalDate?: string; // ISO
+    approverId?: string;
+    approvalDate?: string; // ISO
     acknowledgedBy?: string; // User ID of supervisor or requestedBy person
     acknowledgedDate?: string; // ISO
     comments?: Comment[];
