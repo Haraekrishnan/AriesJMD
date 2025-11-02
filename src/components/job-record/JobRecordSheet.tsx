@@ -27,6 +27,14 @@ import { ScrollArea } from '../ui/scroll-area';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
+async function fetchImageAsArrayBuffer(url: string) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    return response.arrayBuffer();
+}
+
 export default function JobRecordSheet() {
     const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, JOB_CODE_COLORS, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
@@ -434,23 +442,8 @@ export default function JobRecordSheet() {
       const exportToExcel = async () => {
         try {
             const workbook = new ExcelJS.Workbook();
-    
-            const colorMap: Record<string, { bg: string; text?: string }> = {
-              "X": { bg: "FFFF0000", text: "FFFFFFFF" },
-              "EP": { bg: "FF00B0F0" },
-              "PD": { bg: "FF00FF00" },
-              "ML": { bg: "FFFFFF00" },
-              "OFF": { bg: "FFBFBFBF" },
-              "ST": { bg: "FF00B0F0" },
-              "PH": { bg: "FF92D050" },
-              "KD": { bg: "FFFFC000" },
-              "Q": { bg: "FF00B0F0" },
-              "TR": { bg: "FFEAD1DC" },
-              "OS": { bg: "FFFF9900" },
-              "L": { bg: "FFFF0000", text: "FFFFFFFF" },
-              "NWS": { bg: "FF7030A0", text: "FFFFFFFF" },
-            };
-    
+            const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
+
             for (const plant of allTabs) {
                 const profiles = filteredAndGroupedProfiles[plant];
                 if (!profiles || profiles.length === 0) continue;
@@ -458,32 +451,37 @@ export default function JobRecordSheet() {
                 const sheet = workbook.addWorksheet(plant);
                 const totalDays = getDaysInMonth(currentMonth);
     
-                // ---- Add Merged Header Section ----
-                const totalCols = 2 + getDaysInMonth(currentMonth) + 9; // S.No + Name + Dates + Totals
+                const totalCols = 2 + getDaysInMonth(currentMonth) + 9;
                 const endCol = totalCols;
+                
+                const logoId = workbook.addImage({
+                  buffer: logoBuffer,
+                  extension: 'png',
+                });
+                
+                sheet.addImage(logoId, {
+                  tl: { col: 0.2, row: 0.2 },
+                  ext: { width: 160, height: 60 },
+                });
     
-                // Row 1: Main Project Title
-                const row1 = sheet.addRow([]);
-                sheet.mergeCells(row1.number, 1, row1.number, endCol);
-                const cell1 = sheet.getCell(row1.number, 1);
+                const row1 = sheet.addRow([]); // Add a blank row to push content down
+                sheet.mergeCells(1, 1, 1, endCol);
+                const cell1 = sheet.getCell(1, 1);
                 cell1.value = "RIL JMD PROJECT";
                 cell1.font = { bold: true, size: 16 };
                 cell1.alignment = { horizontal: "center", vertical: "middle" };
-                cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
-    
-                // Row 2: Month + Plant
+                cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F0D4" } };
+                
                 const row2 = sheet.addRow([]);
-                sheet.mergeCells(row2.number, 1, row2.number, endCol);
-                const cell2 = sheet.getCell(row2.number, 1);
-                cell2.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plant}`;
+                sheet.mergeCells(2, 1, 2, endCol);
+                const cell2 = sheet.getCell(2, 1);
+                cell2.value = `${format(currentMonth, "MMMM yyyy")}`;
                 cell2.font = { bold: true, size: 13 };
                 cell2.alignment = { horizontal: "center", vertical: "middle" };
-                cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
+                cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F0D4" } };
     
-                // Optional: blank spacer row
                 sheet.addRow([]);
     
-                // ---- Headers ----
                 const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
                 const header = [
                     "S.No",
@@ -514,7 +512,6 @@ export default function JobRecordSheet() {
                     };
                 });
     
-                // ---- Employee Rows ----
                 profiles.forEach((profile, index) => {
                     const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                     const employeeRecord = record.days || {};
@@ -550,7 +547,6 @@ export default function JobRecordSheet() {
                             .map(jc => jc.code)
                         : [];
     
-                    // Summary calculations
                     const summary = dayHeadersExcel.reduce(
                         (acc, day) => {
                             const code = employeeRecord[day];
@@ -592,28 +588,24 @@ export default function JobRecordSheet() {
     
                     const row = sheet.addRow(rowData);
     
-                    // ---- Apply colors & notes ----
                     dayHeadersExcel.forEach((day, dIndex) => {
                         const code = (employeeRecord[day] || "").toUpperCase();
                         const cell = row.getCell(dIndex + 3);
-                        const color = colorMap[code];
+                        const color = JOB_CODE_COLORS[code];
     
-                        if (color) {
-                            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.bg } };
-                            cell.font = {
-                                bold: true,
-                                color: { argb: color.text || "FF000000" },
-                            };
+                        if (color && color.excelFill) {
+                            cell.fill = { type: "pattern", pattern: "solid", fgColor: color.excelFill.fgColor };
+                            if (color.excelFill.font) {
+                                cell.font = color.excelFill.font;
+                            }
                         }
     
-                        // Add comments
                         const notes: string[] = [];
                         if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
                         if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
                         if (notes.length > 0) cell.note = notes.join("\n");
                     });
     
-                    // Borders
                     row.eachCell(cell => {
                         cell.border = {
                             top: { style: "thin" },
@@ -625,27 +617,22 @@ export default function JobRecordSheet() {
                     });
                 });
     
-                // ---- Column Widths ----
                 const nameColIndex = 2;
                 const startDayIndex = 3;
                 const endDayIndex = startDayIndex + totalDays - 1;
 
-                // Name column fixed at 32 (for longer names)
                 sheet.getColumn(nameColIndex).width = 32;
 
-                // Day columns fixed at 7
                 for (let i = startDayIndex; i <= endDayIndex; i++) {
                     sheet.getColumn(i).width = 7;
                 }
 
-                // Summary columns (from "Total OFF" to "Additional Sunday Duty") fixed at 12
                 const firstSummaryCol = endDayIndex + 1;
-                const lastSummaryCol = header.length; // dynamic based on total headers
+                const lastSummaryCol = header.length;
                 for (let i = firstSummaryCol; i <= lastSummaryCol; i++) {
                     sheet.getColumn(i).width = 12;
                 }
 
-                // ---- Enable Wrap Text Globally ----
                 sheet.eachRow({ includeEmpty: true }, row => {
                   row.eachCell({ includeEmpty: true }, cell => {
                     if (!cell.alignment) cell.alignment = {};
@@ -658,20 +645,15 @@ export default function JobRecordSheet() {
                   });
                 });
     
-                // ------------------ LEGEND (REPLACEMENT BLOCK) ------------------ //
-                // Compute man-days count only for current plant (profiles array)
                 const manDaysCount: Record<string, number> = {};
-                // Deduplicate jobCodes by code to avoid repeat rows
                 const uniqueJobCodesMap = new Map<string, any>();
                 (jobCodes || []).forEach(jc => {
                 if (!uniqueJobCodesMap.has(jc.code)) uniqueJobCodesMap.set(jc.code, jc);
                 });
                 const uniqueJobCodes = Array.from(uniqueJobCodesMap.values());
                 
-                // initialize counts
                 uniqueJobCodes.forEach(jc => (manDaysCount[jc.code] = 0));
                 
-                // Count occurrences only among current plant's profiles
                 profiles.forEach(p => {
                 const rec = jobRecords[monthKey]?.records?.[p.id];
                 const days = rec?.days || {};
@@ -682,32 +664,25 @@ export default function JobRecordSheet() {
                 });
                 });
                 
-                // Build list of legend rows (only codes with >0 man-days)
                 const legendRows = uniqueJobCodes
                 .map(jc => ({ jc, count: manDaysCount[jc.code] || 0 }))
                 .filter(x => x.count > 0);
                 
-                // If there are no legend rows, skip legend creation
                 if (legendRows.length > 0) {
-                    // Determine table geometry
                     const legendColsConfig = {
-                        code: 1,      // Code = 1 cell
-                        details: 15,  // Job Details merged across 15 cells
-                        jobNo: 2,     // Job No merged across 2 cells
-                        manDays: 3,   // Man-Days merged across 3 cells
+                        code: 1,
+                        details: 15,
+                        jobNo: 2,
+                        manDays: 3,
                     };
                     const legendWidth = legendColsConfig.code + legendColsConfig.details + legendColsConfig.jobNo + legendColsConfig.manDays;
                     
-                    // Determine how many columns the main table used
-                    const totalColsUsed = header.length; // header is the header array used earlier to create columns
-                    // Center the legend: pick startCol so legend block is centered across totalColsUsed
+                    const totalColsUsed = header.length;
                     const legendStartCol = Math.floor((totalColsUsed - legendWidth) / 2) + 1;
                     const legendEndCol = legendStartCol + legendWidth - 1;
                     
-                    // Blank row separator
                     sheet.addRow([]);
                     
-                    // Title row: merge across legendWidth and center
                     const titleRow = sheet.addRow([]);
                     sheet.mergeCells(titleRow.number, legendStartCol, titleRow.number, legendEndCol);
                     const legendTitleCell = sheet.getCell(titleRow.number, legendStartCol);
@@ -721,9 +696,7 @@ export default function JobRecordSheet() {
                         right: { style: "thin" }
                     };
                     
-                    // Header row for the legend (Code | Job Details | Job No | Man-Days)
                     const legendHeaderRow = sheet.addRow([]);
-                    // merge header columns exactly like the data rows will be merged
                     const detailsStart = legendStartCol + legendColsConfig.code;
                     const detailsEnd = detailsStart + legendColsConfig.details - 1;
                     const jobNoStart = detailsEnd + 1;
@@ -731,13 +704,11 @@ export default function JobRecordSheet() {
                     const manDaysStart = jobNoEnd + 1;
                     const manDaysEnd = manDaysStart + legendColsConfig.manDays - 1;
                     
-                    // Merge header cells
-                    sheet.mergeCells(legendHeaderRow.number, legendStartCol, legendHeaderRow.number, legendStartCol); // Code (single)
-                    sheet.mergeCells(legendHeaderRow.number, detailsStart, legendHeaderRow.number, detailsEnd); // Details (15)
-                    sheet.mergeCells(legendHeaderRow.number, jobNoStart, legendHeaderRow.number, jobNoEnd); // Job No (2)
-                    sheet.mergeCells(legendHeaderRow.number, manDaysStart, legendHeaderRow.number, manDaysEnd); // Man-Days (3)
+                    sheet.mergeCells(legendHeaderRow.number, legendStartCol, legendHeaderRow.number, legendStartCol);
+                    sheet.mergeCells(legendHeaderRow.number, detailsStart, legendHeaderRow.number, detailsEnd);
+                    sheet.mergeCells(legendHeaderRow.number, jobNoStart, legendHeaderRow.number, jobNoEnd);
+                    sheet.mergeCells(legendHeaderRow.number, manDaysStart, legendHeaderRow.number, manDaysEnd);
                     
-                    // Set header values and styles
                     const codeHeaderCell = sheet.getCell(legendHeaderRow.number, legendStartCol);
                     const detailsHeaderCell = sheet.getCell(legendHeaderRow.number, detailsStart);
                     const jobNoHeaderCell = sheet.getCell(legendHeaderRow.number, jobNoStart);
@@ -757,17 +728,14 @@ export default function JobRecordSheet() {
                         };
                     });
                     
-                    // Add legend rows (only codes with count > 0), merging columns per row exactly like header
                     legendRows.forEach(({ jc, count }) => {
                         const r = sheet.addRow([]);
                     
-                        // Merge data cells per the same ranges
-                        sheet.mergeCells(r.number, legendStartCol, r.number, legendStartCol); // Code (single)
-                        sheet.mergeCells(r.number, detailsStart, r.number, detailsEnd); // Details (15)
-                        sheet.mergeCells(r.number, jobNoStart, r.number, jobNoEnd); // Job No (2)
-                        sheet.mergeCells(r.number, manDaysStart, r.number, manDaysEnd); // Man-Days (3)
+                        sheet.mergeCells(r.number, legendStartCol, r.number, legendStartCol);
+                        sheet.mergeCells(r.number, detailsStart, r.number, detailsEnd);
+                        sheet.mergeCells(r.number, jobNoStart, r.number, jobNoEnd);
+                        sheet.mergeCells(r.number, manDaysStart, r.number, manDaysEnd);
                     
-                        // Assign cell objects
                         const codeCell = sheet.getCell(r.number, legendStartCol);
                         const detailsCell = sheet.getCell(r.number, detailsStart);
                         const jobNoCell = sheet.getCell(r.number, jobNoStart);
@@ -778,22 +746,23 @@ export default function JobRecordSheet() {
                         jobNoCell.value = jc.jobNo || "";
                         manDaysCell.value = count;
                     
-                        // Color only the Code cell (use same colorMap)
-                        const jobColor = colorMap[jc.code];
-                        if (jobColor) {
-                          codeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: jobColor.bg } };
-                          codeCell.font = { bold: true, color: { argb: jobColor.text || "FF000000" } };
+                        const jobColor = JOB_CODE_COLORS[jc.code];
+                        if (jobColor && jobColor.excelFill) {
+                          codeCell.fill = { type: "pattern", pattern: "solid", fgColor: jobColor.excelFill.fgColor };
+                          if (jobColor.excelFill.font) {
+                            codeCell.font = jobColor.excelFill.font;
+                          } else {
+                            codeCell.font = { bold: true };
+                          }
                         } else {
                           codeCell.font = { bold: true };
                         }
                     
-                        // Styling for other cells
                         [detailsCell, jobNoCell, manDaysCell].forEach(c => {
                           c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
                           c.font = { size: 11 };
                         });
                     
-                        // Borders for all
                         [codeCell, detailsCell, jobNoCell, manDaysCell].forEach(c => {
                           c.border = {
                             top: { style: "thin" }, left: { style: "thin" },
@@ -802,7 +771,6 @@ export default function JobRecordSheet() {
                         });
                       });
                 }
-                // ------------------ END LEGEND (REPLACEMENT BLOCK) ------------------ //
             }
     
             const buffer = await workbook.xlsx.writeBuffer();
@@ -1236,3 +1204,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
