@@ -449,37 +449,43 @@ export default function JobRecordSheet() {
                 if (!profiles || profiles.length === 0) continue;
     
                 const sheet = workbook.addWorksheet(plant);
-                const totalDays = getDaysInMonth(currentMonth);
-    
-                const totalCols = 2 + getDaysInMonth(currentMonth) + 9;
-                const endCol = totalCols;
                 
+                // ---- ADD LOGO ----
                 const logoId = workbook.addImage({
-                  buffer: logoBuffer,
-                  extension: 'png',
+                    buffer: logoBuffer,
+                    extension: "png",
                 });
                 
                 sheet.addImage(logoId, {
                   tl: { col: 0.2, row: 0.2 },
                   ext: { width: 160, height: 60 },
                 });
-    
-                const row1 = sheet.addRow([]); // Add a blank row to push content down
-                sheet.mergeCells(1, 1, 1, endCol);
-                const cell1 = sheet.getCell(1, 1);
+
+                // ---- ADD MERGED HEADERS ----
+                const totalDays = getDaysInMonth(currentMonth);
+                const endCol = 2 + totalDays + 9;
+
+                // Row 1: Title
+                sheet.addRow([]);
+                sheet.addRow([]);
+                const row1 = sheet.getRow(1);
+                sheet.mergeCells(row1.number, 1, row1.number, endCol);
+                const cell1 = sheet.getCell(row1.number, 1);
                 cell1.value = "RIL JMD PROJECT";
                 cell1.font = { bold: true, size: 16 };
                 cell1.alignment = { horizontal: "center", vertical: "middle" };
                 cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F0D4" } };
-                
-                const row2 = sheet.addRow([]);
-                sheet.mergeCells(2, 1, 2, endCol);
-                const cell2 = sheet.getCell(2, 1);
+
+                // Row 2: Month
+                const row2 = sheet.getRow(2);
+                sheet.mergeCells(row2.number, 1, row2.number, endCol);
+                const cell2 = sheet.getCell(row2.number, 1);
                 cell2.value = `${format(currentMonth, "MMMM yyyy")}`;
                 cell2.font = { bold: true, size: 13 };
                 cell2.alignment = { horizontal: "center", vertical: "middle" };
                 cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F0D4" } };
-    
+
+                // Optional spacer
                 sheet.addRow([]);
     
                 const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
