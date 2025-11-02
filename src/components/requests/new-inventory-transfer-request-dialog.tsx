@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -178,7 +177,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                              <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue placeholder="Select employee..." /></SelectTrigger>
                                 <SelectContent>
-                                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                    {users.filter(u => u.role !== 'Manager').map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         )}
