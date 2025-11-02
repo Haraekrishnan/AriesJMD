@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -443,7 +442,23 @@ export default function JobRecordSheet() {
         try {
             const workbook = new ExcelJS.Workbook();
             const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
-    
+            
+            const jobCodeColors: Record<string, { bg: string; text?: string }> = {
+                "X": { bg: "FFFF0000", text: "FFFFFFFF" },
+                "EP": { bg: "FF00B0F0" },
+                "PD": { bg: "FF00FF00" },
+                "ML": { bg: "FFFFFF00" },
+                "OFF": { bg: "FFBFBFBF" },
+                "ST": { bg: "FF7030A0", text: "FFFFFFFF" },
+                "PH": { bg: "FF92D050" },
+                "KD": { bg: "FFFFC000" },
+                "Q": { bg: "FF0070C0", text: "FFFFFFFF" },
+                "TR": { bg: "FFEAD1DC" },
+                "OS": { bg: "FFED7D31" },
+                "L": { bg: "FFFF0000", text: "FFFFFFFF" },
+                "NWS": { bg: "FF7030A0", text: "FFFFFFFF" },
+            };
+
             for (const plant of allTabs) {
                 const profiles = filteredAndGroupedProfiles[plant];
                 if (!profiles || profiles.length === 0) continue;
@@ -535,17 +550,7 @@ export default function JobRecordSheet() {
                     const row = sheet.addRow(rowData);
     
                     dayHeadersExcel.forEach((day, dIndex) => {
-                        const code = (employeeRecord[day] || "").toUpperCase();
                         const cell = row.getCell(dIndex + 3);
-                        const colorInfo = JOB_CODE_COLORS[code];
-    
-                        if (colorInfo && colorInfo.excelFill) {
-                            cell.fill = { type: "pattern", pattern: "solid", fgColor: colorInfo.excelFill.fgColor };
-                            if (colorInfo.excelFill.font) {
-                                cell.font = colorInfo.excelFill.font;
-                            }
-                        }
-    
                         const notes: string[] = [];
                         if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
                         if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
@@ -566,6 +571,34 @@ export default function JobRecordSheet() {
                     sheet.getColumn(i).width = 12;
                 }
     
+                // ---- Apply Conditional Job Code Colors ----
+                sheet.eachRow((row, rowNumber) => {
+                    // Skip header rows
+                    if (rowNumber <= 4) return;
+                  row.eachCell((cell, colNumber) => {
+                    if (typeof cell.value === "string") {
+                      const val = cell.value.trim().toUpperCase();
+                
+                      for (const key in jobCodeColors) {
+                        const color = jobCodeColors[key as keyof typeof jobCodeColors];
+                        if (
+                          val === key
+                        ) {
+                          cell.fill = {
+                            type: "pattern",
+                            pattern: "solid",
+                            fgColor: { argb: color.bg.replace("#","") },
+                          };
+                          if (color.text) {
+                            cell.font = { color: { argb: color.text.replace("#","") } };
+                          }
+                          break;
+                        }
+                      }
+                    }
+                  });
+                });
+
                 // Man-Days Legend
                 const manDaysCount: Record<string, number> = {};
                 const uniqueJobCodes = Array.from(new Map(jobCodes.map(item => [item.code, item])).values());
@@ -602,9 +635,9 @@ export default function JobRecordSheet() {
                         const r = sheet.addRow([jc.code, jc.details || "", jc.jobNo || "", count]);
                         const codeCell = r.getCell(1);
                         const colorInfo = JOB_CODE_COLORS[jc.code];
-                        if (colorInfo && colorInfo.excelFill) {
-                            codeCell.fill = { type: "pattern", pattern: "solid", fgColor: colorInfo.excelFill.fgColor };
-                            if (colorInfo.excelFill.font) codeCell.font = colorInfo.excelFill.font;
+                        if (colorInfo) {
+                            codeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorInfo.bg.replace('#', '') } };
+                            if (colorInfo.text) codeCell.font = { color: { argb: colorInfo.text.replace('#','') } };
                         }
                         r.eachCell(c => c.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } });
                     });
