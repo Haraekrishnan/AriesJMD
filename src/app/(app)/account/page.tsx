@@ -10,7 +10,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import UnlockRequests from '@/components/account/UnlockRequests';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser } = useAppContext();
+  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser, clearInventoryTransferHistory } = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -141,6 +141,14 @@ export default function AccountPage() {
     }
   }
 
+  const handleClearTransferHistory = () => {
+    clearInventoryTransferHistory();
+    toast({
+      title: 'Action Complete',
+      description: 'Inventory transfer history has been cleared.',
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -218,6 +226,34 @@ export default function AccountPage() {
             <CardContent>
               <FeedbackManagement />
             </CardContent>
+        </Card>
+      )}
+
+      {user.role === 'Admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Data Management</CardTitle>
+            <CardDescription>Perform administrative actions on application data.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive"><DatabaseZap className="mr-2 h-4 w-4" /> Clear Transfer History</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all inventory transfer requests from the database. This action cannot be undone and the data will be lost forever.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearTransferHistory}>Yes, Delete Everything</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
         </Card>
       )}
 

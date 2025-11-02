@@ -31,7 +31,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, show: true },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: true },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
-      { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length + pendingInventoryTransferRequestCount, show: true },
+      { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
       { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
       { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: plannerNotificationCount, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
