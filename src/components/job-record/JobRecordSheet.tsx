@@ -442,7 +442,7 @@ export default function JobRecordSheet() {
       const exportToExcel = async () => {
         try {
             const workbook = new ExcelJS.Workbook();
-            const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
+            const logoBuffer = await fetchImageAsArrayBuffer('/images/aries-logo.png');
 
             for (const plant of allTabs) {
                 const profiles = filteredAndGroupedProfiles[plant];
@@ -597,12 +597,12 @@ export default function JobRecordSheet() {
                     dayHeadersExcel.forEach((day, dIndex) => {
                         const code = (employeeRecord[day] || "").toUpperCase();
                         const cell = row.getCell(dIndex + 3);
-                        const color = JOB_CODE_COLORS[code];
+                        const colorInfo = JOB_CODE_COLORS[code];
     
-                        if (color && color.excelFill) {
-                            cell.fill = { type: "pattern", pattern: "solid", fgColor: color.excelFill.fgColor };
-                            if (color.excelFill.font) {
-                                cell.font = color.excelFill.font;
+                        if (colorInfo && colorInfo.excelFill) {
+                            cell.fill = { type: "pattern", pattern: "solid", fgColor: colorInfo.excelFill.fgColor };
+                            if (colorInfo.excelFill.font) {
+                                cell.font = colorInfo.excelFill.font;
                             }
                         }
     
@@ -752,11 +752,11 @@ export default function JobRecordSheet() {
                         jobNoCell.value = jc.jobNo || "";
                         manDaysCell.value = count;
                     
-                        const jobColor = JOB_CODE_COLORS[jc.code];
-                        if (jobColor && jobColor.excelFill) {
-                          codeCell.fill = { type: "pattern", pattern: "solid", fgColor: jobColor.excelFill.fgColor };
-                          if (jobColor.excelFill.font) {
-                            codeCell.font = jobColor.excelFill.font;
+                        const colorInfo = JOB_CODE_COLORS[jc.code];
+                        if (colorInfo && colorInfo.excelFill) {
+                          codeCell.fill = { type: "pattern", pattern: "solid", fgColor: colorInfo.excelFill.fgColor };
+                          if (colorInfo.excelFill.font) {
+                            codeCell.font = colorInfo.excelFill.font;
                           } else {
                             codeCell.font = { bold: true };
                           }
@@ -777,6 +777,7 @@ export default function JobRecordSheet() {
                         });
                       });
                 }
+                // ------------------ END LEGEND ------------------ //
             }
     
             const buffer = await workbook.xlsx.writeBuffer();
