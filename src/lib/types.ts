@@ -1,6 +1,5 @@
 
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -816,6 +815,7 @@ export type TpCertList = {
         materialName: string;
         manufacturerSrNo: string;
     }[];
+    isEditable?: boolean;
 };
 
 export const TRANSFER_REASONS = [
@@ -827,7 +827,7 @@ export const TRANSFER_REASONS = [
 
 export type TransferReason = (typeof TRANSFER_REASONS)[number];
 
-export type InventoryTransferStatus = 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+export type InventoryTransferStatus = 'Pending' | 'Approved' | 'Completed' | 'Rejected';
 
 export type InventoryTransferRequest = {
     id: string;
@@ -836,6 +836,7 @@ export type InventoryTransferRequest = {
     fromProjectId: string;
     toProjectId: string;
     reason: TransferReason;
+    requestedById?: string; // The person who verbally requested the transfer
     remarks?: string;
     items: {
       itemId: string;
@@ -846,10 +847,9 @@ export type InventoryTransferRequest = {
     status: InventoryTransferStatus;
     storeApproverId?: string;
     storeApprovalDate?: string; // ISO
-    supervisorAcknowledgeId?: string;
-    supervisorAcknowledgeDate?: string; // ISO
+    acknowledgedBy?: string; // User ID of supervisor or requestedBy person
+    acknowledgedDate?: string; // ISO
     comments?: Comment[];
     viewedByRequester?: boolean;
 };
-
       

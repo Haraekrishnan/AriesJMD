@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,8 +16,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import type { InventoryItem, UTMachine, DftMachine, TransferReason } from '@/lib/types';
 import { TRANSFER_REASONS } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
-import { X } from 'lucide-react';
+import { X, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 type SearchableItem = (InventoryItem | UTMachine | DftMachine) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine'; };
 
@@ -24,6 +28,7 @@ const transferRequestSchema = z.object({
   fromProjectId: z.string().min(1, 'Origin project is required'),
   toProjectId: z.string().min(1, 'Destination project is required'),
   reason: z.enum(TRANSFER_REASONS, { required_error: 'A reason for transfer is required.' }),
+  requestedById: z.string().optional(),
   remarks: z.string().optional(),
   items: z.array(z.object({
     itemId: z.string(),
@@ -34,6 +39,14 @@ const transferRequestSchema = z.object({
 }).refine(data => data.fromProjectId !== data.toProjectId, {
     message: 'Destination project must be different from the origin.',
     path: ['toProjectId'],
+}).refine(data => {
+    if (data.reason === 'Transfer to another project as requested by') {
+        return !!data.requestedById;
+    }
+    return true;
+}, {
+    message: 'Please select the person who requested the transfer.',
+    path: ['requestedById'],
 });
 
 type TransferRequestFormValues = z.infer<typeof transferRequestSchema>;
@@ -44,7 +57,7 @@ interface NewInventoryTransferRequestDialogProps {
 }
 
 export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }: NewInventoryTransferRequestDialogProps) {
-  const { user, projects, inventoryItems, utMachines, dftMachines, addInventoryTransferRequest } = useAppContext();
+  const { user, users, projects, inventoryItems, utMachines, dftMachines, addInventoryTransferRequest } = useAppContext();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -58,6 +71,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
   
   const fromProjectId = form.watch('fromProjectId');
   const selectedItems = form.watch('items');
+  const reason = form.watch('reason');
 
   const allSearchableItems = useMemo(() => {
     const items: SearchableItem[] = [];
@@ -154,6 +168,24 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                 />
                 {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
             </div>
+            {reason === 'Transfer to another project as requested by' && (
+                <div className="space-y-2">
+                    <Label>Requested By</Label>
+                    <Controller
+                        name="requestedById"
+                        control={form.control}
+                        render={({ field }) => (
+                             <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select employee..." /></SelectTrigger>
+                                <SelectContent>
+                                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                     {form.formState.errors.requestedById && <p className="text-xs text-destructive">{form.formState.errors.requestedById.message}</p>}
+                </div>
+            )}
             <div className="space-y-2">
               <Label>Remarks (Optional)</Label>
               <Textarea {...form.register('remarks')} />
