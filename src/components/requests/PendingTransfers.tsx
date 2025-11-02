@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import type { InventoryTransferRequest } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 export default function PendingTransfers() {
   const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer } = useAppContext();
@@ -93,6 +94,7 @@ export default function PendingTransfers() {
               const toProject = projects.find(p => p.id === req.toProjectId);
               const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
               const isDisputed = req.status === 'Disputed';
+              const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
 
               return (
                 <div key={req.id} className={`p-4 border rounded-lg ${isDisputed ? 'bg-destructive/10' : 'bg-muted/50'}`}>
@@ -185,6 +187,27 @@ export default function PendingTransfers() {
                         <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
                       ))}
                     </ul>
+                     <Accordion type="single" collapsible className="w-full mt-2">
+                        <AccordionItem value="comments" className="border-none">
+                            <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
+                            <AccordionContent className="pt-2 text-muted-foreground">
+                                <div className="space-y-2">
+                                {comments.length > 0 ? comments.map((c,i) => {
+                                    const commentUser = users.find(u => u.id === c.userId);
+                                    return (
+                                        <div key={i} className="flex items-start gap-2">
+                                            <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                            <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                            </div>
+                                        </div>
+                                    )
+                                }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                   </div>
                 </div>
               );
@@ -310,7 +333,7 @@ export default function PendingTransfers() {
                             <Badge variant={statusVariant}>{req.status}</Badge>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                              {req.acknowledgedDate ? `Completed ${formatDistanceToNow(parseISO(req.acknowledgedDate), { addSuffix: true })}` : `Rejected ${formatDistanceToNow(parseISO(req.approvalDate!), { addSuffix: true })}`}
+                              {req.acknowledgedDate ? `Completed ${formatDistanceToNow(parseISO(req.acknowledgedDate), { addSuffix: true })}` : `Rejected ${req.approvalDate ? formatDistanceToNow(parseISO(req.approvalDate), { addSuffix: true }) : ''}`}
                           </p>
                         </div>
                       );
