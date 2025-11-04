@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -18,18 +17,16 @@ import { parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 
 const itemUpdateSchema = z.object({
+  itemId: z.string(),
+  itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'Anemometer', 'DigitalCamera', 'OtherEquipment', 'LaptopDesktop', 'MobileSim']),
+  materialName: z.string(),
+  manufacturerSrNo: z.string(),
   tpInspectionDueDate: z.date().optional().nullable(),
   certificateUrl: z.string().url().optional().or(z.literal('')),
 });
 
 const formSchema = z.object({
-  items: z.array(z.object({
-    itemId: z.string(),
-    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'Anemometer', 'DigitalCamera', 'OtherEquipment', 'LaptopDesktop', 'MobileSim']),
-    materialName: z.string(),
-    manufacturerSrNo: z.string(),
-    ...itemUpdateSchema.shape
-  })),
+  items: z.array(itemUpdateSchema),
   bulkDate: z.date().optional().nullable(),
   bulkLink: z.string().url().optional().or(z.literal('')),
 });
@@ -48,7 +45,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       updateInventoryItem, updateUTMachine, updateDftMachine, updateAnemometer, updateDigitalCamera, updateOtherEquipment, updateLaptopDesktop, updateMobileSim
   } = useAppContext();
   const { toast } = useToast();
-  const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
+  const [selectedRowIndices, setSelectedRowIndices] = useState<Record<number, boolean>>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -79,9 +76,9 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         };
       });
       form.reset({ items: itemsWithData, bulkDate: null, bulkLink: '' });
-      setSelectedRowIds({});
+      setSelectedRowIndices({});
     }
-  }, [certList, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, isOpen, form]);
+  }, [certList, isOpen, form, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims]);
   
   const handleBulkApply = () => {
     const { bulkDate, bulkLink } = form.getValues();
@@ -91,7 +88,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     }
     
     fields.forEach((field, index) => {
-        if (selectedRowIds[field.id]) {
+        if (selectedRowIndices[index]) {
             const currentItem = { ...field };
             if (bulkDate) {
                 currentItem.tpInspectionDueDate = bulkDate;
@@ -107,7 +104,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   const onSubmit = (data: FormValues) => {
     let updatedCount = 0;
-    const itemsToUpdate = data.items.filter((_, index) => selectedRowIds[fields[index].id]);
+    const itemsToUpdate = data.items.filter((_, index) => selectedRowIndices[index]);
     
     if (itemsToUpdate.length === 0) {
       toast({
@@ -118,19 +115,21 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       return;
     }
   
-    for (const item of itemsToUpdate) {
+    itemsToUpdate.forEach(item => {
+      const allItems: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim)[] = [
+        ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+      ];
+      const baseItem = allItems.find(i => i.id === item.itemId);
+      if (!baseItem) return;
+
+      const updateData = {
+        ...baseItem,
+        tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : undefined,
+        certificateUrl: item.certificateUrl,
+      };
+
       try {
-        const itemType = item.itemType;
-        const baseItem = [...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims].find(i => i.id === item.itemId);
-        if (!baseItem) continue;
-  
-        const updateData = {
-          ...baseItem,
-          tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : undefined,
-          certificateUrl: item.certificateUrl,
-        };
-        
-        switch(itemType) {
+        switch(item.itemType) {
             case 'Inventory': updateInventoryItem(updateData as InventoryItem); break;
             case 'UTMachine': updateUTMachine(updateData as UTMachine); break;
             case 'DftMachine': updateDftMachine(updateData as DftMachine); break;
@@ -149,7 +148,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
           variant: 'destructive',
         });
       }
-    }
+    });
   
     if (updatedCount > 0) {
       toast({
@@ -161,23 +160,23 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
   };
   
   const handleSelectAll = (checked: boolean) => {
-    const newSelected: Record<string, boolean> = {};
+    const newSelected: Record<number, boolean> = {};
     if (checked) {
-      fields.forEach(field => {
-        newSelected[field.id] = true;
+      fields.forEach((_, index) => {
+        newSelected[index] = true;
       });
     }
-    setSelectedRowIds(newSelected);
+    setSelectedRowIndices(newSelected);
   };
 
-  const handleRowSelect = (id: string, checked: boolean) => {
-    setSelectedRowIds(prev => ({
+  const handleRowSelect = (index: number, checked: boolean) => {
+    setSelectedRowIndices(prev => ({
       ...prev,
-      [id]: checked
+      [index]: checked
     }));
   };
   
-  const isAllSelected = fields.length > 0 && fields.every(field => selectedRowIds[field.id]);
+  const isAllSelected = fields.length > 0 && fields.every((_, index) => selectedRowIndices[index]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -224,8 +223,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                     <TableRow key={field.id}>
                         <TableCell>
                             <Checkbox
-                                checked={!!selectedRowIds[field.id]}
-                                onCheckedChange={(checked) => handleRowSelect(field.id, !!checked)}
+                                checked={!!selectedRowIndices[index]}
+                                onCheckedChange={(checked) => handleRowSelect(index, !!checked)}
                             />
                         </TableCell>
                         <TableCell>{index + 1}</TableCell>
