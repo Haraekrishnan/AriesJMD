@@ -198,7 +198,7 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
 
     const tableColumn = [
         "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old",
-        "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)",
+        "Valid upto if Renewal", "Submit Last Testing Report",
     ];
     
     const processedItems = processItemsForMerging(items);
@@ -207,37 +207,38 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
 
     for (const group of processedItems) {
         const isHarness = group.materialName.toLowerCase() === 'harness';
-        for (let i = 0; i < group.serialNumbers.length; i++) {
+        const groupSize = group.serialNumbers.length;
+
+        for (let i = 0; i < groupSize; i++) {
             const serial = group.serialNumbers[i];
-            const chestCrollNo = group.chestCrollNos[i];
+            const chestCrollNo = group.chestCrollNos[i] || '';
+            let rowData = [];
+
             if (i === 0) {
-                const rowData = [
-                    { content: srNo, rowSpan: group.serialNumbers.length },
-                    { content: group.materialName, rowSpan: group.serialNumbers.length },
-                    serial,
-                    isHarness ? chestCrollNo || '' : '',
-                    { content: '', rowSpan: group.serialNumbers.length },
-                    { content: group.serialNumbers.length, rowSpan: group.serialNumbers.length },
-                    { content: 'OLD', rowSpan: group.serialNumbers.length },
-                    { content: '', rowSpan: group.serialNumbers.length },
-                    { content: '', rowSpan: group.serialNumbers.length },
-                ];
-                if (!isHarness) {
-                    (rowData[2] as any).colSpan = 2;
-                    rowData.splice(3, 1);
+                // First row of a group, apply rowSpans
+                rowData.push({ content: srNo, rowSpan: groupSize });
+                rowData.push({ content: group.materialName, rowSpan: groupSize });
+                rowData.push(serial);
+                if (isHarness) {
+                    rowData.push(chestCrollNo);
+                } else {
+                    (rowData[rowData.length - 1] as any).colSpan = 2;
                 }
-                tableRows.push(rowData);
+                rowData.push({ content: '', rowSpan: groupSize });
+                rowData.push({ content: groupSize, rowSpan: groupSize });
+                rowData.push({ content: 'OLD', rowSpan: groupSize });
+                rowData.push({ content: '', rowSpan: groupSize });
+                rowData.push({ content: '', rowSpan: groupSize });
             } else {
-                const rowData = [
-                    serial,
-                    isHarness ? chestCrollNo || '' : '',
-                ];
-                 if (!isHarness) {
-                    (rowData[0] as any).colSpan = 2;
-                    rowData.splice(1, 1);
+                // Subsequent rows for the same group
+                rowData.push(serial);
+                 if (isHarness) {
+                    rowData.push(chestCrollNo);
+                } else {
+                    (rowData[rowData.length - 1] as any).colSpan = 2;
                 }
-                tableRows.push(rowData);
             }
+            tableRows.push(rowData);
         }
         srNo++;
     }
@@ -250,10 +251,10 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
         styles: { fontSize: 8, halign: 'center', valign: 'middle' },
         headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
         columnStyles: {
-          1: { cellWidth: 80, halign: 'left' }, 
-          2: { cellWidth: 80, halign: 'left' },
-          3: { cellWidth: 80, halign: 'left' },
-          7: { cellWidth: 60 },
+          1: { cellWidth: 70, halign: 'left' }, 
+          2: { cellWidth: 70, halign: 'left' },
+          3: { cellWidth: 70, halign: 'left' },
+          7: { cellWidth: 50 },
           8: { cellWidth: 60 }
         }
     });
@@ -278,3 +279,4 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
 
     doc.save("TP_Certification_List.pdf");
 }
+
