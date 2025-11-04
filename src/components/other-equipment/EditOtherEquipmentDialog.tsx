@@ -18,6 +18,7 @@ const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
   equipmentName: z.string().min(1, 'Equipment name is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
+  ariesId: z.string().optional(),
   remarks: z.string().optional(),
 });
 
@@ -74,10 +75,16 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
               <Input id="equipmentName" {...form.register('equipmentName')} />
               {form.formState.errors.equipmentName && <p className="text-xs text-destructive">{form.formState.errors.equipmentName.message}</p>}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="serialNumber">Serial Number</Label>
-            <Input id="serialNumber" {...form.register('serialNumber')} />
-            {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="serialNumber">Serial Number</Label>
+              <Input id="serialNumber" {...form.register('serialNumber')} />
+              {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="ariesId">Aries ID</Label>
+                <Input id="ariesId" {...form.register('ariesId')} />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>

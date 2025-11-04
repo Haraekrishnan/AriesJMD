@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,6 +38,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
           <TableRow>
             <TableHead>Equipment Name</TableHead>
             <TableHead>Serial Number</TableHead>
+            <TableHead>Aries ID</TableHead>
             <TableHead>Allotted To</TableHead>
             <TableHead>Remarks</TableHead>
             {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
@@ -51,6 +51,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
                   <TableRow key={item.id}>
                       <TableCell><p className="font-medium">{item.equipmentName}</p></TableCell>
                       <TableCell>{item.serialNumber}</TableCell>
+                      <TableCell>{item.ariesId || 'N/A'}</TableCell>
                       <TableCell>
                           <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">

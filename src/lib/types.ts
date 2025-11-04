@@ -674,6 +674,7 @@ export type OtherEquipment = {
     id: string;
     equipmentName: string;
     serialNumber: string;
+    ariesId?: string;
     allottedTo: string; // User ID
     remarks?: string;
 };
