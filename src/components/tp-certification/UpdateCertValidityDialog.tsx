@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { TpCertList } from '@/lib/types';
+import type { TpCertList, InventoryItem, UTMachine, DftMachine } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
@@ -63,7 +63,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   useEffect(() => {
     if (certList && isOpen) {
-      const allItems = [...inventoryItems, ...utMachines, ...dftMachines];
+      const allItems: (InventoryItem | UTMachine | DftMachine)[] = [...inventoryItems, ...utMachines, ...dftMachines];
       const itemsWithData = certList.items.map(listItem => {
         const fullItem = allItems.find(i => i.id === listItem.itemId);
         return {
@@ -99,43 +99,52 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     toast({ title: 'Applied to Selected', description: 'Bulk values have been applied to selected rows.' });
   };
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     let updatedCount = 0;
-    data.items.forEach((item, index) => {
-        if (!selectedRowIds[fields[index].id]) return;
+    const selectedItemsToUpdate = data.items.filter((_, index) => selectedRowIds[fields[index].id]);
 
-        if (item.itemType === 'Inventory') {
-            const originalItem = inventoryItems.find(i => i.id === item.itemId);
-            if (originalItem) {
-                updateInventoryItem({
-                    ...originalItem,
-                    tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-                    certificateUrl: item.certificateUrl,
-                });
-                updatedCount++;
+    for (const item of selectedItemsToUpdate) {
+        try {
+            if (item.itemType === 'Inventory') {
+                const originalItem = inventoryItems.find(i => i.id === item.itemId);
+                if (originalItem) {
+                    await updateInventoryItem({
+                        ...originalItem,
+                        tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+                        certificateUrl: item.certificateUrl,
+                    });
+                    updatedCount++;
+                }
+            } else if (item.itemType === 'UTMachine') {
+                const originalItem = utMachines.find(i => i.id === item.itemId);
+                 if (originalItem) {
+                    await updateUTMachine({
+                        ...originalItem,
+                        tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+                        certificateUrl: item.certificateUrl,
+                    } as any);
+                    updatedCount++;
+                }
+            } else if (item.itemType === 'DftMachine') {
+                const originalItem = dftMachines.find(i => i.id === item.itemId);
+                 if (originalItem) {
+                    await updateDftMachine({
+                        ...originalItem,
+                        tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+                        certificateUrl: item.certificateUrl,
+                    } as any);
+                    updatedCount++;
+                }
             }
-        } else if (item.itemType === 'UTMachine') {
-            const originalItem = utMachines.find(i => i.id === item.itemId);
-             if (originalItem) {
-                updateUTMachine({
-                    ...originalItem,
-                    tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-                    certificateUrl: item.certificateUrl,
-                } as any);
-                updatedCount++;
-            }
-        } else if (item.itemType === 'DftMachine') {
-            const originalItem = dftMachines.find(i => i.id === item.itemId);
-             if (originalItem) {
-                updateDftMachine({
-                    ...originalItem,
-                    tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-                    certificateUrl: item.certificateUrl,
-                } as any);
-                updatedCount++;
-            }
+        } catch (error) {
+            console.error(`Failed to update item ${item.itemId}:`, error);
+            toast({
+                title: `Error updating ${item.name}`,
+                description: "Could not save changes for this item.",
+                variant: 'destructive',
+            });
         }
-    });
+    }
 
     if (updatedCount > 0) {
       toast({
