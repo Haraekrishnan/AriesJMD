@@ -126,7 +126,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
 };
 
 export default function InventoryTable({ items }: InventoryTableProps) {
-    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem } = useAppContext();
+    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem, can } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
