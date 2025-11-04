@@ -105,7 +105,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     toast({ title: 'Applied to Selected', description: 'Bulk values have been applied to selected rows.' });
   };
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = (data: FormValues) => {
     let updatedCount = 0;
     const itemsToUpdate = data.items.filter((_, index) => selectedRowIds[fields[index].id]);
     
@@ -123,22 +123,22 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         const itemType = item.itemType;
         const baseItem = [...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims].find(i => i.id === item.itemId);
         if (!baseItem) continue;
-
+  
         const updateData = {
           ...baseItem,
-          tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+          tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : undefined,
           certificateUrl: item.certificateUrl,
         };
         
         switch(itemType) {
-            case 'Inventory': await updateInventoryItem(updateData as InventoryItem); break;
-            case 'UTMachine': await updateUTMachine(updateData as UTMachine); break;
-            case 'DftMachine': await updateDftMachine(updateData as DftMachine); break;
-            case 'Anemometer': await updateAnemometer(updateData as Anemometer); break;
-            case 'DigitalCamera': await updateDigitalCamera(updateData as DigitalCamera); break;
-            case 'OtherEquipment': await updateOtherEquipment(updateData as OtherEquipment); break;
-            case 'LaptopDesktop': await updateLaptopDesktop(updateData as LaptopDesktop); break;
-            case 'MobileSim': await updateMobileSim(updateData as MobileSim); break;
+            case 'Inventory': updateInventoryItem(updateData as InventoryItem); break;
+            case 'UTMachine': updateUTMachine(updateData as UTMachine); break;
+            case 'DftMachine': updateDftMachine(updateData as DftMachine); break;
+            case 'Anemometer': updateAnemometer(updateData as Anemometer); break;
+            case 'DigitalCamera': updateDigitalCamera(updateData as DigitalCamera); break;
+            case 'OtherEquipment': updateOtherEquipment(updateData as OtherEquipment); break;
+            case 'LaptopDesktop': updateLaptopDesktop(updateData as LaptopDesktop); break;
+            case 'MobileSim': updateMobileSim(updateData as MobileSim); break;
         }
         updatedCount++;
       } catch (error) {

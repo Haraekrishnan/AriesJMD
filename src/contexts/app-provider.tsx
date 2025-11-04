@@ -206,7 +206,7 @@ type AppContextType = {
   deletePpeInwardRecord: (record: PpeInwardRecord) => void;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
-  updateInventoryItem: (item: InventoryItem) => Promise<void>;
+  updateInventoryItem: (item: InventoryItem) => void;
   updateInventoryItemGroup: (itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   deleteInventoryItem: (itemId: string) => void;
   deleteInventoryItemGroup: (itemName: string) => void;
@@ -223,10 +223,10 @@ type AppContextType = {
   markFulfilledRequestsAsViewed: (requestType: 'store' | 'equipment') => void;
   acknowledgeFulfilledRequest: (requestId: string) => void;
   addUTMachine: (machine: Omit<UTMachine, 'id'>) => void;
-  updateUTMachine: (machine: UTMachine) => Promise<void>;
+  updateUTMachine: (machine: UTMachine) => void;
   deleteUTMachine: (machineId: string) => void;
   addDftMachine: (machine: Omit<DftMachine, 'id'>) => void;
-  updateDftMachine: (machine: DftMachine) => Promise<void>;
+  updateDftMachine: (machine: DftMachine) => void;
   deleteDftMachine: (machineId: string) => void;
   addMobileSim: (item: Omit<MobileSim, 'id'>) => void;
   updateMobileSim: (item: MobileSim) => void;
@@ -235,13 +235,13 @@ type AppContextType = {
   updateLaptopDesktop: (item: LaptopDesktop) => void;
   deleteLaptopDesktop: (itemId: string) => void;
   addDigitalCamera: (camera: Omit<DigitalCamera, 'id'>) => void;
-  updateDigitalCamera: (camera: DigitalCamera) => Promise<void>;
+  updateDigitalCamera: (camera: DigitalCamera) => void;
   deleteDigitalCamera: (cameraId: string) => void;
   addAnemometer: (anemometer: Omit<Anemometer, 'id'>) => void;
-  updateAnemometer: (anemometer: Anemometer) => Promise<void>;
+  updateAnemometer: (anemometer: Anemometer) => void;
   deleteAnemometer: (anemometerId: string) => void;
   addOtherEquipment: (equipment: Omit<OtherEquipment, 'id'>) => void;
-  updateOtherEquipment: (equipment: OtherEquipment) => Promise<void>;
+  updateOtherEquipment: (equipment: OtherEquipment) => void;
   deleteOtherEquipment: (equipmentId: string) => void;
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
@@ -2532,7 +2532,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return importedCount;
 }, [user, inventoryItems, projects, addActivityLog]);
 
-  const updateInventoryItem = useCallback(async (item: InventoryItem): Promise<void> => {
+  const updateInventoryItem = useCallback((item: InventoryItem) => {
     if(!user) return;
     const { id, ...data } = item;
     const dataToSave = { 
@@ -2540,7 +2540,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lastUpdated: new Date().toISOString(),
       movedToProjectId: data.movedToProjectId || null,
     };
-    await update(ref(rtdb, `inventoryItems/${id}`), dataToSave);
+    update(ref(rtdb, `inventoryItems/${id}`), dataToSave);
     addActivityLog(user.id, 'Inventory Item Updated', item.name);
   }, [user, addActivityLog]);
 
@@ -2680,11 +2680,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'UT Machine Added', machine.machineName);
   }, [user, addActivityLog]);
 
-  const updateUTMachine = useCallback(async (machine: UTMachine): Promise<void> => {
+  const updateUTMachine = useCallback((machine: UTMachine) => {
     if(!user) return;
     const { id, ...data } = machine;
     const dataToSave = { ...data, movedToProjectId: data.movedToProjectId || null };
-    await update(ref(rtdb, `utMachines/${id}`), dataToSave);
+    update(ref(rtdb, `utMachines/${id}`), dataToSave);
     addActivityLog(user.id, 'UT Machine Updated', machine.machineName);
   }, [user, addActivityLog]);
 
@@ -2705,11 +2705,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'DFT Machine Added', machine.machineName);
   }, [user, addActivityLog]);
   
-  const updateDftMachine = useCallback(async (machine: DftMachine): Promise<void> => {
+  const updateDftMachine = useCallback((machine: DftMachine) => {
     if(!user) return;
     const { id, ...data } = machine;
     const dataToSave = { ...data, movedToProjectId: data.movedToProjectId || null };
-    await update(ref(rtdb, `dftMachines/${id}`), dataToSave);
+    update(ref(rtdb, `dftMachines/${id}`), dataToSave);
     addActivityLog(user.id, 'DFT Machine Updated', machine.machineName);
   }, [user, addActivityLog]);
 
@@ -2775,10 +2775,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Digital Camera Added', camera.serialNumber);
   }, [user, addActivityLog]);
 
-  const updateDigitalCamera = useCallback(async (camera: DigitalCamera) => {
+  const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
     if(!user) return;
     const { id, ...data } = camera;
-    await update(ref(rtdb, `digitalCameras/${id}`), data);
+    update(ref(rtdb, `digitalCameras/${id}`), data);
     addActivityLog(user.id, 'Digital Camera Updated', camera.serialNumber);
   }, [user, addActivityLog]);
   
@@ -2795,10 +2795,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Anemometer Added', anemometer.serialNumber);
   }, [user, addActivityLog]);
 
-  const updateAnemometer = useCallback(async (anemometer: Anemometer) => {
+  const updateAnemometer = useCallback((anemometer: Anemometer) => {
     if(!user) return;
     const { id, ...data } = anemometer;
-    await update(ref(rtdb, `anemometers/${id}`), data);
+    update(ref(rtdb, `anemometers/${id}`), data);
     addActivityLog(user.id, 'Anemometer Updated', anemometer.serialNumber);
   }, [user, addActivityLog]);
   
@@ -2815,10 +2815,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Other Equipment Added', equipment.equipmentName);
   }, [user, addActivityLog]);
 
-  const updateOtherEquipment = useCallback(async (equipment: OtherEquipment) => {
+  const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
     if(!user) return;
     const { id, ...data } = equipment;
-    await update(ref(rtdb, `otherEquipments/${id}`), data);
+    update(ref(rtdb, `otherEquipments/${id}`), data);
     addActivityLog(user.id, 'Other Equipment Updated', equipment.equipmentName);
   }, [user, addActivityLog]);
   
