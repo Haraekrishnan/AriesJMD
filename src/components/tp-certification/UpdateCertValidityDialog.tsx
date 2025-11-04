@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { TpCertList } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
+import { Checkbox } from '../ui/checkbox';
 
 const itemUpdateSchema = z.object({
   tpInspectionDueDate: z.date().optional().nullable(),
@@ -44,6 +45,7 @@ interface UpdateCertValidityDialogProps {
 export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }: UpdateCertValidityDialogProps) {
   const { inventoryItems, utMachines, dftMachines, updateInventoryItem } = useAppContext();
   const { toast } = useToast();
+  const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,6 +73,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         };
       });
       form.reset({ items: itemsWithData, bulkDate: null, bulkLink: '' });
+      setSelectedRowIds({});
     }
   }, [certList, inventoryItems, utMachines, dftMachines, isOpen, form]);
   
@@ -82,15 +85,18 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     }
     
     fields.forEach((field, index) => {
-        const currentItem = { ...field };
-        if (bulkDate) {
-            currentItem.tpInspectionDueDate = bulkDate;
+        if (selectedRowIds[field.id]) {
+            const currentItem = { ...field };
+            if (bulkDate) {
+                currentItem.tpInspectionDueDate = bulkDate;
+            }
+            if (bulkLink) {
+                currentItem.certificateUrl = bulkLink;
+            }
+            update(index, currentItem);
         }
-        if (bulkLink) {
-            currentItem.certificateUrl = bulkLink;
-        }
-        update(index, currentItem);
     });
+    toast({ title: 'Applied to Selected', description: 'Bulk values have been applied to selected rows.' });
   };
 
   const onSubmit = (data: FormValues) => {
@@ -113,6 +119,25 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     });
     setIsOpen(false);
   };
+  
+  const handleSelectAll = (checked: boolean) => {
+    const newSelected: Record<string, boolean> = {};
+    if (checked) {
+      fields.forEach(field => {
+        newSelected[field.id] = true;
+      });
+    }
+    setSelectedRowIds(newSelected);
+  };
+
+  const handleRowSelect = (id: string, checked: boolean) => {
+    setSelectedRowIds(prev => ({
+      ...prev,
+      [id]: checked
+    }));
+  };
+  
+  const isAllSelected = fields.length > 0 && fields.every(field => selectedRowIds[field.id]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -133,7 +158,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                     <Input {...form.register('bulkLink')} placeholder="https://..." />
                 </div>
                  <div className="flex items-end">
-                    <Button type="button" onClick={handleBulkApply}>Apply to All</Button>
+                    <Button type="button" onClick={handleBulkApply}>Apply to Selected</Button>
                 </div>
             </div>
 
@@ -141,6 +166,12 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
             <Table>
                 <TableHeader>
                 <TableRow>
+                    <TableHead className="w-12">
+                        <Checkbox
+                            checked={isAllSelected}
+                            onCheckedChange={handleSelectAll}
+                        />
+                    </TableHead>
                     <TableHead>Sr. No</TableHead>
                     <TableHead>Material Name</TableHead>
                     <TableHead>Sr. No</TableHead>
@@ -151,6 +182,12 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                 <TableBody>
                 {fields.map((field, index) => (
                     <TableRow key={field.id}>
+                        <TableCell>
+                            <Checkbox
+                                checked={!!selectedRowIds[field.id]}
+                                onCheckedChange={(checked) => handleRowSelect(field.id, !!checked)}
+                            />
+                        </TableCell>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{field.materialName}</TableCell>
                         <TableCell>{field.manufacturerSrNo}</TableCell>
