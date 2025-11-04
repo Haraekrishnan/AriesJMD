@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -210,7 +211,23 @@ export default function PpeStockPage() {
                     </CardContent>
                     {canEdit && (
                         <CardFooter>
-                            <Button onClick={handleCoverallSave}>Save Coverall Stock</Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button>Save Coverall Stock</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Stock Update</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to manually update the coverall stock levels? This should only be for correcting inventory counts.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleCoverallSave}>Confirm Update</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </CardFooter>
                     )}
                 </Card>
@@ -234,7 +251,23 @@ export default function PpeStockPage() {
                     </CardContent>
                     {canEdit && (
                         <CardFooter>
-                            <Button onClick={handleShoeSave}>Save Shoe Stock</Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button>Save Shoe Stock</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Stock Update</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to manually update the safety shoe stock level? This should only be for correcting inventory counts.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleShoeSave}>Confirm Update</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </CardFooter>
                     )}
                 </Card>
@@ -303,7 +336,7 @@ export default function PpeStockPage() {
                     <DateRangePicker 
                         date={reportDateRange} 
                         onDateChange={setReportDateRange} 
-                        fromDate={new Date(2025, 7, 17)} // August 17, 2025
+                        fromDate={new Date(2025, 7, 17)}
                     />
                     <PpeReportDownloads dateRange={reportDateRange} />
                 </CardContent>
