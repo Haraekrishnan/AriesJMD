@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday } from 'date-fns';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Edit, Trash2, Send, ChevronLeft, ChevronRight } from 'lucide-react';
