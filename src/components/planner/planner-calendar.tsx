@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO, isToday, isSameMonth, endOfWeek } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO, isToday, isSameMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
@@ -189,7 +189,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                         </div>
                                                     )}
                                                 </div>
-                                                <AccordionTrigger className="pt-2 pb-0 text-xs text-muted-foreground hover:no-underline justify-start gap-1">
+                                                <AccordionTrigger className="pt-2 pb-0 text-xs text-blue-600 hover:no-underline justify-start gap-1">
                                                     <MessageSquare className="h-3 w-3"/>
                                                     {eventComments.length > 0 ? `${eventComments.length} comments` : 'Add comment'}
                                                 </AccordionTrigger>
