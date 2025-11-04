@@ -11,6 +11,31 @@ interface CertItem {
   manufacturerSrNo: string;
 }
 
+// Helper function to process items: group by name and count quantities
+const processItems = (items: CertItem[]) => {
+    const itemMap = new Map<string, { materialName: string; manufacturerSrNo: string[]; quantity: number }>();
+
+    items.forEach(item => {
+        const key = item.materialName.toLowerCase();
+        if (itemMap.has(key)) {
+            const existing = itemMap.get(key)!;
+            existing.quantity++;
+            if (!existing.manufacturerSrNo.includes(item.manufacturerSrNo)) {
+                existing.manufacturerSrNo.push(item.manufacturerSrNo);
+            }
+        } else {
+            itemMap.set(key, {
+                materialName: item.materialName,
+                manufacturerSrNo: [item.manufacturerSrNo],
+                quantity: 1,
+            });
+        }
+    });
+
+    return Array.from(itemMap.values()).sort((a, b) => a.materialName.localeCompare(b.materialName));
+};
+
+
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
   // Construct the full URL if it's a relative path
   const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
@@ -85,12 +110,19 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
   });
   
-  items.forEach((item, index) => {
+  const processedItems = processItems(items);
+
+  processedItems.forEach((item, index) => {
     worksheet.addRow([
-      index + 1, item.materialName, item.manufacturerSrNo, '', '', 'OLD', '', ''
+      index + 1,
+      item.materialName,
+      item.manufacturerSrNo.join('\n'), // Join serial numbers with a newline
+      '',
+      item.quantity,
+      'OLD', '', ''
     ]).eachCell(cell => {
       cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
-      cell.alignment = { vertical: 'middle', wrapText: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     });
   });
 
@@ -141,8 +173,15 @@ export async function generateTpCertPdf(items: CertItem[]) {
         "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old",
         "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)",
     ];
-    const tableRows = items.map((item, index) => [
-        index + 1, item.materialName, item.manufacturerSrNo, "", "", "OLD", "", ""
+    
+    const processedItems = processItems(items);
+    const tableRows = processedItems.map((item, index) => [
+        index + 1, 
+        item.materialName, 
+        item.manufacturerSrNo.join('\n'), // Join serial numbers with a newline
+        "", 
+        item.quantity, 
+        "OLD", "", ""
     ]);
 
     (doc as any).autoTable({
