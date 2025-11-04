@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import type { OtherEquipment } from '@/lib/types';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { parseISO } from 'date-fns';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -20,6 +22,8 @@ const itemSchema = z.object({
   serialNumber: z.string().min(1, 'Serial number is required'),
   ariesId: z.string().optional(),
   remarks: z.string().optional(),
+  tpInspectionDueDate: z.date().optional().nullable(),
+  certificateUrl: z.string().url().optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof itemSchema>;
@@ -40,12 +44,19 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
 
   useEffect(() => {
     if (item && isOpen) {
-        form.reset(item);
+        form.reset({
+            ...item,
+            tpInspectionDueDate: item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null,
+        });
     }
   }, [item, isOpen, form]);
 
   const onSubmit = (data: FormValues) => {
-    updateOtherEquipment({ ...item, ...data });
+    updateOtherEquipment({
+        ...item,
+        ...data,
+        tpInspectionDueDate: data.tpInspectionDueDate?.toISOString(),
+    });
     toast({
       title: 'Equipment Updated',
       description: 'Equipment details have been updated.',
@@ -86,6 +97,14 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
                 <Input id="ariesId" {...form.register('ariesId')} />
             </div>
           </div>
+           <div className="space-y-2">
+              <Label>TP Inspection Due Date</Label>
+              <Controller name="tpInspectionDueDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+          </div>
+           <div className="space-y-2">
+                <Label htmlFor="certificateUrl">Certificate Link</Label>
+                <Input id="certificateUrl" {...form.register('certificateUrl')} />
+            </div>
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
             <Textarea id="remarks" {...form.register('remarks')} />

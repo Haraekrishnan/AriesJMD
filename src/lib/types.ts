@@ -445,7 +445,6 @@ export type ManpowerProfile = {
   safetyExpiryDate?: string | null; // ISO
   irataValidity?: string | null; // ISO
   firstAidExpiryDate?: string | null; // ISO
-  contractValidity?: string | null; // ISO
   
   // Leave and Termination
   leaveHistory?: { [key: string]: LeaveRecord };
@@ -631,6 +630,8 @@ export type DigitalCamera = {
   status: string;
   projectId: string;
   remarks?: string;
+  tpInspectionDueDate?: string;
+  certificateUrl?: string;
 };
 
 export type Anemometer = {
@@ -643,6 +644,8 @@ export type Anemometer = {
   projectId: string;
   calibrationDueDate?: string; // ISO String
   remarks?: string;
+  tpInspectionDueDate?: string;
+  certificateUrl?: string;
 };
 
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
@@ -657,6 +660,8 @@ export type MobileSim = {
   projectId: string;
   status: MobileSimStatus;
   remarks?: string;
+  tpInspectionDueDate?: string;
+  certificateUrl?: string;
 };
 
 export type LaptopDesktop = {
@@ -668,6 +673,8 @@ export type LaptopDesktop = {
     ariesId?: string;
     password?: string;
     remarks?: string;
+    tpInspectionDueDate?: string;
+    certificateUrl?: string;
 };
 
 export type OtherEquipment = {
@@ -677,6 +684,8 @@ export type OtherEquipment = {
     ariesId?: string;
     allottedTo: string; // User ID
     remarks?: string;
+    tpInspectionDueDate?: string;
+    certificateUrl?: string;
 };
 
 export type MachineLog = {

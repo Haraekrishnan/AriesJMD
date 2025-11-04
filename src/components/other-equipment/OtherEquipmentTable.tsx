@@ -3,12 +3,15 @@
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Link as LinkIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { OtherEquipment } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { cn } from '@/lib/utils';
+import { format, isPast, parseISO, differenceInDays } from 'date-fns';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface OtherEquipmentTableProps {
   onEdit: (item: OtherEquipment) => void;
@@ -26,6 +29,14 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
       description: 'The equipment entry has been removed.',
     });
   };
+
+  const getDateStyles = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    if (isPast(date)) return 'text-destructive font-bold';
+    if (differenceInDays(date, new Date()) <= 30) return 'text-orange-500 font-semibold';
+    return '';
+  };
   
   if (otherEquipments.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No other equipments found.</p>;
@@ -33,6 +44,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
 
   return (
     <div className="overflow-x-auto">
+      <TooltipProvider>
       <Table>
         <TableHeader>
           <TableRow>
@@ -40,6 +52,8 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
             <TableHead>Serial Number</TableHead>
             <TableHead>Aries ID</TableHead>
             <TableHead>Allotted To</TableHead>
+            <TableHead>TP Due Date</TableHead>
+            <TableHead>Certificate</TableHead>
             <TableHead>Remarks</TableHead>
             {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
@@ -61,6 +75,21 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
                               <p className="font-medium">{allottedUser?.name}</p>
                           </div>
                       </TableCell>
+                       <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>
+                            {item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {item.certificateUrl && (
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                  <Button asChild variant="ghost" size="icon">
+                                      <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                  </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>View Certificate</TooltipContent>
+                              </Tooltip>
+                          )}
+                        </TableCell>
                       <TableCell>{item.remarks}</TableCell>
                       {can.manage_equipment_status && (
                       <TableCell className="text-right">
@@ -84,6 +113,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
           })}
         </TableBody>
       </Table>
+      </TooltipProvider>
     </div>
   );
 }

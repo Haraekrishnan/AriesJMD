@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { DatePickerInput } from '../ui/date-picker-input';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -18,6 +19,8 @@ const itemSchema = z.object({
   serialNumber: z.string().min(1, 'Serial number is required'),
   ariesId: z.string().optional(),
   remarks: z.string().optional(),
+  tpInspectionDueDate: z.date().optional().nullable(),
+  certificateUrl: z.string().url().optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof itemSchema>;
@@ -36,7 +39,10 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
   });
 
   const onSubmit = (data: FormValues) => {
-    addOtherEquipment(data);
+    addOtherEquipment({
+      ...data,
+      tpInspectionDueDate: data.tpInspectionDueDate?.toISOString(),
+    });
     toast({
       title: 'Equipment Added',
       description: `${data.equipmentName} has been added.`,
@@ -83,6 +89,14 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
                 <Input id="ariesId" {...form.register('ariesId')} />
             </div>
           </div>
+           <div className="space-y-2">
+              <Label>TP Inspection Due Date</Label>
+              <Controller name="tpInspectionDueDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+          </div>
+           <div className="space-y-2">
+                <Label htmlFor="certificateUrl">Certificate Link</Label>
+                <Input id="certificateUrl" {...form.register('certificateUrl')} />
+            </div>
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
             <Textarea id="remarks" {...form.register('remarks')} />

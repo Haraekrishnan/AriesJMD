@@ -235,13 +235,13 @@ type AppContextType = {
   updateLaptopDesktop: (item: LaptopDesktop) => void;
   deleteLaptopDesktop: (itemId: string) => void;
   addDigitalCamera: (camera: Omit<DigitalCamera, 'id'>) => void;
-  updateDigitalCamera: (camera: DigitalCamera) => void;
+  updateDigitalCamera: (camera: DigitalCamera) => Promise<void>;
   deleteDigitalCamera: (cameraId: string) => void;
   addAnemometer: (anemometer: Omit<Anemometer, 'id'>) => void;
-  updateAnemometer: (anemometer: Anemometer) => void;
+  updateAnemometer: (anemometer: Anemometer) => Promise<void>;
   deleteAnemometer: (anemometerId: string) => void;
   addOtherEquipment: (equipment: Omit<OtherEquipment, 'id'>) => void;
-  updateOtherEquipment: (equipment: OtherEquipment) => void;
+  updateOtherEquipment: (equipment: OtherEquipment) => Promise<void>;
   deleteOtherEquipment: (equipmentId: string) => void;
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
@@ -1230,7 +1230,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
 
   }, [user, plannerEventsById]);
-
+  
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     // This function is now deprecated as we use per-event comments
   }, []);
@@ -2775,10 +2775,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Digital Camera Added', camera.serialNumber);
   }, [user, addActivityLog]);
 
-  const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
+  const updateDigitalCamera = useCallback(async (camera: DigitalCamera) => {
     if(!user) return;
     const { id, ...data } = camera;
-    update(ref(rtdb, `digitalCameras/${id}`), data);
+    await update(ref(rtdb, `digitalCameras/${id}`), data);
     addActivityLog(user.id, 'Digital Camera Updated', camera.serialNumber);
   }, [user, addActivityLog]);
   
@@ -2795,10 +2795,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Anemometer Added', anemometer.serialNumber);
   }, [user, addActivityLog]);
 
-  const updateAnemometer = useCallback((anemometer: Anemometer) => {
+  const updateAnemometer = useCallback(async (anemometer: Anemometer) => {
     if(!user) return;
     const { id, ...data } = anemometer;
-    update(ref(rtdb, `anemometers/${id}`), data);
+    await update(ref(rtdb, `anemometers/${id}`), data);
     addActivityLog(user.id, 'Anemometer Updated', anemometer.serialNumber);
   }, [user, addActivityLog]);
   
@@ -2815,10 +2815,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Other Equipment Added', equipment.equipmentName);
   }, [user, addActivityLog]);
 
-  const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
+  const updateOtherEquipment = useCallback(async (equipment: OtherEquipment) => {
     if(!user) return;
     const { id, ...data } = equipment;
-    update(ref(rtdb, `otherEquipments/${id}`), data);
+    await update(ref(rtdb, `otherEquipments/${id}`), data);
     addActivityLog(user.id, 'Other Equipment Updated', equipment.equipmentName);
   }, [user, addActivityLog]);
   
