@@ -143,7 +143,6 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     });
 
     if (groupSize > 1) {
-        // Correct column indices based on 1-based Excel columns
         const mergeCols = [1, 2, 5, 6, 7, 8, 9]; 
         mergeCols.forEach(col => {
             worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
@@ -205,43 +204,39 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
     const tableRows: any[][] = [];
     let srNo = 1;
 
-    for (const group of processedItems) {
-        const isHarness = group.materialName.toLowerCase() === 'harness';
-        const groupSize = group.serialNumbers.length;
-
-        for (let i = 0; i < groupSize; i++) {
-            const serial = group.serialNumbers[i];
-            const chestCrollNo = group.chestCrollNos[i] || '';
-            let rowData = [];
-
-            if (i === 0) {
-                // First row of a group, apply rowSpans
-                rowData.push({ content: srNo, rowSpan: groupSize });
-                rowData.push({ content: group.materialName, rowSpan: groupSize });
-                rowData.push(serial);
-                if (isHarness) {
-                    rowData.push(chestCrollNo);
-                } else {
-                    (rowData[rowData.length - 1] as any).colSpan = 2;
-                }
-                rowData.push({ content: '', rowSpan: groupSize });
-                rowData.push({ content: groupSize, rowSpan: groupSize });
-                rowData.push({ content: 'OLD', rowSpan: groupSize });
-                rowData.push({ content: '', rowSpan: groupSize });
-                rowData.push({ content: '', rowSpan: groupSize });
-            } else {
-                // Subsequent rows for the same group
-                rowData.push(serial);
-                 if (isHarness) {
-                    rowData.push(chestCrollNo);
-                } else {
-                    (rowData[rowData.length - 1] as any).colSpan = 2;
-                }
-            }
-            tableRows.push(rowData);
+    processedItems.forEach(group => {
+      const isHarness = group.materialName.toLowerCase() === 'harness';
+      const groupSize = group.serialNumbers.length;
+  
+      group.serialNumbers.forEach((serial, index) => {
+        let rowData = [];
+        if (index === 0) {
+          // First row of a group gets rowSpans for common cells
+          rowData.push({ content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+          rowData.push({ content: group.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'left' } });
         }
-        srNo++;
-    }
+  
+        // All rows get serial numbers (and chest croll if applicable)
+        if (isHarness) {
+          rowData.push(serial || '');
+          rowData.push(group.chestCrollNos[index] || '');
+        } else {
+          rowData.push({ content: serial || '', colSpan: 2, styles: { valign: 'middle', halign: 'center' } });
+        }
+  
+        if (index === 0) {
+          // First row also gets the rest of the common data
+          rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+          rowData.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+          rowData.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+          rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+          rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+        }
+        tableRows.push(rowData);
+      });
+      srNo++;
+    });
+
 
     (doc as any).autoTable({
         head: [tableColumn],
@@ -279,4 +274,3 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
 
     doc.save("TP_Certification_List.pdf");
 }
-
