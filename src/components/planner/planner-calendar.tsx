@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, startOfWeek, endOfWeek, isSameMonth, isToday, isPast, isValid, parseISO } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Edit, Trash2, Send, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -179,10 +179,11 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                         <div className="space-y-1 mt-8 flex-1">
                                             {visibleEvents.map(event => {
                                                 const creator = users.find(u => u.id === event.creatorId);
+                                                const isDelegated = event.creatorId !== event.userId;
                                                 return (
                                                 <div key={event.id} onClick={() => { setSelectedDate(day); }} className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent">
                                                     <p className="font-semibold truncate">{event.title}</p>
-                                                    <p className="text-muted-foreground truncate">{creator?.name}</p>
+                                                    <p className="text-muted-foreground truncate">{isDelegated ? `Delegated by: ${creator?.name}` : 'My Planning'}</p>
                                                 </div>
                                             )})}
                                         </div>
@@ -213,6 +214,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                         const canModifyEvent = user?.id === event.creatorId || user?.role === 'Admin';
                                         const eventDate = event.date ? parseISO(event.date) : null;
                                         const isEventInPast = eventDate ? isPast(eventDate) : true;
+                                        const isDelegated = event.creatorId !== event.userId;
                                         
                                         return (
                                             <div key={event.id} className="p-3 border rounded-md bg-muted/50">
@@ -234,7 +236,12 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">Created by <Avatar className="h-4 w-4"><AvatarImage src={creator?.avatar}/><AvatarFallback>{creator?.name.charAt(0)}</AvatarFallback></Avatar> {creator?.name}</div>
+                                                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                                                    {isDelegated ? `Delegated by: ` : 'My Planning'}
+                                                    {isDelegated && creator && (
+                                                        <><Avatar className="h-4 w-4"><AvatarImage src={creator?.avatar}/><AvatarFallback>{creator?.name.charAt(0)}</AvatarFallback></Avatar> {creator?.name}</>
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}
