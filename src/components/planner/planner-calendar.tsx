@@ -3,10 +3,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, isValid, parseISO, isToday, isSameMonth, endOfWeek } from 'date-fns';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Edit, Trash2, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 
 interface PlannerCalendarProps {
     selectedUserId: string;
@@ -26,7 +27,7 @@ const MAX_EVENTS_VISIBLE = 2;
 export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps) {
     const {
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
-        dailyPlannerComments, addDailyPlannerComment, updateDailyPlannerComment, deleteDailyPlannerComment,
+        addPlannerEventComment,
         markPlannerCommentsAsRead, can
     } = useAppContext();
     const { toast } = useToast();
@@ -34,20 +35,14 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
-    const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null);
-    const [dailyComment, setDailyComment] = useState('');
+    const [editingComment, setEditingComment] = useState<{ eventId: string; commentId: string; text: string } | null>(null);
+    const [newComment, setNewComment] = useState('');
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        if (selectedDate && user) {
-            markPlannerCommentsAsRead(selectedUserId, selectedDate);
-        }
-    }, [selectedDate, selectedUserId, user, markPlannerCommentsAsRead]);
+        // This can be adapted if there's a need to mark event comments as read
+    }, [selectedDate, selectedUserId, user]);
 
-    useEffect(() => {
-        setEditingComment(null);
-        setDailyComment('');
-    }, [selectedDate, selectedUserId]);
 
     const expandedEvents = useMemo(
         () => getExpandedPlannerEvents(currentMonth, selectedUserId),
@@ -70,60 +65,12 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         return expandedEvents.filter(event => isSameDay(event.eventDate, selectedDate as Date));
     }, [expandedEvents, selectedDate]);
     
-    const selectedDayComments = useMemo(() => {
-      if (!selectedDate) return [];
-      const dayKey = `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`;
-      const entry = dailyPlannerComments.find(dpc => dpc.id === dayKey);
-      return entry?.comments ? Object.values(entry.comments).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [];
-  }, [dailyPlannerComments, selectedDate, selectedUserId]);
-    
-    const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
-        const subordinates = new Set<string>();
-        const queue = [userId];
-        const visited = new Set<string>(); // To prevent infinite loops in case of circular supervision
-    
-        while (queue.length > 0) {
-            const currentId = queue.shift()!;
-            if(visited.has(currentId)) continue;
-            visited.add(currentId);
-    
-            const directReports = allUsers.filter(u => u.supervisorId === currentId);
-            directReports.forEach(report => {
-                if (!subordinates.has(report.id)) {
-                    subordinates.add(report.id);
-                    queue.push(report.id);
-                }
-            });
-        }
-        return subordinates;
-    }, []);
+    const handleAddEventComment = (eventId: string) => {
+        if (!newComment.trim() || !selectedDate) return;
+        addPlannerEventComment(eventId, newComment);
+        setNewComment('');
+    };
 
-    const canModifyDailyComments = useMemo(() => {
-        if (!user || !viewingUser) return false;
-        if (isMyOwnPlanner) return true;
-        if (user.role === 'Admin' || user.role === 'Project Coordinator') return true;
-
-        const subordinateIds = getSubordinateChain(user.id, users);
-        if (subordinateIds.has(viewingUser.id)) {
-            return true;
-        }
-
-        return false;
-    }, [user, viewingUser, isMyOwnPlanner, users, getSubordinateChain]);
-
-    const handleAddDailyComment = useCallback(() => {
-        if (!dailyComment.trim() || !selectedDate) return;
-        addDailyPlannerComment(selectedUserId, selectedDate, dailyComment);
-        setDailyComment('');
-    }, [dailyComment, selectedDate, selectedUserId, addDailyPlannerComment]);
-
-    const handleSaveEditedComment = useCallback(() => {
-        if (!editingComment || !selectedDate) return;
-        const dayKey = `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`;
-        updateDailyPlannerComment(editingComment.id, dayKey, editingComment.text);
-        setEditingComment(null);
-    }, [editingComment, selectedDate, selectedUserId, updateDailyPlannerComment]);
-    
     const handleDeleteEvent = (event: PlannerEvent) => {
         deletePlannerEvent(event.id);
         toast({ variant: 'destructive', title: 'Event Deleted' });
@@ -206,22 +153,28 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden">
                         <ScrollArea className="h-full pr-4">
-                            {selectedDayEvents.length > 0 && (
-                                <>
-                                <div className="space-y-2">
-                                    {selectedDayEvents.map((event) => {
-                                        const creator = users.find(u => u.id === event.creatorId);
-                                        const canModifyEvent = user?.id === event.creatorId || user?.role === 'Admin';
-                                        const eventDate = event.date ? parseISO(event.date) : null;
-                                        const isEventInPast = eventDate ? isPast(eventDate) : true;
-                                        const isDelegated = event.creatorId !== event.userId;
-                                        
-                                        return (
-                                            <div key={event.id} className="p-3 border rounded-md bg-muted/50">
+                            <div className="space-y-4">
+                                {selectedDayEvents.length > 0 ? selectedDayEvents.map((event) => {
+                                    const creator = users.find(u => u.id === event.creatorId);
+                                    const canModifyEvent = user?.id === event.creatorId || user?.role === 'Admin';
+                                    const eventDate = event.date ? parseISO(event.date) : null;
+                                    const isEventInPast = eventDate ? isPast(eventDate) : true;
+                                    const isDelegated = event.creatorId !== event.userId;
+                                    const eventComments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
+                                    
+                                    return (
+                                        <Accordion key={event.id} type="single" collapsible>
+                                            <AccordionItem value="item-1" className="border rounded-lg p-3">
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <p className="font-semibold">{event.title}</p>
                                                         <p className="text-xs text-muted-foreground">{event.description}</p>
+                                                         <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                                                            {isDelegated ? `Delegated by: ` : 'My Planning'}
+                                                            {isDelegated && creator && (
+                                                                <><Avatar className="h-4 w-4"><AvatarImage src={creator?.avatar}/><AvatarFallback>{creator?.name.charAt(0)}</AvatarFallback></Avatar> {creator?.name}</>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     {canModifyEvent && (!isEventInPast || user?.role === 'Admin') && (
                                                         <div className="flex">
@@ -236,73 +189,55 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                                                    {isDelegated ? `Delegated by: ` : 'My Planning'}
-                                                    {isDelegated && creator && (
-                                                        <><Avatar className="h-4 w-4"><AvatarImage src={creator?.avatar}/><AvatarFallback>{creator?.name.charAt(0)}</AvatarFallback></Avatar> {creator?.name}</>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <Separator className="my-4"/>
-                                </>
-                            )}
-                            <div className="space-y-3">
-                                {selectedDayComments.length > 0 ? selectedDayComments.map((comment) => {
-                                    if (!comment || !comment.date) return null;
-                                    const commentUser = users.find(u => u.id === comment.userId);
-                                    const canModify = user?.id === comment.userId || user?.role === 'Admin';
-                                    const isEditing = editingComment?.id === comment.id;
-                                    const commentDate = parseISO(comment.date);
-                                    
-                                    return (
-                                        <div key={comment.id} className="flex items-start gap-2 group">
-                                            <Avatar className="h-7 w-7"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name?.charAt(0) || '?'}</AvatarFallback></Avatar>
-                                            <div className="bg-muted p-2 rounded-lg w-full text-sm">
-                                                <div className="flex justify-between items-baseline"><p className="font-semibold text-xs">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{isValid(commentDate) ? format(commentDate, 'p') : ''}</p></div>
-                                                {isEditing ? (
-                                                    <div className='mt-2 space-y-2'>
-                                                        <Textarea value={editingComment.text} onChange={(e) => setEditingComment({...editingComment, text: e.target.value})} className="bg-background"/>
-                                                        <div className='flex gap-2'><Button size="sm" onClick={handleSaveEditedComment}>Save</Button><Button size="sm" variant="ghost" onClick={() => setEditingComment(null)}>Cancel</Button></div>
+                                                <AccordionTrigger className="pt-2 pb-0 text-xs text-muted-foreground hover:no-underline justify-start gap-1">
+                                                    <MessageSquare className="h-3 w-3"/>
+                                                    {eventComments.length > 0 ? `${eventComments.length} comments` : 'Add comment'}
+                                                </AccordionTrigger>
+                                                <AccordionContent>
+                                                    <div className="space-y-3 pt-3">
+                                                        {eventComments.map(comment => {
+                                                            const commentUser = users.find(u => u.id === comment.userId);
+                                                            return (
+                                                                <div key={comment.id} className="flex items-start gap-2">
+                                                                    <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar}/><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                    <div className="bg-background p-2 rounded-md w-full text-xs">
+                                                                        <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
+                                                                        <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                        <div className="relative">
+                                                            <Textarea 
+                                                                value={newComment} 
+                                                                onChange={(e) => setNewComment(e.target.value)} 
+                                                                placeholder={`Comment on "${event.title}"...`} 
+                                                                className="pr-10 text-xs" 
+                                                                rows={1}
+                                                            />
+                                                            <Button 
+                                                                type="button" 
+                                                                size="icon" 
+                                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                                                                onClick={() => handleAddEventComment(event.id)} 
+                                                                disabled={!newComment.trim()}
+                                                            >
+                                                                <Send className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                ) : (
-                                                    <div className='flex justify-between items-start'>
-                                                        <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                                        {canModify && <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingComment(comment)}><Edit className="h-3 w-3"/></Button>
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"><Trash2 className="h-3 w-3"/></Button></AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader><AlertDialogTitle>Delete comment?</AlertDialogTitle><AlertDialogDescription>This action is permanent.</AlertDialogDescription></AlertDialogHeader>
-                                                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => selectedDate && deleteDailyPlannerComment(comment.id, `${format(selectedDate, 'yyyy-MM-dd')}_${selectedUserId}`)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </div>}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
                                     );
                                 }) : (
-                                    selectedDayEvents.length === 0 && (
-                                        <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">
-                                            <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
-                                        </div>
-                                    )
+                                    <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">
+                                        <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
+                                    </div>
                                 )}
                             </div>
                         </ScrollArea>
                     </CardContent>
-                    {canModifyDailyComments && (
-                        <CardFooter>
-                            <div className="relative w-full">
-                                <Textarea value={dailyComment} onChange={(e) => setDailyComment(e.target.value)} placeholder="Add a comment for the day..." className="pr-12 text-sm"/>
-                                <Button type="button" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={handleAddDailyComment} disabled={!dailyComment.trim()}><Send className="h-4 w-4" /></Button>
-                            </div>
-                        </CardFooter>
-                    )}
                 </Card>
             </div>
             {editingEvent && <EditEventDialog isOpen={!!editingEvent} setIsOpen={() => setEditingEvent(null)} event={editingEvent} />}
