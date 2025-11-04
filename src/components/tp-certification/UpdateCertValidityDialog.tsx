@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { TpCertList, InventoryItem, UTMachine, DftMachine } from '@/lib/types';
+import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, DigitalCamera, OtherEquipment, LaptopDesktop, MobileSim } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
@@ -25,7 +25,7 @@ const itemUpdateSchema = z.object({
 const formSchema = z.object({
   items: z.array(z.object({
     itemId: z.string(),
-    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine']),
+    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'Anemometer', 'DigitalCamera', 'OtherEquipment', 'LaptopDesktop', 'MobileSim']),
     materialName: z.string(),
     manufacturerSrNo: z.string(),
     ...itemUpdateSchema.shape
@@ -43,7 +43,10 @@ interface UpdateCertValidityDialogProps {
 }
 
 export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }: UpdateCertValidityDialogProps) {
-  const { inventoryItems, utMachines, dftMachines, updateInventoryItem, updateUTMachine, updateDftMachine } = useAppContext();
+  const { 
+      inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims,
+      updateInventoryItem, updateUTMachine, updateDftMachine, updateAnemometer, updateDigitalCamera, updateOtherEquipment, updateLaptopDesktop, updateMobileSim
+  } = useAppContext();
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
 
@@ -63,7 +66,10 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   useEffect(() => {
     if (certList && isOpen) {
-      const allItems: (InventoryItem | UTMachine | DftMachine)[] = [...inventoryItems, ...utMachines, ...dftMachines];
+      const allItems: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim)[] = [
+          ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+        ];
+
       const itemsWithData = certList.items.map(listItem => {
         const fullItem = allItems.find(i => i.id === listItem.itemId);
         return {
@@ -75,7 +81,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       form.reset({ items: itemsWithData, bulkDate: null, bulkLink: '' });
       setSelectedRowIds({});
     }
-  }, [certList, inventoryItems, utMachines, dftMachines, isOpen, form]);
+  }, [certList, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, isOpen, form]);
   
   const handleBulkApply = () => {
     const { bulkDate, bulkLink } = form.getValues();
@@ -114,37 +120,27 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
   
     for (const item of itemsToUpdate) {
       try {
-        if (item.itemType === 'Inventory') {
-          const originalItem = inventoryItems.find(i => i.id === item.itemId);
-          if (originalItem) {
-            await updateInventoryItem({
-              ...originalItem,
-              tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-              certificateUrl: item.certificateUrl,
-            });
-            updatedCount++;
-          }
-        } else if (item.itemType === 'UTMachine') {
-          const originalItem = utMachines.find(i => i.id === item.itemId);
-          if (originalItem) {
-            await updateUTMachine({
-              ...originalItem,
-              tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-              certificateUrl: item.certificateUrl,
-            });
-            updatedCount++;
-          }
-        } else if (item.itemType === 'DftMachine') {
-          const originalItem = dftMachines.find(i => i.id === item.itemId);
-          if (originalItem) {
-            await updateDftMachine({
-              ...originalItem,
-              tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-              certificateUrl: item.certificateUrl,
-            });
-            updatedCount++;
-          }
+        const itemType = item.itemType;
+        const baseItem = [...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims].find(i => i.id === item.itemId);
+        if (!baseItem) continue;
+
+        const updateData = {
+          ...baseItem,
+          tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+          certificateUrl: item.certificateUrl,
+        };
+        
+        switch(itemType) {
+            case 'Inventory': await updateInventoryItem(updateData as InventoryItem); break;
+            case 'UTMachine': await updateUTMachine(updateData as UTMachine); break;
+            case 'DftMachine': await updateDftMachine(updateData as DftMachine); break;
+            case 'Anemometer': await updateAnemometer(updateData as Anemometer); break;
+            case 'DigitalCamera': await updateDigitalCamera(updateData as DigitalCamera); break;
+            case 'OtherEquipment': await updateOtherEquipment(updateData as OtherEquipment); break;
+            case 'LaptopDesktop': await updateLaptopDesktop(updateData as LaptopDesktop); break;
+            case 'MobileSim': await updateMobileSim(updateData as MobileSim); break;
         }
+        updatedCount++;
       } catch (error) {
         console.error(`Failed to update item ${item.itemId}:`, error);
         toast({
