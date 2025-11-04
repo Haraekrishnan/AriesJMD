@@ -43,7 +43,7 @@ interface UpdateCertValidityDialogProps {
 }
 
 export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }: UpdateCertValidityDialogProps) {
-  const { inventoryItems, utMachines, dftMachines, updateInventoryItem } = useAppContext();
+  const { inventoryItems, utMachines, dftMachines, updateInventoryItem, updateUTMachine, updateDftMachine } = useAppContext();
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
 
@@ -62,7 +62,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
   });
 
   useEffect(() => {
-    if (certList) {
+    if (certList && isOpen) {
       const allItems = [...inventoryItems, ...utMachines, ...dftMachines];
       const itemsWithData = certList.items.map(listItem => {
         const fullItem = allItems.find(i => i.id === listItem.itemId);
@@ -100,23 +100,55 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
   };
 
   const onSubmit = (data: FormValues) => {
-    data.items.forEach(item => {
-        const allItems = [...inventoryItems, ...utMachines, ...dftMachines];
-        const originalItem = allItems.find(i => i.id === item.itemId);
-        if (originalItem) {
-            const updatedItem = {
-                ...originalItem,
-                tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : originalItem.tpInspectionDueDate,
-                certificateUrl: item.certificateUrl || originalItem.certificateUrl,
-            };
-            updateInventoryItem(updatedItem);
+    let updatedCount = 0;
+    data.items.forEach((item, index) => {
+        if (!selectedRowIds[fields[index].id]) return;
+
+        if (item.itemType === 'Inventory') {
+            const originalItem = inventoryItems.find(i => i.id === item.itemId);
+            if (originalItem) {
+                updateInventoryItem({
+                    ...originalItem,
+                    tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+                    certificateUrl: item.certificateUrl,
+                });
+                updatedCount++;
+            }
+        } else if (item.itemType === 'UTMachine') {
+            const originalItem = utMachines.find(i => i.id === item.itemId);
+             if (originalItem) {
+                updateUTMachine({
+                    ...originalItem,
+                    tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+                    certificateUrl: item.certificateUrl,
+                } as any);
+                updatedCount++;
+            }
+        } else if (item.itemType === 'DftMachine') {
+            const originalItem = dftMachines.find(i => i.id === item.itemId);
+             if (originalItem) {
+                updateDftMachine({
+                    ...originalItem,
+                    tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+                    certificateUrl: item.certificateUrl,
+                } as any);
+                updatedCount++;
+            }
         }
     });
 
-    toast({
-        title: 'Validity Updated',
-        description: `The details for ${data.items.length} items have been updated.`
-    });
+    if (updatedCount > 0) {
+      toast({
+          title: 'Validity Updated',
+          description: `The details for ${updatedCount} items have been updated.`
+      });
+    } else {
+        toast({
+            title: 'No Items Selected',
+            description: 'No items were selected for update.',
+            variant: 'destructive'
+        });
+    }
     setIsOpen(false);
   };
   
