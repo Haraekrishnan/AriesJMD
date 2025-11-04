@@ -28,6 +28,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { parseISO, isValid, format } from 'date-fns';
 
 interface GenerateTpCertDialogProps {
   isOpen: boolean;
@@ -44,6 +46,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [listName, setListName] = useState('');
+  const [listDate, setListDate] = useState<Date | undefined>(new Date());
+
 
   const allSearchableItems = useMemo(() => {
     const items: CertItem[] = [];
@@ -57,6 +61,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     if (existingList) {
       setListName(existingList.name);
       setSelectedItems(existingList.items);
+      const parsedDate = parseISO(existingList.date);
+      setListDate(isValid(parsedDate) ? parsedDate : new Date());
+    } else {
+        setListDate(new Date());
     }
   }, [existingList, isOpen]);
 
@@ -116,14 +124,18 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       toast({ title: 'List name required', description: 'Please provide a name for this list.', variant: 'destructive'});
       return;
     }
+    if (!listDate) {
+        toast({ title: 'Date required', description: 'Please select a date for this list.', variant: 'destructive'});
+        return;
+    }
     
     if (existingList) {
-      updateTpCertList({ ...existingList, name: listName, items: selectedItems });
+      updateTpCertList({ ...existingList, name: listName, items: selectedItems, date: format(listDate, 'yyyy-MM-dd') });
       toast({ title: 'List Updated', description: 'Your certification list has been updated.' });
     } else {
       const listToSave: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> = {
         name: listName,
-        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        date: format(listDate, 'yyyy-MM-dd'),
         items: selectedItems,
       };
       addTpCertList(listToSave);
@@ -138,6 +150,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     setSelectedItems([]);
     setSelectedItemName(null);
     setSearchTerm('');
+    setListDate(new Date());
     setIsOpen(false);
   }
 
@@ -243,6 +256,12 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               onChange={(e) => setListName(e.target.value)} 
               className="w-48"
             />
+             {existingList && (
+                <div className="flex items-center gap-2">
+                    <Label className="text-sm shrink-0">List Date:</Label>
+                    <DatePickerInput value={listDate} onChange={setListDate} />
+                </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleClose}>Cancel</Button>

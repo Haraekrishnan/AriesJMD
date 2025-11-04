@@ -63,7 +63,8 @@ export default function TpCertificationPage() {
             }
             toast({ title: `${type.toUpperCase()} Generated` });
         } catch (error) {
-            toast({ title: 'Export Failed', variant: 'destructive' });
+            console.error(error);
+            toast({ title: 'Export Failed', variant: 'destructive', description: (error as Error).message });
         }
     };
 
