@@ -1495,7 +1495,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, projects, addActivityLog, toast]);
 
-  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>): Promise<void> => {
+  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => {
     if (!user) return;
 
     const log = manpowerLogs.find(l => l.id === logId);
@@ -2545,7 +2545,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
 
   const updateInventoryItemGroup = useCallback((itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
-    if (!user || user.role !== 'Admin') return;
+    if (!user || !can.manage_inventory) {
+        toast({ variant: 'destructive', title: 'Permission Denied' });
+        return;
+    }
     const dbUpdates: { [key: string]: any } = {};
     const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === updates.tpInspectionDueDate);
 
@@ -2561,7 +2564,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), dbUpdates);
     addActivityLog(user.id, 'Bulk TP Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
     toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
-}, [user, inventoryItems, addActivityLog, toast]);
+}, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
 
   const deleteInventoryItem = useCallback((itemId: string) => {
     const item = inventoryItems.find(i => i.id === itemId);
