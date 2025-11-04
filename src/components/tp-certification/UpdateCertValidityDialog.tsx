@@ -102,6 +102,15 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
   const onSubmit = async (data: FormValues) => {
     let updatedCount = 0;
     const selectedItemsToUpdate = data.items.filter((_, index) => selectedRowIds[fields[index].id]);
+    
+    if (selectedItemsToUpdate.length === 0) {
+      toast({
+          title: 'No Items Selected',
+          description: 'Please select items to update using the checkboxes.',
+          variant: 'destructive'
+      });
+      return;
+    }
 
     for (const item of selectedItemsToUpdate) {
         try {
@@ -122,7 +131,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                         ...originalItem,
                         tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
                         certificateUrl: item.certificateUrl,
-                    } as any);
+                    });
                     updatedCount++;
                 }
             } else if (item.itemType === 'DftMachine') {
@@ -132,14 +141,14 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                         ...originalItem,
                         tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
                         certificateUrl: item.certificateUrl,
-                    } as any);
+                    });
                     updatedCount++;
                 }
             }
         } catch (error) {
             console.error(`Failed to update item ${item.itemId}:`, error);
             toast({
-                title: `Error updating ${item.name}`,
+                title: `Error updating ${item.materialName}`,
                 description: "Could not save changes for this item.",
                 variant: 'destructive',
             });
@@ -151,12 +160,6 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
           title: 'Validity Updated',
           description: `The details for ${updatedCount} items have been updated.`
       });
-    } else {
-        toast({
-            title: 'No Items Selected',
-            description: 'No items were selected for update.',
-            variant: 'destructive'
-        });
     }
     setIsOpen(false);
   };
