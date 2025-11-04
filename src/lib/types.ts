@@ -805,16 +805,20 @@ export type JobRecordPlant = {
   name: string;
 };
 
+export type TpCertListItem = {
+  itemId: string;
+  itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
+  materialName: string;
+  manufacturerSrNo: string;
+};
+
 export type TpCertList = {
     id: string;
     name: string;
     date: string; // YYYY-MM-DD
     creatorId: string;
     createdAt: string; // ISO String
-    items: {
-        materialName: string;
-        manufacturerSrNo: string;
-    }[];
+    items: TpCertListItem[];
 };
 
 export const TRANSFER_REASONS = [

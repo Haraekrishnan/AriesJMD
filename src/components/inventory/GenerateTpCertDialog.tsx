@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -22,7 +23,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2 } from 'lucide-react';
-import { InventoryItem, UTMachine, DftMachine, TpCertList } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
@@ -34,33 +35,15 @@ interface GenerateTpCertDialogProps {
   existingList?: TpCertList | null;
 }
 
-type CertItem = (InventoryItem | UTMachine | DftMachine) & { itemType: string };
+type CertItem = (InventoryItem | UTMachine | DftMachine) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
   const { inventoryItems, utMachines, dftMachines, addTpCertList, updateTpCertList } = useAppContext();
   const { toast } = useToast();
-  const [selectedItems, setSelectedItems] = useState<CertItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [listName, setListName] = useState('');
-
-  useEffect(() => {
-    if (existingList) {
-      setListName(existingList.name);
-      // We can't perfectly reconstruct the CertItem objects, but we can set the names/SNs for display.
-      // The logic for adding new items will still work independently.
-      const initialItems = existingList.items.map(item => {
-        // Find the original item to get its full data, if possible.
-        return allSearchableItems.find(i => i.serialNumber === item.manufacturerSrNo) || {
-          id: item.manufacturerSrNo, // fallback id
-          name: item.materialName,
-          serialNumber: item.manufacturerSrNo,
-          itemType: 'Inventory' // Fallback type
-        }
-      }) as CertItem[];
-      setSelectedItems(initialItems);
-    }
-  }, [existingList]);
 
   const allSearchableItems = useMemo(() => {
     const items: CertItem[] = [];
@@ -69,7 +52,14 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
     return items;
   }, [inventoryItems, utMachines, dftMachines]);
-  
+
+  useEffect(() => {
+    if (existingList) {
+      setListName(existingList.name);
+      setSelectedItems(existingList.items);
+    }
+  }, [existingList, isOpen]);
+
   const uniqueItemNames = useMemo(() => {
     const names = new Set<string>();
     allSearchableItems.forEach(item => {
@@ -100,14 +90,20 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
 
   const handleSelect = (item: CertItem) => {
-    if (!selectedItems.some(i => i.id === item.id && i.itemType === item.itemType)) {
-      setSelectedItems(prev => [...prev, item]);
+    const newItem: TpCertListItem = {
+      itemId: item.id,
+      itemType: item.itemType,
+      materialName: item.name || item.machineName,
+      manufacturerSrNo: item.serialNumber,
+    };
+    if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
+      setSelectedItems(prev => [...prev, newItem]);
     }
     setSearchTerm('');
   };
 
   const handleRemove = (itemId: string, itemType: string) => {
-    setSelectedItems(prev => prev.filter(item => !(item.id === itemId && item.itemType === itemType)));
+    setSelectedItems(prev => prev.filter(item => !(item.itemId === itemId && item.itemType === itemType)));
   };
   
   const handleSaveList = () => {
@@ -119,20 +115,15 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       toast({ title: 'List name required', description: 'Please provide a name for this list.', variant: 'destructive'});
       return;
     }
-
-    const itemsToSave = selectedItems.map(item => ({
-      materialName: getItemName(item),
-      manufacturerSrNo: item.serialNumber,
-    }));
     
     if (existingList) {
-      updateTpCertList({ ...existingList, name: listName, items: itemsToSave });
+      updateTpCertList({ ...existingList, name: listName, items: selectedItems });
       toast({ title: 'List Updated', description: 'Your certification list has been updated.' });
     } else {
       const listToSave: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> = {
         name: listName,
         date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        items: itemsToSave,
+        items: selectedItems,
       };
       addTpCertList(listToSave);
       toast({ title: 'List Saved', description: 'Your certification list has been saved.'});
@@ -155,12 +146,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     } else {
       handleClose();
     }
-  };
-
-  const getItemName = (item: Partial<CertItem>) => {
-    if ('name' in item && item.name) return item.name;
-    if ('machineName' in item && item.machineName) return item.machineName;
-    return 'Unknown Item';
   };
 
   return (
@@ -203,7 +188,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                 onSelect={() => handleSelect(item)}
                                 className="cursor-pointer"
                             >
-                                {getItemName(item)} — (SN: {item.serialNumber || 'N/A'})
+                                {item.name || item.machineName} — (SN: {item.serialNumber || 'N/A'})
                             </CommandItem>
                             ))}
                         </CommandGroup>
@@ -226,12 +211,12 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => (
-                    <TableRow key={`${item.id}-${item.itemType}`}>
+                    <TableRow key={`${item.itemId}-${item.itemType}`}>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{getItemName(item)}</TableCell>
-                      <TableCell>{item.serialNumber || '-'}</TableCell>
+                      <TableCell>{item.materialName}</TableCell>
+                      <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove(item.id, item.itemType)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TableCell>

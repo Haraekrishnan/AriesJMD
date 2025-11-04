@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, FileSpreadsheet, Edit } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
+import UpdateCertValidityDialog from '@/components/tp-certification/UpdateCertValidityDialog';
 
 
 export default function TpCertificationPage() {
@@ -29,6 +31,7 @@ export default function TpCertificationPage() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const { toast } = useToast();
     const [editingList, setEditingList] = useState<TpCertList | null>(null);
+    const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
 
     const groupedLists = useMemo(() => {
         if (!selectedDate || !tpCertLists) return [];
@@ -74,6 +77,10 @@ export default function TpCertificationPage() {
     const handleEditList = (list: TpCertList) => {
         setEditingList(list);
     };
+    
+    const handleUpdateValidity = (list: TpCertList) => {
+        setUpdatingValidityList(list);
+    }
 
     return (
         <>
@@ -113,6 +120,7 @@ export default function TpCertificationPage() {
                                                 </div>
                                             </AccordionTrigger>
                                             <div className="flex items-center gap-2 pl-4">
+                                                <Button size="sm" variant="outline" onClick={() => handleUpdateValidity(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 {canEditList && (
                                                     <Button size="sm" variant="secondary" onClick={() => handleEditList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 )}
@@ -172,6 +180,13 @@ export default function TpCertificationPage() {
                 isOpen={!!editingList} 
                 setIsOpen={() => setEditingList(null)}
                 existingList={editingList}
+            />
+        )}
+        {updatingValidityList && (
+            <UpdateCertValidityDialog
+                isOpen={!!updatingValidityList}
+                setIsOpen={() => setUpdatingValidityList(null)}
+                certList={updatingValidityList}
             />
         )}
         </>
