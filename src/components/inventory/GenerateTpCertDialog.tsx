@@ -95,6 +95,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       itemType: item.itemType,
       materialName: item.name || item.machineName,
       manufacturerSrNo: item.serialNumber,
+      chestCrollNo: item.itemType === 'Inventory' && (item as InventoryItem).name.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
     };
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
       setSelectedItems(prev => [...prev, newItem]);

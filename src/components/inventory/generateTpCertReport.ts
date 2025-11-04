@@ -1,28 +1,32 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import type { TpCertList } from '@/lib/types';
+import type { TpCertListItem } from '@/lib/types';
 import { format } from 'date-fns';
 
 interface CertItem {
   materialName: string;
   manufacturerSrNo: string;
+  chestCrollNo?: string;
 }
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[] }>();
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined)[] }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
+            itemMap.get(key)!.chestCrollNos.push(item.chestCrollNo);
         } else {
             itemMap.set(key, {
                 materialName: item.materialName,
                 serialNumbers: [item.manufacturerSrNo],
+                chestCrollNos: [item.chestCrollNo],
             });
         }
     });
@@ -44,7 +48,7 @@ async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: A
   return { buffer, base64 };
 }
 
-export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
+export async function generateTpCertExcel(items: TpCertListItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
   const headerImagePath = '/images/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
@@ -91,7 +95,7 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
 
   const headerRowIndex = startRow + 5;
   const headers = [
-    "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT",
+    "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT",
     "Qty in Nos", "New or Old", "Valid upto if Renewal",
     "Submit Last Testing Report (Form No.10/12/Any Other)",
   ];
@@ -113,11 +117,13 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
     const groupSize = group.serialNumbers.length;
     
     group.serialNumbers.forEach((serial, index) => {
+        const chestCrollNo = group.chestCrollNos[index];
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
             serial,
-            '',
+            chestCrollNo || '',
+            '', // Cap in MT
             index === 0 ? groupSize : '',
             index === 0 ? 'OLD' : '',
             '', ''
@@ -131,13 +137,10 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
     });
 
     if (groupSize > 1) {
-        worksheet.mergeCells(`A${groupStartRow}:A${groupStartRow + groupSize - 1}`);
-        worksheet.mergeCells(`B${groupStartRow}:B${groupStartRow + groupSize - 1}`);
-        worksheet.mergeCells(`D${groupStartRow}:D${groupStartRow + groupSize - 1}`);
-        worksheet.mergeCells(`E${groupStartRow}:E${groupStartRow + groupSize - 1}`);
-        worksheet.mergeCells(`F${groupStartRow}:F${groupStartRow + groupSize - 1}`);
-        worksheet.mergeCells(`G${groupStartRow}:G${groupStartRow + groupSize - 1}`);
-        worksheet.mergeCells(`H${groupStartRow}:H${groupStartRow + groupSize - 1}`);
+        const mergeCols = [1, 2, 5, 6, 7, 8, 9]; // Corresponds to A, B, E, F, G, H, I
+        mergeCols.forEach(col => {
+            worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
+        });
     }
     srNo++;
   });
@@ -164,7 +167,7 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
 }
 
 
-export async function generateTpCertPdf(items: CertItem[]) {
+export async function generateTpCertPdf(items: TpCertListItem[]) {
     const headerImagePath = '/images/aries-header.png';
     const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
@@ -187,22 +190,24 @@ export async function generateTpCertPdf(items: CertItem[]) {
     doc.text("Subject : Testing & Certification", 40, 155);
 
     const tableColumn = [
-        "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old",
+        "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old",
         "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)",
     ];
     
     const processedItems = processItemsForMerging(items);
-    const tableRows = [];
+    const tableRows: any[][] = [];
     let srNo = 1;
 
     for (const group of processedItems) {
       for (let i = 0; i < group.serialNumbers.length; i++) {
         const serial = group.serialNumbers[i];
+        const chestCrollNo = group.chestCrollNos[i];
         if (i === 0) {
           tableRows.push([
             { content: srNo, rowSpan: group.serialNumbers.length },
             { content: group.materialName, rowSpan: group.serialNumbers.length },
             serial,
+            chestCrollNo || '',
             { content: '', rowSpan: group.serialNumbers.length },
             { content: group.serialNumbers.length, rowSpan: group.serialNumbers.length },
             { content: 'OLD', rowSpan: group.serialNumbers.length },
@@ -210,7 +215,7 @@ export async function generateTpCertPdf(items: CertItem[]) {
             { content: '', rowSpan: group.serialNumbers.length },
           ]);
         } else {
-          tableRows.push([serial]);
+          tableRows.push([serial, chestCrollNo || '']);
         }
       }
       srNo++;
@@ -225,10 +230,11 @@ export async function generateTpCertPdf(items: CertItem[]) {
         styles: { fontSize: 8, halign: 'center', valign: 'middle' },
         headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
         columnStyles: {
-          1: { cellWidth: 100, halign: 'left' }, 
-          2: { cellWidth: 100, halign: 'left' },
-          6: { cellWidth: 60 },
-          7: { cellWidth: 80 }
+          1: { cellWidth: 80, halign: 'left' }, 
+          2: { cellWidth: 80, halign: 'left' },
+          3: { cellWidth: 80, halign: 'left' },
+          7: { cellWidth: 60 },
+          8: { cellWidth: 60 }
         }
     });
 

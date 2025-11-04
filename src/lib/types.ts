@@ -824,6 +824,7 @@ export type TpCertListItem = {
   itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
   materialName: string;
   manufacturerSrNo: string;
+  chestCrollNo?: string;
 };
 
 export type TpCertList = {
