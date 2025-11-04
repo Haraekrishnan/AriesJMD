@@ -24,6 +24,7 @@ const getCapacity = (materialName: string): string => {
     if (name.includes('fixe pulley')) return '23 KN';
     if (name.includes('rescue pulley')) return '36 KN';
     if (name.includes('double pulley')) return '36 KN';
+    if (name.includes('twin pulley')) return '36 KN';
     if (name.includes('swivel pulley')) return '36 KN';
     if (name.includes('dee shackle')) return '3.25MT';
     if (name.includes('harness')) return '140 KG';
@@ -233,37 +234,30 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
   let srNo = 1;
 
   processedItems.forEach(group => {
-    const isHarness = group.materialName.toLowerCase() === 'harness';
     const groupSize = group.serialNumbers.length;
+    const isHarness = group.materialName.toLowerCase() === 'harness';
 
     group.serialNumbers.forEach((serial, index) => {
-        let rowData = [];
-
+        const row: any[] = [];
         if (index === 0) {
-            rowData.push({ content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            rowData.push({ content: group.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'left' } });
+            row.push({ content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            row.push({ content: group.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'left' } });
         }
-
-        if (isHarness) {
-            rowData.push(serial || '');
-            rowData.push(group.chestCrollNos[index] || '');
-        } else {
-            // For non-harness, we merge the two columns
-            rowData.push({ content: serial || '', colSpan: 2, styles: { valign: 'middle', halign: 'center' } });
-        }
-
+        
+        row.push(serial || '');
+        row.push(isHarness ? (group.chestCrollNos[index] || '') : '');
+        
         if (index === 0) {
-            rowData.push({ content: group.capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            rowData.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            rowData.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            row.push({ content: group.capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            row.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            row.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            row.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            row.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
         }
-        tableRows.push(rowData);
+        tableRows.push(row);
     });
     srNo++;
   });
-
 
   (doc as any).autoTable({
       head: [tableColumn],
@@ -272,12 +266,13 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
       theme: "grid",
       styles: { fontSize: 8, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
-      columnStyles: {
-        1: { cellWidth: 70, halign: 'left' }, 
-        2: { cellWidth: 70, halign: 'left' },
-        3: { cellWidth: 70, halign: 'left' },
-        7: { cellWidth: 50 },
-        8: { cellWidth: 60 }
+      didParseCell: (data: any) => {
+          if (!data.row.raw.some((cell: any) => cell.colSpan > 1)) {
+            const isHarnessRow = processedItems.some(group => group.serialNumbers.includes(data.row.raw[2]?.content) && group.materialName.toLowerCase() === 'harness');
+            if (!isHarnessRow && data.column.index === 2) {
+                data.cell.colSpan = 2;
+            }
+          }
       },
   });
 
