@@ -1,5 +1,4 @@
 
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -203,108 +202,102 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 
 
 export async function generateTpCertPdf(items: TpCertListItem[]) {
-    const headerImagePath = '/images/aries-header.png';
-    const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
+  const headerImagePath = '/images/aries-header.png';
+  const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
-    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-    doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
+  doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Date: ${format(new Date(), 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Date: ${format(new Date(), 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
 
 
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Trivedi & Associates Technical Services (P.) Ltd.", pageWidth / 2, 110, { align: 'center' });
-    doc.text("Jamnagar.", pageWidth / 2, 125, { align: 'center' });
-    
-    doc.setFont("helvetica", "normal");
-    doc.text("Subject : Testing & Certification", 40, 155);
-
-    const tableColumn = [
-        "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old",
-        "Valid upto if Renewal", "Submit Last Testing Report",
-    ];
-    
-    const processedItems = processItemsForMerging(items);
-    const tableRows: any[][] = [];
-    let srNo = 1;
-
-    processedItems.forEach(group => {
-      const isHarness = group.materialName.toLowerCase() === 'harness';
-      const groupSize = group.serialNumbers.length;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Trivedi & Associates Technical Services (P.) Ltd.", pageWidth / 2, 110, { align: 'center' });
+  doc.text("Jamnagar.", pageWidth / 2, 125, { align: 'center' });
   
-      group.serialNumbers.forEach((serial, index) => {
+  doc.setFont("helvetica", "normal");
+  doc.text("Subject : Testing & Certification", 40, 155);
+
+  const tableColumn = [
+      "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old",
+      "Valid upto if Renewal", "Submit Last Testing Report",
+  ];
+  
+  const processedItems = processItemsForMerging(items);
+  const tableRows: any[][] = [];
+  let srNo = 1;
+
+  processedItems.forEach(group => {
+    const isHarness = group.materialName.toLowerCase() === 'harness';
+    const groupSize = group.serialNumbers.length;
+
+    group.serialNumbers.forEach((serial, index) => {
         let rowData = [];
+
         if (index === 0) {
-          // First row of a group gets rowSpans for common cells
-          rowData.push({ content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-          rowData.push({ content: group.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'left' } });
+            rowData.push({ content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            rowData.push({ content: group.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'left' } });
         }
-  
-        // All rows get serial numbers (and chest croll if applicable)
+
         if (isHarness) {
-          rowData.push(serial || '');
-          rowData.push(group.chestCrollNos[index] || '');
+            rowData.push(serial || '');
+            rowData.push(group.chestCrollNos[index] || '');
         } else {
-          rowData.push({ content: serial || '', colSpan: 2, styles: { valign: 'middle', halign: 'center' } });
+            // For non-harness, we merge the two columns
+            rowData.push({ content: serial || '', colSpan: 2, styles: { valign: 'middle', halign: 'center' } });
         }
-  
+
         if (index === 0) {
-          // First row also gets the rest of the common data
-          rowData.push({ content: group.capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-          rowData.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-          rowData.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-          rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-          rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            rowData.push({ content: group.capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            rowData.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            rowData.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+            rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
         }
         tableRows.push(rowData);
-      });
-      srNo++;
     });
+    srNo++;
+  });
 
 
-    (doc as any).autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 170,
-        theme: "grid",
-        styles: { fontSize: 8, halign: 'center', valign: 'middle' },
-        headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
-        columnStyles: {
-          1: { cellWidth: 70, halign: 'left' }, 
-          2: { cellWidth: isHarness ? 70 : 140, halign: 'left' },
-          3: { cellWidth: 70, halign: 'left' },
-          7: { cellWidth: 50 },
-          8: { cellWidth: 60 }
-        },
-        didParseCell: (data: any) => {
-            if (!isHarness && data.column.index === 2) {
-                data.cell.colSpan = 2;
-            }
-        }
-    });
+  (doc as any).autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 170,
+      theme: "grid",
+      styles: { fontSize: 8, halign: 'center', valign: 'middle' },
+      headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
+      columnStyles: {
+        1: { cellWidth: 70, halign: 'left' }, 
+        2: { cellWidth: 70, halign: 'left' },
+        3: { cellWidth: 70, halign: 'left' },
+        7: { cellWidth: 50 },
+        8: { cellWidth: 60 }
+      },
+  });
 
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
+  const finalY = (doc as any).lastAutoTable.finalY + 20;
 
-    doc.setFontSize(10);
-    const footerX = 40;
-    let footerY = finalY;
+  doc.setFontSize(10);
+  const footerX = 40;
+  let footerY = finalY;
 
-    doc.text("Company Authorised Contact Person", footerX, footerY);
-    footerY += 15;
-    doc.text("Name : VIJAY SAI", footerX, footerY);
-    footerY += 15;
-    doc.text("Contact Number : 919662095558", footerX, footerY);
-    footerY += 15;
-    doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
-    footerY += 15;
-    doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
-    footerY += 20;
-    doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', footerX, footerY);
+  doc.text("Company Authorised Contact Person", footerX, footerY);
+  footerY += 15;
+  doc.text("Name : VIJAY SAI", footerX, footerY);
+  footerY += 15;
+  doc.text("Contact Number : 919662095558", footerX, footerY);
+  footerY += 15;
+  doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
+  footerY += 15;
+  doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
+  footerY += 20;
+  doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', footerX, footerY);
 
-    doc.save("TP_Certification_List.pdf");
+  doc.save("TP_Certification_List.pdf");
 }
