@@ -3361,7 +3361,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateTpCertList = useCallback((listData: TpCertList) => {
     const { id, ...data } = listData;
-    update(ref(rtdb, `tpCertLists/${id}`), data);
+    const sanitizedData = {
+      ...data,
+      items: data.items.map(item => ({
+        ...item,
+        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+      })),
+    };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
   }, []);
 
   const deleteTpCertList = useCallback((listId: string) => {
