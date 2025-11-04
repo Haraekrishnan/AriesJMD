@@ -102,9 +102,9 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   const onSubmit = async (data: FormValues) => {
     let updatedCount = 0;
-    const selectedItemsToUpdate = data.items.filter((_, index) => selectedRowIds[fields[index].id]);
+    const itemsToUpdate = data.items.filter((_, index) => selectedRowIds[fields[index].id]);
     
-    if (selectedItemsToUpdate.length === 0) {
+    if (itemsToUpdate.length === 0) {
       toast({
           title: 'No Items Selected',
           description: 'Please select items to update using the checkboxes.',
@@ -112,50 +112,50 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       });
       return;
     }
-
-    for (const item of selectedItemsToUpdate) {
-        try {
-            if (item.itemType === 'Inventory') {
-                const originalItem = inventoryItems.find(i => i.id === item.itemId);
-                if (originalItem) {
-                    await updateInventoryItem({
-                        ...originalItem,
-                        tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-                        certificateUrl: item.certificateUrl,
-                    });
-                    updatedCount++;
-                }
-            } else if (item.itemType === 'UTMachine') {
-                const originalItem = utMachines.find(i => i.id === item.itemId);
-                 if (originalItem) {
-                    await updateUTMachine({
-                        ...originalItem,
-                        tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-                        certificateUrl: item.certificateUrl,
-                    });
-                    updatedCount++;
-                }
-            } else if (item.itemType === 'DftMachine') {
-                const originalItem = dftMachines.find(i => i.id === item.itemId);
-                 if (originalItem) {
-                    await updateDftMachine({
-                        ...originalItem,
-                        tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
-                        certificateUrl: item.certificateUrl,
-                    });
-                    updatedCount++;
-                }
-            }
-        } catch (error) {
-            console.error(`Failed to update item ${item.itemId}:`, error);
-            toast({
-                title: `Error updating ${item.materialName}`,
-                description: "Could not save changes for this item.",
-                variant: 'destructive',
+  
+    for (const item of itemsToUpdate) {
+      try {
+        if (item.itemType === 'Inventory') {
+          const originalItem = inventoryItems.find(i => i.id === item.itemId);
+          if (originalItem) {
+            await updateInventoryItem({
+              ...originalItem,
+              tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+              certificateUrl: item.certificateUrl,
             });
+            updatedCount++;
+          }
+        } else if (item.itemType === 'UTMachine') {
+          const originalItem = utMachines.find(i => i.id === item.itemId);
+          if (originalItem) {
+            await updateUTMachine({
+              ...originalItem,
+              tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+              certificateUrl: item.certificateUrl,
+            });
+            updatedCount++;
+          }
+        } else if (item.itemType === 'DftMachine') {
+          const originalItem = dftMachines.find(i => i.id === item.itemId);
+          if (originalItem) {
+            await updateDftMachine({
+              ...originalItem,
+              tpInspectionDueDate: item.tpInspectionDueDate?.toISOString(),
+              certificateUrl: item.certificateUrl,
+            });
+            updatedCount++;
+          }
         }
+      } catch (error) {
+        console.error(`Failed to update item ${item.itemId}:`, error);
+        toast({
+          title: `Error updating ${item.materialName}`,
+          description: (error as Error).message || "Could not save changes for this item.",
+          variant: 'destructive',
+        });
+      }
     }
-
+  
     if (updatedCount > 0) {
       toast({
           title: 'Validity Updated',

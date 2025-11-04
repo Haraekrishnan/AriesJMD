@@ -1,19 +1,18 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Save } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/inventory/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import type { TpCertList } from '@/lib/types';
+import type { TpCertList, InventoryItem, UTMachine, DftMachine } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -23,15 +22,19 @@ import {
 } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
-import UpdateCertValidityDialog from '@/components/tp-certification/UpdateCertValidityDialog';
+import { Input } from '@/components/ui/input';
 
+type CertItemWithDetails = TpCertList['items'][0] & {
+  tpInspectionDueDate: string | null;
+  certificateUrl: string | null;
+};
 
 export default function TpCertificationPage() {
-    const { user, users, can, tpCertLists, deleteTpCertList } = useAppContext();
+    const { user, users, can, tpCertLists, deleteTpCertList, inventoryItems, utMachines, dftMachines, updateInventoryItem, updateUTMachine, updateDftMachine } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const { toast } = useToast();
     const [editingList, setEditingList] = useState<TpCertList | null>(null);
-    const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
+    const [editableItems, setEditableItems] = useState<Record<string, CertItemWithDetails[]>>({});
 
     const groupedLists = useMemo(() => {
         if (!selectedDate || !tpCertLists) return [];
@@ -39,6 +42,62 @@ export default function TpCertificationPage() {
         return (tpCertLists || []).filter(list => list.date === dateKey)
             .sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
     }, [selectedDate, tpCertLists]);
+    
+    const handleAccordionToggle = (listId: string) => {
+      if (!editableItems[listId]) {
+        const list = groupedLists.find(l => l.id === listId);
+        if (list) {
+          const allItems: (InventoryItem | UTMachine | DftMachine)[] = [...inventoryItems, ...utMachines, ...dftMachines];
+          const itemsWithData = list.items.map(listItem => {
+            const fullItem = allItems.find(i => i.id === listItem.itemId);
+            return {
+              ...listItem,
+              tpInspectionDueDate: fullItem?.tpInspectionDueDate || null,
+              certificateUrl: fullItem?.certificateUrl || null
+            };
+          });
+          setEditableItems(prev => ({ ...prev, [listId]: itemsWithData }));
+        }
+      }
+    };
+
+    const handleItemChange = (listId: string, index: number, field: 'tpInspectionDueDate' | 'certificateUrl', value: string | null) => {
+        setEditableItems(prev => {
+            const newListItems = [...(prev[listId] || [])];
+            if (newListItems[index]) {
+                newListItems[index] = { ...newListItems[index], [field]: value };
+            }
+            return { ...prev, [listId]: newListItems };
+        });
+    };
+    
+    const handleSaveItem = async (listId: string, itemIndex: number) => {
+      const itemToSave = editableItems[listId]?.[itemIndex];
+      if (!itemToSave) return;
+  
+      try {
+        let originalItem;
+        if (itemToSave.itemType === 'Inventory') {
+          originalItem = inventoryItems.find(i => i.id === itemToSave.itemId);
+          if (originalItem) await updateInventoryItem({ ...originalItem, tpInspectionDueDate: itemToSave.tpInspectionDueDate, certificateUrl: itemToSave.certificateUrl });
+        } else if (itemToSave.itemType === 'UTMachine') {
+          originalItem = utMachines.find(i => i.id === itemToSave.itemId);
+          if (originalItem) await updateUTMachine({ ...originalItem, tpInspectionDueDate: itemToSave.tpInspectionDueDate, certificateUrl: itemToSave.certificateUrl });
+        } else if (itemToSave.itemType === 'DftMachine') {
+          originalItem = dftMachines.find(i => i.id === itemToSave.itemId);
+          if (originalItem) await updateDftMachine({ ...originalItem, tpInspectionDueDate: itemToSave.tpInspectionDueDate, certificateUrl: itemToSave.certificateUrl });
+        }
+        
+        if (originalItem) {
+          toast({ title: 'Item Updated', description: `${itemToSave.materialName} has been saved.` });
+        } else {
+          throw new Error("Original item not found in inventory.");
+        }
+      } catch (error) {
+        console.error("Failed to save item:", error);
+        toast({ title: 'Save Failed', description: 'Could not update the item.', variant: 'destructive' });
+      }
+    };
 
     const handleGenerateWorkbook = async () => {
         if (groupedLists.length === 0) {
@@ -77,10 +136,6 @@ export default function TpCertificationPage() {
     const handleEditList = (list: TpCertList) => {
         setEditingList(list);
     };
-    
-    const handleUpdateValidity = (list: TpCertList) => {
-        setUpdatingValidityList(list);
-    }
 
     return (
         <>
@@ -88,7 +143,7 @@ export default function TpCertificationPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">TP Certification Lists</h1>
-                    <p className="text-muted-foreground">Review and manage saved certification lists.</p>
+                    <p className="text-muted-foreground">Review, manage, and update certification lists.</p>
                 </div>
             </div>
 
@@ -104,10 +159,11 @@ export default function TpCertificationPage() {
                 </CardHeader>
                 <CardContent>
                     {groupedLists.length > 0 ? (
-                        <Accordion type="multiple" className="w-full space-y-4">
+                        <Accordion type="multiple" className="w-full space-y-4" onValueChange={(values) => values.forEach(v => handleAccordionToggle(v))}>
                             {groupedLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
                                 const canEditList = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller' || can.approve_store_requests;
+                                const currentItems = editableItems[list.id] || [];
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
                                         <div className="flex justify-between items-center p-4">
@@ -120,16 +176,15 @@ export default function TpCertificationPage() {
                                                 </div>
                                             </AccordionTrigger>
                                             <div className="flex items-center gap-2 pl-4">
-                                                <Button size="sm" variant="outline" onClick={() => handleUpdateValidity(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 {canEditList && (
-                                                    <Button size="sm" variant="secondary" onClick={() => handleEditList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleEditList(list)}}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 )}
-                                                <Button size="sm" variant="outline" onClick={() => handleGenerateSingleFile(list, 'excel')}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
-                                                <Button size="sm" variant="outline" onClick={() => handleGenerateSingleFile(list, 'pdf')}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
                                                 {user?.role === 'Admin' && (
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button size="icon" variant="destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                            <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
@@ -151,15 +206,36 @@ export default function TpCertificationPage() {
                                                     <TableRow>
                                                         <TableHead>Sr. No</TableHead>
                                                         <TableHead>Material Name</TableHead>
-                                                        <TableHead>Manufacturer Sr. No</TableHead>
+                                                        <TableHead>Mfr. Sr. No</TableHead>
+                                                        <TableHead>TP Due Date</TableHead>
+                                                        <TableHead>Certificate Link</TableHead>
+                                                        <TableHead className="text-right">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {list.items.map((item, index) => (
+                                                    {currentItems.map((item, index) => (
                                                         <TableRow key={index}>
                                                             <TableCell>{index + 1}</TableCell>
                                                             <TableCell>{item.materialName}</TableCell>
                                                             <TableCell>{item.manufacturerSrNo}</TableCell>
+                                                            <TableCell>
+                                                                <DatePickerInput
+                                                                    value={item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : undefined}
+                                                                    onChange={(date) => handleItemChange(list.id, index, 'tpInspectionDueDate', date?.toISOString() || null)}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input
+                                                                    value={item.certificateUrl || ''}
+                                                                    onChange={(e) => handleItemChange(list.id, index, 'certificateUrl', e.target.value)}
+                                                                    placeholder="https://..."
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button size="sm" onClick={() => handleSaveItem(list.id, index)}>
+                                                                    <Save className="mr-2 h-4 w-4" /> Save
+                                                                </Button>
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -180,13 +256,6 @@ export default function TpCertificationPage() {
                 isOpen={!!editingList} 
                 setIsOpen={() => setEditingList(null)}
                 existingList={editingList}
-            />
-        )}
-        {updatingValidityList && (
-            <UpdateCertValidityDialog
-                isOpen={!!updatingValidityList}
-                setIsOpen={() => setUpdatingValidityList(null)}
-                certList={updatingValidityList}
             />
         )}
         </>
