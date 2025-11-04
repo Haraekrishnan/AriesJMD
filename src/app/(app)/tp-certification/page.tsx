@@ -74,21 +74,29 @@ export default function TpCertificationPage() {
     const handleSaveItem = async (listId: string, itemIndex: number) => {
       const itemToSave = editableItems[listId]?.[itemIndex];
       if (!itemToSave) return;
-  
+    
       try {
         let originalItem;
+        let updateFunction;
+    
         if (itemToSave.itemType === 'Inventory') {
           originalItem = inventoryItems.find(i => i.id === itemToSave.itemId);
-          if (originalItem) await updateInventoryItem({ ...originalItem, tpInspectionDueDate: itemToSave.tpInspectionDueDate, certificateUrl: itemToSave.certificateUrl });
+          updateFunction = updateInventoryItem;
         } else if (itemToSave.itemType === 'UTMachine') {
           originalItem = utMachines.find(i => i.id === itemToSave.itemId);
-          if (originalItem) await updateUTMachine({ ...originalItem, tpInspectionDueDate: itemToSave.tpInspectionDueDate, certificateUrl: itemToSave.certificateUrl });
+          updateFunction = updateUTMachine;
         } else if (itemToSave.itemType === 'DftMachine') {
           originalItem = dftMachines.find(i => i.id === itemToSave.itemId);
-          if (originalItem) await updateDftMachine({ ...originalItem, tpInspectionDueDate: itemToSave.tpInspectionDueDate, certificateUrl: itemToSave.certificateUrl });
+          updateFunction = updateDftMachine;
         }
-        
-        if (originalItem) {
+    
+        if (originalItem && updateFunction) {
+          const updatedItemData = {
+            ...originalItem,
+            tpInspectionDueDate: itemToSave.tpInspectionDueDate,
+            certificateUrl: itemToSave.certificateUrl,
+          };
+          await updateFunction(updatedItemData as any);
           toast({ title: 'Item Updated', description: `${itemToSave.materialName} has been saved.` });
         } else {
           throw new Error("Original item not found in inventory.");
