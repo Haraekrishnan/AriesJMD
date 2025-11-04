@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -213,7 +214,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                     <TableHead className="w-12">
                         <Checkbox
                             checked={isAllSelected}
-                            onCheckedChange={handleSelectAll}
+                            onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
                         />
                     </TableHead>
                     <TableHead>Sr. No</TableHead>
@@ -254,7 +255,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
             </ScrollArea>
              <DialogFooter className="pt-4 mt-auto border-t">
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit">Save All Changes</Button>
+                <Button type="submit">Save Changes to Selected</Button>
             </DialogFooter>
         </form>
       </DialogContent>
