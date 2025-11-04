@@ -13,9 +13,37 @@ interface CertItem {
   chestCrollNo?: string;
 }
 
+// Helper to get capacity from material name
+const getCapacity = (materialName: string): string => {
+    const name = materialName.toLowerCase();
+    if (name.includes('tape sling')) return '220KG X 1.5 MTR';
+    if (name.includes('asap lock')) return '130KG';
+    if (name.includes('asap')) return '130 KG';
+    if (name.includes('id')) return '150 KG';
+    if (name.includes('hand jammer')) return '150 KG';
+    if (name.includes('wire sling')) return '0.5 T X 2M';
+    if (name.includes('fixe pulley')) return '23 KN';
+    if (name.includes('rescue pulley')) return '36 KN';
+    if (name.includes('double pulley')) return '36 KN';
+    if (name.includes('swivel pulley')) return '36 KN';
+    if (name.includes('dee shackle')) return '3.25MT';
+    if (name.includes('harness')) return '140 KG';
+
+    const liftingMagnetMatch = name.match(/lifting magnet (\d+)\s?kg/);
+    if (liftingMagnetMatch) return `${liftingMagnetMatch[1]} kg`;
+    
+    const webSlingMatch = name.match(/web sling.*?(\d+t)/);
+    if (webSlingMatch) return webSlingMatch[1].toUpperCase();
+
+    const chainBlockMatch = name.match(/chain block.*?(\d+t)/);
+    if (chainBlockMatch) return chainBlockMatch[1].toUpperCase();
+
+    return ''; // Default empty string if no match
+};
+
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined)[] }>();
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined)[], capacity: string }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
@@ -27,6 +55,7 @@ const processItemsForMerging = (items: CertItem[]) => {
                 materialName: item.materialName,
                 serialNumbers: [item.manufacturerSrNo],
                 chestCrollNos: [item.chestCrollNo],
+                capacity: getCapacity(item.materialName),
             });
         }
     });
@@ -124,7 +153,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
             index === 0 ? group.materialName : '',
             serial,
             isHarness ? (chestCrollNo || '') : '',
-            '', // Cap in MT
+            index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
             index === 0 ? 'OLD' : '',
             '', ''
@@ -226,7 +255,7 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
   
         if (index === 0) {
           // First row also gets the rest of the common data
-          rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+          rowData.push({ content: group.capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
           rowData.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
           rowData.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
           rowData.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
@@ -247,10 +276,15 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
         headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
         columnStyles: {
           1: { cellWidth: 70, halign: 'left' }, 
-          2: { cellWidth: 70, halign: 'left' },
+          2: { cellWidth: isHarness ? 70 : 140, halign: 'left' },
           3: { cellWidth: 70, halign: 'left' },
           7: { cellWidth: 50 },
           8: { cellWidth: 60 }
+        },
+        didParseCell: (data: any) => {
+            if (!isHarness && data.column.index === 2) {
+                data.cell.colSpan = 2;
+            }
         }
     });
 
