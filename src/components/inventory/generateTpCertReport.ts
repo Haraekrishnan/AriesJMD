@@ -4,7 +4,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { TpCertListItem } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 interface CertItem {
   materialName: string;
@@ -77,7 +77,7 @@ async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: A
   return { buffer, base64 };
 }
 
-export async function generateTpCertExcel(items: TpCertListItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string) {
+export async function generateTpCertExcel(items: TpCertListItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string, listDate?: Date | string) {
   const headerImagePath = '/images/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
@@ -97,10 +97,12 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     editAs: 'oneCell',
   });
 
+  const dateToUse = listDate ? (typeof listDate === 'string' ? parseISO(listDate) : listDate) : new Date();
+
   // Add Date Row
   const dateRow = worksheet.getRow(4);
   worksheet.mergeCells('A4:H4');
-  dateRow.getCell('H').value = `Date: ${format(new Date(), 'dd-MM-yyyy')}`;
+  dateRow.getCell('H').value = `Date: ${format(dateToUse, 'dd-MM-yyyy')}`;
   dateRow.getCell('H').alignment = { horizontal: 'right' };
   dateRow.getCell('H').font = { bold: true };
 
@@ -202,18 +204,20 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 }
 
 
-export async function generateTpCertPdf(items: TpCertListItem[]) {
+export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date | string) {
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
+  const dateToUse = listDate ? (typeof listDate === 'string' ? parseISO(listDate) : listDate) : new Date();
+
   doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text(`Date: ${format(new Date(), 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
+  doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
 
 
   doc.setFontSize(12);
@@ -238,27 +242,40 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
     const isHarness = group.materialName.toLowerCase() === 'harness';
 
     group.serialNumbers.forEach((serial, index) => {
-        const row: any[] = [];
-        if (index === 0) {
-            row.push({ content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            row.push({ content: group.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'left' } });
+      const rowData = [
+        { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
+        serial || '',
+        isHarness ? (group.chestCrollNos[index] || '') : '',
+        { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: '', rowSpan: index === 0 ? groupSize : 1 }
+      ];
+
+      if (!isHarness) {
+        rowData.splice(3, 1); // remove the empty chest croll no cell
+        const serialCell = rowData[2] as any;
+        if(typeof serialCell === 'object' && serialCell !== null) {
+          serialCell.colSpan = 2;
+        } else {
+            rowData[2] = { content: serialCell, colSpan: 2 };
         }
-        
-        row.push(serial || '');
-        row.push(isHarness ? (group.chestCrollNos[index] || '') : '');
-        
-        if (index === 0) {
-            row.push({ content: group.capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            row.push({ content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            row.push({ content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            row.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
-            row.push({ content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } });
+      }
+
+      const filteredRow = rowData.filter((_, cellIndex) => {
+        if (index > 0 && [0, 1, 4, 5, 6, 7, 8].includes(cellIndex)) {
+            return false;
         }
-        tableRows.push(row);
+        return true;
+      });
+
+      tableRows.push(filteredRow);
     });
     srNo++;
   });
-
+  
   (doc as any).autoTable({
       head: [tableColumn],
       body: tableRows,
@@ -267,14 +284,17 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
       styles: { fontSize: 8, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
       didParseCell: (data: any) => {
-          if (!data.row.raw.some((cell: any) => cell.colSpan > 1)) {
-            const isHarnessRow = processedItems.some(group => group.serialNumbers.includes(data.row.raw[2]?.content) && group.materialName.toLowerCase() === 'harness');
-            if (!isHarnessRow && data.column.index === 2) {
-                data.cell.colSpan = 2;
-            }
-          }
-      },
+        const cell = data.cell;
+        const row = data.row.raw;
+
+        if (typeof cell.raw === 'object' && cell.raw !== null) {
+            if (cell.raw.rowSpan > 1) cell.rowSpan = cell.raw.rowSpan;
+            if (cell.raw.colSpan > 1) cell.colSpan = cell.raw.colSpan;
+            cell.content = cell.raw.content;
+        }
+      }
   });
+
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
 

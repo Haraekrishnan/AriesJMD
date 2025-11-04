@@ -47,7 +47,7 @@ export default function TpCertificationPage() {
         const workbook = new ExcelJS.Workbook();
         
         for (const list of groupedLists) {
-            await generateTpCertExcel(list.items, workbook, list.name);
+            await generateTpCertExcel(list.items, workbook, list.name, list.date);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -57,9 +57,9 @@ export default function TpCertificationPage() {
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
         try {
             if (type === 'excel') {
-                await generateTpCertExcel(list.items, undefined, list.name);
+                await generateTpCertExcel(list.items, undefined, list.name, list.date);
             } else {
-                await generateTpCertPdf(list.items);
+                await generateTpCertPdf(list.items, list.date);
             }
             toast({ title: `${type.toUpperCase()} Generated` });
         } catch (error) {
