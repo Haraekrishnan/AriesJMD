@@ -79,15 +79,27 @@ export default function TpCertificationPage() {
         let originalItem;
         let updateFunction;
     
-        if (itemToSave.itemType === 'Inventory') {
-          originalItem = inventoryItems.find(i => i.id === itemToSave.itemId);
-          updateFunction = updateInventoryItem;
-        } else if (itemToSave.itemType === 'UTMachine') {
-          originalItem = utMachines.find(i => i.id === itemToSave.itemId);
-          updateFunction = updateUTMachine;
-        } else if (itemToSave.itemType === 'DftMachine') {
-          originalItem = dftMachines.find(i => i.id === itemToSave.itemId);
-          updateFunction = updateDftMachine;
+        // Broader search based on ID first
+        originalItem = inventoryItems.find(i => i.id === itemToSave.itemId)
+          || utMachines.find(i => i.id === itemToSave.itemId)
+          || dftMachines.find(i => i.id === itemToSave.itemId);
+
+        if (!originalItem) {
+          throw new Error("Original item not found in any inventory.");
+        }
+
+        // Determine update function based on type property if available, or by checking which list it was found in
+        if ('itemType' in originalItem && originalItem.itemType === 'Inventory') {
+            updateFunction = updateInventoryItem;
+        } else if ('itemType' in originalItem && originalItem.itemType === 'UTMachine') {
+            updateFunction = updateUTMachine;
+        } else if ('itemType' in originalItem && originalItem.itemType === 'DftMachine') {
+            updateFunction = updateDftMachine;
+        } else {
+           // Fallback for items that may not have itemType (older data)
+            if (inventoryItems.some(i => i.id === itemToSave.itemId)) updateFunction = updateInventoryItem;
+            else if (utMachines.some(i => i.id === itemToSave.itemId)) updateFunction = updateUTMachine;
+            else if (dftMachines.some(i => i.id === itemToSave.itemId)) updateFunction = updateDftMachine;
         }
     
         if (originalItem && updateFunction) {
@@ -99,7 +111,7 @@ export default function TpCertificationPage() {
           await updateFunction(updatedItemData as any);
           toast({ title: 'Item Updated', description: `${itemToSave.materialName} has been saved.` });
         } else {
-          throw new Error("Original item not found in inventory.");
+          throw new Error("Could not determine how to update the item.");
         }
       } catch (error) {
         console.error("Failed to save item:", error);
