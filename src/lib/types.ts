@@ -594,9 +594,11 @@ export type UTMachine = {
   id: string;
   machineName: string;
   serialNumber: string;
+  ariesId?: string;
   projectId: string;
   unit: string;
   calibrationDueDate: string; // ISO String
+  tpInspectionDueDate?: string; // ISO String
   probeDetails: string;
   cableDetails: string;
   status: string;
@@ -608,9 +610,11 @@ export type DftMachine = {
     id: string;
     machineName: string;
     serialNumber: string;
+    ariesId?: string;
     projectId: string;
     unit: string;
     calibrationDueDate: string; // ISO String
+    tpInspectionDueDate?: string; // ISO String
     probeDetails: string;
     cableDetails: string;
     status: string;

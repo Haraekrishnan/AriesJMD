@@ -7,7 +7,6 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, FileText, BadgeHelp, Link as LinkIcon } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
@@ -87,9 +86,11 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
         <TableHeader>
           <TableRow>
               <TableHead>Machine Name</TableHead>
+              <TableHead>Aries ID</TableHead>
               <TableHead>Serial No.</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Calibration Due</TableHead>
+              <TableHead>TP Insp. Due</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Certificate</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -99,10 +100,14 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
           {machinesWithProject.map(machine => (
             <TableRow key={machine.id}>
               <TableCell className="font-medium">{machine.machineName}</TableCell>
+              <TableCell>{machine.ariesId || 'N/A'}</TableCell>
               <TableCell>{machine.serialNumber}</TableCell>
               <TableCell>{machine.projectName}</TableCell>
               <TableCell className={cn(getDateStyles(machine.calibrationDueDate))}>
                   {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
+              </TableCell>
+              <TableCell className={cn(getDateStyles(machine.tpInspectionDueDate))}>
+                {machine.tpInspectionDueDate ? format(new Date(machine.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
               </TableCell>
               <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
               <TableCell>
@@ -141,7 +146,7 @@ export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableP
       </Table>
     </div>
     </TooltipProvider>
-     {selectedMachineForCert && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} utMachine={selectedMachineForCert} />}
+    {selectedMachineForCert && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} utMachine={selectedMachineForCert} />}
     </>
   );
 }

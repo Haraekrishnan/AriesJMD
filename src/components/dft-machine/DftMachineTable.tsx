@@ -78,9 +78,11 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
               <TableHeader>
                   <TableRow>
                       <TableHead>Machine Name</TableHead>
+                      <TableHead>Aries ID</TableHead>
                       <TableHead>Serial No.</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Calibration Due</TableHead>
+                      <TableHead>TP Insp. Due</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Certificate</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -90,10 +92,14 @@ export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTabl
                   {machinesWithProject.map(machine => (
                       <TableRow key={machine.id}>
                           <TableCell className="font-medium">{machine.machineName}</TableCell>
+                          <TableCell>{machine.ariesId || 'N/A'}</TableCell>
                           <TableCell>{machine.serialNumber}</TableCell>
                           <TableCell>{machine.projectName}</TableCell>
                           <TableCell className={cn(getDateStyles(machine.calibrationDueDate))}>
                               {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
+                          </TableCell>
+                          <TableCell className={cn(getDateStyles(machine.tpInspectionDueDate))}>
+                            {machine.tpInspectionDueDate ? format(new Date(machine.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
                           </TableCell>
                           <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
                           <TableCell>
