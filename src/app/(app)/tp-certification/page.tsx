@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, Workbook, Edit, BookOpen } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -88,7 +88,7 @@ export default function TpCertificationPage() {
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                         <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
                         <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
-                            <Workbook className="mr-2 h-4 w-4" /> Generate Day's Workbook
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Generate Day's Workbook
                         </Button>
                     </div>
                 </CardHeader>
