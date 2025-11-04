@@ -115,6 +115,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
   processedItems.forEach(group => {
     const groupStartRow = currentRowIndex;
     const groupSize = group.serialNumbers.length;
+    const isHarness = group.materialName.toLowerCase() === 'harness';
     
     group.serialNumbers.forEach((serial, index) => {
         const chestCrollNo = group.chestCrollNos[index];
@@ -122,13 +123,18 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
             serial,
-            chestCrollNo || '',
+            isHarness ? (chestCrollNo || '') : '',
             '', // Cap in MT
             index === 0 ? groupSize : '',
             index === 0 ? 'OLD' : '',
             '', ''
         ];
         const row = worksheet.addRow(rowData);
+        
+        if (!isHarness) {
+            worksheet.mergeCells(row.number, 3, row.number, 4);
+        }
+
         row.eachCell(cell => {
           cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
           cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -137,7 +143,8 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     });
 
     if (groupSize > 1) {
-        const mergeCols = [1, 2, 5, 6, 7, 8, 9]; // Corresponds to A, B, E, F, G, H, I
+        // Correct column indices based on 1-based Excel columns
+        const mergeCols = [1, 2, 5, 6, 7, 8, 9]; 
         mergeCols.forEach(col => {
             worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
         });
@@ -199,28 +206,41 @@ export async function generateTpCertPdf(items: TpCertListItem[]) {
     let srNo = 1;
 
     for (const group of processedItems) {
-      for (let i = 0; i < group.serialNumbers.length; i++) {
-        const serial = group.serialNumbers[i];
-        const chestCrollNo = group.chestCrollNos[i];
-        if (i === 0) {
-          tableRows.push([
-            { content: srNo, rowSpan: group.serialNumbers.length },
-            { content: group.materialName, rowSpan: group.serialNumbers.length },
-            serial,
-            chestCrollNo || '',
-            { content: '', rowSpan: group.serialNumbers.length },
-            { content: group.serialNumbers.length, rowSpan: group.serialNumbers.length },
-            { content: 'OLD', rowSpan: group.serialNumbers.length },
-            { content: '', rowSpan: group.serialNumbers.length },
-            { content: '', rowSpan: group.serialNumbers.length },
-          ]);
-        } else {
-          tableRows.push([serial, chestCrollNo || '']);
+        const isHarness = group.materialName.toLowerCase() === 'harness';
+        for (let i = 0; i < group.serialNumbers.length; i++) {
+            const serial = group.serialNumbers[i];
+            const chestCrollNo = group.chestCrollNos[i];
+            if (i === 0) {
+                const rowData = [
+                    { content: srNo, rowSpan: group.serialNumbers.length },
+                    { content: group.materialName, rowSpan: group.serialNumbers.length },
+                    serial,
+                    isHarness ? chestCrollNo || '' : '',
+                    { content: '', rowSpan: group.serialNumbers.length },
+                    { content: group.serialNumbers.length, rowSpan: group.serialNumbers.length },
+                    { content: 'OLD', rowSpan: group.serialNumbers.length },
+                    { content: '', rowSpan: group.serialNumbers.length },
+                    { content: '', rowSpan: group.serialNumbers.length },
+                ];
+                if (!isHarness) {
+                    (rowData[2] as any).colSpan = 2;
+                    rowData.splice(3, 1);
+                }
+                tableRows.push(rowData);
+            } else {
+                const rowData = [
+                    serial,
+                    isHarness ? chestCrollNo || '' : '',
+                ];
+                 if (!isHarness) {
+                    (rowData[0] as any).colSpan = 2;
+                    rowData.splice(1, 1);
+                }
+                tableRows.push(rowData);
+            }
         }
-      }
-      srNo++;
+        srNo++;
     }
-
 
     (doc as any).autoTable({
         head: [tableColumn],
