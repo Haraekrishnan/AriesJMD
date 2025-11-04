@@ -11,30 +11,24 @@ interface CertItem {
   manufacturerSrNo: string;
 }
 
-// Helper function to process items: group by name and count quantities
-const processItems = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; manufacturerSrNo: string[]; quantity: number }>();
+// Helper function to process items: group by name
+const processItemsForMerging = (items: CertItem[]) => {
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[] }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
         if (itemMap.has(key)) {
-            const existing = itemMap.get(key)!;
-            existing.quantity++;
-            if (!existing.manufacturerSrNo.includes(item.manufacturerSrNo)) {
-                existing.manufacturerSrNo.push(item.manufacturerSrNo);
-            }
+            itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
         } else {
             itemMap.set(key, {
                 materialName: item.materialName,
-                manufacturerSrNo: [item.manufacturerSrNo],
-                quantity: 1,
+                serialNumbers: [item.manufacturerSrNo],
             });
         }
     });
 
     return Array.from(itemMap.values()).sort((a, b) => a.materialName.localeCompare(b.materialName));
 };
-
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
   // Construct the full URL if it's a relative path
@@ -110,21 +104,44 @@ export async function generateTpCertExcel(items: CertItem[], existingWorkbook?: 
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
   });
   
-  const processedItems = processItems(items);
+  const processedItems = processItemsForMerging(items);
+  let currentRowIndex = headerRowIndex + 1;
+  let srNo = 1;
 
-  processedItems.forEach((item, index) => {
-    worksheet.addRow([
-      index + 1,
-      item.materialName,
-      item.manufacturerSrNo.join('\n'), // Join serial numbers with a newline
-      '',
-      item.quantity,
-      'OLD', '', ''
-    ]).eachCell(cell => {
-      cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  processedItems.forEach(group => {
+    const groupStartRow = currentRowIndex;
+    const groupSize = group.serialNumbers.length;
+    
+    group.serialNumbers.forEach((serial, index) => {
+        const rowData = [
+            index === 0 ? srNo : '',
+            index === 0 ? group.materialName : '',
+            serial,
+            '',
+            index === 0 ? groupSize : '',
+            index === 0 ? 'OLD' : '',
+            '', ''
+        ];
+        const row = worksheet.addRow(rowData);
+        row.eachCell(cell => {
+          cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+        currentRowIndex++;
     });
+
+    if (groupSize > 1) {
+        worksheet.mergeCells(`A${groupStartRow}:A${groupStartRow + groupSize - 1}`);
+        worksheet.mergeCells(`B${groupStartRow}:B${groupStartRow + groupSize - 1}`);
+        worksheet.mergeCells(`D${groupStartRow}:D${groupStartRow + groupSize - 1}`);
+        worksheet.mergeCells(`E${groupStartRow}:E${groupStartRow + groupSize - 1}`);
+        worksheet.mergeCells(`F${groupStartRow}:F${groupStartRow + groupSize - 1}`);
+        worksheet.mergeCells(`G${groupStartRow}:G${groupStartRow + groupSize - 1}`);
+        worksheet.mergeCells(`H${groupStartRow}:H${groupStartRow + groupSize - 1}`);
+    }
+    srNo++;
   });
+
 
   const footerStart = worksheet.lastRow!.number + 2;
   const footerLines = [
@@ -174,26 +191,42 @@ export async function generateTpCertPdf(items: CertItem[]) {
         "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)",
     ];
     
-    const processedItems = processItems(items);
-    const tableRows = processedItems.map((item, index) => [
-        index + 1, 
-        item.materialName, 
-        item.manufacturerSrNo.join('\n'), // Join serial numbers with a newline
-        "", 
-        item.quantity, 
-        "OLD", "", ""
-    ]);
+    const processedItems = processItemsForMerging(items);
+    const tableRows = [];
+    let srNo = 1;
+
+    for (const group of processedItems) {
+      for (let i = 0; i < group.serialNumbers.length; i++) {
+        const serial = group.serialNumbers[i];
+        if (i === 0) {
+          tableRows.push([
+            { content: srNo, rowSpan: group.serialNumbers.length },
+            { content: group.materialName, rowSpan: group.serialNumbers.length },
+            serial,
+            { content: '', rowSpan: group.serialNumbers.length },
+            { content: group.serialNumbers.length, rowSpan: group.serialNumbers.length },
+            { content: 'OLD', rowSpan: group.serialNumbers.length },
+            { content: '', rowSpan: group.serialNumbers.length },
+            { content: '', rowSpan: group.serialNumbers.length },
+          ]);
+        } else {
+          tableRows.push([serial]);
+        }
+      }
+      srNo++;
+    }
+
 
     (doc as any).autoTable({
         head: [tableColumn],
         body: tableRows,
         startY: 170,
         theme: "grid",
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, halign: 'center', valign: 'middle' },
         headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
         columnStyles: {
-          1: { cellWidth: 100 }, 
-          2: { cellWidth: 100 },
+          1: { cellWidth: 100, halign: 'left' }, 
+          2: { cellWidth: 100, halign: 'left' },
           6: { cellWidth: 60 },
           7: { cellWidth: 80 }
         }
