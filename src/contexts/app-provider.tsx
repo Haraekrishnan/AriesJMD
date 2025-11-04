@@ -1128,22 +1128,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
     const start = startOfMonth(month);
     const end = endOfMonth(month);
-    const allDays = eachDayOfInterval({ start, end });
+    const allDaysInMonth = eachDayOfInterval({ start, end });
   
-    const monthEvents = plannerEvents.filter(e => e.userId === userId && e.date);
+    const userEvents = plannerEvents.filter(e => e.userId === userId && e.date);
     const expandedEvents: (PlannerEvent & { eventDate: Date })[] = [];
   
-    allDays.forEach(day => {
-        monthEvents.forEach(event => {
-            const eventStartDate = parseISO(event.date);
-            if (isSameDay(day, eventStartDate)) {
-                expandedEvents.push({ ...event, eventDate: day });
-            } else if (event.frequency === 'Weekly' && isSameDay(startOfDay(day), startOfDay(add(eventStartDate, { days: 7 }))) && getDay(day) === getDay(eventStartDate)) {
-                expandedEvents.push({ ...event, eventDate: day });
-            } else if (event.frequency === 'Monthly' && getDate(day) === getDate(eventStartDate)) {
-                expandedEvents.push({ ...event, eventDate: day });
-            }
-        });
+    allDaysInMonth.forEach(day => {
+      userEvents.forEach(event => {
+        const eventStartDate = parseISO(event.date);
+        
+        if (isAfter(day, eventStartDate) || isSameDay(day, eventStartDate)) {
+          let shouldAdd = false;
+          switch (event.frequency) {
+            case 'once':
+              if (isSameDay(day, eventStartDate)) shouldAdd = true;
+              break;
+            case 'daily':
+              shouldAdd = true;
+              break;
+            case 'daily-except-sundays':
+              if (!isSunday(day)) shouldAdd = true;
+              break;
+            case 'weekly':
+              if (getDay(day) === getDay(eventStartDate)) shouldAdd = true;
+              break;
+            case 'weekends':
+              if (isSaturday(day) || isSunday(day)) shouldAdd = true;
+              break;
+            case 'monthly':
+              if (getDate(day) === getDate(eventStartDate)) shouldAdd = true;
+              break;
+          }
+          if (shouldAdd) {
+            expandedEvents.push({ ...event, eventDate: day });
+          }
+        }
+      });
     });
   
     return expandedEvents.sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
@@ -3755,3 +3775,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
