@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { useMemo, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import type { InventoryItem, UTMachine, DftMachine, TransferReason } from '@/lib/types';
+import type { InventoryItem, UTMachine, DftMachine, TransferReason, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
 import { TRANSFER_REASONS } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { X, ChevronsUpDown } from 'lucide-react';
@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
-type SearchableItem = (InventoryItem | UTMachine | DftMachine) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine'; };
+type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment'; };
 
 const transferRequestSchema = z.object({
   fromProjectId: z.string().min(1, 'Origin project is required'),
@@ -31,7 +31,7 @@ const transferRequestSchema = z.object({
   remarks: z.string().optional(),
   items: z.array(z.object({
     itemId: z.string(),
-    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine']),
+    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'DigitalCamera', 'Anemometer', 'OtherEquipment']),
     name: z.string(),
     serialNumber: z.string(),
   })).min(1, 'Please add at least one item to transfer'),
@@ -56,7 +56,7 @@ interface NewInventoryTransferRequestDialogProps {
 }
 
 export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }: NewInventoryTransferRequestDialogProps) {
-  const { user, users, projects, inventoryItems, utMachines, dftMachines, addInventoryTransferRequest } = useAppContext();
+  const { user, users, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, addInventoryTransferRequest } = useAppContext();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -77,15 +77,18 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
     inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
     utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
     dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
+    digitalCameras?.forEach(item => items.push({ ...item, itemType: 'DigitalCamera' }));
+    anemometers?.forEach(item => items.push({ ...item, itemType: 'Anemometer' }));
+    otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
     return items;
-  }, [inventoryItems, utMachines, dftMachines]);
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments]);
 
   const availableItems = useMemo(() => {
     return allSearchableItems.filter(item => 
         item.projectId === fromProjectId &&
         !selectedItems.some(sel => sel.itemId === item.id && sel.itemType === item.itemType) &&
         (searchTerm 
-            ? ((item.name || item.machineName)?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            ? ((item.name || (item as any).machineName || (item as any).equipmentName)?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                (item.ariesId && item.ariesId.toLowerCase().includes(searchTerm.toLowerCase())))
             : true)
@@ -96,7 +99,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
     form.setValue('items', [...selectedItems, {
         itemId: item.id,
         itemType: item.itemType,
-        name: item.name || item.machineName,
+        name: (item as any).name || (item as any).machineName || (item as any).equipmentName,
         serialNumber: item.serialNumber
     }]);
     setSearchTerm('');
@@ -203,7 +206,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                         <CommandGroup>
                             {availableItems.map((item) => (
                                 <CommandItem key={`${item.id}-${item.itemType}`} onSelect={() => handleItemSelect(item)}>
-                                    {item.name || item.machineName} (SN: {item.serialNumber})
+                                    {(item as any).name || (item as any).machineName || (item as any).equipmentName} (SN: {item.serialNumber})
                                     {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                                 </CommandItem>
                             ))}

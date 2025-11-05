@@ -858,7 +858,7 @@ export type InventoryTransferRequest = {
     remarks?: string;
     items: {
       itemId: string;
-      itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
+      itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment';
       name: string;
       serialNumber: string;
     }[];
