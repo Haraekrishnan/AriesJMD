@@ -51,7 +51,8 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         if (selectedDate && user) {
             const unreadEventsToday = expandedEvents.filter(event => 
                 isSameDay(event.eventDate, selectedDate) &&
-                event.comments.some(c => !c.isRead && c.userId !== user.id)
+                event.comments && Array.isArray(event.comments) && // Safety check
+                event.comments.some(c => c && !c.isRead && c.userId !== user.id)
             );
             if (unreadEventsToday.length > 0) {
                 setNewCommentEvent(unreadEventsToday[0]); 
