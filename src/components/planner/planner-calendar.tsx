@@ -18,6 +18,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import NewCommentDialog from './NewCommentDialog';
+
 
 interface PlannerCalendarProps {
     selectedUserId: string;
@@ -36,19 +38,27 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
-    const [editingComment, setEditingComment] = useState<{ eventId: string; commentId: string; text: string } | null>(null);
     const [newComment, setNewComment] = useState('');
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-
-    useEffect(() => {
-        // This can be adapted if there's a need to mark event comments as read
-    }, [selectedDate, selectedUserId, user]);
-
+    const [newCommentEvent, setNewCommentEvent] = useState<PlannerEvent | null>(null);
 
     const expandedEvents = useMemo(
         () => getExpandedPlannerEvents(currentMonth, selectedUserId),
         [getExpandedPlannerEvents, currentMonth, selectedUserId]
     );
+
+    useEffect(() => {
+        if (selectedDate && user) {
+            const unreadEventsToday = expandedEvents.filter(event => 
+                isSameDay(event.eventDate, selectedDate) &&
+                event.comments.some(c => !c.isRead && c.userId !== user.id)
+            );
+            if (unreadEventsToday.length > 0) {
+                setNewCommentEvent(unreadEventsToday[0]); 
+            }
+        }
+    }, [selectedDate, expandedEvents, user]);
+
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
     const isMyOwnPlanner = user?.id === selectedUserId;
@@ -242,6 +252,13 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                 </Card>
             </div>
             {editingEvent && <EditEventDialog isOpen={!!editingEvent} setIsOpen={() => setEditingEvent(null)} event={editingEvent} />}
+            {newCommentEvent && (
+                <NewCommentDialog 
+                    isOpen={!!newCommentEvent} 
+                    setIsOpen={() => setNewCommentEvent(null)}
+                    event={newCommentEvent}
+                />
+            )}
         </>
     );
 }

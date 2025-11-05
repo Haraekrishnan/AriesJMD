@@ -1178,7 +1178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Planner Event Added', event.title);
   
     const notifyUser = users.find(u => u.id === event.userId);
-    if (notifyUser && notifyUser.email) {
+    if (notifyUser && notifyUser.email && event.creatorId !== event.userId) {
       createAndSendNotification(
         notifyUser.email,
         `New Planner Event: ${event.title}`,
@@ -1215,7 +1215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const event = plannerEventsById[eventId];
     if (!event) return;
     const newCommentRef = push(ref(rtdb, `plannerEvents/${eventId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
     
     const updates: { [key: string]: any } = {};
     updates[`plannerEvents/${eventId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
@@ -1229,11 +1229,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
 
-  }, [user, plannerEventsById]);
+    // Email notifications for delegated events
+    if (event.creatorId !== event.userId) {
+        const creator = users.find(u => u.id === event.creatorId);
+        const assignee = users.find(u => u.id === event.userId);
+        
+        const otherParty = user.id === event.creatorId ? assignee : creator;
+        
+        if (otherParty && otherParty.email) {
+            createAndSendNotification(
+                otherParty.email,
+                `New comment on delegated event: ${event.title}`,
+                `New comment from ${user.name}`,
+                {
+                    'Event': event.title,
+                    'Comment': text
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+                'View Planner'
+            );
+        }
+    }
+  }, [user, users, plannerEventsById]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
-    // This function is now deprecated as we use per-event comments
-  }, []);
+    if (!user) return;
+    
+    const eventsForDay = getExpandedPlannerEvents(day, plannerUserId).filter(e => isSameDay(e.eventDate, day));
+    const updates: { [key: string]: any } = {};
+    
+    eventsForDay.forEach(event => {
+      const commentsArray = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
+      commentsArray.forEach((comment, index) => {
+        if (comment && !comment.isRead && comment.userId !== user.id) {
+          const commentKey = Array.isArray(event.comments) ? index : Object.keys(event.comments || {})[index];
+          updates[`plannerEvents/${event.id}/comments/${commentKey}/isRead`] = true;
+        }
+      });
+    });
+  
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, getExpandedPlannerEvents]);
 
   const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (!user) return;
@@ -3504,7 +3542,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let plannerNotificationCount = newDelegatedEventsCount;
     plannerEvents.forEach(event => {
         const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
-        if (comments.some(c => !c.isRead && c.userId !== user.id)) {
+        if (comments.some(c => !c.isRead && c.userId !== user.id && (event.userId === user.id || event.creatorId === user.id) )) {
             plannerNotificationCount++;
         }
     });
@@ -3745,3 +3783,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
