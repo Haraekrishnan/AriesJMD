@@ -3426,7 +3426,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
-  }, [user, addActivityLog]);
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
+
+  }, [user, addActivityLog, users, roles, projects]);
 
   const clearInventoryTransferHistory = useCallback(() => {
     if (!user || user.role !== 'Admin') return;
@@ -3458,10 +3482,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
-  }, [user, addActivityLog, addTpCertList]);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    const destSupervisor = users.find(u => u.projectId === request.toProjectId && u.role === 'Supervisor');
+
+    const recipients = new Set<User>();
+    if (requester) recipients.add(requester);
+    if (destSupervisor) recipients.add(destSupervisor);
+
+    const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
+    
+    recipients.forEach(recipient => {
+        if(recipient.email) {
+            createAndSendNotification(
+                recipient.email,
+                `Inventory Transfer Approved: #${request.id.slice(-6)}`,
+                'Inventory Transfer Approved',
+                {
+                    'Request ID': `#${request.id.slice(-6)}`,
+                    'From': fromProjectName || 'Unknown',
+                    'To': toProjectName || 'Unknown',
+                    'Approved By': user.name,
+                    'Info': 'The items are now in transit. Please acknowledge receipt at the destination.'
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'View Transfers'
+            );
+        }
+    });
+
+  }, [user, addActivityLog, addTpCertList, users, projects]);
 
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
+    const request = inventoryTransferRequests.find(req => req.id === requestId);
+    if (!request) return;
+
     const updates: { [key: string]: any } = {};
     updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
     updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
@@ -3473,7 +3530,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-  }, [user, addActivityLog]);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester?.email) {
+        createAndSendNotification(
+            requester.email,
+            `Inventory Transfer Rejected: #${requestId.slice(-6)}`,
+            'Inventory Transfer Rejected',
+            {
+                'Request ID': `#${requestId.slice(-6)}`,
+                'Rejected By': user.name,
+                'Reason': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+            'View Transfers'
+        );
+    }
+  }, [user, inventoryTransferRequests, addActivityLog, users]);
 
   const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
     if (!user) return;
@@ -3490,7 +3563,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
     toast({ title: 'Transfer Disputed', description: 'The store has been notified of the issue.' });
-  }, [user, inventoryTransferRequestsById, addActivityLog, toast]);
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    approvers.forEach(approver => {
+        if(approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `Dispute Raised for Transfer #${requestId.slice(-6)}`,
+                'Inventory Transfer Disputed',
+                {
+                    'Request ID': `#${requestId.slice(-6)}`,
+                    'Disputed By': user.name,
+                    'Reason': comment,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'Review Dispute'
+            );
+        }
+    });
+
+  }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
 
   const acknowledgeTransfer = useCallback((requestId: string) => {
     if (!user) return;
@@ -3517,7 +3609,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
     toast({ title: 'Transfer Completed', description: 'The items have been moved to the new project inventory.' });
-  }, [user, inventoryTransferRequestsById, addActivityLog, toast]);
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    approvers.forEach(approver => {
+        if(approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `Transfer #${requestId.slice(-6)} Completed`,
+                'Inventory Transfer Completed',
+                {
+                    'Request ID': `#${requestId.slice(-6)}`,
+                    'Acknowledged By': user.name,
+                    'Status': 'Completed',
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'View Transfers'
+            );
+        }
+    });
+
+  }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
 
 
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useMemo(() => {
@@ -3782,4 +3893,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
