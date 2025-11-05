@@ -84,7 +84,11 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
     return allSearchableItems.filter(item => 
         item.projectId === fromProjectId &&
         !selectedItems.some(sel => sel.itemId === item.id && sel.itemType === item.itemType) &&
-        (searchTerm ? ((item.name || item.machineName)?.toLowerCase().includes(searchTerm.toLowerCase()) || item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase())) : true)
+        (searchTerm 
+            ? ((item.name || item.machineName)?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               (item.ariesId && item.ariesId.toLowerCase().includes(searchTerm.toLowerCase())))
+            : true)
     );
   }, [allSearchableItems, fromProjectId, selectedItems, searchTerm]);
 
@@ -192,7 +196,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
             <div className="space-y-2">
               <Label>Search & Add Items</Label>
               <Command className="rounded-lg border shadow-md">
-                <CommandInput placeholder="Search by name or serial number..." value={searchTerm} onValueChange={setSearchTerm} />
+                <CommandInput placeholder="Search by name, serial number, or Aries ID..." value={searchTerm} onValueChange={setSearchTerm} />
                 <ScrollArea className="h-40">
                     <CommandList>
                         <CommandEmpty>No available items match your search.</CommandEmpty>
@@ -200,6 +204,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                             {availableItems.map((item) => (
                                 <CommandItem key={`${item.id}-${item.itemType}`} onSelect={() => handleItemSelect(item)}>
                                     {item.name || item.machineName} (SN: {item.serialNumber})
+                                    {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                                 </CommandItem>
                             ))}
                         </CommandGroup>
