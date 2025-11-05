@@ -5,9 +5,8 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/inventory/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
@@ -23,35 +22,43 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import UpdateCertValidityDialog from '@/components/tp-certification/UpdateCertValidityDialog';
+import { Input } from '@/components/ui/input';
 
 export default function TpCertificationPage() {
     const { user, users, tpCertLists, deleteTpCertList } = useAppContext();
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+    const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [editingList, setEditingList] = useState<TpCertList | null>(null);
     const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
 
-    const groupedLists = useMemo(() => {
-        if (!selectedDate || !tpCertLists) return [];
-        const dateKey = format(selectedDate, 'yyyy-MM-dd');
-        return (tpCertLists || []).filter(list => list.date === dateKey)
-            .sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
-    }, [selectedDate, tpCertLists]);
+    const filteredLists = useMemo(() => {
+        const allLists = (tpCertLists || []).sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
+        if (!searchTerm.trim()) {
+            return allLists;
+        }
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+        return allLists.filter(list => 
+            list.items.some(item => 
+                item.manufacturerSrNo?.toLowerCase().includes(lowercasedSearchTerm) ||
+                item.chestCrollNo?.toLowerCase().includes(lowercasedSearchTerm)
+            )
+        );
+    }, [searchTerm, tpCertLists]);
 
     const handleGenerateWorkbook = async () => {
-        if (groupedLists.length === 0) {
-            toast({ title: "No lists found for this date.", variant: 'destructive' });
+        if (filteredLists.length === 0) {
+            toast({ title: "No lists to export.", variant: 'destructive' });
             return;
         }
 
         const workbook = new ExcelJS.Workbook();
         
-        for (const list of groupedLists) {
+        for (const list of filteredLists) {
             await generateTpCertExcel(list.items, workbook, list.name, list.date);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `TP_Cert_Workbook_${format(selectedDate!, 'yyyy-MM-dd')}.xlsx`);
+        saveAs(new Blob([buffer]), `TP_Cert_Master_Workbook.xlsx`);
     };
 
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
@@ -87,16 +94,24 @@ export default function TpCertificationPage() {
                 <CardHeader>
                     <CardTitle>View Saved Lists</CardTitle>
                     <div className="flex flex-wrap items-center gap-4 pt-2">
-                        <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
-                        <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Generate Day's Workbook
+                         <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by Serial No or Chest Croll No..."
+                                className="pl-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <Button onClick={handleGenerateWorkbook} disabled={filteredLists.length === 0}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Generate Workbook
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {groupedLists.length > 0 ? (
+                    {filteredLists.length > 0 ? (
                         <Accordion type="multiple" className="w-full space-y-4">
-                            {groupedLists.map(list => {
+                            {filteredLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
                                 const itemSummary = list.items.reduce((acc, item) => {
                                     acc[item.materialName] = (acc[item.materialName] || 0) + 1;
@@ -110,7 +125,7 @@ export default function TpCertificationPage() {
                                                 <div>
                                                     <p className="font-semibold text-lg">{list.name}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        Created by {creator?.name || 'Unknown'} at {format(parseISO(list.createdAt), 'p')}
+                                                        Created by {creator?.name || 'Unknown'} on {format(parseISO(list.date), 'dd MMM, yyyy')} at {format(parseISO(list.createdAt), 'p')}
                                                     </p>
                                                 </div>
                                             </AccordionTrigger>
@@ -161,7 +176,7 @@ export default function TpCertificationPage() {
                             })}
                         </Accordion>
                     ) : (
-                        <p className="text-center text-muted-foreground py-8">No certification lists found for this date.</p>
+                        <p className="text-center text-muted-foreground py-8">No certification lists found for the current filter.</p>
                     )}
                 </CardContent>
             </Card>
