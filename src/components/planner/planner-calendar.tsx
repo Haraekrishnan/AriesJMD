@@ -185,11 +185,11 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                 </div>
                                                 <AccordionTrigger className="pt-2 pb-0 text-xs text-blue-600 hover:no-underline justify-start gap-1">
                                                     <MessageSquare className="h-3 w-3"/>
-                                                    {eventComments.length > 0 ? `${eventComments.length} comments` : 'Add comment'}
+                                                    {commentsArray.length > 0 ? `${commentsArray.length} comments` : 'Add comment'}
                                                 </AccordionTrigger>
                                                 <AccordionContent>
                                                     <div className="space-y-3 pt-3">
-                                                        {eventComments.map(comment => {
+                                                        {commentsArray.map(comment => {
                                                             const commentUser = users.find(u => u.id === comment.userId);
                                                             return (
                                                                 <div key={comment.id} className="flex items-start gap-2">
@@ -238,3 +238,5 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
+
+    
