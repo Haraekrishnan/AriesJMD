@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -17,18 +18,18 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer, allCompletedTransferRequests } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [rejectionComment, setRejectionComment] = useState('');
 
-  const { forApproval, forAcknowledgement, myActiveRequests, myCompletedRequests } = useMemo(() => {
-    if (!user) return { forApproval: [], forAcknowledgement: [], myActiveRequests: [], myCompletedRequests: [] };
+  const { forApproval, forAcknowledgement, myActiveRequests } = useMemo(() => {
+    if (!user) return { forApproval: [], forAcknowledgement: [], myActiveRequests: [] };
     
     const forApproval: InventoryTransferRequest[] = [];
     const forAcknowledgement: InventoryTransferRequest[] = [];
-    const myRequests: InventoryTransferRequest[] = [];
+    const myActiveRequests: InventoryTransferRequest[] = [];
 
     inventoryTransferRequests.forEach(req => {
       if (can.approve_store_requests && (req.status === 'Pending' || req.status === 'Disputed')) {
@@ -42,23 +43,19 @@ export default function PendingTransfers() {
         forAcknowledgement.push(req);
       }
 
-      if (req.requesterId === user.id) {
-          myRequests.push(req);
+      if (req.requesterId === user.id && (req.status === 'Pending' || req.status === 'Approved' || req.status === 'Disputed')) {
+          myActiveRequests.push(req);
       }
     });
-
-    const active = myRequests.filter(r => r.status !== 'Completed' && r.status !== 'Rejected');
-    const completed = myRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected');
 
     return { 
         forApproval, 
         forAcknowledgement, 
-        myActiveRequests: active,
-        myCompletedRequests: completed
+        myActiveRequests,
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests]);
 
-  if (forApproval.length === 0 && forAcknowledgement.length === 0 && myActiveRequests.length === 0 && myCompletedRequests.length === 0) {
+  if (forApproval.length === 0 && forAcknowledgement.length === 0 && myActiveRequests.length === 0 && allCompletedTransferRequests.length === 0) {
     return null;
   }
   
@@ -313,36 +310,40 @@ export default function PendingTransfers() {
           </div>
         )}
 
-        {myCompletedRequests.length > 0 && (
+        {allCompletedTransferRequests.length > 0 && (
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="my-completed-transfers" className="border rounded-md px-4">
-              <AccordionTrigger className="hover:no-underline font-semibold text-sm">
-                My Completed History ({myCompletedRequests.length})
+            <AccordionItem value="completed-transfers" className="border rounded-md">
+              <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-sm">
+                Transfer History ({allCompletedTransferRequests.length})
               </AccordionTrigger>
-              <AccordionContent className="pt-2 pb-0">
-                 <div className="space-y-2">
-                    {myCompletedRequests.map(req => {
-                      const toProject = projects.find(p => p.id === req.toProjectId);
-                      const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
-                      return (
-                        <div key={req.id} className="p-2 border-t text-sm">
-                          <div className="flex justify-between items-center">
-                            <p>
-                              Transfer of {req.items.length} item(s) to <span className="font-semibold">{toProject?.name}</span>
-                            </p>
-                            <Badge variant={statusVariant}>{req.status}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                              {req.acknowledgedDate ? `Completed ${formatDistanceToNow(parseISO(req.acknowledgedDate), { addSuffix: true })}` : `Rejected ${req.approvalDate ? formatDistanceToNow(parseISO(req.approvalDate), { addSuffix: true }) : ''}`}
+              <AccordionContent className="p-4">
+                <div className="space-y-2">
+                  {allCompletedTransferRequests.map(req => {
+                    const toProject = projects.find(p => p.id === req.toProjectId);
+                    const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
+                    return (
+                      <div key={req.id} className="p-2 border-b text-sm">
+                        <div className="flex justify-between items-center">
+                          <p>
+                            Transfer of {req.items.length} item(s) to <span className="font-semibold">{toProject?.name}</span>
                           </p>
+                          <Badge variant={statusVariant}>{req.status}</Badge>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <p className="text-xs text-muted-foreground">
+                          {req.status === 'Completed'
+                            ? `Completed ${formatDistanceToNow(parseISO(req.acknowledgedDate!), { addSuffix: true })}`
+                            : `Rejected ${req.approvalDate ? formatDistanceToNow(parseISO(req.approvalDate), { addSuffix: true }) : ''}`
+                          }
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
         )}
+
       </CardContent>
     </Card>
   );
