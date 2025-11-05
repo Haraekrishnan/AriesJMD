@@ -12,26 +12,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { useMemo, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import type { InventoryItem, UTMachine, DftMachine } from '@/lib/types';
+import type { InventoryItem, UTMachine, DftMachine, TransferReason, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
+import { TRANSFER_REASONS } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
-import { X } from 'lucide-react';
+import { X, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
-type SearchableItem = (InventoryItem | UTMachine | DftMachine) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine'; };
+type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment'; };
 
 const transferRequestSchema = z.object({
   fromProjectId: z.string().min(1, 'Origin project is required'),
   toProjectId: z.string().min(1, 'Destination project is required'),
-  reason: z.string().min(10, 'A detailed reason is required'),
+  reason: z.enum(TRANSFER_REASONS, { required_error: 'A reason for transfer is required.' }),
+  requestedById: z.string().optional(),
+  remarks: z.string().optional(),
   items: z.array(z.object({
     itemId: z.string(),
-    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine']),
+    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'DigitalCamera', 'Anemometer', 'OtherEquipment']),
     name: z.string(),
     serialNumber: z.string(),
   })).min(1, 'Please add at least one item to transfer'),
 }).refine(data => data.fromProjectId !== data.toProjectId, {
     message: 'Destination project must be different from the origin.',
     path: ['toProjectId'],
+}).refine(data => {
+    if (data.reason === 'Transfer to another project as requested by') {
+        return !!data.requestedById;
+    }
+    return true;
+}, {
+    message: 'Please select the person who requested the transfer.',
+    path: ['requestedById'],
 });
 
 type TransferRequestFormValues = z.infer<typeof transferRequestSchema>;
@@ -42,7 +56,7 @@ interface NewInventoryTransferRequestDialogProps {
 }
 
 export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }: NewInventoryTransferRequestDialogProps) {
-  const { user, projects, inventoryItems, utMachines, dftMachines, addInventoryTransferRequest } = useAppContext();
+  const { user, users, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, addInventoryTransferRequest } = useAppContext();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -56,20 +70,28 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
   
   const fromProjectId = form.watch('fromProjectId');
   const selectedItems = form.watch('items');
+  const reason = form.watch('reason');
 
   const allSearchableItems = useMemo(() => {
     const items: SearchableItem[] = [];
     inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
     utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
     dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
+    digitalCameras?.forEach(item => items.push({ ...item, itemType: 'DigitalCamera' }));
+    anemometers?.forEach(item => items.push({ ...item, itemType: 'Anemometer' }));
+    otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
     return items;
-  }, [inventoryItems, utMachines, dftMachines]);
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments]);
 
   const availableItems = useMemo(() => {
     return allSearchableItems.filter(item => 
         item.projectId === fromProjectId &&
         !selectedItems.some(sel => sel.itemId === item.id && sel.itemType === item.itemType) &&
-        (searchTerm ? (item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase())) : true)
+        (searchTerm 
+            ? ((item.name || (item as any).machineName || (item as any).equipmentName)?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               (item.ariesId && item.ariesId.toLowerCase().includes(searchTerm.toLowerCase())))
+            : true)
     );
   }, [allSearchableItems, fromProjectId, selectedItems, searchTerm]);
 
@@ -77,7 +99,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
     form.setValue('items', [...selectedItems, {
         itemId: item.id,
         itemType: item.itemType,
-        name: item.name || item.machineName,
+        name: (item as any).name || (item as any).machineName || (item as any).equipmentName,
         serialNumber: item.serialNumber
     }]);
     setSearchTerm('');
@@ -95,7 +117,8 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ fromProjectId: user?.projectId, items: [], toProjectId: undefined, reason: '' });
+      form.reset({ fromProjectId: user?.projectId, items: [], toProjectId: undefined, reason: undefined, remarks: '', requestedById: undefined });
+      setSearchTerm('');
     }
     setIsOpen(open);
   };
@@ -138,22 +161,54 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                  {form.formState.errors.toProjectId && <p className="text-xs text-destructive">{form.formState.errors.toProjectId.message}</p>}
               </div>
             </div>
+             <div className="space-y-2">
+                <Label>Reason for Transfer</Label>
+                 <Controller
+                  name="reason"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue placeholder="Select a reason..." /></SelectTrigger>
+                      <SelectContent>{TRANSFER_REASONS.map(reason => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+            </div>
+            {reason === 'Transfer to another project as requested by' && (
+                <div className="space-y-2">
+                    <Label>Requested By</Label>
+                    <Controller
+                        name="requestedById"
+                        control={form.control}
+                        render={({ field }) => (
+                             <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select employee..." /></SelectTrigger>
+                                <SelectContent>
+                                    {users.filter(u => u.role !== 'Manager').map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                     {form.formState.errors.requestedById && <p className="text-xs text-destructive">{form.formState.errors.requestedById.message}</p>}
+                </div>
+            )}
             <div className="space-y-2">
-              <Label>Reason for Transfer</Label>
-              <Textarea {...form.register('reason')} />
-              {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+              <Label>Remarks (Optional)</Label>
+              <Textarea {...form.register('remarks')} />
             </div>
             <div className="space-y-2">
               <Label>Search & Add Items</Label>
               <Command className="rounded-lg border shadow-md">
-                <CommandInput placeholder="Search by name or serial number..." value={searchTerm} onValueChange={setSearchTerm} />
+                <CommandInput placeholder="Search by name, serial number, or Aries ID..." value={searchTerm} onValueChange={setSearchTerm} />
                 <ScrollArea className="h-40">
                     <CommandList>
                         <CommandEmpty>No available items match your search.</CommandEmpty>
                         <CommandGroup>
                             {availableItems.map((item) => (
                                 <CommandItem key={`${item.id}-${item.itemType}`} onSelect={() => handleItemSelect(item)}>
-                                    {item.name || item.machineName} (SN: {item.serialNumber})
+                                    {(item as any).name || (item as any).machineName || (item as any).equipmentName} (SN: {item.serialNumber})
+                                    {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                                 </CommandItem>
                             ))}
                         </CommandGroup>
