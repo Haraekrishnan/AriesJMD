@@ -3538,14 +3538,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const unreadPlannerCommentDays: string[] = []; // Deprecated
       
-    const newDelegatedEventsCount = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id && !e.viewedBy?.[user.id]).length;
-    let plannerNotificationCount = newDelegatedEventsCount;
-    plannerEvents.forEach(event => {
+    const plannerNotificationCount = plannerEvents.filter(event => {
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        if (!isParticipant) return false;
+        
         const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
-        if (comments.some(c => !c.isRead && c.userId !== user.id && (event.userId === user.id || event.creatorId === user.id) )) {
-            plannerNotificationCount++;
-        }
-    });
+        return comments.some(c => c && !c.isRead && c.userId !== user.id);
+    }).length;
 
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;

@@ -18,8 +18,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import NewCommentDialog from './NewCommentDialog';
-
 
 interface PlannerCalendarProps {
     selectedUserId: string;
@@ -31,7 +29,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const {
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
         addPlannerEventComment,
-        markPlannerCommentsAsRead, can
+        can
     } = useAppContext();
     const { toast } = useToast();
 
@@ -40,29 +38,13 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
     const [newComment, setNewComment] = useState('');
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-    const [newCommentEvent, setNewCommentEvent] = useState<PlannerEvent | null>(null);
 
     const expandedEvents = useMemo(
         () => getExpandedPlannerEvents(currentMonth, selectedUserId),
         [getExpandedPlannerEvents, currentMonth, selectedUserId]
     );
-
-    useEffect(() => {
-        if (selectedDate && user) {
-            const unreadEventsToday = expandedEvents.filter(event => 
-                isSameDay(event.eventDate, selectedDate) &&
-                event.comments && Array.isArray(event.comments) && // Safety check
-                event.comments.some(c => c && !c.isRead && c.userId !== user.id)
-            );
-            if (unreadEventsToday.length > 0) {
-                setNewCommentEvent(unreadEventsToday[0]); 
-            }
-        }
-    }, [selectedDate, expandedEvents, user]);
-
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
-    const isMyOwnPlanner = user?.id === selectedUserId;
 
     const calendarGrid = useMemo(() => {
         const monthStart = startOfMonth(currentMonth);
@@ -172,7 +154,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                     const eventDate = event.date ? parseISO(event.date) : null;
                                     const isEventInPast = eventDate ? isPast(eventDate) : true;
                                     const isDelegated = event.creatorId !== event.userId;
-                                    const eventComments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
+                                    const commentsArray = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
                                     
                                     return (
                                         <Accordion key={event.id} type="single" collapsible>
@@ -253,13 +235,6 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                 </Card>
             </div>
             {editingEvent && <EditEventDialog isOpen={!!editingEvent} setIsOpen={() => setEditingEvent(null)} event={editingEvent} />}
-            {newCommentEvent && (
-                <NewCommentDialog 
-                    isOpen={!!newCommentEvent} 
-                    setIsOpen={() => setNewCommentEvent(null)}
-                    event={newCommentEvent}
-                />
-            )}
         </>
     );
 }

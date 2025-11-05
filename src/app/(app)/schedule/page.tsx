@@ -6,6 +6,7 @@ import CreateEventDialog from '@/components/schedule/create-event-dialog';
 import PlannerCalendar from '@/components/planner/planner-calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import RecentPlannerActivity from '@/components/planner/RecentActivity';
 
 export default function SchedulePage() {
     const { user, getVisibleUsers, can } = useAppContext();
@@ -44,6 +45,8 @@ export default function SchedulePage() {
                     <CreateEventDialog isDelegating={true} />
                 </div>
             </div>
+            
+            <RecentPlannerActivity />
             
             <PlannerCalendar selectedUserId={selectedUserId} />
         </div>
