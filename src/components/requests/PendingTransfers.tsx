@@ -319,23 +319,29 @@ export default function PendingTransfers() {
               <AccordionContent className="p-4">
                 <div className="space-y-2">
                   {allCompletedTransferRequests.map(req => {
+                    const fromProject = projects.find(p => p.id === req.fromProjectId);
                     const toProject = projects.find(p => p.id === req.toProjectId);
                     const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
                     return (
-                      <div key={req.id} className="p-2 border-b text-sm">
-                        <div className="flex justify-between items-center">
-                          <p>
-                            Transfer of {req.items.length} item(s) to <span className="font-semibold">{toProject?.name}</span>
-                          </p>
-                          <Badge variant={statusVariant}>{req.status}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {req.status === 'Completed'
-                            ? `Completed ${formatDistanceToNow(parseISO(req.acknowledgedDate!), { addSuffix: true })}`
-                            : `Rejected ${req.approvalDate ? formatDistanceToNow(parseISO(req.approvalDate), { addSuffix: true }) : ''}`
-                          }
-                        </p>
-                      </div>
+                        <Accordion key={req.id} type="single" collapsible className="w-full border rounded-sm">
+                            <AccordionItem value={req.id} className="border-none">
+                                <AccordionTrigger className="p-2 text-sm hover:no-underline">
+                                    <div className="flex justify-between items-center w-full">
+                                        <p>
+                                            Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
+                                        </p>
+                                        <Badge variant={statusVariant}>{req.status}</Badge>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-2 border-t">
+                                    <ul className="list-disc list-inside text-xs text-muted-foreground">
+                                    {req.items.map(item => (
+                                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                                    ))}
+                                    </ul>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
                     );
                   })}
                 </div>
