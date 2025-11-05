@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
@@ -18,7 +18,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer, allCompletedTransferRequests } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer, allCompletedTransferRequests, deleteInventoryTransferRequest } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
@@ -73,6 +73,11 @@ export default function PendingTransfers() {
         setDisputeRequestId(null);
         setRejectionComment('');
     }
+  };
+
+  const handleDelete = (id: string) => {
+    deleteInventoryTransferRequest(id);
+    toast({ title: 'Transfer Deleted', description: 'The transfer record has been removed.', variant: 'destructive' });
   };
 
   return (
@@ -325,14 +330,34 @@ export default function PendingTransfers() {
                     return (
                         <Accordion key={req.id} type="single" collapsible className="w-full border rounded-sm">
                             <AccordionItem value={req.id} className="border-none">
-                                <AccordionTrigger className="p-2 text-sm hover:no-underline">
-                                    <div className="flex justify-between items-center w-full">
-                                        <p>
-                                            Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
-                                        </p>
-                                        <Badge variant={statusVariant}>{req.status}</Badge>
-                                    </div>
-                                </AccordionTrigger>
+                                <div className="flex justify-between items-center p-2">
+                                  <AccordionTrigger className="p-0 text-sm hover:no-underline flex-1">
+                                      <div className="flex justify-between items-center w-full">
+                                          <p>
+                                              Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
+                                          </p>
+                                      </div>
+                                  </AccordionTrigger>
+                                  <div className="flex items-center gap-2 pl-4">
+                                    <Badge variant={statusVariant}>{req.status}</Badge>
+                                    {user?.role === 'Admin' && (
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80">
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Delete History Item?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this record from history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    )}
+                                  </div>
+                                </div>
                                 <AccordionContent className="p-2 border-t">
                                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                                     {req.items.map(item => (
