@@ -12,7 +12,7 @@ import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role } from '@/lib/types';
-import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays } from 'date-fns';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -162,17 +162,17 @@ export default function StoreInventoryPage() {
             if (item.inspectionDueDate) {
                 const inspectionDueDate = parseISO(item.inspectionDueDate);
                 if (isBefore(inspectionDueDate, now)) {
-                    notifications.push({ message: `Inspection expired on ${inspectionDueDate.toLocaleDateString()}`, item });
+                    notifications.push({ message: `Inspection expired on ${format(inspectionDueDate, 'dd-MM-yyyy')}`, item });
                 } else if (isBefore(inspectionDueDate, thirtyDaysFromNow)) {
-                    notifications.push({ message: `Inspection due on ${inspectionDueDate.toLocaleDateString()}`, item });
+                    notifications.push({ message: `Inspection due on ${format(inspectionDueDate, 'dd-MM-yyyy')}`, item });
                 }
             }
             if (item.tpInspectionDueDate) {
                  const tpInspectionDueDate = parseISO(item.tpInspectionDueDate);
                  if (isBefore(tpInspectionDueDate, now)) {
-                    notifications.push({ message: `TP Inspection expired on ${tpInspectionDueDate.toLocaleDateString()}`, item });
+                    notifications.push({ message: `TP Inspection expired on ${format(tpInspectionDueDate, 'dd-MM-yyyy')}`, item });
                 } else if (isBefore(tpInspectionDueDate, thirtyDaysFromNow)) {
-                    notifications.push({ message: `TP Inspection due on ${tpInspectionDueDate.toLocaleDateString()}`, item });
+                    notifications.push({ message: `TP Inspection due on ${format(tpInspectionDueDate, 'dd-MM-yyyy')}`, item });
                 }
             }
         });

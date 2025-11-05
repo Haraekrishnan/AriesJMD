@@ -601,3 +601,4 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+

@@ -237,7 +237,7 @@ export default function ManpowerListPage() {
                         {overdueLeaves.map(({ profile, leave }) => (
                             <div key={`${profile.id}-${leave.id}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                 <p className="text-sm">
-                                    <span className="font-semibold">{profile.name}'s</span> leave was planned to end on <span className="font-medium">{format(parseISO(leave.plannedEndDate!), 'dd MMM, yyyy')}</span>.
+                                    <span className="font-semibold">{profile.name}'s</span> leave was planned to end on <span className="font-medium">{format(parseISO(leave.plannedEndDate!), 'dd-MM-yyyy')}</span>.
                                 </p>
                                 <div className="flex gap-2 flex-shrink-0">
                                     <Button size="sm" variant="outline" onClick={() => handleExtendLeave(profile, leave)}>Extend Leave</Button>
@@ -269,7 +269,7 @@ export default function ManpowerListPage() {
                         {upcomingLeaves.map(({ profile, leave }) => (
                             <div key={`${profile.id}-${leave.id}`} className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
                                 <p className="text-sm">
-                                    <span className="font-semibold">{profile.name}</span> has a planned {leave.leaveType} leave starting on <span className="font-medium">{format(parseISO(leave.leaveStartDate), 'dd MMM, yyyy')}</span>.
+                                    <span className="font-semibold">{profile.name}</span> has a planned {leave.leaveType} leave starting on <span className="font-medium">{format(parseISO(leave.leaveStartDate), 'dd-MM-yyyy')}</span>.
                                 </p>
                             </div>
                         ))}
@@ -388,3 +388,4 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
