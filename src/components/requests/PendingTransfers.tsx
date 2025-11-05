@@ -36,7 +36,7 @@ export default function PendingTransfers() {
       }
       
       const isDestinationSupervisor = user.role === 'Supervisor' && user.projectId === req.toProjectId;
-      const wasRequestedByMe = req.requestedById === user.id;
+      const wasRequestedByMe = req.requesterId === user.id;
 
       if (req.status === 'Approved' && (isDestinationSupervisor || wasRequestedByMe)) {
         forAcknowledgement.push(req);
@@ -347,4 +347,3 @@ export default function PendingTransfers() {
     </Card>
   );
 }
-
