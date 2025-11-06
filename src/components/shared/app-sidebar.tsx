@@ -51,9 +51,9 @@ export function AppSidebar() {
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
-    { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
+    { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: can.manage_purchase_register },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, show: true },
-    { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: true },
+    { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: can.manage_igp_ogp },
     { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
@@ -66,9 +66,17 @@ export function AppSidebar() {
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
-    { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], []);
+    { href: '/activity-tracker', icon: History, label: 'Activity Tracker', notificationCount: 0, show: user?.role === 'Admin'},
+  ], [
+    can, myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
+    pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount,
+    pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests.length,
+    plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount,
+    pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount,
+    pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount,
+    pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount,
+    pendingInventoryTransferRequestCount, user?.role
+  ]);
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
