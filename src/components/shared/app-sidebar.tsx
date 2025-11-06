@@ -3,7 +3,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   LayoutDashboard, 
   CheckSquare, 
@@ -52,7 +52,7 @@ export function AppSidebar() {
   } = useAppContext();
   const pathname = usePathname();
 
-   const myRequestsCount = useMemo(() => {
+  const myRequestsCount = useMemo(() => {
     if (!user) return 0;
     const pendingInternal = internalRequests.filter(r => (can.approve_store_requests && r.status === 'Pending') || (r.requesterId === user.id && r.status !== 'Pending' && !r.acknowledgedByRequester)).length;
     const pendingManagement = managementRequests.filter(r => (r.recipientId === user.id && r.status === 'Pending') || (r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester)).length;
@@ -67,7 +67,7 @@ export function AppSidebar() {
     const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
     return myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount;
   }, [user, tasks]);
-
+  
   const inventoryCount = useMemo(() => {
     if (!user) return 0;
     const pendingStoreCert = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
@@ -75,7 +75,7 @@ export function AppSidebar() {
     const pendingTransfers = can.approve_store_requests ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
     return pendingStoreCert + myFulfilledStoreCert + pendingTransfers;
   }, [user, can.approve_store_requests, certificateRequests, inventoryTransferRequests]);
-  
+
   const equipmentCount = useMemo(() => {
     if (!user) return 0;
     const pendingEquipmentCert = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
@@ -114,14 +114,14 @@ export function AppSidebar() {
     const feedbacks = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
     const unlocks = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
     return resets + feedbacks + unlocks;
-  }, [user, can, passwordResetRequests, feedback, unlockRequests]);
+  }, [user, can.manage_password_resets, can.manage_feedback, can.manage_user_lock_status, passwordResetRequests, feedback, unlockRequests]);
 
   const pendingPaymentApprovalCount = useMemo(() => {
       if (!can.manage_payments) return 0;
       return payments.filter(p => p.status === 'Pending').length;
   }, [can.manage_payments, payments]);
 
-  const navItems = [
+  const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: myRequestsCount, show: true },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: tasksCount, show: true },
@@ -143,7 +143,11 @@ export function AppSidebar() {
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: accountCount, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
     { href: '/activity-tracker', icon: History, label: 'Activity Tracker', notificationCount: 0, show: user?.role === 'Admin'},
-  ];
+  ], [
+    can, myRequestsCount, tasksCount, inventoryCount, equipmentCount, 
+    plannerNotificationCount, incidentNotificationCount, accountCount, 
+    pendingPaymentApprovalCount, user
+  ]);
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
@@ -205,6 +209,7 @@ export function AppSidebar() {
     </aside>
   );
 }
+
 
 
 
