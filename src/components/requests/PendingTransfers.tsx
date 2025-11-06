@@ -43,7 +43,7 @@ export default function PendingTransfers() {
         forAcknowledgement.push(req);
       }
 
-      if (req.requesterId === user.id && (req.status === 'Pending' || req.status === 'Approved' || req.status === 'Disputed')) {
+      if (req.requesterId === user.id && ['Pending', 'Approved', 'Disputed', 'Rejected'].includes(req.status) && !req.acknowledgedByRequester) {
           myActiveRequests.push(req);
       }
     });
@@ -186,7 +186,7 @@ export default function PendingTransfers() {
                     <p className="font-medium mt-2">Items:</p>
                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                       {req.items.map(item => (
-                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
                       ))}
                     </ul>
                      <Accordion type="single" collapsible className="w-full mt-2">
@@ -231,7 +231,7 @@ export default function PendingTransfers() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm">
-                        <span className="font-semibold">{requester?.name}</span> transferred {req.items.length} item(s)
+                        <span className="font-semibold">{requester?.name || 'Unknown User'}</span> transferred {req.items.length} item(s)
                         from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>.
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -270,7 +270,7 @@ export default function PendingTransfers() {
                     <p className="font-medium mt-2">Items:</p>
                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                       {req.items.map(item => (
-                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
                       ))}
                     </ul>
                   </div>
@@ -305,7 +305,7 @@ export default function PendingTransfers() {
                         <p className="font-medium mt-2">Items:</p>
                         <ul className="list-disc list-inside text-xs text-muted-foreground">
                             {req.items.map(item => (
-                                <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                                <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
                             ))}
                         </ul>
                     </div>
@@ -361,7 +361,7 @@ export default function PendingTransfers() {
                                 <AccordionContent className="p-2 border-t">
                                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                                     {req.items.map(item => (
-                                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
                                     ))}
                                     </ul>
                                 </AccordionContent>

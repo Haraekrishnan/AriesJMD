@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +35,7 @@ const transferRequestSchema = z.object({
     itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'DigitalCamera', 'Anemometer', 'OtherEquipment']),
     name: z.string(),
     serialNumber: z.string(),
+    ariesId: z.string().optional(),
   })).min(1, 'Please add at least one item to transfer'),
 }).refine(data => data.fromProjectId !== data.toProjectId, {
     message: 'Destination project must be different from the origin.',
@@ -100,7 +102,8 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
         itemId: item.id,
         itemType: item.itemType,
         name: (item as any).name || (item as any).machineName || (item as any).equipmentName,
-        serialNumber: item.serialNumber
+        serialNumber: item.serialNumber,
+        ariesId: item.ariesId || undefined,
     }]);
     setSearchTerm('');
   };
@@ -223,7 +226,7 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
                     <div className="space-y-2">
                         {selectedItems.map(item => (
                             <div key={`${item.itemId}-${item.itemType}`} className="flex items-center justify-between p-1.5 bg-muted rounded-md text-sm">
-                                <span>{item.name} (SN: {item.serialNumber})</span>
+                                <span>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</span>
                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleItemRemove(item.itemId, item.itemType)}><X className="h-4 w-4"/></Button>
                             </div>
                         ))}

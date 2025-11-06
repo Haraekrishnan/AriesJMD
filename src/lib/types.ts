@@ -861,6 +861,7 @@ export type InventoryTransferRequest = {
       itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment';
       name: string;
       serialNumber: string;
+      ariesId?: string;
     }[];
     status: InventoryTransferStatus;
     approverId?: string;
