@@ -140,7 +140,6 @@ export type User = {
   projectId?: string;
   planningScore?: number;
   permissions?: Permission[];
-  lastViewedPlanner?: string; // ISO string
 };
 
 export type PasswordResetRequest = {
@@ -862,7 +861,6 @@ export type InventoryTransferRequest = {
       itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment';
       name: string;
       serialNumber: string;
-      ariesId?: string;
     }[];
     status: InventoryTransferStatus;
     approverId?: string;
