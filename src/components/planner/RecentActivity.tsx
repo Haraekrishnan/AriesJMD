@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -9,43 +10,55 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { MessageSquare, Calendar } from 'lucide-react';
 
 export default function RecentPlannerActivity() {
-  const { user, plannerEvents, users, markPlannerCommentsAsRead } = useAppContext();
+  const { user, dailyPlannerComments, plannerEvents, users } = useAppContext();
 
-  const relevantEventsWithUnreadComments = useMemo(() => {
+  const unreadCommentsByDay = useMemo(() => {
     if (!user) return [];
 
-    return plannerEvents
-      .map(event => {
-        const isParticipant = event.userId === user.id || event.creatorId === user.id;
-        if (!isParticipant) return null;
+    const grouped: { [day: string]: { comments: any[], events: any[] } } = {};
 
-        const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
-        const unreadComments = comments.filter(c => c && !c.isRead && c.userId !== user.id);
-
-        if (unreadComments.length > 0) {
-          return { ...event, unreadComments };
-        }
-        return null;
-      })
-      .filter((event): event is NonNullable<typeof event> => !!event)
-      .sort((a,b) => parseISO(b.unreadComments[b.unreadComments.length - 1].date).getTime() - parseISO(a.unreadComments[a.unreadComments.length - 1].date).getTime());
-
-  }, [user, plannerEvents]);
-
-  useEffect(() => {
-    if (user && relevantEventsWithUnreadComments.length > 0) {
-      // This is a simplified approach. Ideally, you'd mark comments read as they are viewed.
-      // For now, we'll assume opening this component marks them read.
-      relevantEventsWithUnreadComments.forEach(event => {
-        // Here you might want a more granular `markPlannerCommentsAsRead` that takes an eventId
-        // But for now, we'll use the existing one which might be less precise.
-        // This is a placeholder for a more robust "mark as read" implementation.
+    dailyPlannerComments.forEach(dayComment => {
+      const isParticipantInDay = dayComment.comments.some(c => {
+        const event = plannerEvents.find(e => e.userId === dayComment.plannerUserId);
+        return event?.creatorId === user.id || event?.userId === user.id;
       });
-    }
-  }, [user, relevantEventsWithUnreadComments, markPlannerCommentsAsRead]);
-  
-  if (relevantEventsWithUnreadComments.length === 0) {
-    return null; // Don't render anything if there's no relevant activity
+
+      if (!isParticipantInDay) return;
+
+      const unread = dayComment.comments.filter(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
+      
+      if (unread.length > 0) {
+        if (!grouped[dayComment.day]) {
+          grouped[dayComment.day] = { comments: [], events: [] };
+        }
+        unread.forEach(c => {
+          const event = plannerEvents.find(e => {
+            const dayEvents = getExpandedPlannerEvents(parseISO(dayComment.day), e.userId);
+            return dayEvents.some(de => isSameDay(de.eventDate, parseISO(dayComment.day)));
+          });
+
+          if(event && !grouped[dayComment.day].events.some(e => e.id === event.id)) {
+            grouped[dayComment.day].events.push(event);
+          }
+          grouped[dayComment.day].comments.push(c);
+        })
+      }
+    });
+
+    return Object.entries(grouped).map(([day, data]) => ({ day, ...data }))
+      .sort((a,b) => parseISO(b.day).getTime() - parseISO(a.day).getTime());
+
+  }, [user, dailyPlannerComments, plannerEvents, users]);
+
+  // This is a simplified function. A real implementation would be more robust.
+  const getExpandedPlannerEvents = (month: Date, userId: string) => {
+    const events = plannerEvents.filter(e => e.userId === userId);
+    // This is a placeholder for the real logic in app-provider
+    return events.map(e => ({...e, eventDate: parseISO(e.date)}));
+  };
+
+  if (unreadCommentsByDay.length === 0) {
+    return null;
   }
 
   return (
@@ -61,20 +74,20 @@ export default function RecentPlannerActivity() {
       </CardHeader>
       <CardContent>
         <Accordion type="multiple" className="w-full space-y-2">
-          {relevantEventsWithUnreadComments.map(event => (
-            <AccordionItem key={event.id} value={event.id} className="border rounded-md px-4">
+          {unreadCommentsByDay.map(({ day, comments, events }) => (
+            <AccordionItem key={day} value={day} className="border rounded-md px-4">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex flex-col text-left">
-                  <span className="font-semibold">{event.title}</span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {format(parseISO(event.date), 'dd MMM, yyyy')}
+                  <span className="font-semibold flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {format(parseISO(day), 'dd MMM, yyyy')}
+                    <Badge variant="destructive">{comments.length}</Badge>
                   </span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-2 pb-4">
                 <div className="space-y-3">
-                  {event.unreadComments.map(comment => {
+                  {comments.map(comment => {
                     const commentUser = users.find(u => u.id === comment.userId);
                     return (
                       <div key={comment.id} className="flex items-start gap-2">

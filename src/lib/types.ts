@@ -1,5 +1,4 @@
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -216,8 +215,15 @@ export type PlannerEvent = {
   userId: string; // Who the event is for
   creatorId: string; // Who created the event
   frequency: Frequency;
+};
+
+export type DailyPlannerComment = {
+  id: string; // composite key: `${YYYY-MM-DD}_${plannerUserId}`
+  plannerUserId: string; // The user whose planner this comment belongs to
+  day: string; // YYYY-MM-DD
   comments: Comment[];
-  viewedBy?: { [userId: string]: boolean };
+  lastUpdated: string;
+  viewedBy: { [key: string]: boolean };
 };
 
 
@@ -740,15 +746,6 @@ export type Announcement = {
   }[];
   dismissedBy?: string[];
   notifyAll?: boolean;
-};
-
-export type DailyPlannerComment = {
-  id: string; // composite key: `${YYYY-MM-DD}_${plannerUserId}`
-  plannerUserId: string; // The user whose planner this comment belongs to
-  day: string; // YYYY-MM-DD
-  comments: Comment[];
-  lastUpdated: string;
-  viewedBy: { [key: string]: boolean };
 };
 
 export type Bed = {
