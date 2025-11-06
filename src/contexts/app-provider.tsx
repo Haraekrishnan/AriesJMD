@@ -295,6 +295,13 @@ type AppContextType = {
   addTpCertList: (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => void;
   updateTpCertList: (listData: TpCertList) => void;
   deleteTpCertList: (listId: string) => void;
+  addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => void;
+  deleteInventoryTransferRequest: (requestId: string) => void;
+  approveInventoryTransferRequest: (request: InventoryTransferRequest, createTpList: boolean) => void;
+  rejectInventoryTransferRequest: (requestId: string, comment: string) => void;
+  disputeInventoryTransfer: (requestId: string, comment: string) => void;
+  acknowledgeTransfer: (requestId: string) => void;
+  clearInventoryTransferHistory: () => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -1905,7 +1912,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
             if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
               const currentStock = inventoryItem.quantity || 0;
-              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
+              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, (inventoryItem.quantity || 0) - item.quantity);
             }
           }
         }
@@ -2230,7 +2237,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -3662,14 +3669,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const unreadPlannerCommentDays: string[] = []; // Deprecated
       
-    const plannerNotificationCount = plannerEvents.filter(event => {
+    const eventsWithUnreadComments = plannerEvents.filter(event => {
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         if (!isParticipant) return false;
-        
         const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
         return comments.some(c => c && !c.isRead && c.userId !== user.id);
     }).length;
 
+    const today = startOfDay(new Date());
+    const delegatedEventsTodayCount = plannerEvents.filter(event => {
+        if (event.userId !== user.id || event.creatorId === user.id) return false;
+
+        const eventStartDate = startOfDay(parseISO(event.date));
+        if (isAfter(today, eventStartDate) || isSameDay(today, eventStartDate)) {
+            switch (event.frequency) {
+                case 'once': return isSameDay(today, eventStartDate);
+                case 'daily': return true;
+                case 'daily-except-sundays': return !isSunday(today);
+                case 'weekly': return getDay(today) === getDay(eventStartDate);
+                case 'weekends': return isSaturday(today) || isSunday(today);
+                case 'monthly': return getDate(today) === getDate(eventStartDate);
+                default: return false;
+            }
+        }
+        return false;
+    }).length;
+
+    const plannerNotificationCount = eventsWithUnreadComments + delegatedEventsTodayCount;
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
     
@@ -3907,3 +3933,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    
