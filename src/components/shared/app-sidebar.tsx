@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -39,139 +40,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
-import { PpeRequest, ManagementRequest, InternalRequest, CertificateRequest, Task } from '@/lib/types';
-
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, can, tasks, certificateRequests, plannerEvents, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests } = useAppContext();
+  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useAppContext();
   const pathname = usePathname();
-
-  const pendingTaskApprovalCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
-  }, [user, tasks]);
-
-  const myNewTaskCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
-  }, [user, tasks]);
-
-  const myPendingTaskRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
-  }, [user, tasks]);
-
-  const myFulfilledStoreCertRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
-  }, [user, certificateRequests]);
   
-  const myFulfilledEquipmentCertRequests = useMemo(() => {
-    if (!user) return [];
-    return certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
-  }, [user, certificateRequests]);
-
-  const pendingStoreCertRequestCount = useMemo(() => {
-    if (!can.approve_store_requests) return 0;
-    return certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length;
-  }, [can.approve_store_requests, certificateRequests]);
-
-  const pendingEquipmentCertRequestCount = useMemo(() => {
-    if (!can.approve_store_requests) return 0;
-    return certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length;
-  }, [can.approve_store_requests, certificateRequests]);
-  
-  const plannerNotificationCount = useMemo(() => {
-    if (!user) return 0;
-    
-    return plannerEvents.filter(event => {
-      const isParticipant = event.userId === user.id || event.creatorId === user.id;
-      if (!isParticipant) return false;
-      
-      const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
-      return comments.some(c => c && !c.isRead && c.userId !== user.id);
-    }).length;
-  }, [user, plannerEvents]);
-
-  const pendingInternalRequestCount = useMemo(() => {
-    if (!can.approve_store_requests) return 0;
-    return internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved' || r.status === 'Disputed').length;
-  }, [can.approve_store_requests, internalRequests]);
-  
-  const updatedInternalRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return internalRequests.filter(r => {
-      const isMyRequest = r.requesterId === user.id;
-      if (!isMyRequest) return false;
-      const isUpdated = r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved' || r.status === 'Rejected';
-      return isUpdated && !r.acknowledgedByRequester;
-    }).length;
-  }, [user, internalRequests]);
-
-  const pendingManagementRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return managementRequests.filter(r => r.status === 'Pending' && r.recipientId === user.id).length;
-  }, [user, managementRequests]);
-
-  const updatedManagementRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
-  }, [user, managementRequests]);
-
-  const incidentNotificationCount = useMemo(() => {
-    if (!user) return 0;
-    return incidentReports.filter(i => {
-      const isParticipant = i.reporterId === user.id || (i.reportedToUserIds && i.reportedToUserIds.includes(user.id));
-      const isUnread = !i.viewedBy || !i.viewedBy[user.id];
-      return isParticipant && isUnread;
-    }).length;
-  }, [user, incidentReports]);
-
-  const pendingPpeRequestCount = useMemo(() => {
-    if (!user) return 0;
-    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
-    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
-    
-    if (!canApprovePpe && !canIssuePpe) return 0;
-
-    return ppeRequests.filter(r => 
-        (canApprovePpe && r.status === 'Pending') ||
-        (canIssuePpe && r.status === 'Approved') ||
-        (canApprovePpe && r.status === 'Disputed')
-    ).length;
-  }, [user, ppeRequests]);
-  
-  const updatedPpeRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
-  }, [user, ppeRequests]);
-
-  const pendingPaymentApprovalCount = useMemo(() => {
-    if (!user || !['Admin', 'Manager'].includes(user.role)) return 0;
-    return payments.filter(p => p.status === 'Pending').length;
-  }, [user, payments]);
-
-  const pendingPasswordResetRequestCount = useMemo(() => {
-    if (!can.manage_password_resets) return 0;
-    return passwordResetRequests.filter(r => r.status === 'pending').length;
-  }, [can.manage_password_resets, passwordResetRequests]);
-
-  const pendingFeedbackCount = useMemo(() => {
-    if (!user || !can.manage_feedback) return 0;
-    return feedback.filter(f => !f.viewedBy || !f.viewedBy[user.id]).length;
-  }, [user, can.manage_feedback, feedback]);
-  
-  const pendingUnlockRequestCount = useMemo(() => {
-    if (!can.manage_user_lock_status) return 0;
-    return unlockRequests.filter(r => r.status === 'pending').length;
-  }, [can.manage_user_lock_status, unlockRequests]);
-
-  const pendingInventoryTransferRequestCount = useMemo(() => {
-    if (!can.approve_store_requests) return 0;
-    return inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length;
-  }, [can.approve_store_requests, inventoryTransferRequests]);
-
-
   const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, show: true },
