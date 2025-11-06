@@ -38,7 +38,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
-    const [newComment, setNewComment] = useState('');
+    const [newComments, setNewComments] = useState<Record<string, string>>({});
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
     const expandedEvents = useMemo(
@@ -75,9 +75,10 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     };
 
     const handleAddComment = (eventId: string) => {
-        if (!newComment.trim() || !selectedDate) return;
-        addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), eventId, newComment);
-        setNewComment('');
+        const commentText = newComments[eventId];
+        if (!commentText || !commentText.trim() || !selectedDate) return;
+        addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), eventId, commentText);
+        setNewComments(prev => ({ ...prev, [eventId]: '' }));
     };
 
     const handleDeleteEvent = (event: PlannerEvent) => {
@@ -204,7 +205,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                 )}
                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
-                                                <AccordionItem value="comments" className="border-none">
+                                                <AccordionItem value={event.id} className="border-none">
                                                     <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">
                                                         <div className="flex items-center gap-1">
                                                             <MessageSquare className="h-3 w-3" /> Comments ({eventComments.length})
@@ -226,8 +227,8 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                             })}
                                                             {eventComments.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No comments for this event.</p>}
                                                             <div className="relative pt-2">
-                                                                <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." className="pr-10 text-xs" rows={1} />
-                                                                <Button type="button" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => handleAddComment(event.id)} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
+                                                                <Textarea value={newComments[event.id] || ''} onChange={(e) => setNewComments(prev => ({ ...prev, [event.id]: e.target.value }))} placeholder="Add a comment..." className="pr-10 text-xs" rows={1} />
+                                                                <Button type="button" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => handleAddComment(event.id)} disabled={!newComments[event.id] || !newComments[event.id].trim()}><Send className="h-4 w-4" /></Button>
                                                             </div>
                                                         </div>
                                                     </AccordionContent>
