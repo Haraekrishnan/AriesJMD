@@ -61,18 +61,22 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         return expandedEvents.filter(event => isSameDay(event.eventDate, selectedDate as Date));
     }, [expandedEvents, selectedDate]);
     
-    const selectedDayComments = useMemo(() => {
-        if (!selectedDate) return [];
+    const dayCommentsData = useMemo(() => {
+        if (!selectedDate) return null;
         const dayStr = format(selectedDate, 'yyyy-MM-dd');
         const dayCommentId = `${dayStr}_${selectedUserId}`;
-        const commentsData = dailyPlannerComments.find(c => c.id === dayCommentId);
-        return commentsData && commentsData.comments ? (Array.isArray(commentsData.comments) ? commentsData.comments : Object.values(commentsData.comments)) : [];
+        return dailyPlannerComments.find(c => c.id === dayCommentId) || null;
     }, [dailyPlannerComments, selectedDate, selectedUserId]);
 
+    const getCommentsForEvent = (eventId: string) => {
+        if (!dayCommentsData || !dayCommentsData.comments) return [];
+        const allComments = Array.isArray(dayCommentsData.comments) ? dayCommentsData.comments : Object.values(dayCommentsData.comments);
+        return allComments.filter(c => c.eventId === eventId);
+    };
 
-    const handleAddComment = () => {
+    const handleAddComment = (eventId: string) => {
         if (!newComment.trim() || !selectedDate) return;
-        addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), selectedDayEvents[0].id, newComment);
+        addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), eventId, newComment);
         setNewComment('');
     };
 
@@ -101,10 +105,10 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     };
     
     useEffect(() => {
-      if(selectedDate) {
+      if(selectedDate && dayCommentsData) {
         markPlannerCommentsAsRead(selectedUserId, selectedDate);
       }
-    }, [selectedDate, selectedUserId, markPlannerCommentsAsRead]);
+    }, [selectedDate, selectedUserId, dayCommentsData, markPlannerCommentsAsRead]);
 
     return (
         <>
@@ -171,9 +175,10 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                     const eventDate = event.date ? parseISO(event.date) : null;
                                     const isEventInPast = eventDate ? isPast(eventDate) : true;
                                     const isDelegated = event.creatorId !== event.userId;
+                                    const eventComments = getCommentsForEvent(event.id);
                                     
                                     return (
-                                        <div key={event.id} className="border rounded-lg p-3">
+                                        <div key={event.id} className="border rounded-lg p-3 space-y-2">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <p className="font-semibold">{event.title}</p>
@@ -198,6 +203,36 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                     </div>
                                                 )}
                                             </div>
+                                            <Accordion type="single" collapsible className="w-full">
+                                                <AccordionItem value="comments" className="border-none">
+                                                    <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">
+                                                        <div className="flex items-center gap-1">
+                                                            <MessageSquare className="h-3 w-3" /> Comments ({eventComments.length})
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-2">
+                                                        <div className="space-y-2">
+                                                            {eventComments.map(comment => {
+                                                                const commentUser = users.find(u => u.id === comment.userId);
+                                                                return (
+                                                                    <div key={comment.id} className="flex items-start gap-2">
+                                                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                        <div className="text-xs bg-muted p-2 rounded-md w-full">
+                                                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
+                                                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {eventComments.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No comments for this event.</p>}
+                                                            <div className="relative pt-2">
+                                                                <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." className="pr-10 text-xs" rows={1} />
+                                                                <Button type="button" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => handleAddComment(event.id)} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
+                                                            </div>
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
                                         </div>
                                     );
                                 }) : (
@@ -205,41 +240,6 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                         <p className="text-sm text-muted-foreground">No events scheduled for this day.</p>
                                     </div>
                                 )}
-                                <Separator className="my-4"/>
-                                <h4 className="font-semibold text-sm">Comments</h4>
-                                 <div className="space-y-3 pt-3">
-                                    {selectedDayComments.map(comment => {
-                                        const commentUser = users.find(u => u.id === comment.userId);
-                                        return (
-                                            <div key={comment.id} className="flex items-start gap-2">
-                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                <div className="text-xs bg-muted p-2 rounded-md w-full">
-                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
-                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                     {selectedDayComments.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No comments for this day.</p>}
-                                </div>
-                                <div className="relative pt-2">
-                                    <Textarea 
-                                        value={newComment}
-                                        onChange={(e) => setNewComment(e.target.value)}
-                                        placeholder="Add a comment..."
-                                        className="pr-10 text-sm" 
-                                        rows={2}
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        size="icon" 
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7" 
-                                        onClick={handleAddComment} 
-                                        disabled={!newComment.trim()}
-                                    >
-                                        <Send className="h-4 w-4" />
-                                    </Button>
-                                </div>
                             </div>
                         </ScrollArea>
                     </CardContent>

@@ -102,7 +102,7 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          {isDelegating ? (
+          {isDelegating && (
             <div>
               <Label>Delegate To</Label>
               <Controller
@@ -119,8 +119,6 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
               />
               {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
             </div>
-          ) : (
-            <input type="hidden" {...form.register('userId')} value={user?.id} />
           )}
 
           <div>

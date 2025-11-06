@@ -343,7 +343,7 @@ export type Comment = {
   userId: string;
   text: string;
   date: string; // ISO String
-  isRead?: boolean;
+  eventId: string; // The specific event instance this comment is for
 };
 
 export type IncidentReport = {
@@ -858,6 +858,7 @@ export type InventoryTransferRequest = {
       itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment';
       name: string;
       serialNumber: string;
+      ariesId?: string;
     }[];
     status: InventoryTransferStatus;
     approverId?: string;

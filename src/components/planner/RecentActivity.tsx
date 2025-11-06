@@ -21,7 +21,7 @@ export default function RecentPlannerActivity() {
     const grouped: { [day: string]: { comments: any[], events: any[] } } = {};
 
     dailyPlannerComments.forEach(dayComment => {
-      if (!dayComment || !dayComment.day) return; // Add this guard clause
+      if (!dayComment || !dayComment.day) return;
 
       const dayEvents = plannerEvents.filter(e => {
         const eventDate = parseISO(e.date);
