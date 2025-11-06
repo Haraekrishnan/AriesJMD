@@ -140,6 +140,7 @@ export type User = {
   projectId?: string;
   planningScore?: number;
   permissions?: Permission[];
+  lastViewedPlanner?: string; // ISO string
 };
 
 export type PasswordResetRequest = {
