@@ -40,16 +40,71 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { isBefore, parseISO, startOfDay } from 'date-fns';
 
 export function AppSidebar() {
-  const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useAppContext();
+  const { 
+    user, logout, appName, appLogo, can, 
+    tasks, certificateRequests, plannerEvents, internalRequests, 
+    managementRequests, incidentReports, ppeRequests, payments, 
+    passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests
+  } = useAppContext();
   const pathname = usePathname();
+
+  const myRequestsCount = useMemo(() => {
+    if (!user) return 0;
+    const pendingInternal = internalRequests.filter(r => (can.approve_store_requests && r.status === 'Pending') || (r.requesterId === user.id && r.status !== 'Pending' && !r.acknowledgedByRequester)).length;
+    const pendingManagement = managementRequests.filter(r => (r.recipientId === user.id && r.status === 'Pending') || (r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester)).length;
+    const pendingPpe = ppeRequests.filter(r => (user.role === 'Admin' || user.role === 'Manager' || user.role === 'Store in Charge') ? (r.status === 'Pending' || r.status === 'Approved') : (r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester)).length;
+    return pendingInternal + pendingManagement + pendingPpe;
+  }, [user, internalRequests, managementRequests, ppeRequests, can.approve_store_requests]);
+
+  const tasksCount = useMemo(() => {
+    if (!user) return 0;
+    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
+    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
+    const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
+    return myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount;
+  }, [user, tasks]);
+
+  const inventoryCount = useMemo(() => {
+    if (!user) return 0;
+    const pendingStoreCert = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const myFulfilledStoreCert = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const pendingTransfers = can.approve_store_requests ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+    return pendingStoreCert + myFulfilledStoreCert + pendingTransfers;
+  }, [user, can.approve_store_requests, certificateRequests, inventoryTransferRequests]);
   
-  const myRequestsCount = useMemo(() => pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, [pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount]);
-  const tasksCount = useMemo(() => myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, [myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount]);
-  const inventoryCount = useMemo(() => pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, [pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingInventoryTransferRequestCount]);
-  const equipmentCount = useMemo(() => pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, [pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests]);
-  const accountCount = useMemo(() => pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, [pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount]);
+  const equipmentCount = useMemo(() => {
+    if (!user) return 0;
+    const pendingEquipmentCert = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    const myFulfilledEquipmentCert = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester).length;
+    return pendingEquipmentCert + myFulfilledEquipmentCert;
+  }, [user, can.approve_store_requests, certificateRequests]);
+  
+  const plannerNotificationCount = useMemo(() => {
+    if (!user) return 0;
+    const today = startOfDay(new Date());
+    let plannerNotifications = 0;
+    if (user.lastViewedPlanner && isBefore(parseISO(user.lastViewedPlanner), today)) {
+        plannerNotifications = plannerEvents.filter(event => event.userId === user.id && event.creatorId !== user.id).length;
+    }
+    const commentNotifications = plannerEvents.filter(event => {
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        if (!isParticipant) return false;
+        const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
+        return comments.some(c => c && !c.isRead && c.userId !== user.id);
+    }).length;
+    return plannerNotifications + commentNotifications;
+  }, [user, plannerEvents]);
+  
+  const accountCount = useMemo(() => {
+    if (!user) return 0;
+    const resets = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
+    const feedbacks = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
+    const unlocks = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
+    return resets + feedbacks + unlocks;
+  }, [user, can.manage_password_resets, can.manage_feedback, can.manage_user_lock_status, passwordResetRequests, feedback, unlockRequests]);
 
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
@@ -135,5 +190,6 @@ export function AppSidebar() {
     </aside>
   );
 }
+
 
 
