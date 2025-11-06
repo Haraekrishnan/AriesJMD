@@ -36,7 +36,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
-    const [newComment, setNewComment] = useState('');
+    const [newComments, setNewComments] = useState<Record<string, string>>({});
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
     const expandedEvents = useMemo(
@@ -60,9 +60,10 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     }, [expandedEvents, selectedDate]);
     
     const handleAddEventComment = (eventId: string) => {
-        if (!newComment.trim() || !selectedDate) return;
-        addPlannerEventComment(eventId, newComment);
-        setNewComment('');
+        const commentText = newComments[eventId];
+        if (!commentText || !commentText.trim() || !selectedDate) return;
+        addPlannerEventComment(eventId, commentText);
+        setNewComments(prev => ({ ...prev, [eventId]: '' }));
     };
 
     const handleDeleteEvent = (event: PlannerEvent) => {
@@ -203,8 +204,8 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                         })}
                                                         <div className="relative">
                                                             <Textarea 
-                                                                value={newComment} 
-                                                                onChange={(e) => setNewComment(e.target.value)} 
+                                                                value={newComments[event.id] || ''}
+                                                                onChange={(e) => setNewComments(prev => ({ ...prev, [event.id]: e.target.value }))}
                                                                 placeholder={`Comment on "${event.title}"...`} 
                                                                 className="pr-10 text-xs" 
                                                                 rows={1}
@@ -214,7 +215,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                                 size="icon" 
                                                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
                                                                 onClick={() => handleAddEventComment(event.id)} 
-                                                                disabled={!newComment.trim()}
+                                                                disabled={!newComments[event.id] || !newComments[event.id].trim()}
                                                             >
                                                                 <Send className="h-4 w-4" />
                                                             </Button>
@@ -238,5 +239,3 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
-
-    
