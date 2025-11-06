@@ -46,12 +46,13 @@ export function AppSidebar() {
   const { 
     user, logout, appName, appLogo, can, 
     tasks, certificateRequests, plannerEvents, internalRequests, 
-    managementRequests, incidentReports, ppeRequests, payments, 
-    passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests
+    managementRequests, ppeRequests, payments, 
+    passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests,
+    incidentReports
   } = useAppContext();
   const pathname = usePathname();
 
-  const myRequestsCount = useMemo(() => {
+   const myRequestsCount = useMemo(() => {
     if (!user) return 0;
     const pendingInternal = internalRequests.filter(r => (can.approve_store_requests && r.status === 'Pending') || (r.requesterId === user.id && r.status !== 'Pending' && !r.acknowledgedByRequester)).length;
     const pendingManagement = managementRequests.filter(r => (r.recipientId === user.id && r.status === 'Pending') || (r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester)).length;
@@ -98,13 +99,27 @@ export function AppSidebar() {
     return plannerNotifications + commentNotifications;
   }, [user, plannerEvents]);
   
+  const incidentNotificationCount = useMemo(() => {
+    if (!user) return 0;
+    return incidentReports.filter(i => {
+      const isParticipant = i.reporterId === user.id || (i.reportedToUserIds || []).includes(user.id);
+      const hasUnreadUpdate = !i.viewedBy?.[user.id];
+      return isParticipant && hasUnreadUpdate;
+    }).length;
+  }, [user, incidentReports]);
+
   const accountCount = useMemo(() => {
     if (!user) return 0;
     const resets = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
     const feedbacks = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
     const unlocks = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
     return resets + feedbacks + unlocks;
-  }, [user, can.manage_password_resets, can.manage_feedback, can.manage_user_lock_status, passwordResetRequests, feedback, unlockRequests]);
+  }, [user, can, passwordResetRequests, feedback, unlockRequests]);
+
+  const pendingPaymentApprovalCount = useMemo(() => {
+      if (!can.manage_payments) return 0;
+      return payments.filter(p => p.status === 'Pending').length;
+  }, [can.manage_payments, payments]);
 
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
@@ -190,6 +205,7 @@ export function AppSidebar() {
     </aside>
   );
 }
+
 
 
 

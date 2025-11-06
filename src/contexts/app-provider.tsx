@@ -89,6 +89,26 @@ type AppContextType = {
   workingManpowerCount: number;
   onLeaveManpowerCount: number;
   allCompletedTransferRequests: InventoryTransferRequest[];
+  pendingInternalRequestCount: number;
+  updatedInternalRequestCount: number;
+  pendingManagementRequestCount: number;
+  updatedManagementRequestCount: number;
+  pendingPpeRequestCount: number;
+  updatedPpeRequestCount: number;
+  myNewTaskCount: number;
+  pendingTaskApprovalCount: number;
+  myPendingTaskRequestCount: number;
+  pendingStoreCertRequestCount: number;
+  myFulfilledStoreCertRequestCount: number;
+  pendingEquipmentCertRequestCount: number;
+  myFulfilledEquipmentCertRequests: CertificateRequest[];
+  plannerNotificationCount: number;
+  incidentNotificationCount: number;
+  pendingPasswordResetRequestCount: number;
+  pendingFeedbackCount: number;
+  pendingUnlockRequestCount: number;
+  pendingInventoryTransferRequestCount: number;
+  pendingPaymentApprovalCount: number;
 
   // Functions
   getVisibleUsers: () => User[];
@@ -3629,15 +3649,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
 
   const { 
-    workingManpowerCount, onLeaveManpowerCount, allCompletedTransferRequests
+    workingManpowerCount, onLeaveManpowerCount, allCompletedTransferRequests, pendingInternalRequestCount,
+    updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount,
+    pendingPpeRequestCount, updatedPpeRequestCount, myNewTaskCount, pendingTaskApprovalCount,
+    myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount,
+    pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount,
+    incidentNotificationCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount,
+    pendingInventoryTransferRequestCount, pendingPaymentApprovalCount
   } = useMemo(() => {
     if (!user) return {
       workingManpowerCount: 0, onLeaveManpowerCount: 0, allCompletedTransferRequests: [],
+      pendingInternalRequestCount: 0, updatedInternalRequestCount: 0,
+      pendingManagementRequestCount: 0, updatedManagementRequestCount: 0,
+      pendingPpeRequestCount: 0, updatedPpeRequestCount: 0,
+      myNewTaskCount: 0, pendingTaskApprovalCount: 0, myPendingTaskRequestCount: 0,
+      pendingStoreCertRequestCount: 0, myFulfilledStoreCertRequestCount: 0,
+      pendingEquipmentCertRequestCount: 0, myFulfilledEquipmentCertRequests: [],
+      plannerNotificationCount: 0, incidentNotificationCount: 0,
+      pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0,
+      pendingInventoryTransferRequestCount: 0, pendingPaymentApprovalCount: 0
     };
-    
-    const canApproveTransfers = can.approve_store_requests; 
-    const allCompletedTransferRequests = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
 
+    const pendingInternal = internalRequests.filter(r => can.approve_store_requests && r.status === 'Pending').length;
+    const updatedInternal = internalRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.acknowledgedByRequester).length;
+    const pendingMgmt = managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length;
+    const updatedMgmt = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
+    const pendingPpe = ppeRequests.filter(r => (can.manage_ppe_request && r.status === 'Pending') || (can.manage_ppe_stock && r.status === 'Approved')).length;
+    const updatedPpe = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Issued' || r.status === 'Rejected') && !r.viewedByRequester).length;
+    const newTasks = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
+    const pendingApprovals = tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
+    const myRequests = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
+    const pendingStoreCerts = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const myFulfilledStoreCerts = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const pendingEquipCerts = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    const myFulfilledEquipCerts = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
+    const today = startOfDay(new Date());
+    const plannerNotifs = (user.lastViewedPlanner && isBefore(parseISO(user.lastViewedPlanner), today)) ? plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id).length : 0;
+    const plannerCommentNotifs = plannerEvents.filter(e => (e.userId === user.id || e.creatorId === user.id) && Object.values(e.comments || {}).some(c => !c.isRead && c.userId !== user.id)).length;
+    const incidentNotifs = incidentReports.filter(i => (i.reporterId === user.id || (i.reportedToUserIds || []).includes(user.id)) && !i.viewedBy?.[user.id]).length;
+    const pendingResets = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingFeedbacks = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
+    const pendingUnlocks = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingTransfers = can.approve_store_requests ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+    const pendingPayments = can.manage_payments ? payments.filter(p => p.status === 'Pending').length : 0;
+    const completedTransfers = can.approve_store_requests ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
+    
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todaysLogs = manpowerLogs.filter(log => log.date === todayStr);
     
@@ -3648,14 +3704,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
 
     return {
-      workingManpowerCount, onLeaveManpowerCount, allCompletedTransferRequests
+      workingManpowerCount, onLeaveManpowerCount, allCompletedTransferRequests: completedTransfers,
+      pendingInternalRequestCount: pendingInternal, updatedInternalRequestCount: updatedInternal,
+      pendingManagementRequestCount: pendingMgmt, updatedManagementRequestCount: updatedMgmt,
+      pendingPpeRequestCount: pendingPpe, updatedPpeRequestCount: updatedPpe,
+      myNewTaskCount: newTasks, pendingTaskApprovalCount: pendingApprovals, myPendingTaskRequestCount: myRequests,
+      pendingStoreCertRequestCount: pendingStoreCerts, myFulfilledStoreCertRequestCount: myFulfilledStoreCerts,
+      pendingEquipmentCertRequestCount: pendingEquipCerts, myFulfilledEquipmentCertRequests: myFulfilledEquipCerts,
+      plannerNotificationCount: plannerNotifs + plannerCommentNotifs, incidentNotificationCount: incidentNotifs,
+      pendingPasswordResetRequestCount: pendingResets, pendingFeedbackCount: pendingFeedbacks, pendingUnlockRequestCount: pendingUnlocks,
+      pendingInventoryTransferRequestCount: pendingTransfers, pendingPaymentApprovalCount: pendingPayments
     };
-  }, [can.approve_store_requests, user, inventoryTransferRequests, manpowerLogs]);
+  }, [user, can, tasks, internalRequests, managementRequests, ppeRequests, certificateRequests, plannerEvents, incidentReports, passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests, payments, manpowerLogs]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
     can,
     workingManpowerCount, onLeaveManpowerCount, allCompletedTransferRequests,
+    pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount,
+    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount,
+    pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, incidentNotificationCount,
+    pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, pendingPaymentApprovalCount,
     login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, updateLastViewedPlanner, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
   };
 
@@ -3835,6 +3904,7 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
 
 
