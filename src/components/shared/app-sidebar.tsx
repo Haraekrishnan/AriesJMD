@@ -67,15 +67,8 @@ export function AppSidebar() {
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
     { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
-  ], [
-    can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, 
-    pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, 
-    pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, 
-    plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, 
-    pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, 
-    pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, 
-    pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []);
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
