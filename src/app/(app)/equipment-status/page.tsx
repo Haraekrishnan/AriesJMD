@@ -286,7 +286,6 @@ export default function EquipmentStatusPage() {
                 </div>
             </div>
 
-            <PendingTransfers />
             <EquipmentSummary />
             
             {expiringMachines.length > 0 && (
