@@ -66,7 +66,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         const dayStr = format(selectedDate, 'yyyy-MM-dd');
         const dayCommentId = `${dayStr}_${selectedUserId}`;
         const commentsData = dailyPlannerComments.find(c => c.id === dayCommentId);
-        return commentsData ? (Array.isArray(commentsData.comments) ? commentsData.comments : Object.values(commentsData.comments)) : [];
+        return commentsData && commentsData.comments ? (Array.isArray(commentsData.comments) ? commentsData.comments : Object.values(commentsData.comments)) : [];
     }, [dailyPlannerComments, selectedDate, selectedUserId]);
 
 
@@ -102,7 +102,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     
     useEffect(() => {
       if(selectedDate) {
-        markPlannerCommentsAsRead(selectedUserId, format(selectedDate, 'yyyy-MM-dd'));
+        markPlannerCommentsAsRead(selectedUserId, selectedDate);
       }
     }, [selectedDate, selectedUserId, markPlannerCommentsAsRead]);
 
@@ -249,5 +249,3 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
-
-    
