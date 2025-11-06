@@ -21,6 +21,8 @@ export default function RecentPlannerActivity() {
     const grouped: { [day: string]: { comments: any[], events: any[] } } = {};
 
     dailyPlannerComments.forEach(dayComment => {
+      if (!dayComment || !dayComment.day) return; // Add this guard clause
+
       const dayEvents = plannerEvents.filter(e => {
         const eventDate = parseISO(e.date);
         return isSameDay(eventDate, parseISO(dayComment.day)) && (e.creatorId === user.id || e.userId === user.id);
@@ -108,5 +110,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
-    
