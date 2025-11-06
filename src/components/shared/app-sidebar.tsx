@@ -51,7 +51,7 @@ export function AppSidebar() {
   const equipmentCount = useMemo(() => pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, [pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests]);
   const accountCount = useMemo(() => pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, [pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount]);
 
-  const navItems = useMemo(() => [
+  const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: myRequestsCount, show: true },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: tasksCount, show: true },
@@ -73,9 +73,7 @@ export function AppSidebar() {
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: accountCount, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
     { href: '/activity-tracker', icon: History, label: 'Activity Tracker', notificationCount: 0, show: user?.role === 'Admin'},
-  ], [
-    can, myRequestsCount, tasksCount, inventoryCount, equipmentCount, plannerNotificationCount, incidentNotificationCount, pendingPaymentApprovalCount, accountCount, user?.role
-  ]);
+  ];
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
@@ -137,4 +135,5 @@ export function AppSidebar() {
     </aside>
   );
 }
+
 

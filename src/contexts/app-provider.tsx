@@ -3650,7 +3650,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
 
 
-  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests } = useMemo(() => {
+  const { 
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
+    myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests,
+    workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount,
+    pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays,
+    pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount,
+    updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount,
+    updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount,
+    pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount,
+    allCompletedTransferRequests 
+  } = useMemo(() => {
     if (!user) return {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [],
     };
@@ -3666,39 +3676,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    let plannerNotificationCount = 0;
+    let plannerNotifications = 0;
     const today = startOfDay(new Date());
-
-    if(user.lastViewedPlanner) {
-        const lastViewed = startOfDay(parseISO(user.lastViewedPlanner));
-        if (isBefore(lastViewed, today)) {
-          plannerNotificationCount = plannerEvents.filter(event => {
-            const isDelegatedToMe = event.userId === user.id && event.creatorId !== user.id;
-            if (!isDelegatedToMe) return false;
-            
-            const eventStartDate = startOfDay(parseISO(event.date));
-            if (isAfter(today, eventStartDate) || isSameDay(today, eventStartDate)) {
-                switch (event.frequency) {
-                    case 'once': return isSameDay(today, eventStartDate);
-                    case 'daily': return true;
-                    case 'daily-except-sundays': return !isSunday(today);
-                    case 'weekly': return getDay(today) === getDay(eventStartDate);
-                    case 'weekends': return isSaturday(today) || isSunday(today);
-                    case 'monthly': return getDate(today) === getDate(eventStartDate);
-                    default: return false;
-                }
-            }
-            return false;
-          }).length;
-        }
+    if (user.lastViewedPlanner && isBefore(parseISO(user.lastViewedPlanner), today)) {
+        plannerNotifications = getExpandedPlannerEvents(today, user.id).filter(event => event.creatorId !== user.id).length;
     }
-    
-    plannerNotificationCount += plannerEvents.filter(event => {
+    const commentNotifications = plannerEvents.filter(event => {
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         if (!isParticipant) return false;
         const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
         return comments.some(c => c && !c.isRead && c.userId !== user.id);
     }).length;
+    const plannerNotificationCount = plannerNotifications + commentNotifications;
 
     const unreadPlannerCommentDays: string[] = []; // Deprecated
 
@@ -3756,7 +3745,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests
     };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, manpowerLogs, plannerEvents]);
+  }, [can, user, tasks, certificateRequests, plannerEvents, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, manpowerLogs, getExpandedPlannerEvents]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
@@ -3941,4 +3930,5 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
 
