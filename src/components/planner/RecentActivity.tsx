@@ -1,13 +1,16 @@
 
-
 'use client';
 import { useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isSameDay, parseISO } from 'date-fns';
 import { MessageSquare, Calendar } from 'lucide-react';
+import { getExpandedPlannerEvents } from '@/contexts/app-provider';
+import { PlannerEvent } from '@/lib/types';
+import { Badge } from '../ui/badge';
+
 
 export default function RecentPlannerActivity() {
   const { user, dailyPlannerComments, plannerEvents, users } = useAppContext();
@@ -18,30 +21,25 @@ export default function RecentPlannerActivity() {
     const grouped: { [day: string]: { comments: any[], events: any[] } } = {};
 
     dailyPlannerComments.forEach(dayComment => {
-      const isParticipantInDay = dayComment.comments.some(c => {
-        const event = plannerEvents.find(e => e.userId === dayComment.plannerUserId);
-        return event?.creatorId === user.id || event?.userId === user.id;
+      const dayEvents = plannerEvents.filter(e => {
+        const eventDate = parseISO(e.date);
+        return isSameDay(eventDate, parseISO(dayComment.day)) && (e.creatorId === user.id || e.userId === user.id);
       });
 
-      if (!isParticipantInDay) return;
+      if (dayEvents.length === 0) return;
 
-      const unread = dayComment.comments.filter(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
+      const unread = (Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments)).filter(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
       
       if (unread.length > 0) {
         if (!grouped[dayComment.day]) {
           grouped[dayComment.day] = { comments: [], events: [] };
         }
-        unread.forEach(c => {
-          const event = plannerEvents.find(e => {
-            const dayEvents = getExpandedPlannerEvents(parseISO(dayComment.day), e.userId);
-            return dayEvents.some(de => isSameDay(de.eventDate, parseISO(dayComment.day)));
-          });
-
-          if(event && !grouped[dayComment.day].events.some(e => e.id === event.id)) {
-            grouped[dayComment.day].events.push(event);
-          }
-          grouped[dayComment.day].comments.push(c);
-        })
+        dayEvents.forEach(event => {
+            if (!grouped[dayComment.day].events.some(e => e.id === event.id)) {
+                grouped[dayComment.day].events.push(event);
+            }
+        });
+        grouped[dayComment.day].comments.push(...unread);
       }
     });
 
@@ -50,12 +48,6 @@ export default function RecentPlannerActivity() {
 
   }, [user, dailyPlannerComments, plannerEvents, users]);
 
-  // This is a simplified function. A real implementation would be more robust.
-  const getExpandedPlannerEvents = (month: Date, userId: string) => {
-    const events = plannerEvents.filter(e => e.userId === userId);
-    // This is a placeholder for the real logic in app-provider
-    return events.map(e => ({...e, eventDate: parseISO(e.date)}));
-  };
 
   if (unreadCommentsByDay.length === 0) {
     return null;
@@ -116,3 +108,5 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+
+    

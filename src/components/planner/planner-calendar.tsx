@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -39,7 +38,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
-    const [newComments, setNewComments] = useState<Record<string, string>>({});
+    const [newComment, setNewComment] = useState('');
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
     const expandedEvents = useMemo(
@@ -71,11 +70,10 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     }, [dailyPlannerComments, selectedDate, selectedUserId]);
 
 
-    const handleAddEventComment = (eventId: string) => {
-        const commentText = newComments[eventId];
-        if (!commentText || !commentText.trim() || !selectedDate) return;
-        addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), eventId, commentText);
-        setNewComments(prev => ({ ...prev, [eventId]: '' }));
+    const handleAddComment = () => {
+        if (!newComment.trim() || !selectedDate) return;
+        addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), selectedDayEvents[0].id, newComment);
+        setNewComment('');
     };
 
     const handleDeleteEvent = (event: PlannerEvent) => {
@@ -200,24 +198,6 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                                     </div>
                                                 )}
                                             </div>
-                                             <div className="relative mt-2">
-                                                <Textarea 
-                                                    value={newComments[event.id] || ''}
-                                                    onChange={(e) => setNewComments(prev => ({ ...prev, [event.id]: e.target.value }))}
-                                                    placeholder={`Comment on "${event.title}"...`} 
-                                                    className="pr-10 text-xs" 
-                                                    rows={1}
-                                                />
-                                                <Button 
-                                                    type="button" 
-                                                    size="icon" 
-                                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
-                                                    onClick={() => handleAddEventComment(event.id)} 
-                                                    disabled={!newComments[event.id] || !newComments[event.id].trim()}
-                                                >
-                                                    <Send className="h-4 w-4" />
-                                                </Button>
-                                            </div>
                                         </div>
                                     );
                                 }) : (
@@ -242,6 +222,24 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                     })}
                                      {selectedDayComments.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No comments for this day.</p>}
                                 </div>
+                                <div className="relative pt-2">
+                                    <Textarea 
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Add a comment..."
+                                        className="pr-10 text-sm" 
+                                        rows={2}
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        size="icon" 
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7" 
+                                        onClick={handleAddComment} 
+                                        disabled={!newComment.trim()}
+                                    >
+                                        <Send className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </ScrollArea>
                     </CardContent>
@@ -251,3 +249,5 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
         </>
     );
 }
+
+    

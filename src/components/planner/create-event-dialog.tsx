@@ -41,7 +41,9 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
   const [isOpen, setIsOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  const assignableUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const assignableUsers = useMemo(() => {
+    return getVisibleUsers().filter(u => u.role !== 'Manager');
+  }, [getVisibleUsers]);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -192,3 +194,5 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
     </Dialog>
   );
 }
+
+    

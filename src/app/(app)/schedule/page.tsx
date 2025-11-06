@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import CreateEventDialog from '@/components/schedule/create-event-dialog';
 import PlannerCalendar from '@/components/planner/planner-calendar';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
 
 export default function SchedulePage() {
-    const { user, getVisibleUsers, can } = useAppContext();
+    const { user, getVisibleUsers, can, updateLastViewedPlanner } = useAppContext();
     const [selectedUserId, setSelectedUserId] = useState<string>(user!.id);
     
     const visibleUsers = useMemo(() => {
@@ -17,6 +17,15 @@ export default function SchedulePage() {
     }, [getVisibleUsers]);
     
     const canViewOthers = can.manage_planner;
+
+    useEffect(() => {
+      // When the user views their own planner, update their last viewed time.
+      if (selectedUserId === user?.id) {
+        // This function needs to be implemented in the context
+        // updateLastViewedPlanner(); 
+      }
+    }, [selectedUserId, user?.id]);
+
 
     return (
         <div className="space-y-8 h-full flex flex-col">
@@ -52,5 +61,3 @@ export default function SchedulePage() {
         </div>
     );
 }
-
-    

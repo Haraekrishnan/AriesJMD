@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -16,31 +15,116 @@ import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import NewBroadcastDialog from '../announcements/NewBroadcastDialog';
+import { isSameDay, parseISO } from 'date-fns';
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
-    const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useAppContext();
+    const { 
+      user, logout, appName, appLogo, can,
+      tasks, certificateRequests, plannerEvents,
+      internalRequests, managementRequests, incidentReports,
+      ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
+      inventoryTransferRequests, dailyPlannerComments 
+    } = useAppContext();
     const pathname = usePathname();
+
+    const notificationCounts = useMemo(() => {
+    if (!user) return {};
+
+    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
+    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
+    const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
+
+    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
+
+    const isStoreManager = can.approve_store_requests;
+    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    
+    const plannerNotificationCount = dailyPlannerComments.filter(dayComment => {
+      const eventForDay = plannerEvents.find(e => e.userId === dayComment.plannerUserId && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if (!eventForDay) return false;
+      const isParticipant = eventForDay.userId === user.id || eventForDay.creatorId === user.id;
+      if (!isParticipant) return false;
+      return !dayComment.viewedBy?.[user.id];
+    }).length;
+
+    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
+    
+    const updatedInternalRequestCount = internalRequests.filter(r => {
+        const isMyRequest = r.requesterId === user.id;
+        if (!isMyRequest) return false;
+        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
+        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+        return isRejectedButActive || isStandardUpdate;
+    }).length;
+
+    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
+    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
+    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
+
+    const incidentNotificationCount = incidentReports.filter(i => {
+      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
+      const isUnread = !i.viewedBy?.[user.id];
+      return isParticipant && isUnread;
+    }).length;
+    
+    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
+    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
+    
+    const pendingApproval = canApprovePpe ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
+    const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
+    const pendingDisputes = (canApprovePpe || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
+    const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
+
+    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
+    
+    const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
+    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
+    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
+    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
+
+    const canApproveTransfers = can.approve_store_requests;
+    const pendingInventoryTransferRequestCount = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+
+    return {
+      myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
+      manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
+      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
+      equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
+      planner: plannerNotificationCount,
+      incidentReporting: incidentNotificationCount,
+      vendorLedger: pendingPaymentApprovalCount,
+      account: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount,
+    };
+  }, [
+    user, can, tasks, certificateRequests, plannerEvents, internalRequests, 
+    managementRequests, incidentReports, ppeRequests, payments, 
+    passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests,
+    dailyPlannerComments
+  ]);
     
     const navItems = [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
-      { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, show: true },
-      { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, show: true },
+      { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: notificationCounts.myRequests || 0, show: true },
+      { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
       { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
-      { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, show: true },
+      { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: true },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
-      { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
+      { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: notificationCounts.equipment || 0, show: true },
       { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
-      { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: plannerNotificationCount, show: true },
+      { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
-      { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: incidentNotificationCount, show: true },
-      { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: pendingPaymentApprovalCount, show: can.manage_vendors },
+      { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: notificationCounts.incidentReporting || 0, show: true },
+      { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: notificationCounts.vendorLedger || 0, show: can.manage_vendors },
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
-      { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
+      { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
       { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
       { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
     ];

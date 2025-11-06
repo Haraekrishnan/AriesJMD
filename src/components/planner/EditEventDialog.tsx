@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -41,7 +42,9 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
   const { toast } = useToast();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
-  const assignableUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
+  const assignableUsers = useMemo(() => {
+    return getVisibleUsers().filter(u => u.role !== 'Manager');
+  }, [getVisibleUsers]);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -165,3 +168,5 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
     </Dialog>
   );
 }
+
+    
