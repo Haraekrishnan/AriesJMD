@@ -1,15 +1,14 @@
-
 'use client';
 
 import { usePathname } from 'next/navigation';
 import React, { useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  CheckSquare, 
-  Calendar, 
-  TrendingUp, 
-  Trophy, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  CheckSquare,
+  Calendar,
+  TrendingUp,
+  Trophy,
+  LogOut,
   Ship,
   Sparkles,
   FileText,
@@ -39,9 +38,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { isSameDay, parseISO } from 'date-fns';
 
 export function AppSidebar() {
-  const { 
+  const {
     user, logout, appName, appLogo, can,
     tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports,
