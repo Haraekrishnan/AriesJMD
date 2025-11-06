@@ -45,17 +45,23 @@ export function AppSidebar() {
   const { user, logout, appName, appLogo, can, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount } = useAppContext();
   const pathname = usePathname();
   
+  const myRequestsCount = useMemo(() => pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, [pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, pendingPpeRequestCount, updatedPpeRequestCount]);
+  const tasksCount = useMemo(() => myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, [myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount]);
+  const inventoryCount = useMemo(() => pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, [pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount, pendingInventoryTransferRequestCount]);
+  const equipmentCount = useMemo(() => pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, [pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests]);
+  const accountCount = useMemo(() => pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, [pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount]);
+
   const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
-    { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount, show: true },
-    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount, show: true },
+    { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: myRequestsCount, show: true },
+    { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: tasksCount, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
     { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: can.manage_purchase_register },
-    { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount, show: true },
+    { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: inventoryCount, show: true },
     { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: can.manage_igp_ogp },
     { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: can.manage_ppe_stock },
-    { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length, show: true },
+    { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: equipmentCount, show: true },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
     { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: plannerNotificationCount, show: true },
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
@@ -64,18 +70,11 @@ export function AppSidebar() {
     { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: pendingPaymentApprovalCount, show: can.manage_vendors },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
-    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount, show: true },
+    { href: '/account', icon: UserIcon, label: 'Account', notificationCount: accountCount, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
     { href: '/activity-tracker', icon: History, label: 'Activity Tracker', notificationCount: 0, show: user?.role === 'Admin'},
   ], [
-    can, myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
-    pendingStoreCertRequestCount, myFulfilledStoreCertRequestCount,
-    pendingEquipmentCertRequestCount, myFulfilledEquipmentCertRequests.length,
-    plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount,
-    pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount,
-    pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount,
-    pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount,
-    pendingInventoryTransferRequestCount, user?.role
+    can, myRequestsCount, tasksCount, inventoryCount, equipmentCount, plannerNotificationCount, incidentNotificationCount, pendingPaymentApprovalCount, accountCount, user?.role
   ]);
 
   return (
@@ -138,3 +137,4 @@ export function AppSidebar() {
     </aside>
   );
 }
+
