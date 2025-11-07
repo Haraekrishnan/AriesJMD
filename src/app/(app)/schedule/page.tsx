@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -57,7 +58,11 @@ export default function SchedulePage() {
                 </div>
             </div>
             
-            <RecentPlannerActivity onDateSelect={setSelectedDate} setCurrentMonth={setCurrentMonth} />
+            <RecentPlannerActivity 
+              onDateSelect={setSelectedDate} 
+              setCurrentMonth={setCurrentMonth}
+              onUserSelect={setSelectedUserId}
+            />
             
             <PlannerCalendar 
               selectedUserId={selectedUserId} 
@@ -69,3 +74,4 @@ export default function SchedulePage() {
         </div>
     );
 }
+

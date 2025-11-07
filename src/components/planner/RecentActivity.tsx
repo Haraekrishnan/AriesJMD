@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 interface RecentPlannerActivityProps {
     onDateSelect: (date: Date) => void;
     setCurrentMonth: (date: Date) => void;
+    onUserSelect: (userId: string) => void;
 }
 
 interface UnreadCommentInfo {
@@ -23,7 +24,7 @@ interface UnreadCommentInfo {
     delegatedBy?: User;
 }
 
-export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth }: RecentPlannerActivityProps) {
+export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, onUserSelect }: RecentPlannerActivityProps) {
   const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead } = useAppContext();
 
   const unreadComments = useMemo(() => {
@@ -34,15 +35,12 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth }:
     dailyPlannerComments.forEach(dayComment => {
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
-      const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if (eventsOnDay.length === 0) return;
-
-      const commentsArray = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
+      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
       
-      commentsArray.forEach(comment => {
+      comments.forEach(comment => {
         if (!comment) return;
 
-        const eventForComment = eventsOnDay.find(e => e.id === comment.eventId);
+        const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
         if (!eventForComment) return;
 
         const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
@@ -77,8 +75,9 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth }:
     }
   };
 
-  const handleGoToEvent = (day: string) => {
+  const handleGoToEvent = (day: string, eventUserId: string) => {
     const eventDate = parseISO(day);
+    onUserSelect(eventUserId);
     onDateSelect(eventDate);
     setCurrentMonth(eventDate);
   }
@@ -98,6 +97,10 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth }:
          <div className="space-y-4">
             {unreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
                 const commentUser = users.find(u => u.id === comment.userId);
+                // Determine whose planner to go to. If I'm the delegator, go to the assignee's planner.
+                // If I'm the assignee, go to my own planner (which is also the assignee's planner).
+                const targetUserId = user?.id === event.creatorId ? event.userId : event.creatorId;
+
                 return (
                     <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
                         <div className="flex justify-between items-start mb-2">
@@ -125,7 +128,7 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth }:
                             </div>
                         </div>
                         <div className="flex justify-end mt-2 gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day)}><Calendar className="mr-2 h-4 w-4"/> Go to Event</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, targetUserId)}><Calendar className="mr-2 h-4 w-4"/> Go to Event</Button>
                             <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}>
                                <CheckCircle className="mr-2 h-4 w-4"/> Mark as Read
                             </Button>
