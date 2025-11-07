@@ -23,11 +23,13 @@ interface PlannerCalendarProps {
     selectedUserId: string;
     selectedDate: Date | undefined;
     setSelectedDate: (date: Date | undefined) => void;
+    currentMonth: Date;
+    setCurrentMonth: (date: Date) => void;
 }
 
 const MAX_EVENTS_VISIBLE = 2;
 
-export default function PlannerCalendar({ selectedUserId, selectedDate, setSelectedDate }: PlannerCalendarProps) {
+export default function PlannerCalendar({ selectedUserId, selectedDate, setSelectedDate, currentMonth, setCurrentMonth }: PlannerCalendarProps) {
     const {
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
         addPlannerEventComment,
@@ -37,7 +39,6 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
     } = useAppContext();
     const { toast } = useToast();
 
-    const [currentMonth, setCurrentMonth] = useState(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
     const [newComments, setNewComments] = useState<Record<string, string>>({});
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());

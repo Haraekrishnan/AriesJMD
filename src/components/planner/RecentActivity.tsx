@@ -11,6 +11,7 @@ import { Button } from '../ui/button';
 
 interface RecentPlannerActivityProps {
     onDateSelect: (date: Date) => void;
+    setCurrentMonth: (date: Date) => void;
 }
 
 interface UnreadCommentInfo {
@@ -21,7 +22,7 @@ interface UnreadCommentInfo {
     delegatedBy?: User;
 }
 
-export default function RecentPlannerActivity({ onDateSelect }: RecentPlannerActivityProps) {
+export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth }: RecentPlannerActivityProps) {
   const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead } = useAppContext();
 
   const unreadComments = useMemo(() => {
@@ -65,9 +66,21 @@ export default function RecentPlannerActivity({ onDateSelect }: RecentPlannerAct
     return null;
   }
 
-  const handleMarkAsRead = (comment: Comment, plannerUserId: string, day: string) => {
-    markSinglePlannerCommentAsRead(plannerUserId, day, comment.id);
+  const handleMarkAsRead = (comment: Comment) => {
+    if (comment.eventId) {
+      const event = plannerEvents.find(e => e.id === comment.eventId);
+      const day = dailyPlannerComments.find(dc => dc.comments && Object.values(dc.comments).some(c => c && c.id === comment.id))?.day;
+      if (event && day) {
+        markSinglePlannerCommentAsRead(event.userId, day, comment.id);
+      }
+    }
   };
+
+  const handleGoToEvent = (day: string) => {
+    const eventDate = parseISO(day);
+    onDateSelect(eventDate);
+    setCurrentMonth(eventDate);
+  }
 
   return (
     <Card>
@@ -94,7 +107,6 @@ export default function RecentPlannerActivity({ onDateSelect }: RecentPlannerAct
                                     {event.creatorId === event.userId ? ` Personal planning for ${delegatedTo?.name}` : ` Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
                                 </p>
                             </div>
-                            <Button size="sm" variant="outline" onClick={() => onDateSelect(parseISO(day))}><Calendar className="mr-2 h-4 w-4"/> Go to Event</Button>
                         </div>
                         <div className="flex items-start gap-2">
                             <Avatar className="h-8 w-8">
@@ -111,8 +123,9 @@ export default function RecentPlannerActivity({ onDateSelect }: RecentPlannerAct
                             <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
                             </div>
                         </div>
-                        <div className="flex justify-end mt-2">
-                            <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment, event.userId, day)}>
+                        <div className="flex justify-end mt-2 gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day)}><Calendar className="mr-2 h-4 w-4"/> Go to Event</Button>
+                            <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}>
                                <CheckCircle className="mr-2 h-4 w-4"/> Mark as Read
                             </Button>
                         </div>
