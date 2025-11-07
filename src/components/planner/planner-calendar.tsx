@@ -1,11 +1,14 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
+  Card, CardContent, CardHeader, CardTitle, CardDescription
+} from '@/components/ui/card';
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
-} from '@/components/ui/card';
+} from '@/components/ui/alert-dialog';
 import {
   eachDayOfInterval, endOfMonth, startOfMonth, format,
   isSameDay, getDate, isPast, isValid, parseISO, isToday,
@@ -56,12 +59,12 @@ export default function PlannerCalendar({
     setInternalCurrentMonth(externalCurrentMonth);
   }, [externalCurrentMonth]);
 
-  // ✅ NEW FIX: When selectedDate changes (e.g., "Go to Event" clicked)
+  // When selectedDate changes (e.g., "Go to Event" clicked)
   useEffect(() => {
     if (selectedDate) {
       const newMonth = startOfMonth(selectedDate);
       setInternalCurrentMonth(newMonth);
-      setExternalCurrentMonth(newMonth);
+      if(setExternalCurrentMonth) setExternalCurrentMonth(newMonth);
 
       // Smooth scroll to calendar
       document.getElementById("planner-calendar-section")?.scrollIntoView({ behavior: "smooth" });
