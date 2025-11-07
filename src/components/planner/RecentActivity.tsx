@@ -37,13 +37,17 @@ export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: 
 
       const commentsArray = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
       const unread = commentsArray.filter(c => {
-          if (!c || c.userId === user.id) return false;
-          
+          if (!c) return false;
           const event = dayEvents.find(e => e.id === c.eventId);
           if (!event) return false;
 
           const isParticipant = event.creatorId === user.id || event.userId === user.id;
-          return isParticipant && !c.viewedBy?.[user.id];
+
+          // Show unread comments from others, or own comments if viewing someone else's planner
+          const isMyCommentOnOthersPlanner = c.userId === user.id && selectedUserId !== user.id;
+          const isUnreadCommentFromOthers = c.userId !== user.id && !c.viewedBy?.[user.id];
+          
+          return isParticipant && (isUnreadCommentFromOthers || isMyCommentOnOthersPlanner);
       });
 
       if (unread.length > 0) {
