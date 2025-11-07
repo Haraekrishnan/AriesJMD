@@ -61,23 +61,26 @@ export default function PlannerCalendar({
 
   // When selectedDate changes (e.g., "Go to Event" clicked)
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && !isSameMonth(selectedDate, internalCurrentMonth)) {
       const newMonth = startOfMonth(selectedDate);
       setInternalCurrentMonth(newMonth);
       if(setExternalCurrentMonth) setExternalCurrentMonth(newMonth);
-
-      // Smooth scroll to calendar
-      document.getElementById("planner-calendar-section")?.scrollIntoView({ behavior: "smooth" });
+    }
+    
+    // Smooth scroll to calendar
+    const calendarElement = document.getElementById("planner-calendar-section");
+    if (calendarElement && selectedDate) {
+      calendarElement.scrollIntoView({ behavior: "smooth" });
 
       // Temporary highlight animation
       const dayKey = format(selectedDate, 'yyyy-MM-dd');
       const el = document.querySelector(`[data-date="${dayKey}"]`);
       if (el) {
-        el.classList.add("animate-pulse", "bg-blue-100");
-        setTimeout(() => el.classList.remove("animate-pulse", "bg-blue-100"), 1500);
+        el.classList.add("animate-pulse", "bg-blue-100", "dark:bg-blue-900/50");
+        setTimeout(() => el.classList.remove("animate-pulse", "bg-blue-100", "dark:bg-blue-900/50"), 1500);
       }
     }
-  }, [selectedDate, setExternalCurrentMonth]);
+  }, [selectedDate, setExternalCurrentMonth, internalCurrentMonth]);
 
   const expandedEvents = useMemo(
     () => getExpandedPlannerEvents(internalCurrentMonth, selectedUserId),
@@ -111,7 +114,7 @@ export default function PlannerCalendar({
     const allComments = Array.isArray(dayCommentsData.comments)
       ? dayCommentsData.comments
       : Object.values(dayCommentsData.comments);
-    return allComments.filter(c => c.eventId === eventId);
+    return allComments.filter(c => c && c.eventId === eventId);
   };
 
   const handleAddComment = (eventId: string) => {
@@ -150,17 +153,6 @@ export default function PlannerCalendar({
       return newSet;
     });
   };
-
-  useEffect(() => {
-    if (selectedDate && dayCommentsData) {
-      const dayStr = format(selectedDate, 'yyyy-MM-dd');
-      if (dayCommentsData.comments) {
-        Object.values(dayCommentsData.comments).forEach(c => {
-          if (c) markSinglePlannerCommentAsRead(selectedUserId, dayStr, c.id);
-        });
-      }
-    }
-  }, [selectedDate, selectedUserId, dayCommentsData, markSinglePlannerCommentAsRead]);
 
   return (
     <>
@@ -201,7 +193,7 @@ export default function PlannerCalendar({
                       onClick={() => setSelectedDate(day)}
                       className={cn(
                         "absolute top-1 right-1 h-6 w-6 rounded-full text-xs flex items-center justify-center",
-                        isSameDay(day, selectedDate || new Date()) && "bg-primary text-primary-foreground"
+                        selectedDate && isSameDay(day, selectedDate) && "bg-primary text-primary-foreground"
                       )}
                     >
                       {format(day, 'd')}
