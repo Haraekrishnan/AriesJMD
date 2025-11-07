@@ -76,11 +76,7 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
   };
 
   const handleGoToEvent = (day: string, eventUserId: string) => {
-    const eventDate = parseISO(day);
-    onUserSelect(eventUserId);
-    onDateSelect(eventDate);
-    setCurrentMonth(eventDate);
-    router.push('/schedule');
+    router.push(`/schedule?userId=${eventUserId}&date=${day}`);
   }
 
   return (

@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -7,19 +6,52 @@ import PlannerCalendar from '@/components/planner/planner-calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
-import { startOfMonth } from 'date-fns';
+import { startOfMonth, parseISO } from 'date-fns';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function SchedulePage() {
     const { user, getVisibleUsers, can, updateLastViewedPlanner } = useAppContext();
-    const [selectedUserId, setSelectedUserId] = useState<string>(user!.id);
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const [selectedUserId, setSelectedUserId] = useState<string>(() => {
+        const urlUserId = searchParams.get('userId');
+        return urlUserId || user!.id;
+    });
+
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+        const urlDate = searchParams.get('date');
+        return urlDate ? parseISO(urlDate) : new Date();
+    });
+
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        const urlDate = searchParams.get('date');
+        return urlDate ? startOfMonth(parseISO(urlDate)) : startOfMonth(new Date());
+    });
     
     const visibleUsers = useMemo(() => {
         return getVisibleUsers().filter(u => u.role !== 'Manager');
     }, [getVisibleUsers]);
     
     const canViewOthers = can.manage_planner;
+
+    useEffect(() => {
+        const urlUserId = searchParams.get('userId');
+        const urlDate = searchParams.get('date');
+        
+        if (urlUserId) setSelectedUserId(urlUserId);
+        if (urlDate) {
+            const newDate = parseISO(urlDate);
+            setSelectedDate(newDate);
+            setCurrentMonth(startOfMonth(newDate));
+        }
+
+        // Clean up URL after initial load
+        if (urlUserId || urlDate) {
+            router.replace('/schedule', { scroll: false });
+        }
+    }, [searchParams, router]);
+
 
     useEffect(() => {
       // When the user views their own planner, update their last viewed time.
@@ -68,4 +100,3 @@ export default function SchedulePage() {
         </div>
     );
 }
-
