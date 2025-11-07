@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -33,8 +32,10 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
     const allUnread: UnreadCommentInfo[] = [];
 
     dailyPlannerComments.forEach(dayComment => {
+      // Ensure dayComment and its properties exist
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
+      // Get all comments for the day
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
       
       comments.forEach(comment => {
@@ -43,7 +44,9 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
         const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
         if (!eventForComment) return;
 
+        // Check if the current logged-in user is part of this event's conversation
         const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
+        // Check if the comment is from someone else and hasn't been viewed by the current user
         const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
 
         if (isParticipant && isUnreadFromOther) {
@@ -99,7 +102,7 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
                 const commentUser = users.find(u => u.id === comment.userId);
                 // Determine whose planner to go to. If I'm the delegator, go to the assignee's planner.
                 // If I'm the assignee, go to my own planner (which is also the assignee's planner).
-                const targetUserId = user?.id === event.creatorId ? event.userId : event.creatorId;
+                const targetUserId = event.userId;
 
                 return (
                     <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
