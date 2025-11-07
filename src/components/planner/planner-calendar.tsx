@@ -21,11 +21,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 interface PlannerCalendarProps {
     selectedUserId: string;
+    selectedDate: Date | undefined;
+    setSelectedDate: (date: Date | undefined) => void;
 }
 
 const MAX_EVENTS_VISIBLE = 2;
 
-export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps) {
+export default function PlannerCalendar({ selectedUserId, selectedDate, setSelectedDate }: PlannerCalendarProps) {
     const {
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
         addPlannerEventComment,
@@ -36,7 +38,6 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
     const { toast } = useToast();
 
     const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
     const [newComments, setNewComments] = useState<Record<string, string>>({});
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
@@ -183,7 +184,7 @@ export default function PlannerCalendar({ selectedUserId }: PlannerCalendarProps
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <p className="font-semibold">{event.title}</p>
-                                                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                                                    <p className="text-sm text-muted-foreground">{event.description}</p>
                                                      <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                                         {isDelegated ? `Delegated by: ` : 'My Planning'}
                                                         {isDelegated && creator && (

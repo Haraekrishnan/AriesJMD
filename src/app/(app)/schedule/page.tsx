@@ -11,6 +11,7 @@ import RecentPlannerActivity from '@/components/planner/RecentActivity';
 export default function SchedulePage() {
     const { user, getVisibleUsers, can, updateLastViewedPlanner } = useAppContext();
     const [selectedUserId, setSelectedUserId] = useState<string>(user!.id);
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     
     const visibleUsers = useMemo(() => {
         return getVisibleUsers().filter(u => u.role !== 'Manager');
@@ -55,9 +56,10 @@ export default function SchedulePage() {
                 </div>
             </div>
             
-            <RecentPlannerActivity />
+            <RecentPlannerActivity onDateSelect={setSelectedDate} selectedUserId={selectedUserId} />
             
-            <PlannerCalendar selectedUserId={selectedUserId} />
+            <PlannerCalendar selectedUserId={selectedUserId} selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
         </div>
     );
 }
+
