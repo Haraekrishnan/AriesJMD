@@ -131,8 +131,8 @@ type AppContextType = {
   addPlannerEvent: (event: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
-  addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
-  markPlannerCommentsAsRead: (plannerUserId: string, day: string) => void;
+  addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => Promise<void>;
+  markPlannerCommentsAsRead: (plannerUserId: string, day: Date) => void;
   awardManualAchievement: (achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => void;
   updateManualAchievement: (achievement: Achievement) => void;
   deleteManualAchievement: (achievementId: string) => void;
@@ -324,7 +324,7 @@ const createDataListener = <T extends {}>(
     return () => listeners.forEach(listener => listener());
 };
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
@@ -444,6 +444,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
+    if (!userId) {
+      console.error("addActivityLog: userId is undefined or null");
+      return;
+    }
     const logRef = push(ref(rtdb, 'activityLogs'));
     const newLog: Omit<ActivityLog, 'id' | 'details'> & { details?: string } = {
         userId,
@@ -1211,44 +1215,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
     if (!user) return;
-    
+
     const dayCommentId = `${day}_${plannerUserId}`;
     const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
-    
+
     const newComment: Omit<Comment, 'id'> = {
         userId: user.id,
         text,
         date: new Date().toISOString(),
         eventId: eventId,
     };
+
     const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
     const newCommentWithId = { ...newComment, id: newCommentRef.key! };
     
     const dayCommentSnapshot = await get(dayCommentRef);
     if (!dayCommentSnapshot.exists()) {
-      const newDayComment: DailyPlannerComment = {
-        id: dayCommentId,
-        plannerUserId,
-        day,
-        comments: { [newCommentRef.key!]: newCommentWithId },
-        lastUpdated: new Date().toISOString(),
-        viewedBy: { [user.id]: true },
-      };
-      await set(dayCommentRef, newDayComment);
+        const newDayComment: DailyPlannerComment = {
+            id: dayCommentId,
+            plannerUserId,
+            day,
+            comments: { [newCommentRef.key!]: newCommentWithId },
+            lastUpdated: new Date().toISOString(),
+            viewedBy: { [user.id]: true },
+        };
+        await set(dayCommentRef, newDayComment);
     } else {
-      await set(newCommentRef, newCommentWithId);
+        await set(newCommentRef, newCommentWithId);
+        await update(dayCommentRef, { lastUpdated: new Date().toISOString() });
     }
 
-    const updates: { [key: string]: any } = {};
-    updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
-    
     const event = plannerEvents.find(e => e.id === eventId);
     if(event) {
         const participants = new Set([event.creatorId, event.userId]);
         participants.forEach(pId => {
             if (pId !== user.id) {
-                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
-                
+                update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/viewedBy`), { [pId]: false });
+
                 const participant = users.find(u => u.id === pId);
                 if (participant?.email) {
                     createAndSendNotification(
@@ -1265,10 +1268,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         });
     }
-    
-    update(ref(rtdb), updates);
 
-  }, [user, users, plannerEvents]);
+}, [user, users, plannerEvents]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -1302,9 +1303,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const newRef = push(ref(rtdb, 'users'));
-    const newUser = { ...userData, id: newRef.key };
-    set(newRef, userData);
-    addActivityLog(newUser.id, 'User Added', newUser.name);
+    const newUser = { 
+        ...userData,
+        projectId: userData.projectId || null,
+        supervisorId: userData.supervisorId || null,
+        id: newRef.key 
+    };
+    set(newRef, { 
+        ...userData, 
+        projectId: userData.projectId || null,
+        supervisorId: userData.supervisorId || null
+    });
+    if (newUser.id) {
+        addActivityLog(newUser.id, 'User Added', newUser.name);
+    }
   }, [addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
@@ -3664,7 +3676,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
     const plannerNotificationCount = dailyPlannerComments.filter(dayComment => {
-      const eventForDay = plannerEvents.find(e => e.userId === dayComment.plannerUserId && e.date && dayComment.day && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if (!dayComment || !dayComment.day) return false;
+      const eventForDay = plannerEvents.find(e => e.userId === dayComment.plannerUserId && e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
       if (!eventForDay) return false;
       const isParticipant = eventForDay.userId === user.id || eventForDay.creatorId === user.id;
       if (!isParticipant) return false;
