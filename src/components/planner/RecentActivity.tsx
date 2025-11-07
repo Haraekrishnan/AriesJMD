@@ -2,12 +2,12 @@
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, isSameDay, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
 
 interface RecentPlannerActivityProps {
     onDateSelect: (date: Date) => void;
@@ -25,17 +25,16 @@ interface UnreadCommentInfo {
 
 export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, onUserSelect }: RecentPlannerActivityProps) {
   const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead } = useAppContext();
-
+  const router = useRouter();
+  
   const unreadComments = useMemo(() => {
     if (!user) return [];
 
     const allUnread: UnreadCommentInfo[] = [];
 
     dailyPlannerComments.forEach(dayComment => {
-      // Ensure dayComment and its properties exist
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
-      // Get all comments for the day
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
       
       comments.forEach(comment => {
@@ -44,9 +43,7 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
         const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
         if (!eventForComment) return;
 
-        // Check if the current logged-in user is part of this event's conversation
         const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
-        // Check if the comment is from someone else and hasn't been viewed by the current user
         const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
 
         if (isParticipant && isUnreadFromOther) {
@@ -83,6 +80,7 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
     onUserSelect(eventUserId);
     onDateSelect(eventDate);
     setCurrentMonth(eventDate);
+    router.push('/schedule');
   }
 
   return (
@@ -100,8 +98,6 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
          <div className="space-y-4">
             {unreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
                 const commentUser = users.find(u => u.id === comment.userId);
-                // Determine whose planner to go to. If I'm the delegator, go to the assignee's planner.
-                // If I'm the assignee, go to my own planner (which is also the assignee's planner).
                 const targetUserId = event.userId;
 
                 return (

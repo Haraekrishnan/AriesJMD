@@ -58,12 +58,6 @@ export default function SchedulePage() {
                 </div>
             </div>
             
-            <RecentPlannerActivity 
-              onDateSelect={setSelectedDate} 
-              setCurrentMonth={setCurrentMonth}
-              onUserSelect={setSelectedUserId}
-            />
-            
             <PlannerCalendar 
               selectedUserId={selectedUserId} 
               selectedDate={selectedDate} 

@@ -12,9 +12,14 @@ import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
+import RecentPlannerActivity from '@/components/planner/RecentActivity';
+import { startOfMonth } from 'date-fns';
 
 export default function DashboardPage() {
   const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
+  const [selectedPlannerDate, setSelectedPlannerDate] = useState<Date | undefined>(new Date());
+  const [currentPlannerMonth, setCurrentPlannerMonth] = useState(startOfMonth(new Date()));
+  const [selectedPlannerUser, setSelectedPlannerUser] = useState<string>(user!.id);
 
   const visibleUserIds = useMemo(() => {
     const visibleUsers = getVisibleUsers();
@@ -53,6 +58,12 @@ export default function DashboardPage() {
       </div>
 
       <AnnouncementFeed />
+      
+      <RecentPlannerActivity 
+        onDateSelect={setSelectedPlannerDate} 
+        setCurrentMonth={setCurrentPlannerMonth}
+        onUserSelect={setSelectedPlannerUser}
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard 
