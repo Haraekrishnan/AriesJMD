@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -16,6 +17,8 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import NewBroadcastDialog from '../announcements/NewBroadcastDialog';
 import { isSameDay, parseISO } from 'date-fns';
+import type { DailyPlannerComment, PlannerEvent, ManagementRequest } from '@/lib/types';
+
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const { 
@@ -41,13 +44,23 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const plannerNotificationCount = dailyPlannerComments.filter(dayComment => {
-      const eventForDay = plannerEvents.find(e => e.userId === dayComment.plannerUserId && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if (!eventForDay) return false;
-      const isParticipant = eventForDay.userId === user.id || eventForDay.creatorId === user.id;
-      if (!isParticipant) return false;
-      return !dayComment.viewedBy?.[user.id];
-    }).length;
+    const unreadPlannerCommentDays = dailyPlannerComments.filter(dayComment => {
+        if (!dayComment || !dayComment.day) return false;
+        
+        const dayEvents = plannerEvents.filter(e => {
+            if (!e.date) return false;
+            return isSameDay(parseISO(e.date), parseISO(dayComment.day)) && e.userId === dayComment.plannerUserId;
+        });
+
+        if (dayEvents.length === 0) return false;
+        
+        const isParticipantInAnyEvent = dayEvents.some(e => e.userId === user.id || e.creatorId === user.id);
+        if (!isParticipantInAnyEvent) return false;
+
+        const comments: Comment[] = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
+        return comments.some(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
+    });
+    const plannerNotificationCount = unreadPlannerCommentDays.length;
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
     
@@ -120,7 +133,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
-      { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: notificationCounts.incidentReporting || 0, show: true },
+      { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: 0, show: true },
       { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: notificationCounts.vendorLedger || 0, show: can.manage_vendors },
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },

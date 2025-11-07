@@ -698,7 +698,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
     
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
@@ -713,7 +713,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if(!task) return;
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: taskId };
     
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
@@ -974,7 +974,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString(), eventId: taskId };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1011,7 +1011,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if(!task) return;
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: taskId };
     set(newCommentRef, newComment);
     
     const updates: { [key: string]: any } = {};
@@ -1084,7 +1084,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString(), eventId: taskId };
     set(newCommentRef, newComment);
     
     const updates: { [key: string]: any } = {};
@@ -1248,9 +1248,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const event = plannerEvents.find(e => e.id === eventId);
     if(event) {
         const participants = new Set([event.creatorId, event.userId]);
+        const updates: { [key: string]: any } = {};
         participants.forEach(pId => {
             if (pId !== user.id) {
-                update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/viewedBy`), { [pId]: false });
+                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
 
                 const participant = users.find(u => u.id === pId);
                 if (participant?.email) {
@@ -1267,6 +1268,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
             }
         });
+        if(Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+        }
     }
 
 }, [user, users, plannerEvents]);
@@ -1302,9 +1306,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
+    if(!user) return;
     const newRef = push(ref(rtdb, 'users'));
     const newUser = { 
-        ...userData,
+        ...userData, 
         projectId: userData.projectId || null,
         supervisorId: userData.supervisorId || null,
         id: newRef.key 
@@ -1312,12 +1317,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     set(newRef, { 
         ...userData, 
         projectId: userData.projectId || null,
-        supervisorId: userData.supervisorId || null
+        supervisorId: userData.supervisorId || null,
     });
-    if (newUser.id) {
-        addActivityLog(newUser.id, 'User Added', newUser.name);
-    }
-  }, [addActivityLog]);
+    addActivityLog(user.id, 'User Added', newUser.name);
+  }, [user, addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
     update(ref(rtdb, `users/${userId}`), { planningScore: score });
@@ -1405,7 +1408,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { id, ...data } = incident;
 
     const newCommentRef = push(ref(rtdb, `incidentReports/${id}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: id };
     set(newCommentRef, newComment);
 
     update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString(), comments: [newComment] });
@@ -1418,7 +1421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const incident = incidentReportsById[incidentId];
     if(!incident) return;
     const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString(), eventId: incidentId };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1441,7 +1444,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if(!incident) return;
 
     const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: incidentId };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1484,7 +1487,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if(!incident) return;
 
     const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: incidentId };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1804,7 +1807,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
-        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString() }],
+        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
         viewedByRequester: true,
     };
 
@@ -2127,7 +2130,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
-        comments: [{ id: `comm-init`, text: `Request created: "${requestData.subject}"`, userId: user.id, date: new Date().toISOString() }],
+        comments: [{ id: `comm-init`, text: `Request created: "${requestData.subject}"`, userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
         viewedByRequester: true,
     };
     set(newRequestRef, newRequest);
@@ -2162,7 +2165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}. Comment: ${comment}`, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}. Comment: ${comment}`, date: new Date().toISOString(), eventId: requestId };
     
     const updates: { [key: string]: any } = {};
     updates[`managementRequests/${requestId}/status`] = status;
@@ -2203,7 +2206,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request Created', date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request Created', date: new Date().toISOString(), eventId: newRequestRef.key! };
     const newCommentRef = push(ref(rtdb, `ppeRequests/${newRequestRef.key}/comments`));
 
     const newRequest: Omit<PpeRequest, 'id'> = {
@@ -2274,7 +2277,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
   
     const updates: { [key: string]: any } = {};
     updates[`ppeRequests/${requestId}/status`] = status;
@@ -2657,7 +2660,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requesterId: user.id,
         status: 'Pending',
         requestDate: new Date().toISOString(),
-        comments: [{ id: 'comm-init', userId: user.id, text: `Request for ${requestData.requestType} submitted. Reason: ${requestData.remarks || 'N/A'}`, date: new Date().toISOString() }],
+        comments: [{ id: 'comm-init', userId: user.id, text: `Request for ${requestData.requestType} submitted. Reason: ${requestData.remarks || 'N/A'}`, date: new Date().toISOString(), eventId: newRef.key! }],
         viewedByRequester: true,
     };
     set(newRef, newRequest);
@@ -2687,7 +2690,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
 
     const updates: { [key: string]: any } = {};
     updates[`certificateRequests/${requestId}/status`] = 'Completed';
@@ -2702,7 +2705,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
     set(newCommentRef, newComment);
     update(ref(rtdb, `certificateRequests/${requestId}`), { viewedByRequester: false });
   }, [user]);
@@ -3270,7 +3273,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         date: new Date().toISOString(),
         requesterId: user.id,
         status: 'Paid',
-        comments: [{ id: `comm-init`, text: 'Payment logged.', userId: user.id, date: new Date().toISOString() }],
+        comments: [{ id: `comm-init`, text: 'Payment logged.', userId: user.id, date: new Date().toISOString(), eventId: newRef.key! }],
     };
     set(newRef, newPayment);
   }, [user]);
@@ -3287,7 +3290,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if(!payment) return;
     
     const newCommentRef = push(ref(rtdb, `payments/${paymentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}: ${comment}`, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}: ${comment}`, date: new Date().toISOString(), eventId: paymentId };
     
     const updates: Partial<Payment> = {
         status,
@@ -3550,7 +3553,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
     
     const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString(), eventId: requestId };
     updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
 
     update(ref(rtdb), updates);
@@ -3582,7 +3585,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
     
     const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Disputed: ${comment}`, date: new Date().toISOString() };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Disputed: ${comment}`, date: new Date().toISOString(), eventId: requestId };
     updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
 
     update(ref(rtdb), updates);
@@ -3675,14 +3678,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const plannerNotificationCount = dailyPlannerComments.filter(dayComment => {
+    const unreadPlannerCommentDays = dailyPlannerComments.filter(dayComment => {
       if (!dayComment || !dayComment.day) return false;
-      const eventForDay = plannerEvents.find(e => e.userId === dayComment.plannerUserId && e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if (!eventForDay) return false;
-      const isParticipant = eventForDay.userId === user.id || eventForDay.creatorId === user.id;
+      const eventsForDay = plannerEvents.filter(e => e.userId === dayComment.plannerUserId && e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if (eventsForDay.length === 0) return false;
+      const isParticipant = eventsForDay.some(e => e.userId === user.id || e.creatorId === user.id);
       if (!isParticipant) return false;
-      return !dayComment.viewedBy?.[user.id];
-    }).length;
+      
+      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
+      const hasUnread = comments.some(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
+      return hasUnread;
+    });
+    const plannerNotificationCount = unreadPlannerCommentDays.length;
 
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
@@ -3921,3 +3928,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
