@@ -47,6 +47,18 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
         setInternalCurrentMonth(externalCurrentMonth);
     }, [externalCurrentMonth]);
 
+    useEffect(() => {
+        if (selectedDate) {
+          const newMonth = startOfMonth(selectedDate);
+          setInternalCurrentMonth(newMonth);
+          setExternalCurrentMonth(newMonth);
+          const calendarElement = document.getElementById("planner-calendar-section");
+          if (calendarElement) {
+              calendarElement.scrollIntoView({ behavior: "smooth" });
+          }
+        }
+    }, [selectedDate, setExternalCurrentMonth]);
+
     const expandedEvents = useMemo(
         () => getExpandedPlannerEvents(internalCurrentMonth, selectedUserId),
         [getExpandedPlannerEvents, internalCurrentMonth, selectedUserId]
@@ -77,7 +89,7 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
     const getCommentsForEvent = (eventId: string) => {
         if (!dayCommentsData || !dayCommentsData.comments) return [];
         const allComments = Array.isArray(dayCommentsData.comments) ? dayCommentsData.comments : Object.values(dayCommentsData.comments);
-        return allComments.filter(c => c.eventId === eventId);
+        return allComments.filter(c => c && c.eventId === eventId);
     };
 
     const handleAddComment = (eventId: string) => {
@@ -133,7 +145,7 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
 
     return (
         <>
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-8 flex-1">
+            <div id="planner-calendar-section" className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-8 flex-1">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-2xl font-bold">{format(internalCurrentMonth, 'MMMM yyyy')}</CardTitle>
