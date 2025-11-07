@@ -1215,24 +1215,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
     if (!user) return;
-
+  
     const dayCommentId = `${day}_${plannerUserId}`;
     const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
-
+    
+    const dayCommentSnapshot = await get(dayCommentRef);
+  
     const newComment: Omit<Comment, 'id'> = {
         userId: user.id,
         text,
         date: new Date().toISOString(),
         eventId: eventId,
     };
-
-    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
     
-    const dayCommentSnapshot = await get(dayCommentRef);
-    const updates: { [key: string]: any } = {};
-
     if (!dayCommentSnapshot.exists()) {
+        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+        const newCommentWithId = { ...newComment, id: newCommentRef.key! };
         const newDayComment: DailyPlannerComment = {
             id: dayCommentId,
             plannerUserId,
@@ -1241,21 +1239,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
             lastUpdated: new Date().toISOString(),
             viewedBy: { [user.id]: true },
         };
-        updates[`dailyPlannerComments/${dayCommentId}`] = newDayComment;
+        await set(dayCommentRef, newDayComment);
     } else {
-        updates[`dailyPlannerComments/${dayCommentId}/comments/${newCommentRef.key}`] = newCommentWithId;
-        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+        await set(newCommentRef, { ...newComment, id: newCommentRef.key });
+        await update(dayCommentRef, { lastUpdated: new Date().toISOString() });
     }
-
+  
     const event = plannerEvents.find(e => e.id === eventId);
     if(event) {
         const participants = new Set([event.creatorId, event.userId]);
+        const updates: { [key: string]: any } = {};
+        let notificationSent = false;
+        
         participants.forEach(pId => {
             if (pId !== user.id) {
                 updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
-
                 const participant = users.find(u => u.id === pId);
-                if (participant?.email) {
+                if (participant?.email && !notificationSent) {
                     createAndSendNotification(
                         participant.email,
                         `New comment on planner for ${format(parseISO(day), 'PPP')}`,
@@ -1264,14 +1265,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
                         'View Planner'
                     );
+                    notificationSent = true;
                 }
             }
         });
+        if (Object.keys(updates).length > 0) {
+            await update(ref(rtdb), updates);
+        }
     }
-    
-    await update(ref(rtdb), updates);
-
-}, [user, users, plannerEvents]);
+  }, [user, users, plannerEvents]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -1319,21 +1321,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
-    if(!user) return;
     const newRef = push(ref(rtdb, 'users'));
-    const newUser = { 
-        ...userData,
-        projectId: userData.projectId || null,
-        supervisorId: userData.supervisorId || null,
-        id: newRef.key 
-    };
-    set(newRef, { 
+    const newProfile = { 
         ...userData, 
         projectId: userData.projectId || null,
         supervisorId: userData.supervisorId || null,
-    });
-    addActivityLog(newUser.id, 'User Added', newUser.name);
-  }, [user, addActivityLog]);
+    };
+    set(newRef, newProfile);
+    const newId = newRef.key;
+    if(newId) addActivityLog(newId, 'User Added', newProfile.name);
+  }, [addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
     update(ref(rtdb, `users/${userId}`), { planningScore: score });
@@ -1591,10 +1588,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addManpowerProfile = useCallback(async (profile: Omit<ManpowerProfile, 'id'>): Promise<void> => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'manpowerProfiles'));
-    const newProfile: Omit<ManpowerProfile, 'id'> = { ...profile };
-
+    const newProfile = { 
+        ...profile, 
+        projectId: profile.projectId || null,
+        supervisorId: profile.supervisorId || null,
+    };
     set(newRef, newProfile);
-    addActivityLog(user.id, 'Manpower Profile Added', profile.name);
+    const newId = newRef.key;
+    if(newId) addActivityLog(newId, 'Manpower Profile Added', newProfile.name);
   }, [user, addActivityLog]);
 
   const addMultipleManpowerProfiles = useCallback((profiles: any[]): number => {
@@ -3691,18 +3692,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadPlannerCommentDays = dailyPlannerComments.filter(dayComment => {
-      if (!dayComment || !dayComment.day) return false;
-      const dayEvents = plannerEvents.filter(e => e.userId === dayComment.plannerUserId && e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if (dayEvents.length === 0) return false;
-      const isParticipant = dayEvents.some(e => e.userId === user.id || e.creatorId === user.id);
-      if (!isParticipant) return false;
-      
+    const unreadCommentsByDay = new Set<string>();
+    dailyPlannerComments.forEach(dayComment => {
+      if (!dayComment || !dayComment.day) return;
+
+      const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if(eventsOnDay.length === 0) return;
+
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      const hasUnread = comments.some(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
-      return hasUnread;
+      const hasUnread = comments.some(c => {
+        if (!c) return false;
+        const event = eventsOnDay.find(e => e.id === c.eventId);
+        if (!event) return false;
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+      });
+
+      if (hasUnread) {
+        unreadCommentsByDay.add(dayComment.day);
+      }
     });
-    const plannerNotificationCount = unreadPlannerCommentDays.length;
+
+    const plannerNotificationCount = unreadCommentsByDay.size;
 
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
@@ -3941,4 +3952,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-

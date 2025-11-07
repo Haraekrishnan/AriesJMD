@@ -17,7 +17,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import NewBroadcastDialog from '../announcements/NewBroadcastDialog';
 import { isSameDay, parseISO } from 'date-fns';
-import type { DailyPlannerComment, PlannerEvent, ManagementRequest } from '@/lib/types';
+import type { DailyPlannerComment, PlannerEvent, ManagementRequest, Comment } from '@/lib/types';
 
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
@@ -44,23 +44,28 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadPlannerCommentDays = dailyPlannerComments.filter(dayComment => {
-        if (!dayComment || !dayComment.day) return false;
-        
-        const dayEvents = plannerEvents.filter(e => {
-            if (!e.date) return false;
-            return isSameDay(parseISO(e.date), parseISO(dayComment.day)) && e.userId === dayComment.plannerUserId;
-        });
+    const unreadCommentsByDay = new Set<string>();
+    dailyPlannerComments.forEach(dayComment => {
+      if (!dayComment || !dayComment.day) return;
 
-        if (dayEvents.length === 0) return false;
-        
-        const isParticipantInAnyEvent = dayEvents.some(e => e.userId === user.id || e.creatorId === user.id);
-        if (!isParticipantInAnyEvent) return false;
+      const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if(eventsOnDay.length === 0) return;
 
-        const comments: Comment[] = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-        return comments.some(c => c && !c.viewedBy?.[user.id] && c.userId !== user.id);
+      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
+      const hasUnread = comments.some(c => {
+        if (!c) return false;
+        const event = eventsOnDay.find(e => e.id === c.eventId);
+        if (!event) return false;
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+      });
+
+      if (hasUnread) {
+        unreadCommentsByDay.add(dayComment.day);
+      }
     });
-    const plannerNotificationCount = unreadPlannerCommentDays.length;
+
+    const plannerNotificationCount = unreadCommentsByDay.size;
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
     
@@ -112,10 +117,10 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       account: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount,
     };
   }, [
-    user, can, tasks, certificateRequests, plannerEvents, internalRequests, 
-    managementRequests, incidentReports, ppeRequests, payments, 
-    passwordResetRequests, feedback, unlockRequests, inventoryTransferRequests,
-    dailyPlannerComments
+    user, can, tasks, certificateRequests, plannerEvents,
+    internalRequests, managementRequests, incidentReports,
+    ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
+    inventoryTransferRequests, dailyPlannerComments
   ]);
     
     const navItems = [
