@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -29,34 +28,39 @@ interface PlannerCalendarProps {
 
 const MAX_EVENTS_VISIBLE = 2;
 
-export default function PlannerCalendar({ selectedUserId, selectedDate, setSelectedDate, currentMonth, setCurrentMonth }: PlannerCalendarProps) {
+export default function PlannerCalendar({ selectedUserId, selectedDate, setSelectedDate, currentMonth: externalCurrentMonth, setCurrentMonth: setExternalCurrentMonth }: PlannerCalendarProps) {
     const {
         user, users, getExpandedPlannerEvents, deletePlannerEvent,
         addPlannerEventComment,
         dailyPlannerComments,
-        markPlannerCommentsAsRead,
+        markSinglePlannerCommentAsRead,
         can
     } = useAppContext();
     const { toast } = useToast();
 
+    const [internalCurrentMonth, setInternalCurrentMonth] = useState(externalCurrentMonth);
     const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
     const [newComments, setNewComments] = useState<Record<string, string>>({});
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
+    useEffect(() => {
+        setInternalCurrentMonth(externalCurrentMonth);
+    }, [externalCurrentMonth]);
+
     const expandedEvents = useMemo(
-        () => getExpandedPlannerEvents(currentMonth, selectedUserId),
-        [getExpandedPlannerEvents, currentMonth, selectedUserId]
+        () => getExpandedPlannerEvents(internalCurrentMonth, selectedUserId),
+        [getExpandedPlannerEvents, internalCurrentMonth, selectedUserId]
     );
     
     const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
 
     const calendarGrid = useMemo(() => {
-        const monthStart = startOfMonth(currentMonth);
-        const monthEnd = endOfMonth(currentMonth);
+        const monthStart = startOfMonth(internalCurrentMonth);
+        const monthEnd = endOfMonth(internalCurrentMonth);
         const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
         const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
         return eachDayOfInterval({ start: startDate, end: endDate });
-    }, [currentMonth]);
+    }, [internalCurrentMonth]);
     
     const selectedDayEvents = useMemo(() => {
         if (!selectedDate) return [];
@@ -91,7 +95,16 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     const changeMonth = (amount: number) => {
-        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
+        const newMonth = new Date(internalCurrentMonth.getFullYear(), internalCurrentMonth.getMonth() + amount, 1);
+        setInternalCurrentMonth(newMonth);
+        setExternalCurrentMonth(newMonth);
+    };
+
+    const handleTodayClick = () => {
+        const today = new Date();
+        setInternalCurrentMonth(today);
+        setExternalCurrentMonth(today);
+        setSelectedDate(today);
     };
 
     const toggleExpandDay = (day: Date) => {
@@ -109,19 +122,24 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
     
     useEffect(() => {
       if(selectedDate && dayCommentsData) {
-        markPlannerCommentsAsRead(selectedUserId, selectedDate);
+          const dayStr = format(selectedDate, 'yyyy-MM-dd');
+          if (dayCommentsData.comments) {
+            Object.values(dayCommentsData.comments).forEach(c => {
+              if (c) markSinglePlannerCommentAsRead(selectedUserId, dayStr, c.id);
+            });
+          }
       }
-    }, [selectedDate, selectedUserId, dayCommentsData, markPlannerCommentsAsRead]);
+    }, [selectedDate, selectedUserId, dayCommentsData, markSinglePlannerCommentAsRead]);
 
     return (
         <>
             <div className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-8 flex-1">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-2xl font-bold">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+                        <CardTitle className="text-2xl font-bold">{format(internalCurrentMonth, 'MMMM yyyy')}</CardTitle>
                         <div className="flex gap-2">
                            <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-                           <Button variant="outline" onClick={() => setCurrentMonth(new Date())}>Today</Button>
+                           <Button variant="outline" onClick={handleTodayClick}>Today</Button>
                            <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
                         </div>
                     </CardHeader>
@@ -137,7 +155,7 @@ export default function PlannerCalendar({ selectedUserId, selectedDate, setSelec
                                 const visibleEvents = isExpanded ? dayEvents : dayEvents.slice(0, MAX_EVENTS_VISIBLE);
 
                                 return (
-                                    <div key={index} className={cn("relative min-h-[120px] p-1 border-b border-r flex flex-col", !isSameMonth(day, currentMonth) && "bg-muted/50 text-muted-foreground", isToday(day) && "bg-blue-50 dark:bg-blue-900/20")}>
+                                    <div key={index} className={cn("relative min-h-[120px] p-1 border-b border-r flex flex-col", !isSameMonth(day, internalCurrentMonth) && "bg-muted/50 text-muted-foreground", isToday(day) && "bg-blue-50 dark:bg-blue-900/20")}>
                                         <button onClick={() => setSelectedDate(day)} className={cn("absolute top-1 right-1 h-6 w-6 rounded-full text-xs flex items-center justify-center", isSameDay(day, selectedDate || new Date()) && "bg-primary text-primary-foreground")}>
                                             {format(day, 'd')}
                                         </button>
