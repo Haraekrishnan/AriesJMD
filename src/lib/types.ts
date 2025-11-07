@@ -343,7 +343,8 @@ export type Comment = {
   userId: string;
   text: string;
   date: string; // ISO String
-  eventId: string; // The specific event instance this comment is for
+  eventId: string; 
+  viewedBy?: { [key: string]: boolean };
 };
 
 export type IncidentReport = {

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -133,6 +131,7 @@ type AppContextType = {
   deletePlannerEvent: (eventId: string) => void;
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => Promise<void>;
   markPlannerCommentsAsRead: (plannerUserId: string, day: Date) => void;
+  markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
   awardManualAchievement: (achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => void;
   updateManualAchievement: (achievement: Achievement) => void;
   deleteManualAchievement: (achievementId: string) => void;
@@ -495,6 +494,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const dataToSave: any = { ...data };
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
       dataToSave.supervisorId = null;
+    }
+    if (dataToSave.projectId === undefined) {
+      dataToSave.projectId = null;
     }
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
@@ -1215,57 +1217,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
     if (!user) return;
-  
     const dayCommentId = `${day}_${plannerUserId}`;
     const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
     
-    const dayCommentSnapshot = await get(dayCommentRef);
-  
+    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
     const newComment: Omit<Comment, 'id'> = {
-        userId: user.id,
-        text,
-        date: new Date().toISOString(),
-        eventId: eventId,
+        userId: user.id, text, date: new Date().toISOString(), eventId,
     };
+    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
     
-    if (!dayCommentSnapshot.exists()) {
-        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-        const newCommentWithId = { ...newComment, id: newCommentRef.key! };
+    const dayCommentSnapshot = await get(dayCommentRef);
+    const dayCommentData = dayCommentSnapshot.val();
+
+    if (!dayCommentData) {
         const newDayComment: DailyPlannerComment = {
-            id: dayCommentId,
-            plannerUserId,
-            day,
+            id: dayCommentId, plannerUserId, day,
             comments: { [newCommentRef.key!]: newCommentWithId },
-            lastUpdated: new Date().toISOString(),
-            viewedBy: { [user.id]: true },
+            lastUpdated: new Date().toISOString(), viewedBy: { [user.id]: true },
         };
         await set(dayCommentRef, newDayComment);
     } else {
-        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-        await set(newCommentRef, { ...newComment, id: newCommentRef.key });
+        await set(newCommentRef, newCommentWithId);
         await update(dayCommentRef, { lastUpdated: new Date().toISOString() });
     }
-  
+
     const event = plannerEvents.find(e => e.id === eventId);
     if(event) {
         const participants = new Set([event.creatorId, event.userId]);
         const updates: { [key: string]: any } = {};
-        let notificationSent = false;
-        
         participants.forEach(pId => {
             if (pId !== user.id) {
                 updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
                 const participant = users.find(u => u.id === pId);
-                if (participant?.email && !notificationSent) {
+                if (participant?.email) {
                     createAndSendNotification(
-                        participant.email,
-                        `New comment on planner for ${format(parseISO(day), 'PPP')}`,
+                        participant.email, `New comment on planner for ${format(parseISO(day), 'PPP')}`,
                         `New comment from ${user.name} on "${event.title}"`,
-                        { 'Comment': text },
-                        `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
-                        'View Planner'
+                        { 'Comment': text }, `${process.env.NEXT_PUBLIC_APP_URL}/schedule`, 'View Planner'
                     );
-                    notificationSent = true;
                 }
             }
         });
@@ -1273,7 +1262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             await update(ref(rtdb), updates);
         }
     }
-  }, [user, users, plannerEvents]);
+}, [user, users, plannerEvents, createAndSendNotification]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -1296,6 +1285,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 }, [user, dailyPlannerComments]);
+
+  const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
+    if (!user) return;
+    const dayCommentId = `${day}_${plannerUserId}`;
+    const path = `dailyPlannerComments/${dayCommentId}/comments/${commentId}/viewedBy/${user.id}`;
+    update(ref(rtdb), { [path]: true });
+  }, [user]);
 
   const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (!user) return;
@@ -1327,9 +1323,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         projectId: userData.projectId || null,
         supervisorId: userData.supervisorId || null,
     };
-    set(newRef, newProfile);
     const newId = newRef.key;
-    if(newId) addActivityLog(newId, 'User Added', newProfile.name);
+    if(newId) {
+      set(ref(rtdb, `users/${newId}`), newProfile);
+      addActivityLog(newId, 'User Added', newProfile.name);
+    }
   }, [addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
@@ -1593,9 +1591,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         projectId: profile.projectId || null,
         supervisorId: profile.supervisorId || null,
     };
-    set(newRef, newProfile);
     const newId = newRef.key;
-    if(newId) addActivityLog(newId, 'Manpower Profile Added', newProfile.name);
+    if(newId) {
+      set(ref(rtdb, `manpowerProfiles/${newId}`), newProfile);
+      addActivityLog(newId, 'Manpower Profile Added', newProfile.name);
+    }
   }, [user, addActivityLog]);
 
   const addMultipleManpowerProfiles = useCallback((profiles: any[]): number => {
@@ -3692,28 +3692,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadCommentsByDay = new Set<string>();
-    dailyPlannerComments.forEach(dayComment => {
-      if (!dayComment || !dayComment.day) return;
-
+    const unreadComments = dailyPlannerComments.filter(dayComment => {
+      if (!dayComment.day) return false;
       const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if(eventsOnDay.length === 0) return;
+      if (eventsOnDay.length === 0) return false;
 
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      const hasUnread = comments.some(c => {
+      return comments.some(c => {
         if (!c) return false;
         const event = eventsOnDay.find(e => e.id === c.eventId);
         if (!event) return false;
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
       });
-
-      if (hasUnread) {
-        unreadCommentsByDay.add(dayComment.day);
-      }
     });
 
-    const plannerNotificationCount = unreadCommentsByDay.size;
+    const plannerNotificationCount = unreadComments.length;
 
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
@@ -3776,7 +3770,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
     can,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, markSinglePlannerCommentAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
   };
 
   // Set user based on stored ID

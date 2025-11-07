@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -44,36 +42,31 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadCommentsByDay = new Set<string>();
-    dailyPlannerComments.forEach(dayComment => {
-      if (!dayComment || !dayComment.day) return;
+    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
+        if (!dayComment.day || !dayComment.comments) return false;
+        const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+        if (eventsOnDay.length === 0) return false;
 
-      const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if(eventsOnDay.length === 0) return;
-
-      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      const hasUnread = comments.some(c => {
-        if (!c) return false;
-        const event = eventsOnDay.find(e => e.id === c.eventId);
-        if (!event) return false;
-        const isParticipant = event.userId === user.id || event.creatorId === user.id;
-        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
-      });
-
-      if (hasUnread) {
-        unreadCommentsByDay.add(dayComment.day);
-      }
+        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
+        return comments.some(c => {
+            if (!c) return false;
+            const event = eventsOnDay.find(e => e.id === c.eventId);
+            if (!event) return false;
+            const isParticipant = event.userId === user.id || event.creatorId === user.id;
+            return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+        });
     });
-
-    const plannerNotificationCount = unreadCommentsByDay.size;
+    const plannerNotificationCount = unreadCommentsForUser.length;
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
     
     const updatedInternalRequestCount = internalRequests.filter(r => {
         const isMyRequest = r.requesterId === user.id;
         if (!isMyRequest) return false;
+    
         const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
         const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+        
         return isRejectedButActive || isStandardUpdate;
     }).length;
 

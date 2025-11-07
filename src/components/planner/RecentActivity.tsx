@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -6,74 +5,69 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, formatDistanceToNow, isSameDay, parseISO } from 'date-fns';
-import { MessageSquare, Calendar } from 'lucide-react';
-import type { Comment, PlannerEvent } from '@/lib/types';
-import { Badge } from '../ui/badge';
+import { MessageSquare, Calendar, CheckCircle } from 'lucide-react';
+import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 
 interface RecentPlannerActivityProps {
     onDateSelect: (date: Date) => void;
-    selectedUserId: string;
 }
 
-export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: RecentPlannerActivityProps) {
-  const { user, dailyPlannerComments, plannerEvents, users } = useAppContext();
+interface UnreadCommentInfo {
+    day: string;
+    event: PlannerEvent;
+    comment: Comment;
+    delegatedTo?: User;
+    delegatedBy?: User;
+}
 
-  const unreadCommentsByDay = useMemo(() => {
+export default function RecentPlannerActivity({ onDateSelect }: RecentPlannerActivityProps) {
+  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead } = useAppContext();
+
+  const unreadComments = useMemo(() => {
     if (!user) return [];
 
-    const grouped: { [day: string]: { comments: Comment[], events: PlannerEvent[] } } = {};
+    const allUnread: UnreadCommentInfo[] = [];
 
-    // Iterate over all daily notepads
     dailyPlannerComments.forEach(dayComment => {
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
-      const dayEvents = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-
-      if (dayEvents.length === 0) return;
+      const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if (eventsOnDay.length === 0) return;
 
       const commentsArray = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
+      
+      commentsArray.forEach(comment => {
+        if (!comment) return;
 
-      const unreadForCurrentUser = commentsArray.filter(c => {
-        if (!c) return false;
-        
-        const event = dayEvents.find(e => e.id === c.eventId);
-        if (!event) return false;
+        const eventForComment = eventsOnDay.find(e => e.id === comment.eventId);
+        if (!eventForComment) return;
 
-        // The current user must be a participant in the event
-        const isParticipant = event.creatorId === user.id || event.userId === user.id;
-        if (!isParticipant) return false;
-        
-        // The comment must be from another user and not viewed by the current user
-        const isUnreadFromOther = c.userId !== user.id && !c.viewedBy?.[user.id];
-        
-        return isUnreadFromOther;
-      });
+        const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
+        const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
 
-      if (unreadForCurrentUser.length > 0) {
-        if (!grouped[dayComment.day]) {
-          grouped[dayComment.day] = { comments: [], events: [] };
+        if (isParticipant && isUnreadFromOther) {
+            allUnread.push({
+                day: dayComment.day,
+                event: eventForComment,
+                comment: comment,
+                delegatedBy: users.find(u => u.id === eventForComment.creatorId),
+                delegatedTo: users.find(u => u.id === eventForComment.userId),
+            });
         }
-        
-        unreadForCurrentUser.forEach(comment => {
-            const eventForComment = dayEvents.find(e => e.id === comment.eventId);
-            if(eventForComment && !grouped[dayComment.day].events.some(e => e.id === eventForComment.id)) {
-                grouped[dayComment.day].events.push(eventForComment);
-            }
-        });
-
-        grouped[dayComment.day].comments.push(...unreadForCurrentUser);
-      }
+      });
     });
 
-    return Object.entries(grouped).map(([day, data]) => ({ day, ...data }))
-      .sort((a,b) => parseISO(b.day).getTime() - parseISO(a.day).getTime());
+    return allUnread.sort((a,b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime());
+  }, [user, dailyPlannerComments, plannerEvents, users]);
 
-  }, [user, dailyPlannerComments, plannerEvents]);
-
-  if (unreadCommentsByDay.length === 0) {
+  if (unreadComments.length === 0) {
     return null;
   }
+
+  const handleMarkAsRead = (comment: Comment, plannerUserId: string, day: string) => {
+    markSinglePlannerCommentAsRead(plannerUserId, day, comment.id);
+  };
 
   return (
     <Card>
@@ -87,54 +81,45 @@ export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: 
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" className="w-full space-y-2">
-          {unreadCommentsByDay.map(({ day, comments, events }) => (
-            <AccordionItem key={day} value={day} className="border rounded-md">
-               <div className="flex items-center justify-between p-2">
-                <Button variant="link" className="p-0 h-auto font-semibold flex items-center gap-2" onClick={() => onDateSelect(parseISO(day))}>
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {format(parseISO(day), 'dd MMM, yyyy')}
-                    <Badge variant="destructive">{comments.length}</Badge>
-                </Button>
-                <AccordionTrigger className="p-2 -mr-2" />
-              </div>
-              <AccordionContent className="pt-0 p-4 space-y-4">
-                {events.map(event => {
-                    const eventComments = comments.filter(c => c.eventId === event.id);
-                    if (eventComments.length === 0) return null;
-
-                    return (
-                        <div key={event.id} className="p-2 bg-muted/50 rounded-md">
-                            <h4 className="font-semibold text-sm mb-2">{event.title}</h4>
-                            <div className="space-y-3">
-                            {eventComments.map(comment => {
-                                const commentUser = users.find(u => u.id === comment.userId);
-                                return (
-                                <div key={comment.id} className="flex items-start gap-2">
-                                    <Avatar className="h-6 w-6">
-                                    <AvatarImage src={commentUser?.avatar} />
-                                    <AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="text-xs bg-background p-2 rounded-md w-full">
-                                    <div className="flex justify-between items-baseline">
-                                        <p className="font-semibold">{commentUser?.name}</p>
-                                        <p className="text-muted-foreground">
-                                        {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
-                                        </p>
-                                    </div>
-                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                    </div>
-                                </div>
-                                )
-                            })}
+         <div className="space-y-4">
+            {unreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+                const commentUser = users.find(u => u.id === comment.userId);
+                return (
+                    <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
+                        <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <p className="font-semibold text-sm">{event.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Event on {format(parseISO(day), 'dd MMM, yyyy')} &middot;
+                                    {event.creatorId === event.userId ? ` Personal planning for ${delegatedTo?.name}` : ` Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
+                                </p>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => onDateSelect(parseISO(day))}><Calendar className="mr-2 h-4 w-4"/> Go to Event</Button>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <Avatar className="h-8 w-8">
+                            <AvatarImage src={commentUser?.avatar} />
+                            <AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="text-sm bg-background p-3 rounded-md w-full">
+                            <div className="flex justify-between items-baseline">
+                                <p className="font-semibold">{commentUser?.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
+                                </p>
+                            </div>
+                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
                             </div>
                         </div>
-                    )
-                })}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                        <div className="flex justify-end mt-2">
+                            <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment, event.userId, day)}>
+                               <CheckCircle className="mr-2 h-4 w-4"/> Mark as Read
+                            </Button>
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
       </CardContent>
     </Card>
   );
