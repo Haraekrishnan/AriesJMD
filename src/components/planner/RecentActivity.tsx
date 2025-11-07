@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -30,16 +29,19 @@ export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: 
 
       const dayEvents = plannerEvents.filter(e => {
         if (!e.date) return false;
-        return isSameDay(parseISO(e.date), parseISO(dayComment.day)) && e.userId === dayComment.plannerUserId;
+        const eventDate = parseISO(e.date);
+        return isSameDay(eventDate, parseISO(dayComment.day)) && (e.creatorId === user.id || e.userId === user.id);
       });
 
       if (dayEvents.length === 0) return;
 
-      const unread = (Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments)).filter(c => {
+      const commentsArray = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
+      const unread = commentsArray.filter(c => {
           if (!c || c.userId === user.id) return false;
-          // Check if user is a participant of the event the comment is on
+          
           const event = dayEvents.find(e => e.id === c.eventId);
           if (!event) return false;
+
           const isParticipant = event.creatorId === user.id || event.userId === user.id;
           return isParticipant && !c.viewedBy?.[user.id];
       });
@@ -84,17 +86,16 @@ export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: 
         <Accordion type="multiple" className="w-full space-y-2">
           {unreadCommentsByDay.map(({ day, comments, events }) => (
             <AccordionItem key={day} value={day} className="border rounded-md px-4">
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex flex-col text-left">
-                  <span className="font-semibold flex items-center gap-2">
-                    <Button variant="link" className="p-0 h-auto" onClick={() => onDateSelect(parseISO(day))}>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                    <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => onDateSelect(parseISO(day))}>
                         <Calendar className="mr-2 h-4 w-4" />
                         {format(parseISO(day), 'dd MMM, yyyy')}
                     </Button>
                     <Badge variant="destructive">{comments.length}</Badge>
-                  </span>
                 </div>
-              </AccordionTrigger>
+                <AccordionTrigger className="p-2 -mr-2" />
+              </div>
               <AccordionContent className="pt-2 pb-4 space-y-4">
                 {events.map(event => {
                     const eventComments = comments.filter(c => c.eventId === event.id);
