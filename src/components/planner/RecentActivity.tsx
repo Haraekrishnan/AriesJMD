@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -23,53 +24,52 @@ export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: 
 
     const grouped: { [day: string]: { comments: Comment[], events: PlannerEvent[] } } = {};
 
+    // Iterate over all daily notepads
     dailyPlannerComments.forEach(dayComment => {
-      if (!dayComment || !dayComment.day) return;
-      if (dayComment.plannerUserId !== selectedUserId) return;
+      if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
-      const dayEvents = plannerEvents.filter(e => {
-        if (!e.date) return false;
-        const eventDate = parseISO(e.date);
-        return isSameDay(eventDate, parseISO(dayComment.day)) && (e.creatorId === user.id || e.userId === user.id);
-      });
+      const dayEvents = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
 
       if (dayEvents.length === 0) return;
 
-      const commentsArray = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      const unread = commentsArray.filter(c => {
-          if (!c) return false;
-          const event = dayEvents.find(e => e.id === c.eventId);
-          if (!event) return false;
+      const commentsArray = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
 
-          const isParticipant = event.creatorId === user.id || event.userId === user.id;
+      const unreadForCurrentUser = commentsArray.filter(c => {
+        if (!c) return false;
+        
+        const event = dayEvents.find(e => e.id === c.eventId);
+        if (!event) return false;
 
-          // Show unread comments from others, or own comments if viewing someone else's planner
-          const isMyCommentOnOthersPlanner = c.userId === user.id && selectedUserId !== user.id;
-          const isUnreadCommentFromOthers = c.userId !== user.id && !c.viewedBy?.[user.id];
-          
-          return isParticipant && (isUnreadCommentFromOthers || isMyCommentOnOthersPlanner);
+        // The current user must be a participant in the event
+        const isParticipant = event.creatorId === user.id || event.userId === user.id;
+        if (!isParticipant) return false;
+        
+        // The comment must be from another user and not viewed by the current user
+        const isUnreadFromOther = c.userId !== user.id && !c.viewedBy?.[user.id];
+        
+        return isUnreadFromOther;
       });
 
-      if (unread.length > 0) {
+      if (unreadForCurrentUser.length > 0) {
         if (!grouped[dayComment.day]) {
           grouped[dayComment.day] = { comments: [], events: [] };
         }
         
-        unread.forEach(comment => {
+        unreadForCurrentUser.forEach(comment => {
             const eventForComment = dayEvents.find(e => e.id === comment.eventId);
             if(eventForComment && !grouped[dayComment.day].events.some(e => e.id === eventForComment.id)) {
                 grouped[dayComment.day].events.push(eventForComment);
             }
         });
 
-        grouped[dayComment.day].comments.push(...unread);
+        grouped[dayComment.day].comments.push(...unreadForCurrentUser);
       }
     });
 
     return Object.entries(grouped).map(([day, data]) => ({ day, ...data }))
       .sort((a,b) => parseISO(b.day).getTime() - parseISO(a.day).getTime());
 
-  }, [user, dailyPlannerComments, plannerEvents, selectedUserId]);
+  }, [user, dailyPlannerComments, plannerEvents]);
 
   if (unreadCommentsByDay.length === 0) {
     return null;
@@ -89,18 +89,16 @@ export default function RecentPlannerActivity({ onDateSelect, selectedUserId }: 
       <CardContent>
         <Accordion type="multiple" className="w-full space-y-2">
           {unreadCommentsByDay.map(({ day, comments, events }) => (
-            <AccordionItem key={day} value={day} className="border rounded-md px-4">
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-2">
-                    <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => onDateSelect(parseISO(day))}>
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {format(parseISO(day), 'dd MMM, yyyy')}
-                    </Button>
+            <AccordionItem key={day} value={day} className="border rounded-md">
+               <div className="flex items-center justify-between p-2">
+                <Button variant="link" className="p-0 h-auto font-semibold flex items-center gap-2" onClick={() => onDateSelect(parseISO(day))}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {format(parseISO(day), 'dd MMM, yyyy')}
                     <Badge variant="destructive">{comments.length}</Badge>
-                </div>
+                </Button>
                 <AccordionTrigger className="p-2 -mr-2" />
               </div>
-              <AccordionContent className="pt-2 pb-4 space-y-4">
+              <AccordionContent className="pt-0 p-4 space-y-4">
                 {events.map(event => {
                     const eventComments = comments.filter(c => c.eventId === event.id);
                     if (eventComments.length === 0) return null;
