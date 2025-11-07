@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1213,35 +1214,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const dayCommentId = `${day}_${plannerUserId}`;
     const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
-    const dayCommentSnapshot = await get(dayCommentRef);
-    const dayCommentData = dayCommentSnapshot.val();
-
+    
     const newComment: Omit<Comment, 'id'> = {
         userId: user.id,
         text,
         date: new Date().toISOString(),
         eventId: eventId,
     };
-
     const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
     const newCommentWithId = { ...newComment, id: newCommentRef.key! };
     
-    const updates: { [key: string]: any } = {};
-
-    if (!dayCommentData) {
-        const newDayComment: DailyPlannerComment = {
-            id: dayCommentId,
-            plannerUserId,
-            day,
-            comments: { [newCommentRef.key!]: newCommentWithId },
-            lastUpdated: new Date().toISOString(),
-            viewedBy: { [user.id]: true },
-        };
-        await set(dayCommentRef, newDayComment);
+    const dayCommentSnapshot = await get(dayCommentRef);
+    if (!dayCommentSnapshot.exists()) {
+      const newDayComment: DailyPlannerComment = {
+        id: dayCommentId,
+        plannerUserId,
+        day,
+        comments: { [newCommentRef.key!]: newCommentWithId },
+        lastUpdated: new Date().toISOString(),
+        viewedBy: { [user.id]: true },
+      };
+      await set(dayCommentRef, newDayComment);
     } else {
-        await set(newCommentRef, newCommentWithId);
-        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+      await set(newCommentRef, newCommentWithId);
     }
+
+    const updates: { [key: string]: any } = {};
+    updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
     
     const event = plannerEvents.find(e => e.id === eventId);
     if(event) {
@@ -1267,10 +1266,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
     }
     
-    if (Object.keys(updates).length > 0) {
-      update(ref(rtdb), updates);
-    }
-}, [user, users, plannerEvents]);
+    update(ref(rtdb), updates);
+
+  }, [user, users, plannerEvents]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
     if (!user) return;
@@ -1302,10 +1300,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `achievements/${achievementId}`));
   }, []);
 
-  const addUser = useCallback((user: Omit<User, 'id' | 'avatar'>) => {
+  const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
     const newRef = push(ref(rtdb, 'users'));
-    set(newRef, user);
-    addActivityLog(user.id, 'User Added', user.name);
+    const newUser = { ...userData, id: newRef.key };
+    set(newRef, userData);
+    addActivityLog(newUser.id, 'User Added', newUser.name);
   }, [addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
@@ -3734,7 +3733,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     can,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests,
     login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
-  } as AppContextType;
+  };
 
   // Set user based on stored ID
   useEffect(() => {
