@@ -324,7 +324,7 @@ const createDataListener = <T extends {}>(
     return () => listeners.forEach(listener => listener());
 };
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
+export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
@@ -1230,6 +1230,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newCommentWithId = { ...newComment, id: newCommentRef.key! };
     
     const dayCommentSnapshot = await get(dayCommentRef);
+    const updates: { [key: string]: any } = {};
+
     if (!dayCommentSnapshot.exists()) {
         const newDayComment: DailyPlannerComment = {
             id: dayCommentId,
@@ -1239,16 +1241,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             lastUpdated: new Date().toISOString(),
             viewedBy: { [user.id]: true },
         };
-        await set(dayCommentRef, newDayComment);
+        updates[`dailyPlannerComments/${dayCommentId}`] = newDayComment;
     } else {
-        await set(newCommentRef, newCommentWithId);
-        await update(dayCommentRef, { lastUpdated: new Date().toISOString() });
+        updates[`dailyPlannerComments/${dayCommentId}/comments/${newCommentRef.key}`] = newCommentWithId;
+        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
     }
 
     const event = plannerEvents.find(e => e.id === eventId);
     if(event) {
         const participants = new Set([event.creatorId, event.userId]);
-        const updates: { [key: string]: any } = {};
         participants.forEach(pId => {
             if (pId !== user.id) {
                 updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
@@ -1259,19 +1260,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         participant.email,
                         `New comment on planner for ${format(parseISO(day), 'PPP')}`,
                         `New comment from ${user.name} on "${event.title}"`,
-                        {
-                            'Comment': text,
-                        },
+                        { 'Comment': text },
                         `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
                         'View Planner'
                     );
                 }
             }
         });
-        if(Object.keys(updates).length > 0) {
-            update(ref(rtdb), updates);
-        }
     }
+    
+    await update(ref(rtdb), updates);
 
 }, [user, users, plannerEvents]);
   
@@ -1279,8 +1277,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const dayStr = format(day, 'yyyy-MM-dd');
     const dayCommentId = `${dayStr}_${plannerUserId}`;
-    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/viewedBy`), { [user.id]: true });
-  }, [user]);
+    const dayCommentData = dailyPlannerComments.find(c => c.id === dayCommentId);
+
+    if (dayCommentData && dayCommentData.comments) {
+        const updates: { [key: string]: any } = {};
+        const comments = Array.isArray(dayCommentData.comments) ? dayCommentData.comments : Object.values(dayCommentData.comments);
+        
+        comments.forEach(comment => {
+            if (comment && comment.id && !comment.viewedBy?.[user.id] && comment.userId !== user.id) {
+                updates[`dailyPlannerComments/${dayCommentId}/comments/${comment.id}/viewedBy/${user.id}`] = true;
+            }
+        });
+
+        if (Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+        }
+    }
+}, [user, dailyPlannerComments]);
 
   const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (!user) return;
@@ -1309,7 +1322,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if(!user) return;
     const newRef = push(ref(rtdb, 'users'));
     const newUser = { 
-        ...userData, 
+        ...userData,
         projectId: userData.projectId || null,
         supervisorId: userData.supervisorId || null,
         id: newRef.key 
@@ -1319,7 +1332,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         projectId: userData.projectId || null,
         supervisorId: userData.supervisorId || null,
     });
-    addActivityLog(user.id, 'User Added', newUser.name);
+    addActivityLog(newUser.id, 'User Added', newUser.name);
   }, [user, addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
@@ -3680,9 +3693,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     const unreadPlannerCommentDays = dailyPlannerComments.filter(dayComment => {
       if (!dayComment || !dayComment.day) return false;
-      const eventsForDay = plannerEvents.filter(e => e.userId === dayComment.plannerUserId && e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if (eventsForDay.length === 0) return false;
-      const isParticipant = eventsForDay.some(e => e.userId === user.id || e.creatorId === user.id);
+      const dayEvents = plannerEvents.filter(e => e.userId === dayComment.plannerUserId && e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      if (dayEvents.length === 0) return false;
+      const isParticipant = dayEvents.some(e => e.userId === user.id || e.creatorId === user.id);
       if (!isParticipant) return false;
       
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
