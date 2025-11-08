@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -29,7 +30,7 @@ import { Checkbox } from '../ui/checkbox';
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  assigneeIds: z.array(z.string()).min(1, 'At least one assignee is required'),
+  assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
   dueDate: z.date({ required_error: 'Due date is required' }),
   priority: z.enum(['Low', 'Medium', 'High']),
   requiresAttachmentForCompletion: z.boolean().optional(),
@@ -118,7 +119,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       return;
     }
 
-    requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, attachment);
+    requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, attachment || undefined);
     
     setNewComment('');
     setIsOpen(false);
@@ -432,7 +433,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     </div>
                 )}
                 
-                { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
+                 { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
               </form>
             </ScrollArea>
 
@@ -462,7 +463,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span></span>
                         <div className="flex gap-1">
                             {isTaskAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}>View</Button>}
-                            <Button asChild variant="outline" size="sm"><Link href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>Download</Link></Button>
+                            <Button asChild variant="outline" size="sm"><a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>Download</a></Button>
                         </div>
                     </div>
                   </div>
@@ -474,7 +475,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.statusRequest.attachment.name}</span></span>
                         <div className="flex gap-1">
                             {isCompletionAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.statusRequest!.attachment!.url)}>View</Button>}
-                            <Button asChild variant="outline" size="sm"><Link href={taskToDisplay.statusRequest.attachment.url} download={taskToDisplay.statusRequest.attachment.name}>Download</Link></Button>
+                            <Button asChild variant="outline" size="sm"><a href={taskToDisplay.statusRequest.attachment.url} download={taskToDisplay.statusRequest.attachment.name}>Download</a></Button>
                         </div>
                     </div>
                   </div>
