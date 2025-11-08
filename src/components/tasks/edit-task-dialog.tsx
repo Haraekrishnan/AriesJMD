@@ -298,6 +298,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   <Textarea {...form.register('description')} placeholder="Task description" rows={3} disabled={!canEditCoreFields}/>
                 </div>
 
+                {taskToDisplay.attachment && (
+                  <div>
+                    <Label>Task Attachment</Label>
+                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
+                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span></span>
+                        <div className="flex gap-1">
+                            {isTaskAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}>View</Button>}
+                            <Button asChild variant="outline" size="sm"><a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>Download</a></Button>
+                        </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <Label>Assignee(s)</Label>
                     <Controller
@@ -338,7 +351,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                             }
                                             }}
                                         >
-                                            <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                            <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
                                             {option.label}
                                         </CommandItem>
                                         );
@@ -456,18 +469,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
                     </div>
                 </ScrollArea>
-                {taskToDisplay.attachment && (
-                  <div>
-                    <Label>Task Attachment</Label>
-                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span></span>
-                        <div className="flex gap-1">
-                            {isTaskAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}>View</Button>}
-                            <Button asChild variant="outline" size="sm"><a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>Download</a></Button>
-                        </div>
-                    </div>
-                  </div>
-                )}
                  {taskToDisplay.statusRequest?.attachment && (
                   <div>
                     <Label>Completion Attachment</Label>
