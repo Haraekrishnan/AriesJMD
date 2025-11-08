@@ -56,7 +56,13 @@ export default function PendingTransfers() {
   }, [inventoryTransferRequests, user, can.approve_store_requests]);
 
   if (forApproval.length === 0 && forAcknowledgement.length === 0 && myActiveRequests.length === 0 && allCompletedTransferRequests.length === 0) {
-    return null;
+    return (
+        <Card>
+            <CardHeader>
+                <CardDescription>There are no pending or active inventory transfers at the moment.</CardDescription>
+            </CardHeader>
+        </Card>
+    );
   }
   
   const handleReject = () => {
@@ -81,12 +87,7 @@ export default function PendingTransfers() {
   };
 
   return (
-    <Card className="border-blue-500">
-      <CardHeader>
-        <CardTitle>Inventory Transfers</CardTitle>
-        <CardDescription>Track and manage item transfers between projects.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <CardContent className="space-y-4 p-0">
         {forApproval.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">Awaiting Store Approval</h4>
@@ -374,8 +375,6 @@ export default function PendingTransfers() {
             </AccordionItem>
           </Accordion>
         )}
-
-      </CardContent>
-    </Card>
+    </CardContent>
   );
 }

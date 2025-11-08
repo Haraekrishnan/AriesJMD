@@ -205,7 +205,14 @@ export default function StoreInventoryPage() {
                 </div>
             </div>
             
-            <PendingTransfers />
+            <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="inventory-transfers">
+                    <AccordionTrigger className="text-lg font-semibold">Inventory Transfers</AccordionTrigger>
+                    <AccordionContent>
+                        <PendingTransfers />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
 
             {canManageInventory && inventoryNotifications.length > 0 && (
                  <Card>
