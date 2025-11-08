@@ -1,57 +1,20 @@
-
 'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthContext } from '@/contexts/auth-provider';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ship } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
+import { Ship } from 'lucide-react';
 
 export default function LoginPage() {
-  const { user, loading } = useAuthContext();
-  const router = useRouter();
-
-  const appName = "Aries Marine"; // Hardcoded to remove dependency
-
-  useEffect(() => {
-    if (!loading && user) {
-      if (user.status === 'locked' || user.status === 'deactivated') {
-        router.replace('/status');
-      } else {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, router]);
-
-  if (loading || (!loading && user)) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="w-full max-w-md shadow-2xl border-none">
-        <CardHeader className="text-center">
-          <div className="flex justify-center items-center gap-3 mb-4">
-            <Ship className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold text-primary">{appName}</h1>
-          </div>
-          <CardTitle className="text-2xl">Welcome</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
-        </CardHeader>
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col items-center justify-center mb-8">
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
+                <Ship className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Aries Marine</h1>
+            <p className="text-muted-foreground">Please sign in to your account</p>
+        </div>
         <LoginForm />
-      </Card>
+      </div>
     </div>
   );
 }
