@@ -1,17 +1,16 @@
 
-
 'use client';
 
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuthContext } from '@/contexts/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
 import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAppContext();
+  const { user, loading } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
 

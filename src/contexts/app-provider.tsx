@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -9,7 +8,7 @@ import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay,
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
-import useLocalStorage from '@/hooks/use-local-storage';
+import { useAuthContext } from './auth-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { uploadFile } from '@/lib/storage';
 import { createAndSendNotification } from '@/app/actions/sendNotificationEmail';
@@ -18,9 +17,12 @@ import { JOB_CODES as INITIAL_JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes
 type PermissionsObject = Record<Permission, boolean>;
 
 type AppContextType = {
-  // State
+  // State from AuthContext
   user: User | null;
   loading: boolean;
+  logout: () => void;
+
+  // App-specific state
   users: User[];
   roles: RoleDefinition[];
   tasks: Task[];
@@ -71,9 +73,8 @@ type AppContextType = {
   workingManpowerCount: number;
   onLeaveManpowerCount: number;
 
-  // Auth
+  // Auth functions (some might be proxies to auth context, or have added logic)
   login: (email: string, pass: string) => Promise<{ success: boolean; status?: User['status']; user?: User }>;
-  logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   generateResetCode: (requestId: string) => void;
@@ -120,7 +121,7 @@ type AppContextType = {
   submitTaskForApproval: (taskId: string) => void;
   approveTask: (taskId: string, comment?: string) => void;
   returnTask: (taskId: string, comment: string) => void;
-  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment: string, attachment?: File) => Promise<void>;
+  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => Promise<void>;
   approveTaskStatusChange: (taskId: string, comment: string) => void;
   returnTaskStatusChange: (taskId: string, comment: string) => void;
   addComment: (taskId: string, commentText: string) => void;
@@ -326,10 +327,8 @@ const createDataListener = <T extends {}>(
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
-
+  const { user, loading, login, logout } = useAuthContext();
+  
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
@@ -460,37 +459,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     set(logRef, newLog);
   }, []);
-
-  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
-    setLoading(true);
-    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(usersRef);
-
-    if (snapshot.exists()) {
-        const usersData = snapshot.val();
-        const userId = Object.keys(usersData)[0];
-        const foundUser = { id: userId, ...usersData[userId] };
-
-        if (foundUser.password === pass) {
-            setStoredUserId(foundUser.id);
-            addActivityLog(foundUser.id, 'User Logged In');
-            setLoading(false);
-            return { success: true, status: foundUser.status || 'active', user: foundUser };
-        }
-    }
-    setLoading(false);
-    return { success: false };
-  }, [addActivityLog, setStoredUserId]);
-
-  const logout = useCallback(() => {
-    if (user) {
-      addActivityLog(user.id, 'User Logged Out');
-    }
-    setStoredUserId(null);
-    setUser(null);
-    router.push('/login');
-  }, [user, addActivityLog, setStoredUserId, router]);
   
+  const extendedLogin = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
+    const result = await login(email, pass);
+    if(result.success && result.user) {
+        addActivityLog(result.user.id, 'User Logged In');
+    }
+    return result;
+  }, [login, addActivityLog]);
+
+  const extendedLogout = useCallback(() => {
+    if(user) {
+        addActivityLog(user.id, 'User Logged Out');
+    }
+    logout();
+  }, [user, logout, addActivityLog]);
+
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
     const dataToSave: any = { ...data };
@@ -503,7 +487,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-      if (user.id === updatedUser.id) setUser(updatedUser);
     }
   }, [user, addActivityLog]);
 
@@ -795,7 +778,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       viewedBy: { [user.id]: true }
     };
     
-    set(newRef, newTask);
+    await set(newRef, newTask);
     
     addActivityLog(user.id, 'Task Created', taskData.title);
   
@@ -855,7 +838,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, tasksById]);
   
-  const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachmentFile?: File) => {
+  const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
     if (!user) return;
     const task = tasksById[taskId];
     if (!task) return;
@@ -871,18 +854,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
     }
   
-    let attachmentData: Task['attachment'] = null;
-    if (attachmentFile) {
-        try {
-            const url = await uploadFile(attachmentFile, `tasks/${taskId}/completion/${attachmentFile.name}`);
-            attachmentData = { name: attachmentFile.name, url: url };
-        } catch(e) {
-            console.error("Attachment upload failed", e);
-            toast({ variant: "destructive", title: "Attachment upload failed" });
-            return;
-        }
-    }
-
     const approverId = task.creatorId; 
     if (!approverId) {
         toast({ variant: 'destructive', title: 'No approver set for this task.' });
@@ -893,7 +864,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requestedBy: user.id,
         newStatus,
         comment,
-        attachment: attachmentData,
+        attachment: attachment || null,
         date: new Date().toISOString(),
         status: 'Pending',
     };
@@ -962,7 +933,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     updates[`tasks/${taskId}/statusRequest`] = null;
     updates[`tasks/${taskId}/approvalState`] = 'none';
-    if (attachment) updates[`tasks/${taskId}/attachment`] = attachment;
+    if (attachment) updates[`tasks/${taskId}/completionAttachment`] = attachment;
 
     update(ref(rtdb), updates);
     toast({ title: allDone ? 'Task Completed' : 'Subtask marked done, task still in progress' });
@@ -3782,72 +3753,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
     can,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, markSinglePlannerCommentAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
+    login: extendedLogin, logout: extendedLogout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, markSinglePlannerCommentAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
   };
-
-  // Set user based on stored ID
-  useEffect(() => {
-    if (storedUserId) {
-        const foundUser = usersById[storedUserId];
-        if (foundUser) {
-            setUser(foundUser);
-        }
-    } else {
-        setUser(null);
-    }
-  }, [storedUserId, usersById]);
-
-  // Listen for status changes on the current user
-  useEffect(() => {
-    if (user?.id) {
-        const userRef = ref(rtdb, `users/${user.id}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (!snapshot.exists()) {
-                setStoredUserId(null);
-                setUser(null);
-                router.replace('/login');
-                return;
-            }
-            const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                 setUser(updatedUser);
-            }
-        });
-        return () => unsubscribe();
-    }
-  }, [user, setStoredUserId, router]);
   
   useEffect(() => {
-    if (!rtdb) {
-      console.error("Firebase Realtime Database is not initialized.");
-      setLoading(false);
-      return;
-    }
-  
-    // Seed initial data if it doesn't exist
-    const seedData = async () => {
-        const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
-        if (!jobCodesSnapshot.exists()) {
-            const updates: { [key: string]: any } = {};
-            INITIAL_JOB_CODES.forEach(jc => {
-                const newRef = push(ref(rtdb, 'jobCodes'));
-                updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
-            });
-            await update(ref(rtdb), updates);
-        }
-    };
-    seedData();
-
-    if (!storedUserId) {
-      setLoading(false);
-      // Clear all state when user logs out
-      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
-      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
-      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setInventoryTransferRequestsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
-      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
-      clearState(setUnlockRequestsById);
-      clearState(setTpCertListsById);
+    if (loading || !user) {
       return;
     }
   
@@ -3907,13 +3817,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
   
-    setLoading(false);
+    // Seed initial data if it doesn't exist
+    const seedData = async () => {
+        const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
+        if (!jobCodesSnapshot.exists()) {
+            const updates: { [key: string]: any } = {};
+            INITIAL_JOB_CODES.forEach(jc => {
+                const newRef = push(ref(rtdb, 'jobCodes'));
+                updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
+            });
+            await update(ref(rtdb), updates);
+        }
+    };
+    seedData();
   
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [storedUserId]);
+  }, [loading, user]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -3958,8 +3880,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    
-
-    

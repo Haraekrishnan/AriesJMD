@@ -1,5 +1,7 @@
+
 'use client';
 import { useRouter } from 'next/navigation';
+import { useAuthContext } from '@/contexts/auth-provider';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -8,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 
 export default function StatusPage() {
-  const { user, logout, requestUnlock } = useAppContext();
+  const { user, logout } = useAuthContext();
+  const { requestUnlock } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
