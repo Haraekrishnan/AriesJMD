@@ -113,12 +113,15 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       toast({ variant: 'destructive', title: 'Comment required', description: 'Please add a comment before changing the status.' });
       return;
     }
-
-    if (newStatus === 'Done' && taskToDisplay.requiresAttachmentForCompletion && !attachment && !taskToDisplay.statusRequest?.attachment) {
+  
+    const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
+    const hasNewAttachment = !!attachment;
+  
+    if (newStatus === 'Done' && taskToDisplay.requiresAttachmentForCompletion && !hasExistingAttachment && !hasNewAttachment) {
       toast({ variant: 'destructive', title: 'Attachment required', description: 'This task requires a file attachment for completion.' });
       return;
     }
-
+  
     requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, attachment || undefined);
     
     setNewComment('');
@@ -308,7 +311,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                       <div className="flex gap-1">
                         {(() => {
                           const url = taskToDisplay.attachment.url;
-                          const name = taskToDisplay.attachment.name;
                           if (url) {
                             const isImage = url.startsWith('data:image');
                             return (
@@ -324,7 +326,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                   </Button>
                                 )}
                                 <Button asChild variant="outline" size="sm">
-                                  <a href={url} download={name}>
+                                  <a href={url} download={taskToDisplay.attachment.name}>
                                     Download
                                   </a>
                                 </Button>
