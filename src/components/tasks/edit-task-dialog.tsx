@@ -108,24 +108,63 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     setNewComment('');
   };
   
-  const handleRequestStatusChange = (newStatus: TaskStatus) => {
-    if (!newComment.trim()) {
-      toast({ variant: 'destructive', title: 'Comment required', description: 'Please add a comment before changing the status.' });
-      return;
-    }
-  
+  const handleRequestStatusChange = async (newStatus: TaskStatus) => {
+    if (!user) return;
+
+    // Check if attachment is required
+    const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
     const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
     const hasNewAttachment = !!attachment;
-  
-    if (newStatus === 'Done' && taskToDisplay.requiresAttachmentForCompletion && !hasExistingAttachment && !hasNewAttachment) {
-      toast({ variant: 'destructive', title: 'Attachment required', description: 'This task requires a file attachment for completion.' });
-      return;
+
+    // Validate attachment presence
+    if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
+        toast({
+        variant: 'destructive',
+        title: 'Attachment required',
+        description: 'Please upload a file before marking this task as completed.',
+        });
+        return;
     }
-  
-    requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, attachment || undefined);
-    
+
+    // Convert new attachment to base64 if available
+    let processedAttachment: any = undefined;
+    if (hasNewAttachment) {
+        processedAttachment = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve({
+            name: attachment.name,
+            type: attachment.type,
+            url: e.target?.result as string,
+        });
+        reader.onerror = reject;
+        reader.readAsDataURL(attachment);
+        });
+    }
+
+    // Allow empty comment but warn user
+    if (!newComment.trim()) {
+        toast({
+        title: 'Note',
+        description: 'No comment added. Proceeding with status change.',
+        });
+    }
+
+    // Request status change with processed attachment
+    requestTaskStatusChange(
+        taskToDisplay.id,
+        newStatus,
+        newComment || 'Task completed',
+        processedAttachment
+    );
+
+    setAttachment(null);
     setNewComment('');
     setIsOpen(false);
+
+    toast({
+        title: 'Status Updated',
+        description: `Task marked as "${newStatus}".`,
+    });
   };
   
   const handleApprovalAction = (action: 'approve' | 'return') => {
@@ -310,9 +349,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                       </span>
                       <div className="flex gap-1">
                         {(() => {
-                          const url = taskToDisplay.attachment.url;
-                          if (url) {
-                            const isImage = url.startsWith('data:image');
+                          if (taskToDisplay.attachment?.url) {
+                            const isImage = taskToDisplay.attachment.url.startsWith('data:image');
                             return (
                               <>
                                 {isImage && (
@@ -320,13 +358,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setViewingAttachmentUrl(url)}
+                                    onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment.url)}
                                   >
                                     View
                                   </Button>
                                 )}
                                 <Button asChild variant="outline" size="sm">
-                                  <a href={url} download={taskToDisplay.attachment.name}>
+                                  <a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>
                                     Download
                                   </a>
                                 </Button>
@@ -586,8 +624,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                         style={{
                             transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
-                            maxWidth: 'none', 
-                            maxHeight: 'none' 
+                            maxWidth: zoom > 1 ? 'none' : '100%',
+                            maxHeight: zoom > 1 ? 'none' : '100%',
+                            objectFit: 'contain'
                         }}
                     />
                 )}
@@ -597,3 +636,5 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     </>
   );
 }
+
+    
