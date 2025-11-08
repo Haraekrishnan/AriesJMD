@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import EditTaskDialog from './edit-task-dialog';
 import { isPast } from 'date-fns';
+import { ScrollArea } from '../ui/scroll-area';
 
 type BoardColumn = 'To Do' | 'In Progress' | 'Completed' | 'Overdue';
 
@@ -83,29 +84,31 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
           return (
           <div
             key={column}
-            className="flex flex-col bg-card rounded-lg border"
+            className="flex flex-col bg-card rounded-lg border overflow-hidden" // Added overflow-hidden
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column)}
           >
-            <div className={cn("font-bold p-4 sticky top-0 bg-card rounded-t-lg border-t-4 z-10", columnColors[column])}>
+            <div className={cn("font-bold p-4 shrink-0 bg-card rounded-t-lg border-t-4", columnColors[column])}>
                 <h3 className="flex items-center gap-2 text-base">
                     <span>{column}</span>
                     <Badge variant="secondary" className="text-sm">{columnTasks.length}</Badge>
                 </h3>
             </div>
-            <div className="flex-1 space-y-4 overflow-y-auto p-4 pt-2">
-              {columnTasks.length > 0 ? (
-                  columnTasks.map(task => (
-                    <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
-                        <TaskCard task={task} onClick={() => openEditDialog(task)} />
+            <ScrollArea className="flex-1">
+                <div className="space-y-4 p-4 pt-2">
+                {columnTasks.length > 0 ? (
+                    columnTasks.map(task => (
+                        <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
+                            <TaskCard task={task} onClick={() => openEditDialog(task)} />
+                        </div>
+                    ))
+                ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground text-sm pt-20">
+                        No tasks here.
                     </div>
-                  ))
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    No tasks here.
+                )}
                 </div>
-              )}
-            </div>
+            </ScrollArea>
           </div>
         )})}
       </div>
