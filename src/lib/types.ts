@@ -1,3 +1,4 @@
+'use client';
 
 export type Broadcast = {
   id: string;

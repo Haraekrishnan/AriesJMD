@@ -1,6 +1,5 @@
-
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -25,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Checkbox } from '../ui/checkbox';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -32,6 +32,7 @@ const taskSchema = z.object({
   assigneeIds: z.array(z.string()).min(1, 'At least one assignee is required'),
   dueDate: z.date({ required_error: 'Due date is required' }),
   priority: z.enum(['Low', 'Medium', 'High']),
+  requiresAttachmentForCompletion: z.boolean().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -47,6 +48,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
 
   const taskToDisplay = useMemo(() => tasks.find(t => t.id === task.id) || task, [tasks, task]);
 
@@ -79,6 +87,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         assigneeIds: taskToDisplay.assigneeIds || [],
         dueDate: new Date(taskToDisplay.dueDate),
         priority: taskToDisplay.priority,
+        requiresAttachmentForCompletion: taskToDisplay.requiresAttachmentForCompletion || false,
       });
       setNewComment('');
       setAttachment(null);
@@ -109,20 +118,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       return;
     }
 
-    let fileData: Task['attachment'] | undefined = undefined;
-    if (attachment) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            fileData = {
-                name: attachment.name,
-                url: e.target?.result as string,
-            };
-            requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, fileData);
-        };
-        reader.readAsDataURL(attachment);
-    } else {
-        requestTaskStatusChange(taskToDisplay.id, newStatus, newComment);
-    }
+    requestTaskStatusChange(taskToDisplay.id, newStatus, newComment, attachment);
     
     setNewComment('');
     setIsOpen(false);
@@ -225,8 +221,34 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const commentsArray = Array.isArray(taskToDisplay.comments) 
     ? taskToDisplay.comments 
     : Object.values(taskToDisplay.comments || {});
+    
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+      if (zoom <= 1) return;
+      e.preventDefault();
+      setIsPanning(true);
+      setStartPosition({
+          x: e.clientX - translate.x,
+          y: e.clientY - translate.y,
+      });
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+      if (!isPanning || !imageContainerRef.current) return;
+      e.preventDefault();
+      const x = e.clientX - startPosition.x;
+      const y = e.clientY - startPosition.y;
+      setTranslate({ x, y });
+  };
+  
+  const handleMouseUpOrLeave = () => {
+      setIsPanning(false);
+  };
+  
+  const isCompletionAttachmentAnImage = taskToDisplay.statusRequest?.attachment?.url?.startsWith('data:image');
+  const isTaskAttachmentAnImage = taskToDisplay.attachment?.url?.startsWith('data:image');
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <Wrapper {...wrapperProps}>
         <DialogHeader>
@@ -382,6 +404,24 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   </div>
                 </div>
 
+                <div className="flex items-center space-x-2">
+                    <Controller
+                    control={form.control}
+                    name="requiresAttachmentForCompletion"
+                    render={({ field }) => (
+                        <Checkbox
+                        id="edit-requiresAttachment"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={!canEditCoreFields}
+                        />
+                    )}
+                    />
+                    <Label htmlFor="edit-requiresAttachment" className="text-sm font-normal">
+                        Require assignee to upload an attachment for completion
+                    </Label>
+                </div>
+                
                 {taskToDisplay.completionDate && (
                     <div>
                         <Label>Completion Date</Label>
@@ -417,11 +457,25 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </ScrollArea>
                 {taskToDisplay.attachment && (
                   <div>
-                    <Label>Attachment</Label>
+                    <Label>Task Attachment</Label>
                     <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                        <Link href={taskToDisplay.attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
-                            <Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span>
-                        </Link>
+                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span></span>
+                        <div className="flex gap-1">
+                            {isTaskAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}>View</Button>}
+                            <Button asChild variant="outline" size="sm"><Link href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>Download</Link></Button>
+                        </div>
+                    </div>
+                  </div>
+                )}
+                 {taskToDisplay.statusRequest?.attachment && (
+                  <div>
+                    <Label>Completion Attachment</Label>
+                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
+                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.statusRequest.attachment.name}</span></span>
+                        <div className="flex gap-1">
+                            {isCompletionAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.statusRequest!.attachment!.url)}>View</Button>}
+                            <Button asChild variant="outline" size="sm"><Link href={taskToDisplay.statusRequest.attachment.url} download={taskToDisplay.statusRequest.attachment.name}>Download</Link></Button>
+                        </div>
                     </div>
                   </div>
                 )}
@@ -431,7 +485,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     {!attachment && !taskToDisplay.attachment &&
                       <div className="relative mt-1">
                         <Button asChild variant="outline" size="sm"><Label htmlFor="file-upload"><Upload className="mr-2"/>Upload File</Label></Button>
-                        <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png"/>
+                        <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png, .pdf, .doc, .docx, .xls, .xlsx"/>
                       </div>
                     }
                     {attachment && (
@@ -473,5 +527,42 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         </DialogFooter>
       </Wrapper>
     </Dialog>
+     <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Attachment Viewer</DialogTitle>
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                    <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                    </a>
+                </div>
+            </DialogHeader>
+            <div 
+              ref={imageContainerRef}
+              className="flex-1 overflow-auto flex items-center justify-center p-4 bg-muted/50 rounded-md"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUpOrLeave}
+              onMouseLeave={handleMouseUpOrLeave}
+            >
+                {viewingAttachmentUrl && (
+                    <img 
+                        src={viewingAttachmentUrl} 
+                        alt="Attachment" 
+                        className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                        style={{
+                            transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
+                            maxWidth: zoom > 1 ? 'none' : '100%',
+                            maxHeight: zoom > 1 ? 'none' : '100%',
+                            objectFit: 'contain'
+                        }}
+                    />
+                )}
+            </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
