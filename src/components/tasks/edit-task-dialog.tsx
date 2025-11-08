@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
+import { uploadFile } from '@/lib/storage';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -108,46 +109,74 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     setNewComment('');
   };
   
-  const handleRequestStatusChange = async (newStatus: TaskStatus) => {
-    if (!user) return;
-  
-    // Check if attachment is required
-    const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
-    const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
-    const hasNewAttachment = !!attachment;
-  
-    if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
+const handleRequestStatusChange = async (newStatus: TaskStatus) => {
+  if (!user) return;
+
+  const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
+  const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
+  const hasNewAttachment = !!attachment;
+
+  // Validate: required file missing
+  if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
+    toast({
+      variant: 'destructive',
+      title: 'Attachment required',
+      description: 'Please upload a file before marking this task as completed.',
+    });
+    return;
+  }
+
+  let uploadedAttachment: { name: string; url: string } | undefined = undefined;
+
+  try {
+    // Step 1: Upload to Cloudinary if new file exists
+    if (hasNewAttachment) {
       toast({
-        variant: 'destructive',
-        title: 'Attachment required',
-        description: 'Please upload a file before marking this task as completed.',
+        title: 'Uploading file...',
+        description: `Uploading ${attachment.name} to Cloudinary.`,
       });
-      return;
+
+      const url = await uploadFile(attachment, `tasks/${taskToDisplay.id}/completion/${attachment.name}`);
+      uploadedAttachment = {
+        name: attachment.name,
+        url: url,
+      };
+
+      toast({
+        title: 'Upload Successful',
+        description: `${attachment.name} uploaded successfully.`,
+      });
     }
-  
+
+    // Step 2: Warn if no comment
     if (!newComment.trim()) {
       toast({
         title: 'Note',
         description: 'No comment added. Proceeding with status change.',
       });
     }
-  
+
+    // Step 3: Proceed with status change
     await requestTaskStatusChange(
       taskToDisplay.id,
       newStatus,
       newComment || 'Task completed',
-      attachment || undefined
+      uploadedAttachment
     );
-  
+
     setAttachment(null);
     setNewComment('');
     setIsOpen(false);
-  
+
+  } catch (error) {
+    console.error('Error while marking task complete:', error);
     toast({
-      title: 'Status Updated',
-      description: `Task status update requested.`,
+      variant: 'destructive',
+      title: 'Upload failed',
+      description: 'Could not upload attachment. Please try again.',
     });
-  };
+  }
+};
   
   const handleApprovalAction = (action: 'approve' | 'return') => {
     if (!newComment.trim()) {
@@ -621,3 +650,5 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     </>
   );
 }
+
+    
