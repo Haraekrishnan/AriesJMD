@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -48,16 +49,13 @@ export function AppSidebar() {
     tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments
+    inventoryTransferRequests, dailyPlannerComments,
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
   } = useAppContext();
   const pathname = usePathname();
 
   const notificationCounts = useMemo(() => {
     if (!user) return {};
-
-    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
-    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
-    const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
 
     const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
     const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
@@ -135,7 +133,8 @@ export function AppSidebar() {
     user, can, tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments
+    inventoryTransferRequests, dailyPlannerComments,
+    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
   ]);
   
   const navItems = useMemo(() => [
