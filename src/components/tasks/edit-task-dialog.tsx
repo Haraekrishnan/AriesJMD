@@ -246,8 +246,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   };
   
   const isCompletionAttachmentAnImage = taskToDisplay.statusRequest?.attachment?.url?.startsWith('data:image');
-  const isTaskAttachmentAnImage = taskToDisplay.attachment?.url?.startsWith('data:image');
-
+  
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -302,11 +301,60 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   <div>
                     <Label>Task Attachment</Label>
                     <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span></span>
-                        <div className="flex gap-1">
-                            {isTaskAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}>View</Button>}
-                            <Button asChild variant="outline" size="sm"><a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>Download</a></Button>
-                        </div>
+                      <span className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" />
+                        <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
+                      </span>
+                      <div className="flex gap-1">
+                        {(() => {
+                          if (taskToDisplay.attachment.url) {
+                            const isImage = taskToDisplay.attachment.url.startsWith('data:image');
+                            return (
+                              <>
+                                {isImage && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment.url)}
+                                  >
+                                    View
+                                  </Button>
+                                )}
+                                <Button asChild variant="outline" size="sm">
+                                  <a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>
+                                    Download
+                                  </a>
+                                </Button>
+                              </>
+                            );
+                          }
+                          if (taskToDisplay.attachment instanceof File) {
+                            const blobUrl = URL.createObjectURL(taskToDisplay.attachment);
+                            const isImage = taskToDisplay.attachment.type.startsWith('image/');
+                            return (
+                              <>
+                                {isImage && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingAttachmentUrl(blobUrl)}
+                                  >
+                                    View
+                                  </Button>
+                                )}
+                                <Button asChild variant="outline" size="sm">
+                                  <a href={blobUrl} download={taskToDisplay.attachment.name}>
+                                    Download
+                                  </a>
+                                </Button>
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 )}
