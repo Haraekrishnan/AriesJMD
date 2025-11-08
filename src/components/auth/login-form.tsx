@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuthContext } from '@/contexts/auth-provider';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,8 +36,7 @@ const resetPasswordSchema = z.object({
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export function LoginForm() {
-  const { login } = useAuthContext();
-  const { requestPasswordReset, resetPassword } = useAppContext();
+  const { login, requestPasswordReset, resetPassword } = useAuthContext();
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -182,7 +180,7 @@ export function LoginForm() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="reset-code">Reset Code</Label>
-                        <Input id="reset-code" {...resetPasswordForm.register('resetCode')} />
+                        <Input id="reset-code" {...form.register('resetCode')} />
                          {resetPasswordForm.formState.errors.resetCode && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.resetCode.message}</p>}
                     </div>
                      <div className="space-y-2">

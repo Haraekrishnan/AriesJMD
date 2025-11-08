@@ -327,7 +327,7 @@ const createDataListener = <T extends {}>(
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user, loading, login, logout } = useAuthContext();
+  const { user, loading, login, logout, requestPasswordReset, resetPassword } = useAuthContext();
   
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
@@ -460,21 +460,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(logRef, newLog);
   }, []);
   
-  const extendedLogin = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
-    const result = await login(email, pass);
-    if(result.success && result.user) {
-        addActivityLog(result.user.id, 'User Logged In');
-    }
-    return result;
-  }, [login, addActivityLog]);
-
-  const extendedLogout = useCallback(() => {
-    if(user) {
-        addActivityLog(user.id, 'User Logged Out');
-    }
-    logout();
-  }, [user, logout, addActivityLog]);
-
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
     const dataToSave: any = { ...data };
@@ -508,42 +493,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, updateUser, toast]);
   
-  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(usersRef);
-    if (!snapshot.exists()) {
-        return false;
-    }
-    const userData = snapshot.val();
-    const userId = Object.keys(userData)[0];
-    const targetUser = { id: userId, ...userData[userId] };
-    
-    const newRequest: Omit<PasswordResetRequest, 'id'> = {
-      userId: targetUser.id,
-      email: targetUser.email,
-      date: new Date().toISOString(),
-      status: 'pending',
-    };
-    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
-    await set(newRequestRef, newRequest);
-
-    const admins = users.filter(u => u.role === 'Admin');
-    admins.forEach(admin => {
-        if (admin.email) {
-            createAndSendNotification(
-                admin.email,
-                `Password Reset Request from ${targetUser.email}`,
-                'Password Reset Request',
-                { 'User Email': targetUser.email },
-                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-                'View Requests'
-            );
-        }
-    });
-
-    return true;
-  }, [users]);
-  
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
@@ -552,33 +501,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
   }, []);
-  
-  const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
-    const requestsRef = query(ref(rtdb, 'passwordResetRequests'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(requestsRef);
-    if (!snapshot.exists()) return false;
-    
-    const requestsData = snapshot.val();
-    let validRequest: PasswordResetRequest | null = null;
-    let requestId: string | null = null;
-
-    for (const key in requestsData) {
-      if (requestsData[key].resetCode === code && requestsData[key].status === 'pending') {
-        validRequest = { id: key, ...requestsData[key] };
-        requestId = key;
-        break;
-      }
-    }
-    
-    if (!validRequest || !requestId) return false;
-    
-    await update(ref(rtdb, `users/${validRequest.userId}`), { password: newPass });
-    await update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
-
-    addActivityLog(validRequest.userId, 'Password Reset');
-    return true;
-
-  }, [addActivityLog]);
   
   const lockUser = useCallback((userId: string) => {
     update(ref(rtdb, `users/${userId}`), { status: 'locked' });
@@ -3753,13 +3675,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
     can,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests,
-    login: extendedLogin, logout: extendedLogout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, markSinglePlannerCommentAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, markSinglePlannerCommentAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
   };
   
   useEffect(() => {
     if (loading || !user) {
+      // Clear all data if user logs out or session is invalid
+      if (!loading && !user) {
+        const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
+        clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
+        clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
+        clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setInventoryTransferRequestsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
+        clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
+        clearState(setUnlockRequestsById);
+        clearState(setTpCertListsById);
+      }
       return;
-    }
+    };
   
     const listeners = [
       createDataListener('users', setUsersById),
