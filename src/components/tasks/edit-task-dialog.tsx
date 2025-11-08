@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,7 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow, startOfDay, isPast } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay, isPast, parseISO } from 'date-fns';
 import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
@@ -27,7 +26,6 @@ import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
-import { parseISO } from 'date-fns';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -88,7 +86,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         title: taskToDisplay.title,
         description: taskToDisplay.description,
         assigneeIds: taskToDisplay.assigneeIds || [],
-        dueDate: new Date(taskToDisplay.dueDate),
+        dueDate: taskToDisplay.dueDate ? parseISO(taskToDisplay.dueDate) : new Date(),
         priority: taskToDisplay.priority,
         requiresAttachmentForCompletion: taskToDisplay.requiresAttachmentForCompletion || false,
       });
@@ -118,7 +116,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
     const hasNewAttachment = !!attachment;
   
-    // Validate attachment presence
     if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
       toast({
         variant: 'destructive',
@@ -128,7 +125,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       return;
     }
   
-    // Allow empty comment but warn user
     if (!newComment.trim()) {
       toast({
         title: 'Note',
@@ -136,7 +132,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       });
     }
   
-    // Request status change with attachment file (if it exists)
     await requestTaskStatusChange(
       taskToDisplay.id,
       newStatus,
@@ -221,25 +216,35 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const isAssignee = useMemo(() => user?.id && taskToDisplay.assigneeIds?.includes(user.id), [user, taskToDisplay]);
   const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
 
-  const renderActionButtons = () => {
+  const ActionButtons = () => {
+    const handleFormSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (mySubtask?.status === 'In Progress') {
+        handleRequestStatusChange('Done');
+      }
+    };
+  
     if (taskToDisplay.approvalState === 'status_pending') {
-        if (isApprover) {
-            return (
-                <div className='flex gap-2'>
-                    <Button onClick={() => handleApprovalAction('approve')} className="w-full bg-green-600 hover:bg-green-700"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
-                    <Button onClick={() => handleApprovalAction('return')} className="w-full" variant="destructive"><ThumbsDown className="mr-2 h-4 w-4" /> Return</Button>
-                </div>
-            )
-        }
-        return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.creatorId)?.name || 'manager'}</p>
+      if (isApprover) {
+        return (
+          <form onSubmit={handleFormSubmit} className="space-y-4">
+            <div className='flex gap-2'>
+              <Button type="button" onClick={() => handleApprovalAction('approve')} className="w-full bg-green-600 hover:bg-green-700"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
+              <Button type="button" onClick={() => handleApprovalAction('return')} className="w-full" variant="destructive"><ThumbsDown className="mr-2 h-4 w-4" /> Return</Button>
+            </div>
+          </form>
+        );
+      }
+      return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {creator?.name || 'manager'}</p>;
     }
+  
     if (isAssignee && !isCompleted && mySubtask) {
-        if (mySubtask.status === 'To Do') {
-            return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Start Progress</Button>
-        }
-        if (mySubtask.status === 'In Progress') {
-            return <Button onClick={() => handleRequestStatusChange('Done')} className="w-full">Mark as Completed</Button>
-        }
+      if (mySubtask.status === 'To Do') {
+        return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Start Progress</Button>;
+      }
+      if (mySubtask.status === 'In Progress') {
+        return <Button type="submit" form="action-form" className="w-full">Mark as Completed</Button>;
+      }
     }
     return null;
   };
@@ -275,6 +280,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const completionAttachment = taskToDisplay.statusRequest?.attachment;
   const isCompletionAttachmentAnImage = completionAttachment?.url?.startsWith('data:image');
+  const isTaskAttachmentAnImage = taskToDisplay.attachment?.url?.startsWith('data:image');
   
   return (
     <>
@@ -335,31 +341,21 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
                       </span>
                       <div className="flex gap-1">
-                        {(() => {
-                          if (taskToDisplay.attachment?.url) {
-                            const isImage = taskToDisplay.attachment.url.startsWith('data:image');
-                            return (
-                              <>
-                                {isImage && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment.url)}
-                                  >
-                                    View
-                                  </Button>
-                                )}
-                                <Button asChild variant="outline" size="sm">
-                                  <a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>
-                                    Download
-                                  </a>
-                                </Button>
-                              </>
-                            );
-                          }
-                          return null;
-                        })()}
+                        {isTaskAttachmentAnImage && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}
+                          >
+                            View
+                          </Button>
+                        )}
+                        <Button asChild variant="outline" size="sm">
+                          <a href={taskToDisplay.attachment!.url} download={taskToDisplay.attachment!.name}>
+                            Download
+                          </a>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -524,6 +520,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
                     </div>
                 </ScrollArea>
+                <form id="action-form" onSubmit={(e) => { e.preventDefault(); if(mySubtask?.status === 'In Progress') { handleRequestStatusChange('Done'); }}}>
                 {completionAttachment && (
                   <div>
                     <Label>Completion Attachment</Label>
@@ -557,7 +554,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment... (required for status changes)" className="pr-12"/>
                     <Button type="button" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleAddComment} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
                 </div>
-                {renderActionButtons()}
+                <ActionButtons />
+                </form>
             </div>
         </div>
         <DialogFooter className="justify-between pt-4 mt-auto">
@@ -623,7 +621,3 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     </>
   );
 }
-
-    
-
-    
