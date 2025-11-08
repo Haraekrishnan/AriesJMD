@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -754,10 +755,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createTask = useCallback(async (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[], attachment: File | null }) => {
     if (!user) return;
-
+  
     const newRef = push(ref(rtdb, 'tasks'));
     const taskId = newRef.key!;
-
+  
     let attachmentData = null;
     if (taskData.attachment) {
         try {
@@ -766,19 +767,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch (e) {
             console.error("Failed to upload attachment", e);
             toast({ variant: 'destructive', title: "Attachment upload failed" });
+            return; // Stop task creation if upload fails
         }
     }
-
+  
     const subtasks: { [userId: string]: Subtask } = {};
     taskData.assigneeIds.forEach(id => {
       subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
     });
-
+  
+    const { attachment, ...restTaskData } = taskData;
+  
     const newTask: Omit<Task, 'id'> = {
-      ...taskData,
+      ...restTaskData,
       attachment: attachmentData,
       creatorId: user.id,
-      assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
+      assigneeId: taskData.assigneeIds[0],
       status: 'To Do',
       subtasks: subtasks,
       comments: [],
@@ -788,10 +792,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isViewedByAssignee: false,
       viewedBy: { [user.id]: true }
     };
-    
+  
     set(newRef, newTask);
     addActivityLog(user.id, 'Task Created', taskData.title);
-
+  
     taskData.assigneeIds.forEach(assigneeId => {
       const assignee = users.find(u => u.id === assigneeId);
       if (assignee && assignee.email) {
@@ -810,7 +814,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       }
     });
-
   }, [user, users, addActivityLog, toast]);
 
   const updateTask = useCallback((updatedTask: Task) => {
@@ -2287,7 +2290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility,
+        eligibility: requestData.eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -3717,22 +3720,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadComments = dailyPlannerComments.filter(dayComment => {
-      if (!dayComment.day) return false;
+    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
+      if (!dayComment.day || !dayComment.comments) return false;
       const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
       if (eventsOnDay.length === 0) return false;
 
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
       return comments.some(c => {
-        if (!c) return false;
+        if (!c || !c.eventId) return false;
         const event = eventsOnDay.find(e => e.id === c.eventId);
         if (!event) return false;
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
       });
     });
-
-    const plannerNotificationCount = unreadComments.length;
+    const plannerNotificationCount = unreadCommentsForUser.length;
 
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
