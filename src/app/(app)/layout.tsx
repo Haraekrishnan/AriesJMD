@@ -7,15 +7,15 @@ import { useAuthContext } from '@/contexts/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
-import BroadcastFeed from '@/components/announcements/BroadcastFeed';
+import { AppProvider } from '@/contexts/app-provider';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return; // Do nothing until context is ready
+    if (loading) return; 
 
     if (!user && pathname !== '/login') {
       router.replace('/login');
@@ -24,8 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router, pathname]);
 
-  if (loading) {
-    // Still fetching user info — show skeleton loader
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -39,24 +38,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user && pathname !== '/login') {
-    return null;
-  }
-
-  // If user is authenticated but opens /login manually, don’t show layout
-  if (user && pathname === '/login') {
+  if (pathname === '/login') {
     return null; 
   }
   
-  // If user is locked or deactivated, prevent layout flicker before redirect
-  if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+  if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
       return (
           <div className="flex h-screen w-full items-center justify-center bg-background">
               <p>Redirecting...</p>
           </div>
       );
   }
-
 
   return (
       <div className="flex min-h-screen w-full bg-background">
@@ -72,4 +64,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
   );
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <AppProvider>
+            <AppLayoutContent>{children}</AppLayoutContent>
+        </AppProvider>
+    )
 }
