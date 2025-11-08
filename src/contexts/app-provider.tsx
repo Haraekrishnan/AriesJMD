@@ -111,14 +111,14 @@ type AppContextType = {
   // Functions
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
-  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => void;
+  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[], attachment: File | null }) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
   submitTaskForApproval: (taskId: string) => void;
   approveTask: (taskId: string, comment?: string) => void;
   returnTask: (taskId: string, comment: string) => void;
-  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => Promise<void>;
+  requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment: string, attachment?: File) => Promise<void>;
   approveTaskStatusChange: (taskId: string, comment: string) => void;
   returnTaskStatusChange: (taskId: string, comment: string) => void;
   addComment: (taskId: string, commentText: string) => void;
@@ -752,10 +752,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
 
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
+  const createTask = useCallback(async (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[], attachment: File | null }) => {
     if (!user) return;
 
     const newRef = push(ref(rtdb, 'tasks'));
+    const taskId = newRef.key!;
+
+    let attachmentData = null;
+    if (taskData.attachment) {
+        try {
+            const url = await uploadFile(taskData.attachment, `tasks/${taskId}/${taskData.attachment.name}`);
+            attachmentData = { name: taskData.attachment.name, url };
+        } catch (e) {
+            console.error("Failed to upload attachment", e);
+            toast({ variant: 'destructive', title: "Attachment upload failed" });
+        }
+    }
 
     const subtasks: { [userId: string]: Subtask } = {};
     taskData.assigneeIds.forEach(id => {
@@ -764,6 +776,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const newTask: Omit<Task, 'id'> = {
       ...taskData,
+      attachment: attachmentData,
       creatorId: user.id,
       assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
       status: 'To Do',
@@ -798,7 +811,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
 
-  }, [user, users, addActivityLog]);
+  }, [user, users, addActivityLog, toast]);
 
   const updateTask = useCallback((updatedTask: Task) => {
     if(!user) return;
@@ -836,11 +849,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, tasksById]);
   
-  const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
+  const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachmentFile?: File) => {
     if (!user) return;
     const task = tasksById[taskId];
     if (!task) return;
-  
+
     if (newStatus === 'In Progress') {
         const updates: Record<string, any> = {};
         updates[`tasks/${taskId}/status`] = 'In Progress';
@@ -850,6 +863,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addComment(taskId, comment || 'Started progress');
         toast({ title: 'Task status updated to In Progress' });
         return;
+    }
+
+    let attachmentData = null;
+    if (attachmentFile) {
+        try {
+            const url = await uploadFile(attachmentFile, `tasks/${taskId}/completion/${attachmentFile.name}`);
+            attachmentData = { name: attachmentFile.name, url };
+        } catch (e) {
+            console.error("Failed to upload completion attachment", e);
+            toast({ variant: 'destructive', title: "Attachment upload failed" });
+            return;
+        }
     }
   
     const approverId = task.creatorId; 
@@ -862,7 +887,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requestedBy: user.id,
         newStatus,
         comment,
-        attachment: attachment || null,
+        attachment: attachmentData,
         date: new Date().toISOString(),
         status: 'Pending',
     };
@@ -2262,7 +2287,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 

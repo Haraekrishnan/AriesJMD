@@ -32,7 +32,6 @@ const taskSchema = z.object({
   assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
   dueDate: z.string().min(1, 'Due date is required'),
   priority: z.enum(['Low', 'Medium', 'High']),
-  attachment: z.any().optional(),
   requiresAttachmentForCompletion: z.boolean().optional(),
 });
 

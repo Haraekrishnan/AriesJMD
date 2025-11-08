@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -307,8 +306,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                       </span>
                       <div className="flex gap-1">
                         {(() => {
-                          // If stored as data URL
-                          if (taskToDisplay.attachment.url) {
+                          if (taskToDisplay.attachment?.url) {
                             const isImage = taskToDisplay.attachment.url.startsWith('data:image');
                             return (
                               <>
@@ -317,7 +315,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment.url)}
+                                    onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}
                                   >
                                     View
                                   </Button>
@@ -330,32 +328,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                               </>
                             );
                           }
-
-                          // If stored as File (not uploaded yet)
-                          if (taskToDisplay.attachment instanceof File) {
-                            const blobUrl = URL.createObjectURL(taskToDisplay.attachment);
-                            const isImage = taskToDisplay.attachment.type.startsWith('image/');
-                            return (
-                              <>
-                                {isImage && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setViewingAttachmentUrl(blobUrl)}
-                                  >
-                                    View
-                                  </Button>
-                                )}
-                                <Button asChild variant="outline" size="sm">
-                                  <a href={blobUrl} download={taskToDisplay.attachment.name}>
-                                    Download
-                                  </a>
-                                </Button>
-                              </>
-                            );
-                          }
-
                           return null;
                         })()}
                       </div>
@@ -608,9 +580,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                         style={{
                             transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
-                            maxWidth: zoom > 1 ? 'none' : '100%',
-                            maxHeight: zoom > 1 ? 'none' : '100%',
-                            objectFit: 'contain'
+                            maxWidth: 'none', 
+                            maxHeight: 'none' 
                         }}
                     />
                 )}
