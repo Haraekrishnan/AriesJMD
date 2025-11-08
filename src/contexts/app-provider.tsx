@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -755,11 +756,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createTask = useCallback(async (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[], attachment: File | null }) => {
     if (!user) return;
-  
+
     const newRef = push(ref(rtdb, 'tasks'));
     const taskId = newRef.key!;
-  
-    let attachmentData = null;
+
+    let attachmentData: Task['attachment'] = null;
     if (taskData.attachment) {
         try {
             const url = await uploadFile(taskData.attachment, `tasks/${taskId}/${taskData.attachment.name}`);
@@ -767,19 +768,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch (e) {
             console.error("Failed to upload attachment", e);
             toast({ variant: 'destructive', title: "Attachment upload failed" });
-            return; // Stop task creation if upload fails
+            return;
         }
     }
-  
+
     const subtasks: { [userId: string]: Subtask } = {};
     taskData.assigneeIds.forEach(id => {
       subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
     });
-  
-    const { attachment, ...restTaskData } = taskData;
+
+    const newTaskData = { ...taskData };
+    delete (newTaskData as any).attachment;
   
     const newTask: Omit<Task, 'id'> = {
-      ...restTaskData,
+      ...newTaskData,
       attachment: attachmentData,
       creatorId: user.id,
       assigneeId: taskData.assigneeIds[0],
@@ -792,8 +794,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isViewedByAssignee: false,
       viewedBy: { [user.id]: true }
     };
-  
+    
     set(newRef, newTask);
+    
     addActivityLog(user.id, 'Task Created', taskData.title);
   
     taskData.assigneeIds.forEach(assigneeId => {
@@ -856,7 +859,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasksById[taskId];
     if (!task) return;
-
+  
     if (newStatus === 'In Progress') {
         const updates: Record<string, any> = {};
         updates[`tasks/${taskId}/status`] = 'In Progress';
@@ -867,19 +870,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toast({ title: 'Task status updated to In Progress' });
         return;
     }
-
-    let attachmentData = null;
+  
+    let attachmentData: Task['attachment'] = null;
     if (attachmentFile) {
         try {
             const url = await uploadFile(attachmentFile, `tasks/${taskId}/completion/${attachmentFile.name}`);
-            attachmentData = { name: attachmentFile.name, url };
-        } catch (e) {
-            console.error("Failed to upload completion attachment", e);
-            toast({ variant: 'destructive', title: "Attachment upload failed" });
+            attachmentData = { name: attachmentFile.name, url: url };
+        } catch(e) {
+            console.error("Attachment upload failed", e);
+            toast({ variant: "destructive", title: "Attachment upload failed" });
             return;
         }
     }
-  
+
     const approverId = task.creatorId; 
     if (!approverId) {
         toast({ variant: 'destructive', title: 'No approver set for this task.' });
@@ -1293,26 +1296,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }, [user, users, plannerEvents, createAndSendNotification]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
-    if (!user) return;
-    const dayStr = format(day, 'yyyy-MM-dd');
-    const dayCommentId = `${dayStr}_${plannerUserId}`;
-    const dayCommentData = dailyPlannerComments.find(c => c.id === dayCommentId);
-
-    if (dayCommentData && dayCommentData.comments) {
-        const updates: { [key: string]: any } = {};
-        const comments = Array.isArray(dayCommentData.comments) ? dayCommentData.comments : Object.values(dayCommentData.comments);
-        
-        comments.forEach(comment => {
-            if (comment && comment.id && !comment.viewedBy?.[user.id] && comment.userId !== user.id) {
-                updates[`dailyPlannerComments/${dayCommentId}/comments/${comment.id}/viewedBy/${user.id}`] = true;
-            }
-        });
-
-        if (Object.keys(updates).length > 0) {
-            update(ref(rtdb), updates);
-        }
-    }
-}, [user, dailyPlannerComments]);
+    // This function is being kept for potential future use but is now deprecated
+    // in favor of markSinglePlannerCommentAsRead to avoid unintended behavior.
+  }, []);
 
   const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
     if (!user) return;
@@ -3720,12 +3706,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
+    const plannerNotificationCount = dailyPlannerComments.filter(dayComment => {
       if (!dayComment.day || !dayComment.comments) return false;
-      const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+      const eventsOnDay = plannerEvents.filter(e => e.date && dayComment.day && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
       if (eventsOnDay.length === 0) return false;
-
-      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
+    
+      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
       return comments.some(c => {
         if (!c || !c.eventId) return false;
         const event = eventsOnDay.find(e => e.id === c.eventId);
@@ -3733,8 +3719,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
       });
-    });
-    const plannerNotificationCount = unreadCommentsForUser.length;
+    }).length;
 
 
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;

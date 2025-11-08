@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -113,7 +114,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       return;
     }
 
-    if (newStatus === 'Done' && taskToDisplay.requiresAttachmentForCompletion && !attachment && !taskToDisplay.attachment) {
+    if (newStatus === 'Done' && taskToDisplay.requiresAttachmentForCompletion && !attachment && !taskToDisplay.statusRequest?.attachment) {
       toast({ variant: 'destructive', title: 'Attachment required', description: 'This task requires a file attachment for completion.' });
       return;
     }
@@ -122,7 +123,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     
     setNewComment('');
     setIsOpen(false);
-    toast({ title: 'Status Change Requested', description: 'Your request has been sent for approval.' });
   };
   
   const handleApprovalAction = (action: 'approve' | 'return') => {
@@ -244,7 +244,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       setIsPanning(false);
   };
   
-  const isCompletionAttachmentAnImage = taskToDisplay.statusRequest?.attachment?.url?.startsWith('data:image');
+  const completionAttachment = taskToDisplay.statusRequest?.attachment;
+  const isCompletionAttachmentAnImage = completionAttachment?.url?.startsWith('data:image');
   
   return (
     <>
@@ -297,42 +298,31 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
 
                 {taskToDisplay.attachment && (
-                  <div>
-                    <Label>Task Attachment</Label>
-                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                      <span className="flex items-center gap-2">
-                        <Paperclip className="h-4 w-4" />
-                        <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
-                      </span>
-                      <div className="flex gap-1">
-                        {(() => {
-                          if (taskToDisplay.attachment?.url) {
-                            const isImage = taskToDisplay.attachment.url.startsWith('data:image');
-                            return (
-                              <>
-                                {isImage && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}
-                                  >
-                                    View
-                                  </Button>
+                    <div>
+                        <Label>Task Attachment</Label>
+                        <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
+                            <span className="flex items-center gap-2">
+                                <Paperclip className="h-4 w-4" />
+                                <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
+                            </span>
+                            <div className="flex gap-1">
+                                {taskToDisplay.attachment.url && (
+                                    <>
+                                        {taskToDisplay.attachment.url.startsWith('data:image') && (
+                                            <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment.url)}>
+                                                View
+                                            </Button>
+                                        )}
+                                        <Button asChild variant="outline" size="sm">
+                                            <a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>
+                                                Download
+                                            </a>
+                                        </Button>
+                                    </>
                                 )}
-                                <Button asChild variant="outline" size="sm">
-                                  <a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>
-                                    Download
-                                  </a>
-                                </Button>
-                              </>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
+                            </div>
+                        </div>
                     </div>
-                  </div>
                 )}
 
                 <div>
@@ -493,14 +483,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
                     </div>
                 </ScrollArea>
-                 {taskToDisplay.statusRequest?.attachment && (
+                {completionAttachment && (
                   <div>
                     <Label>Completion Attachment</Label>
                     <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{taskToDisplay.statusRequest.attachment.name}</span></span>
+                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{completionAttachment.name}</span></span>
                         <div className="flex gap-1">
-                            {isCompletionAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.statusRequest!.attachment!.url)}>View</Button>}
-                            <Button asChild variant="outline" size="sm"><a href={taskToDisplay.statusRequest.attachment.url} download={taskToDisplay.statusRequest.attachment.name}>Download</a></Button>
+                            {isCompletionAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(completionAttachment!.url)}>View</Button>}
+                            <Button asChild variant="outline" size="sm"><a href={completionAttachment.url} download={completionAttachment.name}>Download</a></Button>
                         </div>
                     </div>
                   </div>
@@ -508,7 +498,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 {taskToDisplay.requiresAttachmentForCompletion && isAssignee && taskToDisplay.status === 'In Progress' && (
                   <div>
                     <Label>Attachment for Completion</Label>
-                    {!attachment && !taskToDisplay.attachment &&
+                    {!attachment && !taskToDisplay.statusRequest?.attachment &&
                       <div className="relative mt-1">
                         <Button asChild variant="outline" size="sm"><Label htmlFor="file-upload"><Upload className="mr-2"/>Upload File</Label></Button>
                         <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png, .pdf, .doc, .docx, .xls, .xlsx"/>
