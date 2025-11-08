@@ -189,9 +189,8 @@ export default function StoreInventoryPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
-                    <Button variant="outline" onClick={() => setIsTransferRequestOpen(true)} className="relative">
+                    <Button variant="outline" onClick={() => setIsTransferRequestOpen(true)}>
                         <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
-                        {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive" className="absolute -top-2 -right-2">{pendingInventoryTransferRequestCount}</Badge>}
                     </Button>
                     {canManageInventory && (
                         <>
@@ -207,7 +206,12 @@ export default function StoreInventoryPage() {
             
             <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="inventory-transfers">
-                    <AccordionTrigger className="text-lg font-semibold">Inventory Transfers</AccordionTrigger>
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center gap-2">
+                            Inventory Transfers
+                            {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
+                        </div>
+                    </AccordionTrigger>
                     <AccordionContent>
                         <PendingTransfers />
                     </AccordionContent>
