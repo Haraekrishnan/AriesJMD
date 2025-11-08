@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -42,11 +41,16 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
         return '';
     };
 
+    const now = new Date();
+    const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
+    const displayStatus = isExpired ? 'Expired' : item.status;
+    const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' ? 'destructive' : 'secondary';
+
     return (
         <div className="border-t p-4 space-y-3">
             <div className="flex justify-between items-start">
                 <div className="font-bold">{item.serialNumber}</div>
-                <Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge>
+                <Badge variant={statusVariant}>{displayStatus}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div>
@@ -346,12 +350,17 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {itemList.map(item => (
+                                            {itemList.map(item => {
+                                                const now = new Date();
+                                                const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
+                                                const displayStatus = isExpired ? 'Expired' : item.status;
+                                                const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' ? 'destructive' : 'secondary';
+                                                return (
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.serialNumber}</TableCell>
                                                     <TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                     {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
-                                                    <TableCell><Badge variant={item.status === 'Damaged' || item.status === 'Expired' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
+                                                    <TableCell><Badge variant={statusVariant}>{displayStatus}</Badge></TableCell>
                                                     <TableCell>{getProjectName(item)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
@@ -391,7 +400,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                             </div>
                                                     </TableCell>
                                                 </TableRow>
-                                            ))}
+                                            )})}
                                         </TableBody>
                                     </Table>
                                 </div>
