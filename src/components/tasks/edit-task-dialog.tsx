@@ -185,7 +185,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const isApprover = useMemo(() => {
     if (!user) return false;
-    return user.id === taskToDisplay.approverId;
+    return user.id === taskToDisplay.creatorId;
   }, [user, taskToDisplay]);
 
 
@@ -202,7 +202,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
             )
         }
-        return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.approverId)?.name || 'manager'}</p>
+        return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.creatorId)?.name || 'manager'}</p>
     }
     if (isAssignee && !isCompleted && mySubtask) {
         if (mySubtask.status === 'To Do') {
@@ -298,32 +298,46 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
 
                 {taskToDisplay.attachment && (
-                    <div>
-                        <Label>Task Attachment</Label>
-                        <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                            <span className="flex items-center gap-2">
-                                <Paperclip className="h-4 w-4" />
-                                <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
-                            </span>
-                            <div className="flex gap-1">
-                                {taskToDisplay.attachment.url && (
-                                    <>
-                                        {taskToDisplay.attachment.url.startsWith('data:image') && (
-                                            <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment.url)}>
-                                                View
-                                            </Button>
-                                        )}
-                                        <Button asChild variant="outline" size="sm">
-                                            <a href={taskToDisplay.attachment.url} download={taskToDisplay.attachment.name}>
-                                                Download
-                                            </a>
-                                        </Button>
-                                    </>
+                  <div>
+                    <Label>Task Attachment</Label>
+                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
+                      <span className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" />
+                        <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
+                      </span>
+                      <div className="flex gap-1">
+                        {(() => {
+                          const url = taskToDisplay.attachment.url;
+                          const name = taskToDisplay.attachment.name;
+                          if (url) {
+                            const isImage = url.startsWith('data:image');
+                            return (
+                              <>
+                                {isImage && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingAttachmentUrl(url)}
+                                  >
+                                    View
+                                  </Button>
                                 )}
-                            </div>
-                        </div>
+                                <Button asChild variant="outline" size="sm">
+                                  <a href={url} download={name}>
+                                    Download
+                                  </a>
+                                </Button>
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
+                  </div>
                 )}
+
 
                 <div>
                   <Label>Assignee(s)</Label>
