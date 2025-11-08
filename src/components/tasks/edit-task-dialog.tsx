@@ -307,6 +307,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                       </span>
                       <div className="flex gap-1">
                         {(() => {
+                          // If stored as data URL
                           if (taskToDisplay.attachment.url) {
                             const isImage = taskToDisplay.attachment.url.startsWith('data:image');
                             return (
@@ -329,6 +330,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                               </>
                             );
                           }
+
+                          // If stored as File (not uploaded yet)
                           if (taskToDisplay.attachment instanceof File) {
                             const blobUrl = URL.createObjectURL(taskToDisplay.attachment);
                             const isImage = taskToDisplay.attachment.type.startsWith('image/');
@@ -352,6 +355,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                               </>
                             );
                           }
+
                           return null;
                         })()}
                       </div>
