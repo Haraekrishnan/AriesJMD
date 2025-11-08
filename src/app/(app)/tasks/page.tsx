@@ -39,11 +39,10 @@ export default function TasksPage() {
 
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
-    // Show tasks where I am the approver and there's a pending statusRequest
+    // Show tasks where I am the creator/approver and there's a pending statusRequest
     return tasks.filter(task => 
-      task.approverId === user.id &&
-      task.statusRequest?.status === 'Pending' &&
-      task.statusRequest?.newStatus === 'Done' // optional safety check
+      task.creatorId === user.id &&
+      task.statusRequest?.status === 'Pending'
     );
   }, [tasks, user]);
   
@@ -76,7 +75,7 @@ export default function TasksPage() {
     return visibleTasks.filter(task => {
       // If there's a pending statusRequest for completion, show it only to approver/requester.
       if (task.statusRequest?.status === 'Pending') {
-        const isApprover = task.approverId === user?.id;
+        const isApprover = task.creatorId === user?.id;
         const isRequester = task.statusRequest?.requestedBy === user?.id;
         return isApprover || isRequester;
       }
@@ -236,7 +235,7 @@ export default function TasksPage() {
             <ScrollArea className="max-h-[70vh] p-1">
                 <div className="p-4 space-y-4">
                     {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => {
-                        const approver = users.find(u => u.id === task.approverId);
+                        const approver = users.find(u => u.id === task.creatorId);
                         const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                         return (
                           <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
