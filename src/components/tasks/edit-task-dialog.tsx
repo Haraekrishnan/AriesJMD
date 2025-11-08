@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow, startOfDay } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay, isPast } from 'date-fns';
 import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
@@ -26,6 +27,7 @@ import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Checkbox } from '../ui/checkbox';
+import { parseISO } from 'date-fns';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -110,60 +112,45 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const handleRequestStatusChange = async (newStatus: TaskStatus) => {
     if (!user) return;
-
+  
     // Check if attachment is required
     const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
     const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
     const hasNewAttachment = !!attachment;
-
+  
     // Validate attachment presence
     if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
-        toast({
+      toast({
         variant: 'destructive',
         title: 'Attachment required',
         description: 'Please upload a file before marking this task as completed.',
-        });
-        return;
+      });
+      return;
     }
-
-    // Convert new attachment to base64 if available
-    let processedAttachment: any = undefined;
-    if (hasNewAttachment) {
-        processedAttachment = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = e => resolve({
-            name: attachment.name,
-            type: attachment.type,
-            url: e.target?.result as string,
-        });
-        reader.onerror = reject;
-        reader.readAsDataURL(attachment);
-        });
-    }
-
+  
     // Allow empty comment but warn user
     if (!newComment.trim()) {
-        toast({
+      toast({
         title: 'Note',
         description: 'No comment added. Proceeding with status change.',
-        });
+      });
     }
-
-    // Request status change with processed attachment
-    requestTaskStatusChange(
-        taskToDisplay.id,
-        newStatus,
-        newComment || 'Task completed',
-        processedAttachment
+  
+    // Request status change with attachment file (if it exists)
+    await requestTaskStatusChange(
+      taskToDisplay.id,
+      newStatus,
+      newComment || 'Task completed',
+      attachment || undefined
     );
-
+  
     setAttachment(null);
     setNewComment('');
     setIsOpen(false);
-
+  
     toast({
-        title: 'Status Updated',
-        description: `Task marked as "${newStatus}".`,
+      title: 'Status Updated',
+      description: `Task status update requested.`,
     });
   };
   
@@ -636,5 +623,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     </>
   );
 }
+
+    
 
     
