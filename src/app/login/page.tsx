@@ -4,7 +4,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/contexts/auth-provider';
-import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship } from 'lucide-react';
@@ -12,12 +11,17 @@ import { LoginForm } from '@/components/auth/login-form';
 
 export default function LoginPage() {
   const { user, loading } = useAuthContext();
-  const { appName, appLogo } = useAppContext();
   const router = useRouter();
+
+  const appName = "Aries Marine"; // Hardcoded to remove dependency
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/dashboard');
+      if (user.status === 'locked' || user.status === 'deactivated') {
+        router.replace('/status');
+      } else {
+        router.replace('/dashboard');
+      }
     }
   }, [user, loading, router]);
 
@@ -40,11 +44,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl border-none">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-3 mb-4">
-            {appLogo ? (
-              <img src={appLogo} alt={appName} className="h-10 w-auto object-contain" />
-            ) : (
-              <Ship className="w-8 h-8 text-primary" />
-            )}
+            <Ship className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold text-primary">{appName}</h1>
           </div>
           <CardTitle className="text-2xl">Welcome</CardTitle>
