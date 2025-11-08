@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -19,12 +20,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Check, ChevronsUpDown, Paperclip, Upload, X } from 'lucide-react';
+import { PlusCircle, Check, ChevronsUpDown } from 'lucide-react';
 import type { Role, User } from '@/lib/types';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
-import { Checkbox } from '../ui/checkbox';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -32,7 +32,6 @@ const taskSchema = z.object({
   assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
   dueDate: z.string().min(1, 'Due date is required'),
   priority: z.enum(['Low', 'Medium', 'High']),
-  requiresAttachmentForCompletion: z.boolean().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -41,7 +40,6 @@ export default function CreateTaskDialog() {
   const { user, createTask, getAssignableUsers } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -50,7 +48,6 @@ export default function CreateTaskDialog() {
       description: '',
       assigneeIds: [],
       priority: 'Medium',
-      requiresAttachmentForCompletion: false,
     },
   });
 
@@ -59,28 +56,20 @@ export default function CreateTaskDialog() {
   }, [getAssignableUsers]);
 
   const onSubmit = (data: TaskFormValues) => {
-    createTask({ ...data, attachment: attachmentFile });
+    createTask(data);
     toast({
       title: 'Task Created',
       description: `Task "${data.title}" has been created and assigned.`,
     });
     setIsOpen(false);
     form.reset();
-    setAttachmentFile(null);
   };
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset();
-      setAttachmentFile(null);
     }
     setIsOpen(open);
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setAttachmentFile(e.target.files[0]);
-    }
   };
 
   return (
@@ -187,40 +176,6 @@ export default function CreateTaskDialog() {
                 <Input id="dueDate" type="date" {...form.register('dueDate')} />
                 {form.formState.errors.dueDate && <p className="text-xs text-destructive">{form.formState.errors.dueDate.message}</p>}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Attachment (Optional)</Label>
-            {attachmentFile ? (
-              <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                  <div className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{attachmentFile.name}</span></div>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachmentFile(null)}><X className="h-4 w-4"/></Button>
-              </div>
-            ) : (
-              <div className="relative">
-                <Button asChild variant="outline" size="sm">
-                  <Label htmlFor="task-attachment"><Upload className="mr-2 h-4 w-4"/> Upload File</Label>
-                </Button>
-                <Input id="task-attachment" type="file" onChange={handleFileChange} className="hidden"/>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Controller
-              control={form.control}
-              name="requiresAttachmentForCompletion"
-              render={({ field }) => (
-                <Checkbox
-                  id="requiresAttachment"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-            <Label htmlFor="requiresAttachment" className="text-sm font-normal">
-              Require assignee to upload an attachment for completion
-            </Label>
           </div>
           
           <DialogFooter>

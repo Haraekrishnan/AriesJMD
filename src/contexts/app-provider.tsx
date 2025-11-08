@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -8,7 +9,7 @@ import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay,
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
-import { useAuthContext } from './auth-provider';
+import useLocalStorage from '@/hooks/use-local-storage';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { uploadFile } from '@/lib/storage';
 import { createAndSendNotification } from '@/app/actions/sendNotificationEmail';
@@ -17,12 +18,9 @@ import { JOB_CODES as INITIAL_JOB_CODES, JOB_CODE_COLORS } from '@/lib/job-codes
 type PermissionsObject = Record<Permission, boolean>;
 
 type AppContextType = {
-  // State from AuthContext
+  // State
   user: User | null;
   loading: boolean;
-  logout: () => void;
-
-  // App-specific state
   users: User[];
   roles: RoleDefinition[];
   tasks: Task[];
@@ -70,11 +68,10 @@ type AppContextType = {
   tpCertLists: TpCertList[];
   appName: string;
   appLogo: string | null;
-  workingManpowerCount: number;
-  onLeaveManpowerCount: number;
 
-  // Auth functions (some might be proxies to auth context, or have added logic)
+  // Auth
   login: (email: string, pass: string) => Promise<{ success: boolean; status?: User['status']; user?: User }>;
+  logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   generateResetCode: (requestId: string) => void;
@@ -94,9 +91,12 @@ type AppContextType = {
   myPendingTaskRequestCount: number;
   myFulfilledStoreCertRequestCount: number;
   myFulfilledEquipmentCertRequests: CertificateRequest[];
+  workingManpowerCount: number;
+  onLeaveManpowerCount: number;
   pendingStoreCertRequestCount: number;
   pendingEquipmentCertRequestCount: number;
   plannerNotificationCount: number;
+  unreadPlannerCommentDays: string[];
   pendingInternalRequestCount: number;
   updatedInternalRequestCount: number;
   pendingManagementRequestCount: number;
@@ -114,7 +114,7 @@ type AppContextType = {
   // Functions
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
-  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[], attachment: File | null }) => void;
+  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
@@ -129,12 +129,11 @@ type AppContextType = {
   acknowledgeReturnedTask: (taskId: string) => void;
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
   getExpandedPlannerEvents: (month: Date, userId: string) => (PlannerEvent & { eventDate: Date })[];
-  addPlannerEvent: (event: Omit<PlannerEvent, 'id'>) => void;
+  addPlannerEvent: (event: Omit<PlannerEvent, 'id' | 'comments' | 'viewedBy'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
-  addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => Promise<void>;
+  addPlannerEventComment: (eventId: string, text: string) => void;
   markPlannerCommentsAsRead: (plannerUserId: string, day: Date) => void;
-  markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
   awardManualAchievement: (achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => void;
   updateManualAchievement: (achievement: Achievement) => void;
   deleteManualAchievement: (achievementId: string) => void;
@@ -327,8 +326,10 @@ const createDataListener = <T extends {}>(
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user, loading, login, logout, requestPasswordReset, resetPassword } = useAuthContext();
-  
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
+
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
@@ -444,10 +445,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
-    if (!userId) {
-      console.error("addActivityLog: userId is undefined or null");
-      return;
-    }
     const logRef = push(ref(rtdb, 'activityLogs'));
     const newLog: Omit<ActivityLog, 'id' | 'details'> & { details?: string } = {
         userId,
@@ -459,6 +456,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     set(logRef, newLog);
   }, []);
+
+  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
+    setLoading(true);
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+
+    if (snapshot.exists()) {
+        const usersData = snapshot.val();
+        const userId = Object.keys(usersData)[0];
+        const foundUser = { id: userId, ...usersData[userId] };
+
+        if (foundUser.password === pass) {
+            setStoredUserId(foundUser.id);
+            addActivityLog(foundUser.id, 'User Logged In');
+            setLoading(false);
+            return { success: true, status: foundUser.status || 'active', user: foundUser };
+        }
+    }
+    setLoading(false);
+    return { success: false };
+  }, [addActivityLog, setStoredUserId]);
+
+  const logout = useCallback(() => {
+    if (user) {
+      addActivityLog(user.id, 'User Logged Out');
+    }
+    setStoredUserId(null);
+    setUser(null);
+    router.push('/login');
+  }, [user, addActivityLog, setStoredUserId, router]);
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -466,12 +493,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
       dataToSave.supervisorId = null;
     }
-    if (dataToSave.projectId === undefined) {
-      dataToSave.projectId = null;
-    }
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
+      if (user.id === updatedUser.id) setUser(updatedUser);
     }
   }, [user, addActivityLog]);
 
@@ -493,6 +518,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, updateUser, toast]);
   
+  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) {
+        return false;
+    }
+    const userData = snapshot.val();
+    const userId = Object.keys(userData)[0];
+    const targetUser = { id: userId, ...userData[userId] };
+    
+    const newRequest: Omit<PasswordResetRequest, 'id'> = {
+      userId: targetUser.id,
+      email: targetUser.email,
+      date: new Date().toISOString(),
+      status: 'pending',
+    };
+    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+    await set(newRequestRef, newRequest);
+
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+        if (admin.email) {
+            createAndSendNotification(
+                admin.email,
+                `Password Reset Request from ${targetUser.email}`,
+                'Password Reset Request',
+                { 'User Email': targetUser.email },
+                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+                'View Requests'
+            );
+        }
+    });
+
+    return true;
+  }, [users]);
+  
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
@@ -501,6 +562,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
   }, []);
+  
+  const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
+    const requestsRef = query(ref(rtdb, 'passwordResetRequests'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(requestsRef);
+    if (!snapshot.exists()) return false;
+    
+    const requestsData = snapshot.val();
+    let validRequest: PasswordResetRequest | null = null;
+    let requestId: string | null = null;
+
+    for (const key in requestsData) {
+      if (requestsData[key].resetCode === code && requestsData[key].status === 'pending') {
+        validRequest = { id: key, ...requestsData[key] };
+        requestId = key;
+        break;
+      }
+    }
+    
+    if (!validRequest || !requestId) return false;
+    
+    await update(ref(rtdb, `users/${validRequest.userId}`), { password: newPass });
+    await update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
+
+    addActivityLog(validRequest.userId, 'Password Reset');
+    return true;
+
+  }, [addActivityLog]);
   
   const lockUser = useCallback((userId: string) => {
     update(ref(rtdb, `users/${userId}`), { status: 'locked' });
@@ -607,7 +695,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
@@ -622,7 +710,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!task) return;
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: taskId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
@@ -659,37 +747,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
 
-  const createTask = useCallback(async (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[], attachment: File | null }) => {
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
     const newRef = push(ref(rtdb, 'tasks'));
-    const taskId = newRef.key!;
-
-    let attachmentData: Task['attachment'] = null;
-    if (taskData.attachment) {
-        try {
-            const url = await uploadFile(taskData.attachment, `tasks/${taskId}/${taskData.attachment.name}`);
-            attachmentData = { name: taskData.attachment.name, url };
-        } catch (e) {
-            console.error("Failed to upload attachment", e);
-            toast({ variant: 'destructive', title: "Attachment upload failed" });
-            return;
-        }
-    }
 
     const subtasks: { [userId: string]: Subtask } = {};
     taskData.assigneeIds.forEach(id => {
       subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
     });
 
-    const newTaskData = { ...taskData };
-    delete (newTaskData as any).attachment;
-  
     const newTask: Omit<Task, 'id'> = {
-      ...newTaskData,
-      attachment: attachmentData,
+      ...taskData,
       creatorId: user.id,
-      assigneeId: taskData.assigneeIds[0],
+      assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
       status: 'To Do',
       subtasks: subtasks,
       comments: [],
@@ -700,10 +771,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       viewedBy: { [user.id]: true }
     };
     
-    await set(newRef, newTask);
-    
+    set(newRef, newTask);
     addActivityLog(user.id, 'Task Created', taskData.title);
-  
+
     taskData.assigneeIds.forEach(assigneeId => {
       const assignee = users.find(u => u.id === assigneeId);
       if (assignee && assignee.email) {
@@ -722,7 +792,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       }
     });
-  }, [user, users, addActivityLog, toast]);
+
+  }, [user, users, addActivityLog]);
 
   const updateTask = useCallback((updatedTask: Task) => {
     if(!user) return;
@@ -855,7 +926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     updates[`tasks/${taskId}/statusRequest`] = null;
     updates[`tasks/${taskId}/approvalState`] = 'none';
-    if (attachment) updates[`tasks/${taskId}/completionAttachment`] = attachment;
+    if (attachment) updates[`tasks/${taskId}/attachment`] = attachment;
 
     update(ref(rtdb), updates);
     toast({ title: allDone ? 'Task Completed' : 'Subtask marked done, task still in progress' });
@@ -900,7 +971,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString(), eventId: taskId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -937,7 +1008,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!task) return;
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: taskId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
     
     const updates: { [key: string]: any } = {};
@@ -1010,7 +1081,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString(), eventId: taskId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
     
     const updates: { [key: string]: any } = {};
@@ -1096,12 +1167,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return expandedEvents.sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
   }, [plannerEvents]);
 
-  const addPlannerEvent = useCallback((event: Omit<PlannerEvent, 'id'>) => {
+  const addPlannerEvent = useCallback((event: Omit<PlannerEvent, 'id' | 'comments' | 'viewedBy'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'plannerEvents'));
     const newEvent: Omit<PlannerEvent, 'id'> = {
         ...event,
         creatorId: user.id,
+        comments: [],
+        viewedBy: { [user.id]: true }
     };
     set(newRef, newEvent);
     addActivityLog(user.id, 'Planner Event Added', event.title);
@@ -1126,7 +1199,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updatePlannerEvent = useCallback((event: PlannerEvent) => {
     if(!user) return;
     const { id, ...data } = event;
-    update(ref(rtdb, `plannerEvents/${id}`), data );
+    update(ref(rtdb, `plannerEvents/${id}`), { ...data, viewedBy: { [user.id]: true } });
     addActivityLog(user.id, 'Planner Event Updated', data.title);
   }, [user, addActivityLog]);
 
@@ -1139,66 +1212,68 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, plannerEvents, addActivityLog]);
 
-  const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
+  const addPlannerEventComment = useCallback((eventId: string, text: string) => {
     if (!user) return;
-    const dayCommentId = `${day}_${plannerUserId}`;
-    const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
+    const event = plannerEventsById[eventId];
+    if (!event) return;
+    const newCommentRef = push(ref(rtdb, `plannerEvents/${eventId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), isRead: false };
     
-    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = {
-        userId: user.id, text, date: new Date().toISOString(), eventId,
-    };
-    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
-    
-    const dayCommentSnapshot = await get(dayCommentRef);
-    const dayCommentData = dayCommentSnapshot.val();
+    const updates: { [key: string]: any } = {};
+    updates[`plannerEvents/${eventId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
-    if (!dayCommentData) {
-        const newDayComment: DailyPlannerComment = {
-            id: dayCommentId, plannerUserId, day,
-            comments: { [newCommentRef.key!]: newCommentWithId },
-            lastUpdated: new Date().toISOString(), viewedBy: { [user.id]: true },
-        };
-        await set(dayCommentRef, newDayComment);
-    } else {
-        await set(newCommentRef, newCommentWithId);
-        await update(dayCommentRef, { lastUpdated: new Date().toISOString() });
-    }
+    const participants = new Set([event.creatorId, event.userId]);
+    participants.forEach(participantId => {
+        if (participantId !== user.id) {
+            updates[`plannerEvents/${eventId}/viewedBy/${participantId}`] = false;
+        }
+    });
 
-    const event = plannerEvents.find(e => e.id === eventId);
-    if(event) {
-        const participants = new Set([event.creatorId, event.userId]);
-        const updates: { [key: string]: any } = {};
-        participants.forEach(pId => {
-            if (pId !== user.id) {
-                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
-                const participant = users.find(u => u.id === pId);
-                if (participant?.email) {
-                    createAndSendNotification(
-                        participant.email, `New comment on planner for ${format(parseISO(day), 'PPP')}`,
-                        `New comment from ${user.name} on "${event.title}"`,
-                        { 'Comment': text }, `${process.env.NEXT_PUBLIC_APP_URL}/schedule`, 'View Planner'
-                    );
-                }
-            }
-        });
-        if (Object.keys(updates).length > 0) {
-            await update(ref(rtdb), updates);
+    update(ref(rtdb), updates);
+
+    // Email notifications for delegated events
+    if (event.creatorId !== event.userId) {
+        const creator = users.find(u => u.id === event.creatorId);
+        const assignee = users.find(u => u.id === event.userId);
+        
+        const otherParty = user.id === event.creatorId ? assignee : creator;
+        
+        if (otherParty && otherParty.email) {
+            createAndSendNotification(
+                otherParty.email,
+                `New comment on delegated event: ${event.title}`,
+                `New comment from ${user.name}`,
+                {
+                    'Event': event.title,
+                    'Comment': text
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+                'View Planner'
+            );
         }
     }
-}, [user, users, plannerEvents, createAndSendNotification]);
+  }, [user, users, plannerEventsById]);
   
   const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: Date) => {
-    // This function is being kept for potential future use but is now deprecated
-    // in favor of markSinglePlannerCommentAsRead to avoid unintended behavior.
-  }, []);
-
-  const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
     if (!user) return;
-    const dayCommentId = `${day}_${plannerUserId}`;
-    const path = `dailyPlannerComments/${dayCommentId}/comments/${commentId}/viewedBy/${user.id}`;
-    update(ref(rtdb), { [path]: true });
-  }, [user]);
+    
+    const eventsForDay = getExpandedPlannerEvents(day, plannerUserId).filter(e => isSameDay(e.eventDate, day));
+    const updates: { [key: string]: any } = {};
+    
+    eventsForDay.forEach(event => {
+      const commentsArray = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
+      commentsArray.forEach((comment, index) => {
+        if (comment && !comment.isRead && comment.userId !== user.id) {
+          const commentKey = Array.isArray(event.comments) ? index : Object.keys(event.comments || {})[index];
+          updates[`plannerEvents/${event.id}/comments/${commentKey}/isRead`] = true;
+        }
+      });
+    });
+  
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, getExpandedPlannerEvents]);
 
   const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (!user) return;
@@ -1223,18 +1298,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `achievements/${achievementId}`));
   }, []);
 
-  const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
+  const addUser = useCallback((user: Omit<User, 'id' | 'avatar'>) => {
     const newRef = push(ref(rtdb, 'users'));
-    const newProfile = { 
-        ...userData, 
-        projectId: userData.projectId || null,
-        supervisorId: userData.supervisorId || null,
-    };
-    const newId = newRef.key;
-    if(newId) {
-      set(ref(rtdb, `users/${newId}`), newProfile);
-      addActivityLog(newId, 'User Added', newProfile.name);
-    }
+    set(newRef, user);
+    addActivityLog(user.id, 'User Added', user.name);
   }, [addActivityLog]);
 
   const updateUserPlanningScore = useCallback((userId: string, score: number) => {
@@ -1323,7 +1390,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { id, ...data } = incident;
 
     const newCommentRef = push(ref(rtdb, `incidentReports/${id}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: id };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
 
     update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString(), comments: [newComment] });
@@ -1336,7 +1403,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const incident = incidentReportsById[incidentId];
     if(!incident) return;
     const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString(), eventId: incidentId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString() };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1359,7 +1426,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!incident) return;
 
     const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: incidentId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1402,7 +1469,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!incident) return;
 
     const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: incidentId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
 
     const updates: { [key: string]: any } = {};
@@ -1493,16 +1560,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addManpowerProfile = useCallback(async (profile: Omit<ManpowerProfile, 'id'>): Promise<void> => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'manpowerProfiles'));
-    const newProfile = { 
-        ...profile, 
-        projectId: profile.projectId || null,
-        supervisorId: profile.supervisorId || null,
-    };
-    const newId = newRef.key;
-    if(newId) {
-      set(ref(rtdb, `manpowerProfiles/${newId}`), newProfile);
-      addActivityLog(newId, 'Manpower Profile Added', newProfile.name);
-    }
+    const newProfile: Omit<ManpowerProfile, 'id'> = { ...profile };
+
+    set(newRef, newProfile);
+    addActivityLog(user.id, 'Manpower Profile Added', profile.name);
   }, [user, addActivityLog]);
 
   const addMultipleManpowerProfiles = useCallback((profiles: any[]): number => {
@@ -1728,7 +1789,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
-        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
+        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString() }],
         viewedByRequester: true,
     };
 
@@ -2051,7 +2112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         date: new Date().toISOString(),
         status: 'Pending',
-        comments: [{ id: `comm-init`, text: `Request created: "${requestData.subject}"`, userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
+        comments: [{ id: `comm-init`, text: `Request created: "${requestData.subject}"`, userId: user.id, date: new Date().toISOString() }],
         viewedByRequester: true,
     };
     set(newRequestRef, newRequest);
@@ -2086,7 +2147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}. Comment: ${comment}`, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}. Comment: ${comment}`, date: new Date().toISOString() };
     
     const updates: { [key: string]: any } = {};
     updates[`managementRequests/${requestId}/status`] = status;
@@ -2127,7 +2188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const newRequestRef = push(ref(rtdb, 'ppeRequests'));
     
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request Created', date: new Date().toISOString(), eventId: newRequestRef.key! };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: 'Request Created', date: new Date().toISOString() };
     const newCommentRef = push(ref(rtdb, `ppeRequests/${newRequestRef.key}/comments`));
 
     const newRequest: Omit<PpeRequest, 'id'> = {
@@ -2198,7 +2259,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
   
     const updates: { [key: string]: any } = {};
     updates[`ppeRequests/${requestId}/status`] = status;
@@ -2581,7 +2642,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         status: 'Pending',
         requestDate: new Date().toISOString(),
-        comments: [{ id: 'comm-init', userId: user.id, text: `Request for ${requestData.requestType} submitted. Reason: ${requestData.remarks || 'N/A'}`, date: new Date().toISOString(), eventId: newRef.key! }],
+        comments: [{ id: 'comm-init', userId: user.id, text: `Request for ${requestData.requestType} submitted. Reason: ${requestData.remarks || 'N/A'}`, date: new Date().toISOString() }],
         viewedByRequester: true,
     };
     set(newRef, newRequest);
@@ -2611,7 +2672,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
 
     const updates: { [key: string]: any } = {};
     updates[`certificateRequests/${requestId}/status`] = 'Completed';
@@ -2626,7 +2687,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
     set(newCommentRef, newComment);
     update(ref(rtdb, `certificateRequests/${requestId}`), { viewedByRequester: false });
   }, [user]);
@@ -3194,7 +3255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         date: new Date().toISOString(),
         requesterId: user.id,
         status: 'Paid',
-        comments: [{ id: `comm-init`, text: 'Payment logged.', userId: user.id, date: new Date().toISOString(), eventId: newRef.key! }],
+        comments: [{ id: `comm-init`, text: 'Payment logged.', userId: user.id, date: new Date().toISOString() }],
     };
     set(newRef, newPayment);
   }, [user]);
@@ -3211,7 +3272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(!payment) return;
     
     const newCommentRef = push(ref(rtdb, `payments/${paymentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}: ${comment}`, date: new Date().toISOString(), eventId: paymentId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}: ${comment}`, date: new Date().toISOString() };
     
     const updates: Partial<Payment> = {
         status,
@@ -3474,7 +3535,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
     
     const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString() };
     updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
 
     update(ref(rtdb), updates);
@@ -3506,7 +3567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
     
     const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Disputed: ${comment}`, date: new Date().toISOString(), eventId: requestId };
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Disputed: ${comment}`, date: new Date().toISOString() };
     updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
 
     update(ref(rtdb), updates);
@@ -3583,12 +3644,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
 
 
-  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests } = useMemo(() => {
+  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests } = useMemo(() => {
     if (!user) return {
-      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [],
+      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, unreadPlannerCommentDays: [], pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [],
     };
     
-    const pendingTaskApprovalCount = tasks.filter(t => t.creatorId === user.id && t.statusRequest?.status === 'Pending').length;
+    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
     const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
     const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
 
@@ -3599,19 +3660,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const plannerNotificationCount = dailyPlannerComments.filter(dayComment => {
-      if (!dayComment.day || !dayComment.comments) return false;
-      const eventsOnDay = plannerEvents.filter(e => e.date && dayComment.day && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-      if (eventsOnDay.length === 0) return false;
-    
-      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
-      return comments.some(c => {
-        if (!c || !c.eventId) return false;
-        const event = eventsOnDay.find(e => e.id === c.eventId);
-        if (!event) return false;
+    const unreadPlannerCommentDays: string[] = []; // Deprecated
+      
+    const plannerNotificationCount = plannerEvents.filter(event => {
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
-        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
-      });
+        if (!isParticipant) return false;
+        
+        const comments = Array.isArray(event.comments) ? event.comments : Object.values(event.comments || {});
+        return comments.some(c => c && !c.isRead && c.userId !== user.id);
     }).length;
 
 
@@ -3667,31 +3723,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
 
     return {
-      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests
+      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, manpowerLogs, plannerEvents]);
 
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, appName, appLogo,
     can,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, markSinglePlannerCommentAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, unreadPlannerCommentDays, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markPlannerCommentsAsRead, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList,
   };
+
+  // Set user based on stored ID
+  useEffect(() => {
+    if (storedUserId) {
+        const foundUser = usersById[storedUserId];
+        if (foundUser) {
+            setUser(foundUser);
+        }
+    } else {
+        setUser(null);
+    }
+  }, [storedUserId, usersById]);
+
+  // Listen for status changes on the current user
+  useEffect(() => {
+    if (user?.id) {
+        const userRef = ref(rtdb, `users/${user.id}`);
+        const unsubscribe = onValue(userRef, (snapshot) => {
+            if (!snapshot.exists()) {
+                setStoredUserId(null);
+                setUser(null);
+                router.replace('/login');
+                return;
+            }
+            const updatedUser = { id: snapshot.key, ...snapshot.val() };
+            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                 setUser(updatedUser);
+            }
+        });
+        return () => unsubscribe();
+    }
+  }, [user, setStoredUserId, router]);
   
   useEffect(() => {
-    if (loading || !user) {
-      // Clear all data if user logs out or session is invalid
-      if (!loading && !user) {
-        const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
-        clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
-        clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-        clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setInventoryTransferRequestsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
-        clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
-        clearState(setUnlockRequestsById);
-        clearState(setTpCertListsById);
-      }
+    if (!rtdb) {
+      console.error("Firebase Realtime Database is not initialized.");
+      setLoading(false);
       return;
+    }
+  
+    // Seed initial data if it doesn't exist
+    const seedData = async () => {
+        const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
+        if (!jobCodesSnapshot.exists()) {
+            const updates: { [key: string]: any } = {};
+            INITIAL_JOB_CODES.forEach(jc => {
+                const newRef = push(ref(rtdb, 'jobCodes'));
+                updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
+            });
+            await update(ref(rtdb), updates);
+        }
     };
+    seedData();
+
+    if (!storedUserId) {
+      setLoading(false);
+      // Clear all state when user logs out
+      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
+      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
+      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
+      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setInventoryTransferRequestsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
+      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
+      clearState(setUnlockRequestsById);
+      clearState(setTpCertListsById);
+      return;
+    }
   
     const listeners = [
       createDataListener('users', setUsersById),
@@ -3749,25 +3856,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
   
-    // Seed initial data if it doesn't exist
-    const seedData = async () => {
-        const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
-        if (!jobCodesSnapshot.exists()) {
-            const updates: { [key: string]: any } = {};
-            INITIAL_JOB_CODES.forEach(jc => {
-                const newRef = push(ref(rtdb, 'jobCodes'));
-                updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
-            });
-            await update(ref(rtdb), updates);
-        }
-    };
-    seedData();
+    setLoading(false);
   
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
     };
-  }, [loading, user]);
+  }, [storedUserId]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {

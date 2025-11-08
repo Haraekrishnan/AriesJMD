@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,8 +14,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow, startOfDay, isPast, parseISO } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, ZoomIn, ZoomOut, Download } from 'lucide-react';
+import { format, formatDistanceToNow, startOfDay } from 'date-fns';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -25,16 +25,14 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Checkbox } from '../ui/checkbox';
 import { uploadFile } from '@/lib/storage';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
+  assigneeIds: z.array(z.string()).min(1, 'At least one assignee is required'),
   dueDate: z.date({ required_error: 'Due date is required' }),
   priority: z.enum(['Low', 'Medium', 'High']),
-  requiresAttachmentForCompletion: z.boolean().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -50,13 +48,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [isPanning, setIsPanning] = useState(false);
-  const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
-  const [translate, setTranslate] = useState({ x: 0, y: 0 });
-  const imageContainerRef = useRef<HTMLDivElement>(null);
-
 
   const taskToDisplay = useMemo(() => tasks.find(t => t.id === task.id) || task, [tasks, task]);
 
@@ -87,9 +78,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         title: taskToDisplay.title,
         description: taskToDisplay.description,
         assigneeIds: taskToDisplay.assigneeIds || [],
-        dueDate: taskToDisplay.dueDate ? parseISO(taskToDisplay.dueDate) : new Date(),
+        dueDate: new Date(taskToDisplay.dueDate),
         priority: taskToDisplay.priority,
-        requiresAttachmentForCompletion: taskToDisplay.requiresAttachmentForCompletion || false,
       });
       setNewComment('');
       setAttachment(null);
@@ -109,74 +99,71 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     setNewComment('');
   };
   
-const handleRequestStatusChange = async (newStatus: TaskStatus) => {
-  if (!user) return;
-
-  const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
-  const hasExistingAttachment = !!taskToDisplay.statusRequest?.attachment;
-  const hasNewAttachment = !!attachment;
-
-  // Validate: required file missing
-  if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
-    toast({
-      variant: 'destructive',
-      title: 'Attachment required',
-      description: 'Please upload a file before marking this task as completed.',
-    });
-    return;
-  }
-
-  let uploadedAttachment: { name: string; url: string } | undefined = undefined;
-
-  try {
-    // Step 1: Upload to Cloudinary if new file exists
-    if (hasNewAttachment) {
+  const handleRequestStatusChange = async (newStatus: TaskStatus) => {
+    if (!user) return;
+  
+    const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
+    const hasExistingAttachment = !!taskToDisplay.attachment;
+    const hasNewAttachment = !!attachment;
+  
+    // Validate: required file missing
+    if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
       toast({
-        title: 'Uploading file...',
-        description: `Uploading ${attachment.name} to Cloudinary.`,
+        variant: 'destructive',
+        title: 'Attachment required',
+        description: 'Please upload a file before marking this task as completed.',
       });
-
-      const url = await uploadFile(attachment, `tasks/${taskToDisplay.id}/completion/${attachment.name}`);
-      uploadedAttachment = {
-        name: attachment.name,
-        url: url,
-      };
-
+      return;
+    }
+  
+    let uploadedAttachment: { name: string; url: string } | undefined = undefined;
+  
+    try {
+      if (hasNewAttachment) {
+        toast({
+          title: 'Uploading file...',
+          description: `Uploading ${attachment.name}.`,
+        });
+  
+        const url = await uploadFile(attachment, `tasks/${taskToDisplay.id}/${attachment.name}`);
+        uploadedAttachment = {
+          name: attachment.name,
+          url: url,
+        };
+  
+        toast({
+          title: 'Upload Successful',
+          description: `${attachment.name} uploaded successfully.`,
+        });
+      }
+  
+      if (!newComment.trim()) {
+        toast({
+          title: 'Note',
+          description: 'No comment added. Proceeding with status change.',
+        });
+      }
+  
+      await requestTaskStatusChange(
+        taskToDisplay.id,
+        newStatus,
+        newComment || 'Task completed',
+        uploadedAttachment || taskToDisplay.attachment || undefined
+      );
+  
+      setAttachment(null);
+      setNewComment('');
+      setIsOpen(false);
+  
+    } catch (error) {
+      console.error('Error while marking task complete:', error);
       toast({
-        title: 'Upload Successful',
-        description: `${attachment.name} uploaded successfully.`,
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'Could not upload attachment. Please try again.',
       });
     }
-
-    // Step 2: Warn if no comment
-    if (!newComment.trim()) {
-      toast({
-        title: 'Note',
-        description: 'No comment added. Proceeding with status change.',
-      });
-    }
-
-    // Step 3: Proceed with status change
-    await requestTaskStatusChange(
-      taskToDisplay.id,
-      newStatus,
-      newComment || 'Task completed',
-      uploadedAttachment
-    );
-
-    setAttachment(null);
-    setNewComment('');
-    setIsOpen(false);
-
-  } catch (error) {
-    console.error('Error while marking task complete:', error);
-    toast({
-      variant: 'destructive',
-      title: 'Upload failed',
-      description: 'Could not upload attachment. Please try again.',
-    });
-  }
-};
+  };
   
   const handleApprovalAction = (action: 'approve' | 'return') => {
     if (!newComment.trim()) {
@@ -245,35 +232,25 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
   const isAssignee = useMemo(() => user?.id && taskToDisplay.assigneeIds?.includes(user.id), [user, taskToDisplay]);
   const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
 
-  const ActionButtons = () => {
-    const handleFormSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (mySubtask?.status === 'In Progress') {
-        handleRequestStatusChange('Done');
-      }
-    };
-  
+  const renderActionButtons = () => {
     if (taskToDisplay.approvalState === 'status_pending') {
-      if (isApprover) {
-        return (
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            <div className='flex gap-2'>
-              <Button type="button" onClick={() => handleApprovalAction('approve')} className="w-full bg-green-600 hover:bg-green-700"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
-              <Button type="button" onClick={() => handleApprovalAction('return')} className="w-full" variant="destructive"><ThumbsDown className="mr-2 h-4 w-4" /> Return</Button>
-            </div>
-          </form>
-        );
-      }
-      return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {creator?.name || 'manager'}</p>;
+        if (isApprover) {
+            return (
+                <div className='flex gap-2'>
+                    <Button onClick={() => handleApprovalAction('approve')} className="w-full bg-green-600 hover:bg-green-700"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
+                    <Button onClick={() => handleApprovalAction('return')} className="w-full" variant="destructive"><ThumbsDown className="mr-2 h-4 w-4" /> Return</Button>
+                </div>
+            )
+        }
+        return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.creatorId)?.name || 'manager'}</p>
     }
-  
     if (isAssignee && !isCompleted && mySubtask) {
-      if (mySubtask.status === 'To Do') {
-        return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Start Progress</Button>;
-      }
-      if (mySubtask.status === 'In Progress') {
-        return <Button type="submit" form="action-form" className="w-full">Mark as Completed</Button>;
-      }
+        if (mySubtask.status === 'To Do') {
+            return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Start Progress</Button>
+        }
+        if (mySubtask.status === 'In Progress') {
+            return <Button onClick={() => handleRequestStatusChange('Done')} className="w-full">Mark as Completed</Button>
+        }
     }
     return null;
   };
@@ -284,35 +261,8 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
   const commentsArray = Array.isArray(taskToDisplay.comments) 
     ? taskToDisplay.comments 
     : Object.values(taskToDisplay.comments || {});
-    
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-      if (zoom <= 1) return;
-      e.preventDefault();
-      setIsPanning(true);
-      setStartPosition({
-          x: e.clientX - translate.x,
-          y: e.clientY - translate.y,
-      });
-  };
 
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-      if (!isPanning || !imageContainerRef.current) return;
-      e.preventDefault();
-      const x = e.clientX - startPosition.x;
-      const y = e.clientY - startPosition.y;
-      setTranslate({ x, y });
-  };
-  
-  const handleMouseUpOrLeave = () => {
-      setIsPanning(false);
-  };
-  
-  const completionAttachment = taskToDisplay.statusRequest?.attachment;
-  const isCompletionAttachmentAnImage = completionAttachment?.url?.startsWith('data:image');
-  const isTaskAttachmentAnImage = taskToDisplay.attachment?.url?.startsWith('data:image');
-  
   return (
-    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <Wrapper {...wrapperProps}>
         <DialogHeader>
@@ -361,36 +311,6 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
                   <Textarea {...form.register('description')} placeholder="Task description" rows={3} disabled={!canEditCoreFields}/>
                 </div>
 
-                {taskToDisplay.attachment && (
-                  <div>
-                    <Label>Task Attachment</Label>
-                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                      <span className="flex items-center gap-2">
-                        <Paperclip className="h-4 w-4" />
-                        <span>{taskToDisplay.attachment.name || 'Attachment'}</span>
-                      </span>
-                      <div className="flex gap-1">
-                        {isTaskAttachmentAnImage && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setViewingAttachmentUrl(taskToDisplay.attachment!.url)}
-                          >
-                            View
-                          </Button>
-                        )}
-                        <Button asChild variant="outline" size="sm">
-                          <a href={taskToDisplay.attachment!.url} download={taskToDisplay.attachment!.name}>
-                            Download
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-
                 <div>
                   <Label>Assignee(s)</Label>
                     <Controller
@@ -431,7 +351,7 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
                                             }
                                             }}
                                         >
-                                            <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
+                                            <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
                                             {option.label}
                                         </CommandItem>
                                         );
@@ -498,24 +418,6 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                    <Controller
-                    control={form.control}
-                    name="requiresAttachmentForCompletion"
-                    render={({ field }) => (
-                        <Checkbox
-                        id="edit-requiresAttachment"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={!canEditCoreFields}
-                        />
-                    )}
-                    />
-                    <Label htmlFor="edit-requiresAttachment" className="text-sm font-normal">
-                        Require assignee to upload an attachment for completion
-                    </Label>
-                </div>
-                
                 {taskToDisplay.completionDate && (
                     <div>
                         <Label>Completion Date</Label>
@@ -526,7 +428,7 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
                     </div>
                 )}
                 
-                 { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
+                { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
               </form>
             </ScrollArea>
 
@@ -549,26 +451,23 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
                         {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
                     </div>
                 </ScrollArea>
-                <form id="action-form" onSubmit={(e) => { e.preventDefault(); if(mySubtask?.status === 'In Progress') { handleRequestStatusChange('Done'); }}}>
-                {completionAttachment && (
+                {taskToDisplay.attachment && (
                   <div>
-                    <Label>Completion Attachment</Label>
+                    <Label>Attachment</Label>
                     <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                        <span className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{completionAttachment.name}</span></span>
-                        <div className="flex gap-1">
-                            {isCompletionAttachmentAnImage && <Button type="button" variant="outline" size="sm" onClick={() => setViewingAttachmentUrl(completionAttachment!.url)}>View</Button>}
-                            <Button asChild variant="outline" size="sm"><a href={completionAttachment.url} download={completionAttachment.name}>Download</a></Button>
-                        </div>
+                        <Link href={taskToDisplay.attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                            <Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span>
+                        </Link>
                     </div>
                   </div>
                 )}
                 {taskToDisplay.requiresAttachmentForCompletion && isAssignee && taskToDisplay.status === 'In Progress' && (
                   <div>
                     <Label>Attachment for Completion</Label>
-                    {!attachment && !taskToDisplay.statusRequest?.attachment &&
+                    {!attachment && !taskToDisplay.attachment &&
                       <div className="relative mt-1">
                         <Button asChild variant="outline" size="sm"><Label htmlFor="file-upload"><Upload className="mr-2"/>Upload File</Label></Button>
-                        <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png, .pdf, .doc, .docx, .xls, .xlsx"/>
+                        <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png, .pdf"/>
                       </div>
                     }
                     {attachment && (
@@ -583,8 +482,7 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
                     <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment... (required for status changes)" className="pr-12"/>
                     <Button type="button" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleAddComment} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
                 </div>
-                <ActionButtons />
-                </form>
+                {renderActionButtons()}
             </div>
         </div>
         <DialogFooter className="justify-between pt-4 mt-auto">
@@ -611,44 +509,5 @@ const handleRequestStatusChange = async (newStatus: TaskStatus) => {
         </DialogFooter>
       </Wrapper>
     </Dialog>
-     <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-            <DialogHeader>
-                <DialogTitle>Attachment Viewer</DialogTitle>
-                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
-                    <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
-                    </a>
-                </div>
-            </DialogHeader>
-            <div 
-              ref={imageContainerRef}
-              className="flex-1 overflow-auto flex items-center justify-center p-4 bg-muted/50 rounded-md"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUpOrLeave}
-              onMouseLeave={handleMouseUpOrLeave}
-            >
-                {viewingAttachmentUrl && (
-                    <img 
-                        src={viewingAttachmentUrl} 
-                        alt="Attachment" 
-                        className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                        style={{
-                            transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
-                            maxWidth: zoom > 1 ? 'none' : '100%',
-                            maxHeight: zoom > 1 ? 'none' : '100%',
-                            objectFit: 'contain'
-                        }}
-                    />
-                )}
-            </div>
-        </DialogContent>
-    </Dialog>
-    </>
   );
 }
-
-    
