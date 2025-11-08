@@ -87,7 +87,7 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column)}
           >
-            <div className={cn("font-bold p-4 sticky top-0 bg-card rounded-t-lg border-t-4", columnColors[column])}>
+            <div className={cn("font-bold p-4 sticky top-0 bg-card rounded-t-lg border-t-4 z-10", columnColors[column])}>
                 <h3 className="flex items-center gap-2 text-base">
                     <span>{column}</span>
                     <Badge variant="secondary" className="text-sm">{columnTasks.length}</Badge>
