@@ -349,7 +349,7 @@ export type Comment = {
   userId: string;
   text: string;
   date: string; // ISO String
-  eventId: string; 
+  eventId?: string; 
   viewedBy?: { [key: string]: boolean };
 };
 
@@ -906,10 +906,12 @@ export type LogbookRequest = {
     status: 'Pending' | 'Completed' | 'Rejected';
     remarks?: string;
     viewedBy: { [key: string]: boolean };
+    comments?: Comment[];
 };
       
 
     
+
 
 
 

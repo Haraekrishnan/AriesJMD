@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -18,6 +19,7 @@ import ManpowerSummaryReportDownloads from '@/components/manpower/ManpowerSummar
 import LogLeaveDialog from '@/components/manpower/LogLeaveDialog';
 import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
 import LogbookRequestDialog from '@/components/manpower/LogbookRequestDialog';
+import LogbookRequests from '@/components/manpower/LogbookRequests';
 
 export default function ManpowerPage() {
     const { can } = useAppContext();
@@ -62,6 +64,8 @@ export default function ManpowerPage() {
                     )}
                 </div>
             </div>
+
+            <LogbookRequests />
 
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
