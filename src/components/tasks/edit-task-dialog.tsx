@@ -1,5 +1,6 @@
 
 'use client';
+import * as React from "react";
 import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -122,11 +123,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const handleRequestStatusChange = async (newStatus: TaskStatus) => {
     if (!user) return;
-
+  
     const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
     const hasExistingAttachment = !!taskToDisplay.attachment;
     const hasNewAttachment = !!attachment;
-
+  
     // Validate: required file missing
     if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
       toast({
@@ -136,9 +137,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       });
       return;
     }
-
+  
     let uploadedAttachment: { name: string; url: string } | undefined = undefined;
-
+  
     try {
       // Step 1: Upload to Cloudinary if new file exists
       if (hasNewAttachment) {
@@ -146,19 +147,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           title: 'Uploading file...',
           description: `Uploading ${attachment.name} to Cloudinary.`,
         });
-
+  
         const url = await uploadFile(attachment, `tasks/${taskToDisplay.id}/${attachment.name}`);
         uploadedAttachment = {
           name: attachment.name,
           url: url,
         };
-
+  
         toast({
           title: 'Upload Successful',
           description: `${attachment.name} uploaded successfully.`,
         });
       }
-
+  
       // Step 2: Warn if no comment
       if (!newComment.trim()) {
         toast({
@@ -166,7 +167,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           description: 'No comment added. Proceeding with status change.',
         });
       }
-
+  
       // Step 3: Proceed with status change
       await requestTaskStatusChange(
         taskToDisplay.id,
@@ -174,11 +175,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         newComment || 'Task completed',
         uploadedAttachment || taskToDisplay.attachment || undefined
       );
-
+  
       setAttachment(null);
       setNewComment('');
       setIsOpen(false);
-
+  
       toast({
         title: 'Status Updated',
         description: `Task marked as "${newStatus}".`,
