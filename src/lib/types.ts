@@ -1,3 +1,4 @@
+
 'use client';
 
 export type Broadcast = {
@@ -185,6 +186,7 @@ export type Task = {
   lastUpdated?: string;
   viewedBy?: { [key: string]: boolean };
   requiresAttachmentForCompletion?: boolean;
+  link?: string;
   attachment?: {
     name: string;
     url: string; 

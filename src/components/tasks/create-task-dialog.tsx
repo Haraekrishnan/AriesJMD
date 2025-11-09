@@ -32,6 +32,7 @@ const taskSchema = z.object({
   assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
   dueDate: z.string().min(1, 'Due date is required'),
   priority: z.enum(['Low', 'Medium', 'High']),
+  link: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -48,6 +49,7 @@ export default function CreateTaskDialog() {
       description: '',
       assigneeIds: [],
       priority: 'Medium',
+      link: '',
     },
   });
 
@@ -96,6 +98,12 @@ export default function CreateTaskDialog() {
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" {...form.register('description')} />
             {form.formState.errors.description && <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="link">Link (Optional)</Label>
+            <Input id="link" {...form.register('link')} placeholder="https://example.com" />
+            {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
           </div>
 
           <div className="space-y-2">

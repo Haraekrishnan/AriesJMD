@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, Link as LinkIcon } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -33,6 +33,7 @@ const taskSchema = z.object({
   assigneeIds: z.array(z.string()).min(1, 'At least one assignee is required'),
   dueDate: z.date({ required_error: 'Due date is required' }),
   priority: z.enum(['Low', 'Medium', 'High']),
+  link: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -42,6 +43,25 @@ interface EditTaskDialogProps {
   setIsOpen: (open: boolean) => void;
   task: Task;
 }
+
+const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+const LinkifiedText = ({ text }: { text: string }) => {
+  const parts = text.split(urlRegex);
+  return (
+    <>
+      {parts.map((part, index) =>
+        urlRegex.test(part) ? (
+          <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+            {part}
+          </a>
+        ) : (
+          <React.Fragment key={index}>{part}</React.Fragment>
+        )
+      )}
+    </>
+  );
+};
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
   const { user, users, tasks, updateTask, deleteTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment } = useAppContext();
@@ -80,6 +100,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         assigneeIds: taskToDisplay.assigneeIds || [],
         dueDate: new Date(taskToDisplay.dueDate),
         priority: taskToDisplay.priority,
+        link: taskToDisplay.link || '',
       });
       setNewComment('');
       setAttachment(null);
@@ -101,11 +122,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const handleRequestStatusChange = async (newStatus: TaskStatus) => {
     if (!user) return;
-  
+
     const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
     const hasExistingAttachment = !!taskToDisplay.attachment;
     const hasNewAttachment = !!attachment;
-  
+
     // Validate: required file missing
     if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
       toast({
@@ -115,46 +136,53 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       });
       return;
     }
-  
+
     let uploadedAttachment: { name: string; url: string } | undefined = undefined;
-  
+
     try {
+      // Step 1: Upload to Cloudinary if new file exists
       if (hasNewAttachment) {
         toast({
           title: 'Uploading file...',
-          description: `Uploading ${attachment.name}.`,
+          description: `Uploading ${attachment.name} to Cloudinary.`,
         });
-  
+
         const url = await uploadFile(attachment, `tasks/${taskToDisplay.id}/${attachment.name}`);
         uploadedAttachment = {
           name: attachment.name,
           url: url,
         };
-  
+
         toast({
           title: 'Upload Successful',
           description: `${attachment.name} uploaded successfully.`,
         });
       }
-  
+
+      // Step 2: Warn if no comment
       if (!newComment.trim()) {
         toast({
           title: 'Note',
           description: 'No comment added. Proceeding with status change.',
         });
       }
-  
+
+      // Step 3: Proceed with status change
       await requestTaskStatusChange(
         taskToDisplay.id,
         newStatus,
         newComment || 'Task completed',
         uploadedAttachment || taskToDisplay.attachment || undefined
       );
-  
+
       setAttachment(null);
       setNewComment('');
       setIsOpen(false);
-  
+
+      toast({
+        title: 'Status Updated',
+        description: `Task marked as "${newStatus}".`,
+      });
     } catch (error) {
       console.error('Error while marking task complete:', error);
       toast({
@@ -308,7 +336,15 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 
                 <div>
                   <Label>Description</Label>
-                  <Textarea {...form.register('description')} placeholder="Task description" rows={3} disabled={!canEditCoreFields}/>
+                  <div className="p-3 text-sm min-h-[6rem] border rounded-md bg-muted/50 whitespace-pre-wrap">
+                      <LinkifiedText text={taskToDisplay.description} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="link">Link (Optional)</Label>
+                  <Input id="link" {...form.register('link')} disabled={!canEditCoreFields}/>
+                  {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
                 </div>
 
                 <div>
@@ -443,7 +479,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                     <Avatar className="h-8 w-8"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                     <div className="bg-muted p-3 rounded-lg w-full">
                                         <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p></div>
-                                        <p className="text-sm text-foreground/80 mt-1">{comment.text}</p>
+                                        <p className="text-sm text-foreground/80 mt-1"><LinkifiedText text={comment.text} /></p>
                                     </div>
                                 </div>
                             )
@@ -460,6 +496,18 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         </Link>
                     </div>
                   </div>
+                )}
+                {taskToDisplay.link && (
+                    <div>
+                        <Label>Link</Label>
+                        <div className="mt-1">
+                            <Button asChild variant="outline" size="sm">
+                                <Link href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">
+                                    <LinkIcon className="mr-2 h-4 w-4" /> Open Link
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
                 )}
                 {taskToDisplay.requiresAttachmentForCompletion && isAssignee && taskToDisplay.status === 'In Progress' && (
                   <div>
