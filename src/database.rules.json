@@ -47,10 +47,6 @@
       ".read": true,
       ".write": true
     },
-    "inventoryTransferRequests": {
-      ".read": true,
-      ".write": true
-    },
     "utMachines": {
       ".read": true,
       ".write": true
@@ -179,7 +175,14 @@
     "unlockRequests": {
         ".read": "auth != null",
         ".write": true
+    },
+    "downloadableDocuments": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+    },
+    "logbookRequests": {
+      ".read": true,
+      ".write": true
     }
   }
 }
-

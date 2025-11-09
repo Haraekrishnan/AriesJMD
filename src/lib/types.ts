@@ -407,6 +407,13 @@ export type EpNumberRecord = {
     date: string; // ISO string
 };
 
+export type LogbookRecord = {
+  status: 'Received' | 'Not Received';
+  inDate?: string; // ISO string
+  outDate?: string; // ISO string
+  remarks?: string;
+};
+
 export type ManpowerProfile = {
   id: string;
   name: string;
@@ -465,6 +472,9 @@ export type ManpowerProfile = {
   terminationDate?: string | null; // ISO
   resignationDate?: string | null; // ISO
   feedback?: string;
+
+  // Logbook
+  logbook?: LogbookRecord;
 
   // Remarks
   remarks?: string;
@@ -884,6 +894,17 @@ export type DownloadableDocument = {
     uploadedBy: string; // userId
     createdAt: string; // ISO string
 };
+
+export type LogbookRequest = {
+    id: string;
+    manpowerId: string;
+    requesterId: string;
+    requestDate: string; // ISO String
+    status: 'Pending' | 'Completed' | 'Rejected';
+    remarks?: string;
+    viewedBy: { [key: string]: boolean };
+};
       
 
     
+
