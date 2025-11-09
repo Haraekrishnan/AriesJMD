@@ -27,8 +27,8 @@ export default function DownloadsPage() {
     const lowercasedTerm = searchTerm.toLowerCase();
     return downloadableDocuments.filter(doc => 
       doc.title.toLowerCase().includes(lowercasedTerm) ||
-      doc.description?.toLowerCase().includes(lowercasedTerm) ||
-      doc.category?.toLowerCase().includes(lowercasedTerm)
+      (doc.description && doc.description.toLowerCase().includes(lowercasedTerm)) ||
+      (doc.category && doc.category.toLowerCase().includes(lowercasedTerm))
     );
   }, [downloadableDocuments, searchTerm]);
 
@@ -55,18 +55,21 @@ export default function DownloadsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Available Documents</CardTitle>
-          <CardDescription>
-            <div className="flex justify-between items-center">
-              <span>A list of all documents available for download.</span>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Available Documents</CardTitle>
+              <CardDescription>
+                A list of all documents available for download.
+              </CardDescription>
+            </div>
+            <div className="w-full sm:w-64">
               <Input
                 placeholder="Search documents..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-64"
               />
             </div>
-          </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <DownloadsTable 
