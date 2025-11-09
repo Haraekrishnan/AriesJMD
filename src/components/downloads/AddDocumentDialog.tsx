@@ -40,6 +40,7 @@ export default function AddDocumentDialog({ isOpen, setIsOpen }: AddDocumentDial
     addDocument(data);
     toast({ title: 'Document Added', description: `${data.title} has been successfully added.` });
     setIsOpen(false);
+    form.reset();
   };
 
   const handleOpenChange = (open: boolean) => {
