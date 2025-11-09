@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -22,7 +21,7 @@ interface LogbookRegisterDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions: LogbookStatus[] = ['Pending', 'Received', 'Not Received', 'Requested'];
+const statusOptions: LogbookStatus[] = ['Pending', 'Received'];
 
 const getStatusVariant = (status?: LogbookStatus) => {
     switch (status) {
@@ -65,8 +64,8 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
         const logbook: LogbookRecord = {
           ...profile.logbook,
           status: status,
-          inDate: inDate?.toISOString(),
-          outDate: outDate?.toISOString(),
+          inDate: inDate ? inDate.toISOString() : profile.logbook?.inDate,
+          outDate: outDate ? outDate.toISOString() : profile.logbook?.outDate,
           remarks: remarks || profile.logbook?.remarks,
         };
         updateManpowerProfile({ ...profile, logbook });
