@@ -13,7 +13,7 @@ import type { DownloadableDocument } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 
 export default function DownloadsPage() {
-  const { can, downloadableDocuments } = useAppContext();
+  const { can, downloadableDocuments = [] } = useAppContext();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<DownloadableDocument | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

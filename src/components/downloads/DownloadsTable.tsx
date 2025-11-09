@@ -17,14 +17,14 @@ interface DownloadsTableProps {
   onEdit: (doc: DownloadableDocument) => void;
 }
 
-export default function DownloadsTable({ documents, canManage, onEdit }: DownloadsTableProps) {
+export default function DownloadsTable({ documents = [], canManage, onEdit }: DownloadsTableProps) {
   const { deleteDocument, users } = useAppContext();
 
   const sortedDocuments = useMemo(() => {
     return [...documents].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [documents]);
 
-  if (documents.length === 0) {
+  if (!documents || documents.length === 0) {
     return <p className="text-center py-8 text-muted-foreground">No documents found.</p>;
   }
 
