@@ -24,9 +24,8 @@ import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
 import IssueMemoDialog from '@/components/manpower/IssueMemoDialog';
 import IssuePpeDialog from '@/components/manpower/IssuePpeDialog';
 import MemoReportDialog from '@/components/manpower/MemoReportDialog';
-import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
-import LogbookRequestDialog from '@/components/manpower/LogbookRequestDialog';
 import LogbookRequests from '@/components/manpower/LogbookRequests';
+import LogbookSummary from '@/components/manpower/LogbookSummary';
 
 
 export default function ManpowerListPage() {
@@ -39,8 +38,6 @@ export default function ManpowerListPage() {
     const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false);
     const [isPpeDialogOpen, setIsPpeDialogOpen] = useState(false);
     const [isMemoReportOpen, setIsMemoReportOpen] = useState(false);
-    const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
-    const [isLogbookRequestOpen, setIsLogbookRequestOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -214,8 +211,6 @@ export default function ManpowerListPage() {
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
-                         <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
-                         <Button variant="outline" onClick={() => setIsLogbookRequestOpen(true)}><Book className="mr-2 h-4 w-4" /> Request Logbook</Button>
                          <Button variant="outline" onClick={() => setIsMemoReportOpen(true)}><GanttChartSquare className="mr-2 h-4 w-4" /> Memo Report</Button>
                          <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
@@ -233,6 +228,7 @@ export default function ManpowerListPage() {
             </div>
 
             <LogbookRequests />
+            {can.manage_logbook && <LogbookSummary />}
             <TradeSummary />
             
             {can.manage_manpower_list && overdueLeaves.length > 0 && (
@@ -383,14 +379,6 @@ export default function ManpowerListPage() {
                         isOpen={isMemoReportOpen}
                         setIsOpen={setIsMemoReportOpen}
                     />
-                    <LogbookRegisterDialog
-                        isOpen={isLogbookRegisterOpen}
-                        setIsOpen={setIsLogbookRegisterOpen}
-                    />
-                    <LogbookRequestDialog
-                        isOpen={isLogbookRequestOpen}
-                        setIsOpen={setIsLogbookRequestOpen}
-                    />
                      {selectedProfile && selectedLeave && (
                         <ExtendLeaveDialog
                             isOpen={isExtendLeaveOpen}
@@ -404,5 +392,4 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
 
