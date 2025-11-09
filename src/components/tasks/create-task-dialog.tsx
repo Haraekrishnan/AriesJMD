@@ -101,8 +101,8 @@ export default function CreateTaskDialog() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="link">Link (Optional)</Label>
-            <Input id="link" {...form.register('link')} placeholder="https://example.com" />
+            <Label htmlFor="link">Attachment (Optional)</Label>
+            <Input id="link" {...form.register('link')} placeholder="https://example.com/download" />
             {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
           </div>
 

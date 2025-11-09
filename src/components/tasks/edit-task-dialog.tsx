@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, startOfDay } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, Link as LinkIcon } from 'lucide-react';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, Download } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -343,19 +343,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
 
                 <div>
-                    <Label htmlFor="link">Link (Optional)</Label>
+                    <Label htmlFor="link">Attachment</Label>
                     {canEditCoreFields ? (
                         <Input id="link" {...form.register('link')} disabled={!canEditCoreFields}/>
                     ) : (
                         taskToDisplay.link ? (
                              <div className="mt-1">
-                                <Button asChild variant="outline" size="sm">
+                                <Button asChild variant="default" size="sm">
                                     <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">
-                                        <LinkIcon className="mr-2 h-4 w-4" /> Open Link
+                                        <Download className="mr-2 h-4 w-4" /> Download
                                     </a>
                                 </Button>
                             </div>
-                        ) : <p className="text-sm text-muted-foreground p-2">No link provided.</p>
+                        ) : <p className="text-sm text-muted-foreground p-2">No attachment.</p>
                     )}
                     {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
                 </div>
