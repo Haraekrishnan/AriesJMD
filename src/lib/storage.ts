@@ -4,7 +4,10 @@ import { storage } from "./rtdb";
 
 export async function uploadFile(file: File, path: string): Promise<string> {
     const storageRef = ref(storage, path);
-    const snapshot = await uploadBytes(storageRef, file);
+    const metadata = {
+        contentType: file.type,
+    };
+    const snapshot = await uploadBytes(storageRef, file, metadata);
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
 }
