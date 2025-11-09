@@ -131,7 +131,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
       { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: 0, show: true },
-      { href: '/downloads', icon: Download, label: 'Downloads', notificationCount: 0, show: true },
+      { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },
       { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: notificationCounts.vendorLedger || 0, show: can.manage_vendors },
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
@@ -199,6 +199,7 @@ export default function Header() {
     if (pathname.startsWith('/tp-certification')) return 'TP Certification Lists';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
+    if (name === 'downloads') return 'Forms & Documents';
     return name.charAt(0).toUpperCase() + name.slice(1);
   };
 

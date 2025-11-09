@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -2251,7 +2250,7 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -3451,13 +3450,18 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
   }, [user, addActivityLog]);
 
   const updateDocument = useCallback((doc: DownloadableDocument) => {
+      if(!user) return;
       const { id, ...data } = doc;
       update(ref(rtdb, `downloadableDocuments/${id}`), data);
-  }, []);
+      addActivityLog(user.id, 'Document Updated', doc.title);
+  }, [user, addActivityLog]);
 
   const deleteDocument = useCallback((docId: string) => {
+      if(!user) return;
+      const doc = downloadableDocuments.find(d => d.id === docId);
       remove(ref(rtdb, `downloadableDocuments/${docId}`));
-  }, []);
+      if(doc) addActivityLog(user.id, 'Document Deleted', doc.title);
+  }, [user, downloadableDocuments, addActivityLog]);
 
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
@@ -3703,18 +3707,15 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
     const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
     const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
-        if (!dayComment.day || !dayComment.comments) return false;
-        const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-        if (eventsOnDay.length === 0) return false;
-
-        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
-        return comments.some(c => {
-            if (!c) return false;
-            const event = eventsOnDay.find(e => e.id === c.eventId);
-            if (!event) return false;
-            const isParticipant = event.userId === user.id || event.creatorId === user.id;
-            return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
-        });
+      if (!dayComment.day || !dayComment.comments) return false;
+      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
+      return comments.some(c => {
+        if (!c) return false;
+        const event = plannerEvents.find(e => e.id === c.eventId);
+        if (!event) return false;
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+      });
     });
     const plannerNotificationCount = unreadCommentsForUser.length;
 
