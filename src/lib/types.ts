@@ -281,6 +281,7 @@ export const ALL_PERMISSIONS = [
   'manage_user_lock_status',
   'create_broadcast',
   'manage_job_record',
+  'manage_downloads'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -871,6 +872,19 @@ export type InventoryTransferRequest = {
     acknowledgedDate?: string; // ISO
     comments?: Comment[];
     viewedByRequester?: boolean;
+};
+
+export type DownloadableDocument = {
+    id: string;
+    title: string;
+    description?: string;
+    category?: string;
+    documentType?: string;
+    url: string;
+    fileName: string;
+    fileType: string;
+    uploadedBy: string; // userId
+    createdAt: string; // ISO string
 };
       
 

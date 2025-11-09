@@ -175,7 +175,10 @@
     "unlockRequests": {
         ".read": "auth != null",
         ".write": true
+    },
+    "downloadableDocuments": {
+        ".read": "auth != null",
+        ".write": "auth != null"
     }
   }
 }
-
