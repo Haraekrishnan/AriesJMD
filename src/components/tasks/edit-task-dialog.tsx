@@ -343,10 +343,23 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
 
                 <div>
-                  <Label htmlFor="link">Link (Optional)</Label>
-                  <Input id="link" {...form.register('link')} disabled={!canEditCoreFields}/>
-                  {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
+                    <Label htmlFor="link">Link (Optional)</Label>
+                    {canEditCoreFields ? (
+                        <Input id="link" {...form.register('link')} disabled={!canEditCoreFields}/>
+                    ) : (
+                        taskToDisplay.link ? (
+                             <div className="mt-1">
+                                <Button asChild variant="outline" size="sm">
+                                    <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">
+                                        <LinkIcon className="mr-2 h-4 w-4" /> Open Link
+                                    </a>
+                                </Button>
+                            </div>
+                        ) : <p className="text-sm text-muted-foreground p-2">No link provided.</p>
+                    )}
+                    {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
                 </div>
+
 
                 <div>
                   <Label>Assignee(s)</Label>
@@ -498,18 +511,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     </div>
                   </div>
                 )}
-                {taskToDisplay.link && (
-                    <div>
-                        <Label>Link</Label>
-                        <div className="mt-1">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">
-                                    <LinkIcon className="mr-2 h-4 w-4" /> Open Link
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                
                 {taskToDisplay.requiresAttachmentForCompletion && isAssignee && taskToDisplay.status === 'In Progress' && (
                   <div>
                     <Label>Attachment for Completion</Label>
