@@ -56,7 +56,7 @@ export default function DownloadsTable({ documents = [], canManage, onEdit }: Do
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Button asChild size="sm">
-                    <a href={doc.url} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                    <a href={doc.url} download target="_blank" rel="noopener noreferrer">
                       <Download className="mr-2 h-4 w-4" /> Download
                     </a>
                   </Button>

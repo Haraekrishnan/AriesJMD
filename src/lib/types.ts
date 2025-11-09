@@ -881,8 +881,6 @@ export type DownloadableDocument = {
     category?: string;
     documentType?: string;
     url: string;
-    fileName: string;
-    fileType: string;
     uploadedBy: string; // userId
     createdAt: string; // ISO string
 };
