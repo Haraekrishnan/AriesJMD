@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
-import { ManpowerProfile, LogbookRecord } from '@/lib/types';
+import { ManpowerProfile, LogbookRecord, LogbookStatus } from '@/lib/types';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
@@ -14,17 +15,31 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
 
 interface LogbookRegisterDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
 
+const statusOptions: LogbookStatus[] = ['Pending', 'Received', 'Not Received', 'Requested'];
+
+const getStatusVariant = (status?: LogbookStatus) => {
+    switch (status) {
+        case 'Received': return 'success';
+        case 'Not Received': return 'destructive';
+        case 'Requested': return 'default';
+        case 'Pending':
+        default:
+            return 'secondary';
+    }
+};
+
 export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegisterDialogProps) {
   const { manpowerProfiles, updateManpowerProfile } = useAppContext();
   const { toast } = useToast();
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
-  const [status, setStatus] = useState<'Received' | 'Not Received' | ''>('');
+  const [status, setStatus] = useState<LogbookStatus | ''>('');
   const [inDate, setInDate] = useState<Date | undefined>();
   const [outDate, setOutDate] = useState<Date | undefined>();
   const [remarks, setRemarks] = useState('');
@@ -66,8 +81,8 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
     setRemarks('');
   };
   
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
       setSelectedProfileIds(filteredProfiles.map(p => p.id));
     } else {
       setSelectedProfileIds([]);
@@ -88,8 +103,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
                 <Select value={status} onValueChange={(v) => setStatus(v as any)}>
                     <SelectTrigger><SelectValue placeholder="Set Status" /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="Received">Received</SelectItem>
-                        <SelectItem value="Not Received">Not Received</SelectItem>
+                      {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
@@ -121,7 +135,12 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-12"><Checkbox onCheckedChange={handleSelectAll} /></TableHead>
+                        <TableHead className="w-12">
+                            <Checkbox 
+                                checked={selectedProfileIds.length > 0 && selectedProfileIds.length === filteredProfiles.length ? true : (selectedProfileIds.length > 0 ? 'indeterminate' : false)}
+                                onCheckedChange={handleSelectAll} 
+                            />
+                        </TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Trade</TableHead>
                         <TableHead>Current Status</TableHead>
@@ -135,7 +154,9 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
                             }} /></TableCell>
                             <TableCell>{profile.name}</TableCell>
                             <TableCell>{profile.trade}</TableCell>
-                            <TableCell>{profile.logbook?.status || 'N/A'}</TableCell>
+                            <TableCell>
+                                <Badge variant={getStatusVariant(profile.logbook?.status)}>{profile.logbook?.status || 'Pending'}</Badge>
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

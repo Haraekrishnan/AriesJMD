@@ -1,11 +1,12 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare, Book } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -22,6 +23,11 @@ import RejoinDialog from '@/components/manpower/RejoinDialog';
 import ExtendLeaveDialog from '@/components/manpower/ExtendLeaveDialog';
 import IssueMemoDialog from '@/components/manpower/IssueMemoDialog';
 import IssuePpeDialog from '@/components/manpower/IssuePpeDialog';
+import MemoReportDialog from '@/components/manpower/MemoReportDialog';
+import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
+import LogbookRequestDialog from '@/components/manpower/LogbookRequestDialog';
+import LogbookRequests from '@/components/manpower/LogbookRequests';
+import LogbookSummary from '@/components/manpower/LogbookSummary';
 
 
 export default function ManpowerListPage() {
@@ -33,6 +39,9 @@ export default function ManpowerListPage() {
     const [isExtendLeaveOpen, setIsExtendLeaveOpen] = useState(false);
     const [isMemoDialogOpen, setIsMemoDialogOpen] = useState(false);
     const [isPpeDialogOpen, setIsPpeDialogOpen] = useState(false);
+    const [isMemoReportOpen, setIsMemoReportOpen] = useState(false);
+    const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
+    const [isLogbookRequestOpen, setIsLogbookRequestOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -48,7 +57,7 @@ export default function ManpowerListPage() {
         return manpowerProfiles.flatMap(p => {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
-                .filter(l => l && l.leaveStartDate && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate)
+                .filter(l => l && l.leaveStartDate && p.status === 'Working' && (isToday(parseISO(l.leaveStartDate)) || isPast(parseISO(l.leaveStartDate))) && !l.rejoinedDate && !l.leaveEndDate)
                 .map(l => ({ profile: p, leave: l }));
         });
     }, [manpowerProfiles]);
@@ -64,7 +73,7 @@ export default function ManpowerListPage() {
                 .filter(l => {
                     if(!l || !l.leaveStartDate) return false;
                     const leaveStartDate = parseISO(l.leaveStartDate);
-                    return !l.rejoinedDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
+                    return !l.rejoinedDate && !l.leaveEndDate && isWithinInterval(leaveStartDate, { start: now, end: thirtyDaysFromNow });
                 })
                 .map(l => ({ profile: p, leave: l }))
         });
@@ -102,7 +111,8 @@ export default function ManpowerListPage() {
             const { status, trade, returnDateRange, projectId, expiryDateRange } = filters;
             if (status !== 'all' && profile.status !== status) return false;
             if (trade !== 'all' && profile.trade !== trade) return false;
-            if (projectId !== 'all' && profile.plant !== projectId) return false;
+
+            if(projectId !== 'all' && profile.eic !== projectId) return false;
 
             if (returnDateRange?.from) {
                 const historyArray = Array.isArray(profile.leaveHistory) ? profile.leaveHistory : Object.values(profile.leaveHistory || {});
@@ -205,6 +215,9 @@ export default function ManpowerListPage() {
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
+                         <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
+                         <Button variant="outline" onClick={() => setIsLogbookRequestOpen(true)}><Book className="mr-2 h-4 w-4" /> Request Logbook</Button>
+                         <Button variant="outline" onClick={() => setIsMemoReportOpen(true)}><GanttChartSquare className="mr-2 h-4 w-4" /> Memo Report</Button>
                          <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
                          <Button onClick={() => setIsRejoinDialogOpen(true)}><UserCog className="mr-2 h-4 w-4" /> Update Rejoin</Button>
@@ -220,6 +233,8 @@ export default function ManpowerListPage() {
                 </div>
             </div>
 
+            <LogbookRequests />
+            {can.manage_logbook && <LogbookSummary />}
             <TradeSummary />
             
             {can.manage_manpower_list && overdueLeaves.length > 0 && (
@@ -232,7 +247,7 @@ export default function ManpowerListPage() {
                         {overdueLeaves.map(({ profile, leave }) => (
                             <div key={`${profile.id}-${leave.id}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                 <p className="text-sm">
-                                    <span className="font-semibold">{profile.name}'s</span> leave was planned to end on <span className="font-medium">{format(parseISO(leave.plannedEndDate!), 'dd MMM, yyyy')}</span>.
+                                    <span className="font-semibold">{profile.name}'s</span> leave was planned to end on <span className="font-medium">{format(parseISO(leave.plannedEndDate!), 'dd-MM-yyyy')}</span>.
                                 </p>
                                 <div className="flex gap-2 flex-shrink-0">
                                     <Button size="sm" variant="outline" onClick={() => handleExtendLeave(profile, leave)}>Extend Leave</Button>
@@ -264,7 +279,7 @@ export default function ManpowerListPage() {
                         {upcomingLeaves.map(({ profile, leave }) => (
                             <div key={`${profile.id}-${leave.id}`} className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
                                 <p className="text-sm">
-                                    <span className="font-semibold">{profile.name}</span> has a planned {leave.leaveType} leave starting on <span className="font-medium">{format(parseISO(leave.leaveStartDate), 'dd MMM, yyyy')}</span>.
+                                    <span className="font-semibold">{profile.name}</span> has a planned {leave.leaveType} leave starting on <span className="font-medium">{format(parseISO(leave.leaveStartDate), 'dd-MM-yyyy')}</span>.
                                 </p>
                             </div>
                         ))}
@@ -366,6 +381,18 @@ export default function ManpowerListPage() {
                         isOpen={isImportDialogOpen}
                         setIsOpen={setIsImportDialogOpen}
                     />
+                    <MemoReportDialog
+                        isOpen={isMemoReportOpen}
+                        setIsOpen={setIsMemoReportOpen}
+                    />
+                    <LogbookRegisterDialog
+                        isOpen={isLogbookRegisterOpen}
+                        setIsOpen={setIsLogbookRegisterOpen}
+                    />
+                    <LogbookRequestDialog
+                        isOpen={isLogbookRequestOpen}
+                        setIsOpen={setIsLogbookRequestOpen}
+                    />
                      {selectedProfile && selectedLeave && (
                         <ExtendLeaveDialog
                             isOpen={isExtendLeaveOpen}
@@ -380,4 +407,5 @@ export default function ManpowerListPage() {
     );
 }
 
-    
+
+

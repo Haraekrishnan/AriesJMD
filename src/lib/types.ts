@@ -1,4 +1,5 @@
 
+
 'use client';
 
 export type Broadcast = {
@@ -408,8 +409,9 @@ export type EpNumberRecord = {
     date: string; // ISO string
 };
 
+export type LogbookStatus = 'Received' | 'Not Received' | 'Pending' | 'Requested';
 export type LogbookRecord = {
-  status: 'Received' | 'Not Received';
+  status: LogbookStatus;
   inDate?: string; // ISO string
   outDate?: string; // ISO string
   remarks?: string;
@@ -908,5 +910,6 @@ export type LogbookRequest = {
       
 
     
+
 
 
