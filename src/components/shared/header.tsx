@@ -8,7 +8,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList, FileText, Download } from 'lucide-react';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList, FileText, Download, Book } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
@@ -16,7 +16,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import NewBroadcastDialog from '../announcements/NewBroadcastDialog';
 import { isSameDay, parseISO } from 'date-fns';
-import type { DailyPlannerComment, PlannerEvent, ManagementRequest, Comment } from '@/lib/types';
+import type { DailyPlannerComment, PlannerEvent, ManagementRequest, Comment, LogbookRequest } from '@/lib/types';
 
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
@@ -25,7 +25,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       tasks, certificateRequests, plannerEvents,
       internalRequests, managementRequests, incidentReports,
       ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
-      inventoryTransferRequests, dailyPlannerComments,
+      inventoryTransferRequests, dailyPlannerComments, logbookRequests,
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
     } = useAppContext();
     const pathname = usePathname();
@@ -97,6 +97,8 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const canApproveTransfers = can.approve_store_requests;
     const pendingInventoryTransferRequestCount = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
 
+    const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
+
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
@@ -106,12 +108,13 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount,
+      manpower: pendingLogbookRequestCount,
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments,
+    inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
   ]);
     
@@ -128,7 +131,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: notificationCounts.equipment || 0, show: true },
       { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
       { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
-      { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: 0, show: true },
+      { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: notificationCounts.manpower || 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
       { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: 0, show: true },
       { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },

@@ -281,7 +281,8 @@ export const ALL_PERMISSIONS = [
   'manage_user_lock_status',
   'create_broadcast',
   'manage_job_record',
-  'manage_downloads'
+  'manage_downloads',
+  'manage_logbook'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -907,4 +908,5 @@ export type LogbookRequest = {
       
 
     
+
 
