@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -44,7 +43,7 @@ export default function ManpowerPage() {
                             Manpower List
                         </Link>
                     </Button>
-                    {can.manage_manpower_list && (
+                    {can.manage_logbook && (
                         <>
                          <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
                          <Button variant="outline" onClick={() => setIsLogbookRequestOpen(true)}><Book className="mr-2 h-4 w-4" /> Request Logbook</Button>
