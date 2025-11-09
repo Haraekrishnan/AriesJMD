@@ -455,16 +455,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) {
-      console.error("addActivityLog: userId is undefined or null");
-      return;
+        console.error("addActivityLog: userId is undefined or null");
+        return;
     }
     const logRef = push(ref(rtdb, 'activityLogs'));
-    const newLog = {
+    const newLog: Omit<ActivityLog, 'id'> = {
         userId,
         action,
-        details,
         timestamp: new Date().toISOString()
     };
+    if (details) {
+        newLog.details = details;
+    }
     set(logRef, newLog);
   }, []);
 
@@ -1938,7 +1940,7 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
             const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
             if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
               const currentStock = inventoryItem.quantity || 0;
-              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
+              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, (inventoryItem.quantity || 0) - item.quantity);
             }
           }
         }
@@ -4012,3 +4014,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
