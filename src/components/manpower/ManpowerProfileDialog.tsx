@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -308,17 +309,15 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 }));
             }
 
-            Object.keys(dataToSubmit).forEach(key => {
-                if (dataToSubmit[key] === undefined) {
-                    dataToSubmit[key] = null;
-                }
-            });
+            const sanitizedData = JSON.parse(JSON.stringify(dataToSubmit, (key, value) => {
+                return value === undefined ? null : value;
+            }));
 
             if (profile) {
-                await updateManpowerProfile({ ...profile, ...dataToSubmit } as ManpowerProfile);
+                await updateManpowerProfile({ ...profile, ...sanitizedData } as ManpowerProfile);
                 toast({ title: 'Profile Updated' });
             } else {
-                await addManpowerProfile(dataToSubmit as Omit<ManpowerProfile, 'id'>);
+                await addManpowerProfile(sanitizedData as Omit<ManpowerProfile, 'id'>);
                 toast({ title: 'Profile Added' });
             }
             setIsOpen(false);
@@ -559,6 +558,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         </div>
                         )}
                   </div>
+                  
+                  {profile && (
+                    <div className="space-y-4 md:col-span-3">
+                        <Separator />
+                        <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
+                        <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20">
+                            <p><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></p>
+                            {profile.logbook?.outDate && <p><strong>Out Date:</strong> {format(parseISO(profile.logbook.outDate), 'dd MMM, yyyy')}</p>}
+                            {profile.logbook?.inDate && <p><strong>In Date:</strong> {format(parseISO(profile.logbook.inDate), 'dd MMM, yyyy')}</p>}
+                            {profile.logbook?.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {profile.logbook.remarks}</p>}
+                        </div>
+                    </div>
+                  )}
 
                   <div className="space-y-4 md:col-span-3">
                      <Separator />
@@ -820,3 +832,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
