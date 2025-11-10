@@ -1,9 +1,10 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, startOfToday } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, startOfToday, isToday } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
