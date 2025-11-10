@@ -10,7 +10,7 @@ import { startOfMonth, parseISO } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function SchedulePage() {
-    const { user, getVisibleUsers, can, updateLastViewedPlanner } = useAppContext();
+    const { user, getVisibleUsers, can } = useAppContext();
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -51,16 +51,6 @@ export default function SchedulePage() {
             router.replace('/schedule', { scroll: false });
         }
     }, [searchParams, router]);
-
-
-    useEffect(() => {
-      // When the user views their own planner, update their last viewed time.
-      if (selectedUserId === user?.id) {
-        // This function needs to be implemented in the context
-        // updateLastViewedPlanner(); 
-      }
-    }, [selectedUserId, user?.id]);
-
 
     return (
         <div className="space-y-8 h-full flex flex-col">

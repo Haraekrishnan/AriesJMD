@@ -3,19 +3,14 @@ import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { MessageSquare, Calendar, CheckCircle } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isPast, startOfToday } from 'date-fns';
+import { MessageSquare, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 
-interface RecentPlannerActivityProps {
-    onDateSelect: (date: Date) => void;
-    setCurrentMonth: (date: Date) => void;
-    onUserSelect: (userId: string) => void;
-}
-
 interface UnreadCommentInfo {
+    type: 'comment';
     day: string;
     event: PlannerEvent;
     comment: Comment;
@@ -23,15 +18,24 @@ interface UnreadCommentInfo {
     delegatedBy?: User;
 }
 
-export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, onUserSelect }: RecentPlannerActivityProps) {
-  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead } = useAppContext();
+interface PendingUpdateInfo {
+    type: 'pending_update';
+    day: string;
+    event: PlannerEvent;
+    delegatedTo?: User;
+}
+
+export default function RecentPlannerActivity() {
+  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents } = useAppContext();
   const router = useRouter();
   
-  const unreadComments = useMemo(() => {
-    if (!user) return [];
+  const { unreadComments, pendingUpdates } = useMemo(() => {
+    if (!user) return { unreadComments: [], pendingUpdates: [] };
 
     const allUnread: UnreadCommentInfo[] = [];
+    const allPendingUpdates: PendingUpdateInfo[] = [];
 
+    // Check for unread comments
     dailyPlannerComments.forEach(dayComment => {
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
@@ -48,6 +52,7 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
 
         if (isParticipant && isUnreadFromOther) {
             allUnread.push({
+                type: 'comment',
                 day: dayComment.day,
                 event: eventForComment,
                 comment: comment,
@@ -58,10 +63,38 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
       });
     });
 
-    return allUnread.sort((a,b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime());
-  }, [user, dailyPlannerComments, plannerEvents, users]);
+    // Check for delegated events with no comments from assignee
+    const today = startOfToday();
+    const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && isPast(parseISO(e.date)));
+    
+    myDelegatedEvents.forEach(event => {
+      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
+      const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
 
-  if (unreadComments.length === 0) {
+      pastInstances.forEach(instance => {
+          const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+          const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
+          const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
+          const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
+
+          if (!assigneeCommented) {
+              allPendingUpdates.push({
+                  type: 'pending_update',
+                  day: dayStr,
+                  event: event,
+                  delegatedTo: users.find(u => u.id === event.userId),
+              });
+          }
+      });
+    });
+
+    return { 
+        unreadComments: allUnread.sort((a,b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()),
+        pendingUpdates: [...new Map(allPendingUpdates.map(item => [`${item.day}-${item.event.id}`, item])).values()]
+    };
+  }, [user, dailyPlannerComments, plannerEvents, users, getExpandedPlannerEvents]);
+
+  if (unreadComments.length === 0 && pendingUpdates.length === 0) {
     return null;
   }
 
@@ -84,11 +117,8 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" />
-          Recent Planner Activity
+          Planner Activity Review
         </CardTitle>
-        <CardDescription>
-          New comments on your delegated or received events.
-        </CardDescription>
       </CardHeader>
       <CardContent>
          <div className="space-y-4">
@@ -131,6 +161,24 @@ export default function RecentPlannerActivity({ onDateSelect, setCurrentMonth, o
                     </div>
                 )
             })}
+             {pendingUpdates.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-orange-500" />Pending Event Updates</h4>
+                 {pendingUpdates.map(({ day, event, delegatedTo }) => (
+                     <div key={`${day}-${event.id}`} className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold text-sm">{event.title}</p>
+                                <p className="text-xs">
+                                    No comment from <span className="font-medium">{delegatedTo?.name}</span> for {format(parseISO(day), 'dd MMM, yyyy')}.
+                                </p>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Review</Button>
+                        </div>
+                     </div>
+                 ))}
+              </div>
+            )}
         </div>
       </CardContent>
     </Card>
