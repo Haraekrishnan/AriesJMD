@@ -15,7 +15,7 @@ import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentSta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { format, parse, isValid, startOfDay, parseISO, isBefore } from 'date-fns';
+import { format, parse, isValid, startOfDay, parseISO, isBefore, isPast } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
@@ -564,7 +564,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
                         <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20">
-                            <p><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></p>
+                            <div><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></div>
                             {profile.logbook?.outDate && <p><strong>Out Date:</strong> {format(parseISO(profile.logbook.outDate), 'dd MMM, yyyy')}</p>}
                             {profile.logbook?.inDate && <p><strong>In Date:</strong> {format(parseISO(profile.logbook.inDate), 'dd MMM, yyyy')}</p>}
                             {profile.logbook?.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {profile.logbook.remarks}</p>}
@@ -832,4 +832,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
