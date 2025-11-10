@@ -313,7 +313,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                         <Button asChild variant="outline" size="sm">
                           <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
                         </Button>
-                        <Input id="file-upload" type="file" accept=".jpg, .jpeg, .png" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
                       </div>
                     )}
                   </div>

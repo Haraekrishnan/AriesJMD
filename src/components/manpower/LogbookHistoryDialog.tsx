@@ -34,6 +34,7 @@ const getStatusVariant = (status?: LogbookStatus) => {
 export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHistoryDialogProps) {
   const { manpowerProfiles } = useAppContext();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   const selectedProfile = useMemo(() => {
     return manpowerProfiles.find(p => p.id === selectedProfileId);
@@ -56,7 +57,7 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
         
         <div className="space-y-2">
             <Label>Select Employee</Label>
-            <Popover>
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
                         {selectedProfile ? selectedProfile.name : "Select employee..."}
@@ -70,7 +71,10 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                             <CommandEmpty>No employees found.</CommandEmpty>
                             <CommandGroup>
                                 {manpowerProfiles.map(p => (
-                                    <CommandItem key={p.id} value={p.name} onSelect={() => setSelectedProfileId(p.id)}>
+                                    <CommandItem key={p.id} value={p.name} onSelect={() => {
+                                        setSelectedProfileId(p.id);
+                                        setIsPopoverOpen(false);
+                                    }}>
                                         {p.name}
                                     </CommandItem>
                                 ))}
@@ -87,7 +91,7 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                 <ScrollArea className="flex-1 border rounded-md p-4">
                     {selectedProfile.logbook ? (
                         <div className="space-y-3 text-sm">
-                            <div className="flex items-center gap-2"><strong>Current Status:</strong> <Badge variant={getStatusVariant(selectedProfile.logbook.status)}>{selectedProfile.logbook.status || 'Pending'}</Badge></div>
+                            <div className="flex items-center gap-2"><strong>Status:</strong> <Badge variant={getStatusVariant(selectedProfile.logbook.status)}>{selectedProfile.logbook.status || 'Pending'}</Badge></div>
                             {selectedProfile.logbook?.outDate && <p><strong>Out Date:</strong> {format(parseISO(selectedProfile.logbook.outDate), 'dd MMM, yyyy')}</p>}
                             {selectedProfile.logbook?.inDate && <p><strong>In Date:</strong> {format(parseISO(selectedProfile.logbook.inDate), 'dd MMM, yyyy')}</p>}
                             {selectedProfile.logbook?.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {selectedProfile.logbook.remarks}</p>}
