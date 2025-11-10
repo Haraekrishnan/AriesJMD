@@ -132,7 +132,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
@@ -150,6 +150,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     if (!user) return false;
     const allowedRoles: Role[] = ['Admin', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
     return allowedRoles.includes(user.role);
+  }, [user]);
+
+  const canDeleteLogbook = useMemo(() => {
+    if (!user) return false;
+    return ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
   }, [user]);
 
   const parseDate = (dateString?: string | null): Date | undefined => {
@@ -560,14 +565,28 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   </div>
                   
                   {profile && (
-                    <div className="space-y-4 md:col-span-3">
+                    <div className="space-y-4">
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
-                        <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20">
-                            <div><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></div>
-                            {profile.logbook?.outDate && <p><strong>Out Date:</strong> {format(parseISO(profile.logbook.outDate), 'dd MMM, yyyy')}</p>}
-                            {profile.logbook?.inDate && <p><strong>In Date:</strong> {format(parseISO(profile.logbook.inDate), 'dd MMM, yyyy')}</p>}
-                            {profile.logbook?.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {profile.logbook.remarks}</p>}
+                        <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
+                            {canDeleteLogbook && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Clear Logbook Record?</AlertDialogTitle><AlertDialogDescription>This will permanently clear the current logbook status, out date, and remarks for this employee. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => deleteLogbookRecord(profile.id)}>Clear Record</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                            <div><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' || profile.logbook?.status === 'Sent back as requested' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></div>
+                            {profile.logbook?.outDate && <div><strong>Out Date:</strong> {format(parseISO(profile.logbook.outDate), 'dd MMM, yyyy')}</div>}
+                            {profile.logbook?.inDate && <div><strong>In Date:</strong> {format(parseISO(profile.logbook.inDate), 'dd MMM, yyyy')}</div>}
+                            {profile.logbook?.remarks && <div className="whitespace-pre-wrap"><strong>Remarks:</strong> {profile.logbook.remarks}</div>}
                         </div>
                     </div>
                   )}
