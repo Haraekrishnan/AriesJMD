@@ -87,10 +87,10 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                 <ScrollArea className="flex-1 border rounded-md p-4">
                     {selectedProfile.logbook ? (
                         <div className="space-y-3 text-sm">
-                            <p><strong>Current Status:</strong> <Badge variant={getStatusVariant(selectedProfile.logbook.status)}>{selectedProfile.logbook.status}</Badge></p>
-                            {selectedProfile.logbook.outDate && <p><strong>Out Date:</strong> {format(parseISO(selectedProfile.logbook.outDate), 'dd MMM, yyyy')}</p>}
-                            {selectedProfile.logbook.inDate && <p><strong>In Date:</strong> {format(parseISO(selectedProfile.logbook.inDate), 'dd MMM, yyyy')}</p>}
-                            {selectedProfile.logbook.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {selectedProfile.logbook.remarks}</p>}
+                            <div className="flex items-center gap-2"><strong>Current Status:</strong> <Badge variant={getStatusVariant(selectedProfile.logbook.status)}>{selectedProfile.logbook.status || 'Pending'}</Badge></div>
+                            {selectedProfile.logbook?.outDate && <p><strong>Out Date:</strong> {format(parseISO(selectedProfile.logbook.outDate), 'dd MMM, yyyy')}</p>}
+                            {selectedProfile.logbook?.inDate && <p><strong>In Date:</strong> {format(parseISO(selectedProfile.logbook.inDate), 'dd MMM, yyyy')}</p>}
+                            {selectedProfile.logbook?.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {selectedProfile.logbook.remarks}</p>}
                         </div>
                     ) : (
                         <p className="text-sm text-muted-foreground text-center py-8">No logbook history found for this employee.</p>
