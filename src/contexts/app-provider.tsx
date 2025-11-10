@@ -301,7 +301,7 @@ type AppContextType = {
   addLogbookRequest: (manpowerId: string, remarks?: string) => void;
   updateLogbookRequestStatus: (requestId: string, status: 'Completed' | 'Rejected', comment: string) => void;
   addLogbookRequestComment: (requestId: string, text: string) => void;
-  deleteLogbookRecord: (manpowerId: string) => void;
+  deleteLogbookRecord: (manpowerId: string, onComplete: () => void) => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -3479,40 +3479,7 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
       remove(ref(rtdb, `downloadableDocuments/${docId}`));
       if(doc) addActivityLog(user.id, 'Document Deleted', doc.title);
   }, [user, downloadableDocuments, addActivityLog]);
-
-  const addLogbookRequest = useCallback((manpowerId: string, remarks = '') => {
-    if (!user) return;
-    const newRequest: Omit<LogbookRequest, 'id'> = {
-      manpowerId,
-      requesterId: user.id,
-      requestDate: new Date().toISOString(),
-      status: 'Pending',
-      remarks,
-      viewedBy: { [user.id]: true }
-    };
-    const newRef = push(ref(rtdb, 'logbookRequests'));
-    set(newRef, { ...newRequest, id: newRef.key });
-    addActivityLog(user.id, 'Logbook Requested', `For manpower ID: ${manpowerId}`);
-
-    const docControllers = users.filter(u => u.role === 'Document Controller');
-    docControllers.forEach(dc => {
-      if (dc.email) {
-        createAndSendNotification(
-          dc.email,
-          'New Logbook Request',
-          'A logbook has been requested.',
-          {
-            'Employee': manpowerProfiles.find(p => p.id === manpowerId)?.name || 'Unknown',
-            'Requested By': user.name
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/manpower-list`,
-          'View Requests'
-        );
-      }
-    });
-
-  }, [user, addActivityLog, users, manpowerProfiles]);
-
+  
   const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
     if (!user) return;
     const request = logbookRequests.find(r => r.id === requestId);
@@ -3547,7 +3514,7 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
     updates[`logbookRequests/${requestId}/status`] = status;
   
     if (status === 'Completed') {
-      const remarks = `Requested by ${requesterName}. Reason: ${request.remarks || 'N/A'}. Approved by ${user.name} on ${format(new Date(), 'dd-MM-yyyy')}. Approver comment: ${comment}`;
+      const remarks = `Requested by ${requesterName} on ${format(parseISO(request.requestDate), 'dd-MM-yy')} for "${request.remarks || 'N/A'}". Approved by ${user.name} on ${format(new Date(), 'dd-MM-yyyy')}. Approver comment: ${comment}`;
       const logbookUpdate: LogbookRecord = {
         status: 'Sent back as requested',
         outDate: new Date().toISOString(),
@@ -3558,17 +3525,52 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
   
     update(ref(rtdb), updates);
   }, [user, users, logbookRequests, addLogbookRequestComment]);
-
-  const deleteLogbookRecord = useCallback((manpowerId: string) => {
+  
+  const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
     if (!user) return;
     const allowedRoles = ['Admin', 'Project Coordinator', 'Document Controller'];
     if (!allowedRoles.includes(user.role)) {
-      toast({ variant: 'destructive', title: 'Permission Denied' });
-      return;
+        toast({ variant: 'destructive', title: 'Permission Denied' });
+        return;
     }
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`));
-    toast({ title: 'Logbook record cleared.' });
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`)).then(() => {
+        onComplete();
+    });
   }, [user, toast]);
+
+  const addLogbookRequest = useCallback((manpowerId: string, remarks = '') => {
+    if (!user) return;
+    const newRequest: Omit<LogbookRequest, 'id'> = {
+      manpowerId,
+      requesterId: user.id,
+      requestDate: new Date().toISOString(),
+      status: 'Pending',
+      remarks,
+      viewedBy: { [user.id]: true }
+    };
+    const newRef = push(ref(rtdb, 'logbookRequests'));
+    set(newRef, { ...newRequest, id: newRef.key });
+    addActivityLog(user.id, 'Logbook Requested', `For manpower ID: ${manpowerId}`);
+
+    const docControllers = users.filter(u => u.role === 'Document Controller');
+    docControllers.forEach(dc => {
+      if (dc.email) {
+        createAndSendNotification(
+          dc.email,
+          'New Logbook Request',
+          'A logbook has been requested.',
+          {
+            'Employee': manpowerProfiles.find(p => p.id === manpowerId)?.name || 'Unknown',
+            'Requested By': user.name
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/manpower-list`,
+          'View Requests'
+        );
+      }
+    });
+
+  }, [user, addActivityLog, users, manpowerProfiles]);
+  
 
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
@@ -4074,3 +4076,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+

@@ -30,6 +30,7 @@ import { ref, push, set } from 'firebase/database';
 import { Switch } from '../ui/switch';
 import { Alert } from '../ui/alert';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 
 const profileSchema = z.object({
@@ -362,7 +363,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   };
 
   const handleDeleteLogbook = (profileId: string) => {
-    deleteLogbookRecord(profileId);
+    deleteLogbookRecord(profileId, () => {
+        form.reset({
+            ...form.getValues(),
+            logbook: undefined
+        });
+        toast({ title: 'Logbook record cleared.' });
+    });
   };
 
     const epNumberTimeline = useMemo(() => {
@@ -573,7 +580,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
                         {liveProfile?.logbook ? (
-                            <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
+                             <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
                                 {canDeleteLogbook && (
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
@@ -588,10 +595,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 )}
-                                <div><strong>Status:</strong> <Badge variant={liveProfile.logbook.status === 'Received' ? 'success' : (liveProfile.logbook.status === 'Not Received' ? 'destructive' : 'secondary')}>{liveProfile.logbook.status || 'Pending'}</Badge></div>
-                                {liveProfile.logbook?.outDate && <div><strong>Out Date:</strong> {format(parseISO(liveProfile.logbook.outDate), 'dd MMM, yyyy')}</div>}
-                                {liveProfile.logbook?.inDate && <div><strong>In Date:</strong> {format(parseISO(liveProfile.logbook.inDate), 'dd MMM, yyyy')}</div>}
-                                {liveProfile.logbook?.remarks && <div className="whitespace-pre-wrap"><strong>Remarks:</strong> {liveProfile.logbook.remarks}</div>}
+                                <div><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' || profile.logbook?.status === 'Sent back as requested' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></div>
+                                {profile.logbook?.outDate && <div><strong>Out Date:</strong> {format(parseISO(profile.logbook.outDate), 'dd MMM, yyyy')}</div>}
+                                {profile.logbook?.inDate && <div><strong>In Date:</strong> {format(parseISO(profile.logbook.inDate), 'dd MMM, yyyy')}</div>}
+                                {profile.logbook?.remarks && <p className="whitespace-pre-wrap"><strong>Remarks:</strong> {profile.logbook.remarks}</p>}
                             </div>
                         ) : (
                              <p className="text-sm text-muted-foreground p-2">No logbook activity recorded.</p>
