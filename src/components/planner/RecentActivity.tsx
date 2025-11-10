@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -27,7 +28,7 @@ interface PendingUpdateInfo {
 }
 
 export default function RecentPlannerActivity() {
-  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents } = useAppContext();
+  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents, dismissPendingUpdate } = useAppContext();
   const router = useRouter();
   
   const { unreadComments, pendingUpdates } = useMemo(() => {
@@ -77,8 +78,9 @@ export default function RecentPlannerActivity() {
           const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
           const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
           const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
+          const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
 
-          if (!assigneeCommented) {
+          if (!assigneeCommented && !isDismissed) {
               allPendingUpdates.push({
                   type: 'pending_update',
                   day: dayStr,
@@ -174,7 +176,10 @@ export default function RecentPlannerActivity() {
                                     No comment from <span className="font-medium">{delegatedTo?.name}</span> for {format(parseISO(day), 'dd MMM, yyyy')}.
                                 </p>
                             </div>
-                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Review</Button>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Review</Button>
+                                <Button size="sm" variant="secondary" onClick={() => dismissPendingUpdate(event.id, day)}>Dismiss</Button>
+                            </div>
                         </div>
                      </div>
                  ))}
