@@ -1,15 +1,14 @@
-
-
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, startOfToday, isToday } from 'date-fns';
-import { MessageSquare, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isPast, isToday } from 'date-fns';
+import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
+import { Textarea } from '../ui/textarea';
 
 interface UnreadCommentInfo {
     type: 'comment';
@@ -28,8 +27,9 @@ interface PendingUpdateInfo {
 }
 
 export default function RecentPlannerActivity() {
-  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents, dismissPendingUpdate } = useAppContext();
+  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents, dismissPendingUpdate, addPlannerEventComment } = useAppContext();
   const router = useRouter();
+  const [newComments, setNewComments] = useState<Record<string, string>>({});
   
   const { unreadComments, pendingUpdates } = useMemo(() => {
     if (!user) return { unreadComments: [], pendingUpdates: [] };
@@ -66,7 +66,6 @@ export default function RecentPlannerActivity() {
     });
 
     // Check for delegated events with no comments from assignee
-    const today = startOfToday();
     const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && isPast(parseISO(e.date)));
     
     myDelegatedEvents.forEach(event => {
@@ -78,7 +77,9 @@ export default function RecentPlannerActivity() {
           const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
           const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
           const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
-          const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+          
+          const dismissedUpdates = user.dismissedPendingUpdates || {};
+          const isDismissed = dismissedUpdates[`${event.id}_${dayStr}`];
 
           if (!assigneeCommented && !isDismissed) {
               allPendingUpdates.push({
@@ -109,6 +110,13 @@ export default function RecentPlannerActivity() {
         markSinglePlannerCommentAsRead(event.userId, day, comment.id);
       }
     }
+  };
+  
+  const handleAddComment = (eventId: string, day: string, userId: string) => {
+    const commentText = newComments[eventId];
+    if (!commentText || !commentText.trim()) return;
+    addPlannerEventComment(userId, day, eventId, commentText);
+    setNewComments(prev => ({ ...prev, [eventId]: '' }));
   };
 
   const handleGoToEvent = (day: string, eventUserId: string) => {
@@ -169,8 +177,8 @@ export default function RecentPlannerActivity() {
                 <h4 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-orange-500" />Pending Event Updates</h4>
                  {pendingUpdates.map(({ day, event, delegatedTo }) => (
                      <div key={`${day}-${event.id}`} className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200">
-                        <div className="flex justify-between items-center">
-                            <div>
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
                                 <p className="font-semibold text-sm">{event.title}</p>
                                 <p className="text-xs">
                                     No comment from <span className="font-medium">{delegatedTo?.name}</span> for {format(parseISO(day), 'dd MMM, yyyy')}.
@@ -180,6 +188,24 @@ export default function RecentPlannerActivity() {
                                 <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Review</Button>
                                 <Button size="sm" variant="secondary" onClick={() => dismissPendingUpdate(event.id, day)}>Dismiss</Button>
                             </div>
+                        </div>
+                        <div className="relative mt-2">
+                            <Textarea
+                                value={newComments[`${day}-${event.id}`] || ''}
+                                onChange={(e) => setNewComments(prev => ({ ...prev, [`${day}-${event.id}`]: e.target.value }))}
+                                placeholder={`Ask ${delegatedTo?.name} for an update...`}
+                                className="pr-10 text-xs bg-white dark:bg-card"
+                                rows={1}
+                            />
+                            <Button
+                                type="button"
+                                size="icon"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                onClick={() => handleAddComment(event.id, day, event.userId)}
+                                disabled={!newComments[`${day}-${event.id}`] || !newComments[`${day}-${event.id}`].trim()}
+                            >
+                                <Send className="h-4 w-4" />
+                            </Button>
                         </div>
                      </div>
                  ))}

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 export type Broadcast = {
@@ -142,6 +140,7 @@ export type User = {
   projectId?: string;
   planningScore?: number;
   permissions?: Permission[];
+  dismissedPendingUpdates?: { [key: string]: boolean };
 };
 
 export type PasswordResetRequest = {
@@ -911,6 +910,7 @@ export type LogbookRequest = {
       
 
     
+
 
 
 

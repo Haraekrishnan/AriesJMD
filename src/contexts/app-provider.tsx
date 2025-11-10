@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -386,6 +384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tpCertListsById, setTpCertListsById] = useState<Record<string, TpCertList>>({});
   const [downloadableDocumentsById, setDownloadableDocumentsById] = useState<Record<string, DownloadableDocument>>({});
   const [logbookRequestsById, setLogbookRequestsById] = useState<Record<string, LogbookRequest>>({});
+  const [dismissedPendingUpdatesById, setDismissedPendingUpdatesById] = useState<Record<string, boolean>>({});
 
 
   const [appName, setAppName] = useState('Aries Marine');
@@ -1194,7 +1193,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let updates: { [key: string]: any } = {};
 
     if (!dayCommentData) {
-        // If the daily comment node doesn't exist, create it first.
         const newDayComment: DailyPlannerComment = {
             id: dayCommentId,
             plannerUserId,
@@ -1205,7 +1203,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         };
         await set(dayCommentRef, newDayComment);
     } else {
-        // If it exists, just push the new comment.
         await set(newCommentRef, newCommentWithId);
         updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
     }
@@ -1343,8 +1340,10 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
   
   const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
       if (!user) return;
-      const key = `dismissedPendingUpdates/${user.id}/${eventId}_${day}`;
-      set(ref(rtdb, key), true);
+      const key = `${eventId}_${day}`;
+      const updates: { [key: string]: any } = {};
+      updates[`users/${user.id}/dismissedPendingUpdates/${key}`] = true;
+      update(ref(rtdb), updates);
   }, [user]);
 
   const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
@@ -3902,12 +3901,12 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
     if (storedUserId) {
         const foundUser = usersById[storedUserId];
         if (foundUser) {
-            setUser(foundUser);
+            setUser({ ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById });
         }
     } else {
         setUser(null);
     }
-  }, [storedUserId, usersById]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById]);
 
   // Listen for status changes on the current user
   useEffect(() => {
@@ -4022,12 +4021,18 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
         setAppLogo(data.appLogo || null);
       }
     });
+
+    const dismissedRef = ref(rtdb, `users/${storedUserId}/dismissedPendingUpdates`);
+    const dismissedListener = onValue(dismissedRef, (snapshot) => {
+        setDismissedPendingUpdatesById(snapshot.val() || {});
+    });
   
     setLoading(false);
   
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
       brandingListener();
+      dismissedListener();
     };
   }, [storedUserId]);
 
@@ -4079,6 +4084,8 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
+
 
 
 
