@@ -113,10 +113,12 @@ export default function RecentPlannerActivity() {
   };
   
   const handleAddComment = (eventId: string, day: string, userId: string) => {
-    const commentText = newComments[eventId];
+    const commentKey = `${day}-${eventId}`;
+    const commentText = newComments[commentKey];
     if (!commentText || !commentText.trim()) return;
     addPlannerEventComment(userId, day, eventId, commentText);
-    setNewComments(prev => ({ ...prev, [eventId]: '' }));
+    dismissPendingUpdate(eventId, day);
+    setNewComments(prev => ({ ...prev, [commentKey]: '' }));
   };
 
   const handleGoToEvent = (day: string, eventUserId: string) => {
@@ -175,7 +177,9 @@ export default function RecentPlannerActivity() {
              {pendingUpdates.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-orange-500" />Pending Event Updates</h4>
-                 {pendingUpdates.map(({ day, event, delegatedTo }) => (
+                 {pendingUpdates.map(({ day, event, delegatedTo }) => {
+                     const commentKey = `${day}-${event.id}`;
+                     return (
                      <div key={`${day}-${event.id}`} className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200">
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
@@ -191,8 +195,8 @@ export default function RecentPlannerActivity() {
                         </div>
                         <div className="relative mt-2">
                             <Textarea
-                                value={newComments[`${day}-${event.id}`] || ''}
-                                onChange={(e) => setNewComments(prev => ({ ...prev, [`${day}-${event.id}`]: e.target.value }))}
+                                value={newComments[commentKey] || ''}
+                                onChange={(e) => setNewComments(prev => ({ ...prev, [commentKey]: e.target.value }))}
                                 placeholder={`Ask ${delegatedTo?.name} for an update...`}
                                 className="pr-10 text-xs bg-white dark:bg-card"
                                 rows={1}
@@ -202,13 +206,13 @@ export default function RecentPlannerActivity() {
                                 size="icon"
                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                                 onClick={() => handleAddComment(event.id, day, event.userId)}
-                                disabled={!newComments[`${day}-${event.id}`] || !newComments[`${day}-${event.id}`].trim()}
+                                disabled={!newComments[commentKey] || !newComments[commentKey].trim()}
                             >
                                 <Send className="h-4 w-4" />
                             </Button>
                         </div>
                      </div>
-                 ))}
+                 )})}
               </div>
             )}
         </div>
