@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '../ui/textarea';
 import type { InventoryItem, InventoryItemStatus, InventoryCategory } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { isAfter, parseISO } from 'date-fns';
 
 
 const itemSchema = z.object({
@@ -89,8 +90,15 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
 
   useEffect(() => {
     if(item && isOpen) {
+        const now = new Date();
+        const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
+        const tpInspectionDueDate = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
+        const isItemExpired = (inspectionDueDate && isAfter(now, inspectionDueDate)) || (tpInspectionDueDate && isAfter(now, tpInspectionDueDate));
+        const effectiveStatus = isItemExpired ? 'Expired' : item.status;
+        
         form.reset({
             ...item,
+            status: effectiveStatus,
             inspectionDate: item.inspectionDate ? new Date(item.inspectionDate) : undefined,
             inspectionDueDate: item.inspectionDueDate ? new Date(item.inspectionDueDate) : undefined,
             tpInspectionDueDate: item.tpInspectionDueDate ? new Date(item.tpInspectionDueDate) : undefined,

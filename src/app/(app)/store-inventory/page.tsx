@@ -83,11 +83,16 @@ export default function StoreInventoryPage() {
         const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
         const tpInspectionDueDate = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
 
+        const isItemExpired = (inspectionDueDate && isAfter(now, inspectionDueDate)) || (tpInspectionDueDate && isAfter(now, tpInspectionDueDate));
+        const itemEffectiveStatus = isItemExpired ? 'Expired' : item.status;
+
         const inspectionExpired = inspectionDueDate && isAfter(now, inspectionDueDate);
         const tpInspectionExpired = tpInspectionDueDate && isAfter(now, tpInspectionDueDate);
 
         if (status !== 'all') {
-            if (status === 'Inspection Expired') {
+            if (status === 'Expired') {
+                if (itemEffectiveStatus !== 'Expired') return false;
+            } else if (status === 'Inspection Expired') {
                 if (!inspectionExpired) return false;
             } else if (status === 'TP Expired') {
                 if (!tpInspectionExpired) return false;
