@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -27,6 +28,7 @@ const getStatusVariant = (status?: LogbookStatus) => {
     switch (status) {
         case 'Received': return 'success';
         case 'Not Received': return 'destructive';
+        case 'Sent back as requested': return 'warning';
         case 'Requested': return 'default';
         case 'Pending':
         default:
