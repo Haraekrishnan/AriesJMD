@@ -6,7 +6,7 @@ import type { DateRange } from 'react-day-picker';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare, Book } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare, Book, History } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -28,6 +28,7 @@ import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
 import LogbookRequestDialog from '@/components/manpower/LogbookRequestDialog';
 import LogbookRequests from '@/components/manpower/LogbookRequests';
 import LogbookSummary from '@/components/manpower/LogbookSummary';
+import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 
 
 export default function ManpowerListPage() {
@@ -42,6 +43,7 @@ export default function ManpowerListPage() {
     const [isMemoReportOpen, setIsMemoReportOpen] = useState(false);
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
     const [isLogbookRequestOpen, setIsLogbookRequestOpen] = useState(false);
+    const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -215,6 +217,7 @@ export default function ManpowerListPage() {
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
+                         <Button variant="outline" onClick={() => setIsLogbookHistoryOpen(true)}><History className="mr-2 h-4 w-4" /> Logbook History</Button>
                          <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
                          <Button variant="outline" onClick={() => setIsLogbookRequestOpen(true)}><Book className="mr-2 h-4 w-4" /> Request Logbook</Button>
                          <Button variant="outline" onClick={() => setIsMemoReportOpen(true)}><GanttChartSquare className="mr-2 h-4 w-4" /> Memo Report</Button>
@@ -389,6 +392,10 @@ export default function ManpowerListPage() {
                         isOpen={isLogbookRegisterOpen}
                         setIsOpen={setIsLogbookRegisterOpen}
                     />
+                     <LogbookHistoryDialog
+                        isOpen={isLogbookHistoryOpen}
+                        setIsOpen={setIsLogbookHistoryOpen}
+                    />
                     <LogbookRequestDialog
                         isOpen={isLogbookRequestOpen}
                         setIsOpen={setIsLogbookRequestOpen}
@@ -406,6 +413,8 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
+
 
 
 
