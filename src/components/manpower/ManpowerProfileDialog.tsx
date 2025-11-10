@@ -361,6 +361,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   };
 
+  const handleDeleteLogbook = (profileId: string) => {
+    deleteLogbookRecord(profileId);
+  };
+
     const epNumberTimeline = useMemo(() => {
         if (!liveProfile) return [];
 
@@ -423,7 +427,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         <DialogContent className="max-w-4xl h-full max-h-[95vh] flex flex-col">
           <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("Form validation errors:", errors))} className="flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 pr-4 -mr-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
                   
                   <div className="space-y-4">
@@ -568,26 +572,30 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     <div className="space-y-4">
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
-                        <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
-                            {canDeleteLogbook && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Clear Logbook Record?</AlertDialogTitle><AlertDialogDescription>This will permanently clear the current logbook status, out date, and remarks for this employee. Are you sure?</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => deleteLogbookRecord(profile.id)}>Clear Record</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-                            <div><strong>Status:</strong> <Badge variant={profile.logbook?.status === 'Received' ? 'success' : (profile.logbook?.status === 'Not Received' || profile.logbook?.status === 'Sent back as requested' ? 'destructive' : 'secondary')}>{profile.logbook?.status || 'Pending'}</Badge></div>
-                            {profile.logbook?.outDate && <div><strong>Out Date:</strong> {format(parseISO(profile.logbook.outDate), 'dd MMM, yyyy')}</div>}
-                            {profile.logbook?.inDate && <div><strong>In Date:</strong> {format(parseISO(profile.logbook.inDate), 'dd MMM, yyyy')}</div>}
-                            {profile.logbook?.remarks && <div className="whitespace-pre-wrap"><strong>Remarks:</strong> {profile.logbook.remarks}</div>}
-                        </div>
+                        {liveProfile?.logbook ? (
+                            <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
+                                {canDeleteLogbook && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Clear Logbook Record?</AlertDialogTitle><AlertDialogDescription>This will permanently clear the current logbook status, out date, and remarks for this employee. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteLogbook(profile.id)}>Clear Record</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                                <div><strong>Status:</strong> <Badge variant={liveProfile.logbook.status === 'Received' ? 'success' : (liveProfile.logbook.status === 'Not Received' ? 'destructive' : 'secondary')}>{liveProfile.logbook.status || 'Pending'}</Badge></div>
+                                {liveProfile.logbook?.outDate && <div><strong>Out Date:</strong> {format(parseISO(liveProfile.logbook.outDate), 'dd MMM, yyyy')}</div>}
+                                {liveProfile.logbook?.inDate && <div><strong>In Date:</strong> {format(parseISO(liveProfile.logbook.inDate), 'dd MMM, yyyy')}</div>}
+                                {liveProfile.logbook?.remarks && <div className="whitespace-pre-wrap"><strong>Remarks:</strong> {liveProfile.logbook.remarks}</div>}
+                            </div>
+                        ) : (
+                             <p className="text-sm text-muted-foreground p-2">No logbook activity recorded.</p>
+                        )}
                     </div>
                   )}
 
@@ -851,3 +859,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
