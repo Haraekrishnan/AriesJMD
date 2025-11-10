@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -110,6 +111,7 @@ type AppContextType = {
   pendingUnlockRequestCount: number;
   pendingInventoryTransferRequestCount: number;
   allCompletedTransferRequests: InventoryTransferRequest[];
+  pendingLogbookRequestCount: number;
 
   // Functions
   getVisibleUsers: () => User[];
@@ -1139,6 +1141,103 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, users, tasksById, addActivityLog]);
 
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
+    if(!user) return;
+    const incident = incidentReportsById[incidentId];
+    if(!incident) return;
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString() };
+    set(newCommentRef, newComment);
+
+    const updates: { [key: string]: any } = {};
+    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    
+    const participants = new Set([incident.reporterId, ...incident.reportedToUserIds]);
+    participants.forEach(targetUserId => {
+      if (targetUserId !== user.id) {
+        updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
+      }
+    });
+
+    update(ref(rtdb), updates);
+
+  }, [user, incidentReportsById]);
+
+  const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
+    if(!user) return;
+    const { id, ...data } = incident;
+    addIncidentComment(id, `Status updated to ${data.status}. Comment: ${comment}`);
+    update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Incident Updated', incident.unitArea);
+
+  }, [user, addActivityLog, addIncidentComment]);
+
+  const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
+    if (!user) return;
+    
+    const dayCommentId = `${day}_${plannerUserId}`;
+    const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
+    const dayCommentSnapshot = await get(dayCommentRef);
+    const dayCommentData = dayCommentSnapshot.val();
+
+    const newComment: Omit<Comment, 'id'> = {
+        userId: user.id,
+        text,
+        date: new Date().toISOString(),
+        eventId: eventId,
+    };
+
+    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
+    
+    let updates: { [key: string]: any } = {};
+
+    if (!dayCommentData) {
+        // If the daily comment node doesn't exist, create it first.
+        const newDayComment: DailyPlannerComment = {
+            id: dayCommentId,
+            plannerUserId,
+            day,
+            comments: { [newCommentRef.key!]: newCommentWithId },
+            lastUpdated: new Date().toISOString(),
+            viewedBy: { [user.id]: true },
+        };
+        await set(dayCommentRef, newDayComment);
+    } else {
+        // If it exists, just push the new comment.
+        await set(newCommentRef, newCommentWithId);
+        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+    }
+
+    const event = plannerEvents.find(e => e.id === eventId);
+    if(event) {
+        const participants = new Set([event.creatorId, event.userId]);
+        participants.forEach(pId => {
+            if (pId !== user.id) {
+                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
+                
+                const participant = users.find(u => u.id === pId);
+                if (participant?.email) {
+                    createAndSendNotification(
+                        participant.email,
+                        `New comment on planner for ${format(parseISO(day), 'PPP')}`,
+                        `New comment from ${user.name} on "${event.title}"`,
+                        {
+                            'Comment': text,
+                        },
+                        `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+                        'View Planner'
+                    );
+                }
+            }
+        });
+    }
+    
+    if (Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+    }
+}, [user, users, plannerEvents]);
+  
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
     const start = startOfMonth(month);
     const end = endOfMonth(month);
@@ -1225,72 +1324,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addActivityLog(user.id, 'Planner Event Deleted', eventToDelete.title);
     }
   }, [user, plannerEvents, addActivityLog]);
-
-  const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
-    if (!user) return;
-    
-    const dayCommentId = `${day}_${plannerUserId}`;
-    const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
-    const dayCommentSnapshot = await get(dayCommentRef);
-    const dayCommentData = dayCommentSnapshot.val();
-
-    const newComment: Omit<Comment, 'id'> = {
-        userId: user.id,
-        text,
-        date: new Date().toISOString(),
-        eventId: eventId,
-    };
-
-    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
-    
-    let updates: { [key: string]: any } = {};
-
-    if (!dayCommentData) {
-        // If the daily comment node doesn't exist, create it first.
-        const newDayComment: DailyPlannerComment = {
-            id: dayCommentId,
-            plannerUserId,
-            day,
-            comments: { [newCommentRef.key!]: newCommentWithId },
-            lastUpdated: new Date().toISOString(),
-            viewedBy: { [user.id]: true },
-        };
-        await set(dayCommentRef, newDayComment);
-    } else {
-        // If it exists, just push the new comment.
-        await set(newCommentRef, newCommentWithId);
-        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
-    }
-
-    const event = plannerEvents.find(e => e.id === eventId);
-    if(event) {
-        const participants = new Set([event.creatorId, event.userId]);
-        participants.forEach(pId => {
-            if (pId !== user.id) {
-                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
-                
-                const participant = users.find(u => u.id === pId);
-                if (participant?.email) {
-                    createAndSendNotification(
-                        participant.email,
-                        `New comment on planner for ${format(parseISO(day), 'PPP')}`,
-                        `New comment from ${user.name} on "${event.title}"`,
-                        {
-                            'Comment': text,
-                        },
-                        `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
-                        'View Planner'
-                    );
-                }
-            }
-        });
-    }
-    
-    if (Object.keys(updates).length > 0) {
-        await update(ref(rtdb), updates);
-    }
-}, [user, users, plannerEvents]);
   
 const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
   if (!user) return;
@@ -1307,6 +1340,103 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
   }
 }, [user, dailyPlannerComments]);
 
+  
+  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
+    if (!user) return;
+    const request = logbookRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`logbookRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    
+    const participants = new Set([request.requesterId, ...users.filter(u => can.manage_logbook).map(u => u.id)]);
+    participants.forEach(pId => {
+      if (pId !== user.id) {
+        updates[`logbookRequests/${requestId}/viewedBy/${pId}`] = false;
+      }
+    });
+
+    update(ref(rtdb), updates);
+  }, [user, logbookRequests, users, can.manage_logbook]);
+  
+  const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
+    if (!user) return;
+    const request = logbookRequests.find(r => r.id === requestId);
+    if (!request) return;
+  
+    const actionComment = `Status changed to ${status}. Reason: ${comment}`;
+    
+    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
+    const newComment = { userId: user.id, text: actionComment, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`logbookRequests/${requestId}/status`] = status;
+    updates[`logbookRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+  
+    if (status === 'Completed') {
+      const requesterName = users.find(u => u.id === request.requesterId)?.name || 'Unknown';
+      const remarks = `Requested by ${requesterName} on ${format(parseISO(request.requestDate), 'dd-MM-yy')} for "${request.remarks || 'N/A'}". Approved by ${user.name} on ${format(new Date(), 'dd-MM-yyyy')}. Approver comment: ${comment}`;
+      const logbookUpdate: LogbookRecord = {
+        status: 'Sent back as requested',
+        outDate: new Date().toISOString(),
+        remarks: remarks
+      };
+      updates[`manpowerProfiles/${request.manpowerId}/logbook`] = logbookUpdate;
+    }
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, `Logbook Request ${status}`, `Request ID: ${requestId}`);
+  }, [user, users, logbookRequests, addActivityLog]);
+  
+  const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
+    if (!user) return;
+    const allowedRoles = ['Admin', 'Project Coordinator', 'Document Controller'];
+    if (!allowedRoles.includes(user.role)) {
+        toast({ variant: 'destructive', title: 'Permission Denied' });
+        return;
+    }
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`)).then(() => {
+        onComplete();
+    });
+  }, [user, toast]);
+
+  const addLogbookRequest = useCallback((manpowerId: string, remarks = '') => {
+    if (!user) return;
+    const newRequest: Omit<LogbookRequest, 'id'> = {
+      manpowerId,
+      requesterId: user.id,
+      requestDate: new Date().toISOString(),
+      status: 'Pending',
+      remarks,
+      viewedBy: { [user.id]: true }
+    };
+    const newRef = push(ref(rtdb, 'logbookRequests'));
+    set(newRef, { ...newRequest, id: newRef.key });
+    addActivityLog(user.id, 'Logbook Requested', `For manpower ID: ${manpowerId}`);
+
+    const docControllers = users.filter(u => u.role === 'Document Controller');
+    docControllers.forEach(dc => {
+      if (dc.email) {
+        createAndSendNotification(
+          dc.email,
+          'New Logbook Request',
+          'A logbook has been requested.',
+          {
+            'Employee': manpowerProfiles.find(p => p.id === manpowerId)?.name || 'Unknown',
+            'Requested By': user.name
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/manpower-list`,
+          'View Requests'
+        );
+      }
+    });
+
+  }, [user, addActivityLog, users, manpowerProfiles]);
+  
 
   const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
     if (!user) return;
@@ -1418,54 +1548,16 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
     set(newRef, newIncident);
   }, [user, addActivityLog]);
   
-  const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
-    if(!user) return;
-    const { id, ...data } = incident;
-
-    const newCommentRef = push(ref(rtdb, `incidentReports/${id}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-
-    update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString(), comments: [newComment] });
-    addActivityLog(user.id, 'Incident Updated', incident.unitArea);
-
-  }, [user, addActivityLog]);
-
-  const addIncidentComment = useCallback((incidentId: string, text: string) => {
-    if(!user) return;
-    const incident = incidentReportsById[incidentId];
-    if(!incident) return;
-    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-
-    const updates: { [key: string]: any } = {};
-    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    
-    const participants = new Set([incident.reporterId, ...incident.reportedToUserIds]);
-    participants.forEach(targetUserId => {
-      if (targetUserId !== user.id) {
-        updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
-      }
-    });
-
-    update(ref(rtdb), updates);
-
-  }, [user, incidentReportsById]);
-  
   const publishIncident = useCallback((incidentId: string, comment: string) => {
     if(!user) return;
     const incident = incidentReportsById[incidentId];
     if(!incident) return;
 
-    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
+    addIncidentComment(incidentId, comment);
 
     const updates: { [key: string]: any } = {};
     updates[`incidentReports/${incidentId}/status`] = 'New';
     updates[`incidentReports/${incidentId}/isPublished`] = true;
-    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`incidentReports/${incidentId}/viewedBy/${user.id}`] = true; // mark viewed by publishing user
 
     const reporter = users.find(u => u.id === incident.reporterId);
@@ -1494,20 +1586,17 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
         }
     }
 
-  }, [user, users, incidentReportsById, addActivityLog]);
+  }, [user, users, incidentReportsById, addActivityLog, addIncidentComment]);
   
   const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
     if(!user) return;
     const incident = incidentReportsById[incidentId];
     if(!incident) return;
 
-    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
+    addIncidentComment(incidentId, comment);
 
     const updates: { [key: string]: any } = {};
     updates[`incidentReports/${incidentId}/reportedToUserIds`] = userIds;
-    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
     userIds.forEach(targetUserId => {
       updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
@@ -1529,7 +1618,7 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
     });
     update(ref(rtdb), updates);
 
-  }, [user, users, incidentReportsById]);
+  }, [user, users, incidentReportsById, addIncidentComment]);
 
   const markIncidentAsViewed = useCallback((incidentId: string) => {
     if(!user) return;
@@ -3480,98 +3569,6 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
       if(doc) addActivityLog(user.id, 'Document Deleted', doc.title);
   }, [user, downloadableDocuments, addActivityLog]);
   
-  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
-    if (!user) return;
-    const request = logbookRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`logbookRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    
-    const participants = new Set([request.requesterId, ...users.filter(u => can.manage_logbook).map(u => u.id)]);
-    participants.forEach(pId => {
-      if (pId !== user.id) {
-        updates[`logbookRequests/${requestId}/viewedBy/${pId}`] = false;
-      }
-    });
-
-    update(ref(rtdb), updates);
-  }, [user, logbookRequests, users, can.manage_logbook]);
-  
-  const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
-    if (!user) return;
-    const request = logbookRequests.find(r => r.id === requestId);
-    if (!request) return;
-  
-    const requesterName = users.find(u => u.id === request.requesterId)?.name || 'Unknown';
-    const actionComment = `Status changed to ${status}. Reason: ${comment}`;
-    addLogbookRequestComment(requestId, actionComment);
-  
-    const updates: { [key: string]: any } = {};
-    updates[`logbookRequests/${requestId}/status`] = status;
-  
-    if (status === 'Completed') {
-      const remarks = `Requested by ${requesterName} on ${format(parseISO(request.requestDate), 'dd-MM-yy')} for "${request.remarks || 'N/A'}". Approved by ${user.name} on ${format(new Date(), 'dd-MM-yyyy')}. Approver comment: ${comment}`;
-      const logbookUpdate: LogbookRecord = {
-        status: 'Sent back as requested',
-        outDate: new Date().toISOString(),
-        remarks: remarks
-      };
-      updates[`manpowerProfiles/${request.manpowerId}/logbook`] = logbookUpdate;
-    }
-  
-    update(ref(rtdb), updates);
-  }, [user, users, logbookRequests, addLogbookRequestComment]);
-  
-  const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
-    if (!user) return;
-    const allowedRoles = ['Admin', 'Project Coordinator', 'Document Controller'];
-    if (!allowedRoles.includes(user.role)) {
-        toast({ variant: 'destructive', title: 'Permission Denied' });
-        return;
-    }
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`)).then(() => {
-        onComplete();
-    });
-  }, [user, toast]);
-
-  const addLogbookRequest = useCallback((manpowerId: string, remarks = '') => {
-    if (!user) return;
-    const newRequest: Omit<LogbookRequest, 'id'> = {
-      manpowerId,
-      requesterId: user.id,
-      requestDate: new Date().toISOString(),
-      status: 'Pending',
-      remarks,
-      viewedBy: { [user.id]: true }
-    };
-    const newRef = push(ref(rtdb, 'logbookRequests'));
-    set(newRef, { ...newRequest, id: newRef.key });
-    addActivityLog(user.id, 'Logbook Requested', `For manpower ID: ${manpowerId}`);
-
-    const docControllers = users.filter(u => u.role === 'Document Controller');
-    docControllers.forEach(dc => {
-      if (dc.email) {
-        createAndSendNotification(
-          dc.email,
-          'New Logbook Request',
-          'A logbook has been requested.',
-          {
-            'Employee': manpowerProfiles.find(p => p.id === manpowerId)?.name || 'Unknown',
-            'Requested By': user.name
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/manpower-list`,
-          'View Requests'
-        );
-      }
-    });
-
-  }, [user, addActivityLog, users, manpowerProfiles]);
-  
-
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
@@ -4076,4 +4073,6 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
+
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -76,6 +77,7 @@ const profileSchema = z.object({
   memoHistory: z.array(z.any()).optional(),
   ppeHistory: z.array(z.any()).optional(),
   epNumberHistory: z.array(z.any()).optional(),
+  logbook: z.any().optional(),
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
         ctx.addIssue({
@@ -580,7 +582,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
                         {liveProfile?.logbook ? (
-                             <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
+                            <div className="text-sm space-y-2 p-2 border rounded-md bg-muted/20 relative">
                                 {canDeleteLogbook && (
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
@@ -866,4 +868,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
 
