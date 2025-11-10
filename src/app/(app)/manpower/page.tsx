@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ManpowerSummaryTable from '@/components/manpower/ManpowerSummaryTable';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book } from 'lucide-react';
+import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book, History } from 'lucide-react';
 import ManpowerLogDialog from '@/components/manpower/ManpowerLogDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ import LogLeaveDialog from '@/components/manpower/LogLeaveDialog';
 import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
 import LogbookRequestDialog from '@/components/manpower/LogbookRequestDialog';
 import LogbookRequests from '@/components/manpower/LogbookRequests';
+import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 
 export default function ManpowerPage() {
     const { can } = useAppContext();
@@ -26,6 +27,7 @@ export default function ManpowerPage() {
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
     const [isLogbookRequestOpen, setIsLogbookRequestOpen] = useState(false);
+    const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());
 
@@ -43,6 +45,7 @@ export default function ManpowerPage() {
                             Manpower List
                         </Link>
                     </Button>
+                    <Button variant="outline" onClick={() => setIsLogbookHistoryOpen(true)}><History className="mr-2 h-4 w-4"/> Logbook History</Button>
                     <Button variant="outline" onClick={() => setIsLogbookRequestOpen(true)}><Book className="mr-2 h-4 w-4" /> Request Logbook</Button>
                     {can.manage_logbook && (
                         <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
@@ -151,6 +154,7 @@ export default function ManpowerPage() {
             <LogLeaveDialog isOpen={isLeaveDialogOpen} setIsOpen={setIsLeaveDialogOpen} />
             <LogbookRegisterDialog isOpen={isLogbookRegisterOpen} setIsOpen={setIsLogbookRegisterOpen} />
             <LogbookRequestDialog isOpen={isLogbookRequestOpen} setIsOpen={setIsLogbookRequestOpen} />
+            <LogbookHistoryDialog isOpen={isLogbookHistoryOpen} setIsOpen={setIsLogbookHistoryOpen} />
         </div>
     );
 }
