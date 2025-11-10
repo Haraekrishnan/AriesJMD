@@ -461,10 +461,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
     }
     const logRef = push(ref(rtdb, 'activityLogs'));
-    const newLog: Omit<ActivityLog, 'id'> = {
+    const newLog: Partial<ActivityLog> = {
         userId,
         action,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     };
     if (details) {
         newLog.details = details;
@@ -3513,30 +3513,6 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
 
   }, [user, addActivityLog, users, manpowerProfiles]);
 
-  const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
-    if (!user) return;
-    const request = logbookRequests.find(r => r.id === requestId);
-    if (!request) return;
-    
-    const actionComment = `Status updated to ${status}. Reason: ${comment}`;
-    addLogbookRequestComment(requestId, actionComment);
-    
-    const updates: { [key: string]: any } = {};
-    updates[`logbookRequests/${requestId}/status`] = status;
-    
-    if (status === 'Completed') {
-      const logbookUpdate: LogbookRecord = { 
-        status: 'Not Received',
-        outDate: new Date().toISOString(),
-        remarks: `Requested by ${users.find(u => u.id === request.requesterId)?.name || 'N/A'}. Reason: ${request.remarks || 'N/A'}`
-      };
-      updates[`manpowerProfiles/${request.manpowerId}/logbook`] = logbookUpdate;
-    }
-    
-    update(ref(rtdb), updates);
-
-  }, [user, users, logbookRequests]);
-
   const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
     if (!user) return;
     const request = logbookRequests.find(r => r.id === requestId);
@@ -3557,6 +3533,31 @@ const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: 
 
     update(ref(rtdb), updates);
   }, [user, logbookRequests, users, can.manage_logbook]);
+
+  const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
+    if (!user) return;
+    const request = logbookRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
+    const actionComment = `Status updated to ${status}. Reason: ${comment}`;
+    addLogbookRequestComment(requestId, actionComment);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`logbookRequests/${requestId}/status`] = status;
+    
+    if (status === 'Completed') {
+      const requesterName = users.find(u => u.id === request.requesterId)?.name || 'N/A';
+      const logbookUpdate: LogbookRecord = { 
+        status: 'Not Received',
+        outDate: new Date().toISOString(),
+        remarks: `Requested by ${requesterName}. Reason: ${request.remarks || 'N/A'}. Approved by ${user.name} on ${format(new Date(), 'dd-MM-yyyy')}. Approver comment: ${comment}`
+      };
+      updates[`manpowerProfiles/${request.manpowerId}/logbook`] = logbookUpdate;
+    }
+    
+    update(ref(rtdb), updates);
+
+  }, [user, users, logbookRequests, addLogbookRequestComment]);
 
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
@@ -4057,3 +4058,8 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    
+
+    
