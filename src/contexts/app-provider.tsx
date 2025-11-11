@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -335,10 +334,10 @@ const createDataListener = <T extends {}>(
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  // SECTION: State Declarations
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
-
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
@@ -389,7 +388,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
-  
+
+  // SECTION: Memoized Data Arrays
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
   const tasks = useMemo(() => Object.values(tasksById), [tasksById]);
@@ -440,104 +440,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
-  const can = useMemo(() => {
-    const permissions = new Set<Permission>();
-    if (user && !loading && roles.length > 0) {
-        const userRole = roles.find(r => r.name === user.role);
-        if (userRole && userRole.permissions) {
-            userRole.permissions.forEach(p => permissions.add(p));
-        }
-    }
-    const canObject: PermissionsObject = {} as any;
-    for (const p of ALL_PERMISSIONS) canObject[p] = permissions.has(p);
-    return canObject;
-  }, [user, roles, loading]);
-
-  const notificationCounts = useMemo(() => {
-    if (!user) return {};
-
-    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
-    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
-
-    const isStoreManager = can.approve_store_requests;
-    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
-    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
-    
-    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
-        if (!dayComment.day || !dayComment.comments) return false;
-        const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-        if (eventsOnDay.length === 0) return false;
-
-        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
-        return comments.some(c => {
-            if (!c) return false;
-            const event = eventsOnDay.find(e => e.id === c.eventId);
-            if (!event) return false;
-            const isParticipant = event.userId === user.id || event.creatorId === user.id;
-            return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
-        });
-    });
-    const plannerNotificationCount = unreadCommentsForUser.length;
-
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
-    
-    const updatedInternalRequestCount = internalRequests.filter(r => {
-        const isMyRequest = r.requesterId === user.id;
-        if (!isMyRequest) return false;
-        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
-        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-        return isRejectedButActive || isStandardUpdate;
-    }).length;
-
-    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
-    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
-    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
-
-    const incidentNotificationCount = incidentReports.filter(i => {
-      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
-      const isUnread = !i.viewedBy?.[user.id];
-      return isParticipant && isUnread;
-    }).length;
-    
-    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
-    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
-    
-    const pendingApproval = canApprovePpe ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
-    const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
-    const pendingDisputes = (canApprovePpe || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
-    const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
-
-    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
-    
-    const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
-    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
-    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
-    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
-
-    const canApproveTransfers = can.approve_store_requests; // Using this permission for now
-    const pendingInventoryTransferRequestCount = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
-    const allCompletedTransferRequests = can.approve_store_requests ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
-
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todaysLogs = manpowerLogs.filter(log => log.date === todayStr);
-    
-    const { workingManpowerCount, onLeaveManpowerCount } = todaysLogs.reduce((acc, log) => {
-        acc.workingManpowerCount += (log.total || 0);
-        acc.onLeaveManpowerCount += (log.countOnLeave || 0);
-        return acc;
-    }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
-
-    const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
-
-    return {
-      pendingTaskApprovalCount: tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length, 
-      myNewTaskCount: tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length, 
-      myPendingTaskRequestCount: tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length,
-      myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount
-    };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, manpowerLogs, plannerEvents, logbookRequests]);
-
+  // All function definitions must go before they are used in contextValue
+  
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) {
         console.error("addActivityLog: userId is undefined or null");
@@ -831,6 +735,159 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users, addActivityLog]);
 
+  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = {
+        userId: user.id,
+        text: text,
+        date: new Date().toISOString()
+    };
+    set(newCommentRef, newComment);
+    update(ref(rtdb, `logbookRequests/${requestId}/viewedBy`), { [user.id]: true });
+  }, [user]);
+
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
+    if(!user) return;
+    const incident = incidentReportsById[incidentId];
+    if(!incident) return;
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString() };
+    set(newCommentRef, newComment);
+
+    const updates: { [key: string]: any } = {};
+    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    
+    const participants = new Set([incident.reporterId, ...incident.reportedToUserIds]);
+    participants.forEach(targetUserId => {
+      if (targetUserId !== user.id) {
+        updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
+      }
+    });
+
+    update(ref(rtdb), updates);
+
+  }, [user, incidentReportsById]);
+
+  const publishIncident = useCallback((incidentId: string, comment: string) => {
+    if(!user) return;
+    const incident = incidentReportsById[incidentId];
+    if(!incident) return;
+
+    addIncidentComment(incidentId, comment);
+
+    const updates: { [key: string]: any } = {};
+    updates[`incidentReports/${incidentId}/status`] = 'New';
+    updates[`incidentReports/${incidentId}/isPublished`] = true;
+    updates[`incidentReports/${incidentId}/viewedBy/${user.id}`] = true; // mark viewed by publishing user
+
+    const reporter = users.find(u => u.id === incident.reporterId);
+    if(reporter && reporter.supervisorId) {
+        updates[`incidentReports/${incidentId}/reportedToUserIds`] = [...incident.reportedToUserIds, reporter.supervisorId];
+    }
+    
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Incident Published', incident.unitArea);
+    
+    if(reporter && reporter.supervisorId) {
+        const supervisor = users.find(u => u.id === reporter.supervisorId);
+        if (supervisor && supervisor.email) {
+            createAndSendNotification(
+                supervisor.email,
+                `New Incident Report: ${incident.unitArea}`,
+                'Incident Report',
+                {
+                    'Reporter': reporter.name,
+                    'Location': incident.unitArea,
+                    'Details': incident.incidentDetails,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/incident-reports`,
+                'View Incident'
+            );
+        }
+    }
+
+  }, [user, users, incidentReportsById, addActivityLog, addIncidentComment]);
+
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
+
+  const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
+    if (!user) return;
+    
+    const dayCommentId = `${day}_${plannerUserId}`;
+    const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
+    const dayCommentSnapshot = await get(dayCommentRef);
+    const dayCommentData = dayCommentSnapshot.val();
+
+    const newComment: Omit<Comment, 'id'> = {
+        userId: user.id,
+        text,
+        date: new Date().toISOString(),
+        eventId: eventId,
+    };
+
+    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
+    
+    let updates: { [key: string]: any } = {};
+
+    if (!dayCommentData) {
+        const newDayComment: DailyPlannerComment = {
+            id: dayCommentId,
+            plannerUserId,
+            day,
+            comments: { [newCommentRef.key!]: newCommentWithId },
+            lastUpdated: new Date().toISOString(),
+            viewedBy: { [user.id]: true },
+        };
+        await set(dayCommentRef, newDayComment);
+    } else {
+        await set(newCommentRef, newCommentWithId);
+        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+    }
+
+    const event = plannerEvents.find(e => e.id === eventId);
+    if(event) {
+        const participants = new Set([event.creatorId, event.userId]);
+        participants.forEach(pId => {
+            if (pId !== user.id) {
+                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
+                
+                const participant = users.find(u => u.id === pId);
+                if (participant?.email) {
+                    createAndSendNotification(
+                        participant.email,
+                        `New comment on planner for ${format(parseISO(day), 'PPP')}`,
+                        `New comment from ${user.name} on "${event.title}"`,
+                        {
+                            'Comment': text,
+                        },
+                        `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
+                        'View Planner'
+                    );
+                }
+            }
+        });
+    }
+    
+    if (Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+    }
+}, [user, users, plannerEvents]);
+
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -879,13 +936,127 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, users, addActivityLog]);
 
+  const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'achievements'));
+    const newAchievement: Omit<Achievement, 'id'> = {
+        ...achievement,
+        type: 'manual',
+        date: new Date().toISOString(),
+        awardedById: user.id,
+        status: 'approved',
+    };
+    set(newRef, newAchievement);
+    addActivityLog(user.id, 'Manual Achievement Awarded', achievement.title);
+  }, [user, addActivityLog]);
+  
+  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'internalRequests'));
+    
+    // Ensure `inventoryItemId` is null if it's undefined
+    const sanitizedItems = requestData.items.map(item => ({
+        ...item,
+        inventoryItemId: item.inventoryItemId || null,
+    }));
+
+    const newRequest: Omit<InternalRequest, 'id'> = {
+        ...requestData,
+        items: sanitizedItems,
+        requesterId: user.id,
+        date: new Date().toISOString(),
+        status: 'Pending',
+        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString() }],
+        viewedByRequester: true,
+    };
+
+    set(newRequestRef, newRequest);
+    addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
+
+    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+    storePersonnel.forEach(p => {
+        if(p.email) {
+            createAndSendNotification(
+                p.email,
+                `New Internal Store Request from ${user.name}`,
+                'New Store Request',
+                {
+                    'Requested By': user.name,
+                    'Item Count': requestData.items.length.toString(),
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'View Request'
+            );
+        }
+    });
+
+  }, [user, users, addActivityLog]);
+
+  const deleteUser = useCallback((userId: string) => {
+    const updates: Record<string, null> = {};
+    updates[`users/${userId}`] = null;
+    manpowerProfiles.forEach(profile => {
+        if(profile.id === userId) {
+            updates[`manpowerProfiles/${profile.id}`] = null;
+        }
+    });
+    tasks.forEach(task => {
+        if (task.creatorId === userId || task.assigneeIds?.includes(userId)) {
+            updates[`tasks/${task.id}`] = null;
+        }
+    });
+    plannerEvents.forEach(event => {
+        if (event.userId === userId || event.creatorId === userId) {
+            updates[`plannerEvents/${event.id}`] = null;
+        }
+    });
+    internalRequests.forEach(req => {
+        if(req.requesterId === userId) {
+            updates[`internalRequests/${req.id}`] = null;
+        }
+    });
+     managementRequests.forEach(req => {
+        if(req.requesterId === userId || req.recipientId === userId) {
+            updates[`managementRequests/${req.id}`] = null;
+        }
+    });
+    ppeRequests.forEach(req => {
+        if(req.requesterId === userId) {
+            updates[`ppeRequests/${req.id}`] = null;
+        }
+    });
+    payments.forEach(p => {
+        if(p.requesterId === userId) {
+            updates[`payments/${p.id}`] = null;
+        }
+    });
+    purchaseRegisters.forEach(pr => {
+        if(pr.creatorId === userId) {
+            updates[`purchaseRegisters/${pr.id}`] = null;
+        }
+    });
+    logbookRequests.forEach(lr => {
+        if(lr.requesterId === userId) {
+            updates[`logbookRequests/${lr.id}`] = null;
+        }
+    });
+
+    update(ref(rtdb), updates);
+
+    if (user) {
+        addActivityLog(user.id, 'User Profile Deleted', `Deleted user with ID: ${userId}`);
+    }
+}, [user, manpowerProfiles, tasks, plannerEvents, internalRequests, managementRequests, ppeRequests, payments, purchaseRegisters, logbookRequests, addActivityLog]);
+
+  // SECTION: All other function definitions
+  
   const updateTask = useCallback((updatedTask: Task) => {
     if(!user) return;
     const { id, ...data } = updatedTask;
     update(ref(rtdb, `tasks/${id}`), { ...data, lastUpdated: new Date().toISOString() });
     addActivityLog(user.id, 'Task Updated', data.title);
   }, [user, addActivityLog]);
-  
+
   const deleteTask = useCallback((taskId: string) => {
     if (!user || user.role !== 'Admin') {
       toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only admins can delete tasks.' });
@@ -1054,15 +1225,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updatedComment += ` Comment: ${comment}`;
     }
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
+    addComment(taskId, updatedComment);
 
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/status`] = 'In Progress';
     updates[`tasks/${taskId}/approvalState`] = 'approved';
     updates[`tasks/${taskId}/viewedByApprover`] = true;
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Task Approved', task.title);
@@ -1084,22 +1252,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     }
 
-  }, [user, users, tasksById, addActivityLog]);
+  }, [user, users, tasksById, addActivityLog, addComment]);
 
   const returnTask = useCallback((taskId: string, comment: string) => {
     if(!user) return;
     const task = tasksById[taskId];
     if(!task) return;
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
+    addComment(taskId, comment);
     
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/status`] = 'To Do';
     updates[`tasks/${taskId}/approvalState`] = 'returned';
     updates[`tasks/${taskId}/viewedByApprover`] = true;
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Task Returned', task.title);
@@ -1121,7 +1286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     }
 
-  }, [user, users, tasksById, addActivityLog]);
+  }, [user, users, tasksById, addActivityLog, addComment]);
   
   const returnTaskStatusChange = useCallback((taskId: string, comment: string) => {
     if (!user) return;
@@ -1164,14 +1329,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updatedComment += ` Comment: ${comment}`;
     }
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: updatedComment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
+    addComment(taskId, updatedComment);
     
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/status`] = 'To Do';
     updates[`tasks/${taskId}/approvalState`] = 'none';
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
 
     // Migrate existing subtask
     const subtasks = task.subtasks ? (Array.isArray(task.subtasks) ? task.subtasks : Object.values(task.subtasks)) : [];
@@ -1205,7 +1367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     }
 
-  }, [user, users, tasksById, addActivityLog]);
+  }, [user, users, tasksById, addActivityLog, addComment]);
 
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
     const start = startOfMonth(month);
@@ -1294,170 +1456,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, plannerEvents, addActivityLog]);
   
-  const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
-    if (!user) return;
-    
-    const dayCommentId = `${day}_${plannerUserId}`;
-    const dayCommentRef = ref(rtdb, `dailyPlannerComments/${dayCommentId}`);
-    const dayCommentSnapshot = await get(dayCommentRef);
-    const dayCommentData = dayCommentSnapshot.val();
-
-    const newComment: Omit<Comment, 'id'> = {
-        userId: user.id,
-        text,
-        date: new Date().toISOString(),
-        eventId: eventId,
-    };
-
-    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-    const newCommentWithId = { ...newComment, id: newCommentRef.key! };
-    
-    let updates: { [key: string]: any } = {};
-
-    if (!dayCommentData) {
-        // If the daily comment node doesn't exist, create it first.
-        const newDayComment: DailyPlannerComment = {
-            id: dayCommentId,
-            plannerUserId,
-            day,
-            comments: { [newCommentRef.key!]: newCommentWithId },
-            lastUpdated: new Date().toISOString(),
-            viewedBy: { [user.id]: true },
-        };
-        await set(dayCommentRef, newDayComment);
-    } else {
-        // If it exists, just push the new comment.
-        await set(newCommentRef, newCommentWithId);
-        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
-    }
-
-    const event = plannerEvents.find(e => e.id === eventId);
-    if(event) {
-        const participants = new Set([event.creatorId, event.userId]);
-        participants.forEach(pId => {
-            if (pId !== user.id) {
-                updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${pId}`] = false;
-                
-                const participant = users.find(u => u.id === pId);
-                if (participant?.email) {
-                    createAndSendNotification(
-                        participant.email,
-                        `New comment on planner for ${format(parseISO(day), 'PPP')}`,
-                        `New comment from ${user.name} on "${event.title}"`,
-                        {
-                            'Comment': text,
-                        },
-                        `${process.env.NEXT_PUBLIC_APP_URL}/schedule`,
-                        'View Planner'
-                    );
-                }
-            }
-        });
-    }
-    
-    if (Object.keys(updates).length > 0) {
-        await update(ref(rtdb), updates);
-    }
-}, [user, users, plannerEvents]);
-  
   const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
     if (!user) return;
     const dayCommentId = `${day}_${plannerUserId}`;
-    const dayComment = dailyPlannerComments.find(c => c.id === dayCommentId);
-
-    if (dayComment) {
-        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-        const commentKey = Object.keys(dayComment.comments || {}).find(key => (dayComment.comments as any)[key].id === commentId);
-
-        if (commentKey) {
-            update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments/${commentKey}/viewedBy`), { [user.id]: true });
-        }
-    }
-  }, [user, dailyPlannerComments]);
-  
-  const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
-      if (!user) return;
-      const key = `${eventId}_${day}`;
-      const updates: { [key: string]: any } = {};
-      updates[`users/${user.id}/dismissedPendingUpdates/${key}`] = true;
-      update(ref(rtdb), updates);
+    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments/${commentId}/viewedBy`), { [user.id]: true });
   }, [user]);
 
-  const addIncidentComment = useCallback((incidentId: string, text: string) => {
-    if(!user) return;
-    const incident = incidentReportsById[incidentId];
-    if(!incident) return;
-    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: text, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-
-    const updates: { [key: string]: any } = {};
-    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    
-    const participants = new Set([incident.reporterId, ...incident.reportedToUserIds]);
-    participants.forEach(targetUserId => {
-      if (targetUserId !== user.id) {
-        updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
-      }
-    });
-
-    update(ref(rtdb), updates);
-
-  }, [user, incidentReportsById]);
-
-  const publishIncident = useCallback((incidentId: string, comment: string) => {
-    if(!user) return;
-    const incident = incidentReportsById[incidentId];
-    if(!incident) return;
-
-    addIncidentComment(incidentId, comment);
-
-    const updates: { [key: string]: any } = {};
-    updates[`incidentReports/${incidentId}/status`] = 'New';
-    updates[`incidentReports/${incidentId}/isPublished`] = true;
-    updates[`incidentReports/${incidentId}/viewedBy/${user.id}`] = true; // mark viewed by publishing user
-
-    const reporter = users.find(u => u.id === incident.reporterId);
-    if(reporter && reporter.supervisorId) {
-        updates[`incidentReports/${incidentId}/reportedToUserIds`] = [...incident.reportedToUserIds, reporter.supervisorId];
-    }
-    
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Incident Published', incident.unitArea);
-    
-    if(reporter && reporter.supervisorId) {
-        const supervisor = users.find(u => u.id === reporter.supervisorId);
-        if (supervisor && supervisor.email) {
-            createAndSendNotification(
-                supervisor.email,
-                `New Incident Report: ${incident.unitArea}`,
-                'Incident Report',
-                {
-                    'Reporter': reporter.name,
-                    'Location': incident.unitArea,
-                    'Details': incident.incidentDetails,
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/incident-reports`,
-                'View Incident'
-            );
-        }
-    }
-
-  }, [user, users, incidentReportsById, addActivityLog, addIncidentComment]);
-
-  const awardManualAchievement = useCallback((achievement: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
+  const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
     if (!user) return;
-    const newRef = push(ref(rtdb, 'achievements'));
-    const newAchievement: Omit<Achievement, 'id'> = {
-        ...achievement,
-        type: 'manual',
-        date: new Date().toISOString(),
-        awardedById: user.id,
-        status: 'approved',
-    };
-    set(newRef, newAchievement);
-    addActivityLog(user.id, 'Manual Achievement Awarded', achievement.title);
-  }, [user, addActivityLog]);
+    const key = `${eventId}_${day}`;
+    update(ref(rtdb, `users/${user.id}/dismissedPendingUpdates`), { [key]: true });
+  }, [user]);
 
   const updateManualAchievement = useCallback((achievement: Achievement) => {
     const { id, ...data } = achievement;
@@ -1549,21 +1558,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         lastUpdated: new Date().toISOString(),
     };
     set(newRef, newIncident);
-  }, [user]);
+  }, [user, addActivityLog]);
   
   const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
     if(!user) return;
     const { id, ...data } = incident;
 
-    const newCommentRef = push(ref(rtdb, `incidentReports/${id}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
+    addIncidentComment(id, comment);
 
-    update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString(), comments: [newComment] });
+    update(ref(rtdb, `incidentReports/${id}`), { ...data, lastUpdated: new Date().toISOString() });
     addActivityLog(user.id, 'Incident Updated', incident.unitArea);
 
-  }, [user, addActivityLog]);
-  
+  }, [user, addActivityLog, addIncidentComment]);
+
   const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
     if(!user) return;
     const incident = incidentReportsById[incidentId];
@@ -1573,7 +1580,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updates: { [key: string]: any } = {};
     updates[`incidentReports/${incidentId}/reportedToUserIds`] = userIds;
-    
+
     userIds.forEach(targetUserId => {
       updates[`incidentReports/${incidentId}/viewedBy/${targetUserId}`] = false;
       const targetUser = users.find(u => u.id === targetUserId);
@@ -1870,64 +1877,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     return { importedCount, notFoundCount };
   }, [user, manpowerProfiles, addActivityLog]);
-
-  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
-    if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'internalRequests'));
-    
-    // Ensure `inventoryItemId` is null if it's undefined
-    const sanitizedItems = requestData.items.map(item => ({
-        ...item,
-        inventoryItemId: item.inventoryItemId || null,
-    }));
-
-    const newRequest: Omit<InternalRequest, 'id'> = {
-        ...requestData,
-        items: sanitizedItems,
-        requesterId: user.id,
-        date: new Date().toISOString(),
-        status: 'Pending',
-        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString() }],
-        viewedByRequester: true,
-    };
-
-    set(newRequestRef, newRequest);
-    addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
-
-    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
-    storePersonnel.forEach(p => {
-        if(p.email) {
-            createAndSendNotification(
-                p.email,
-                `New Internal Store Request from ${user.name}`,
-                'New Store Request',
-                {
-                    'Requested By': user.name,
-                    'Item Count': requestData.items.length.toString(),
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-                'View Request'
-            );
-        }
-    });
-
-  }, [user, users, addActivityLog]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
-
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -2066,6 +2016,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
 
+  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request || request.status !== 'Disputed') return;
+  
+    const newStatus: InternalRequestStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
+    
+    const actionComment = resolution === 'reissue'
+      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
+      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
+    
+    updateInternalRequestStatus(requestId, newStatus, actionComment);
+  
+    const requester = users.find(u => u.id === request.requesterId);
+    if(requester && requester.email) {
+      createAndSendNotification(
+        requester.email,
+        `Request Dispute Resolved #${requestId.slice(-6)}`,
+        'An issue you claimed has been resolved.',
+        { 
+          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
+          'Comment': comment
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+        'View Request'
+      );
+    }
+  }, [user, internalRequestsById, users, updateInternalRequestStatus]);
+  
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if(!user) return;
     const request = internalRequestsById[requestId];
@@ -2145,35 +2124,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
 
   }, [user, internalRequestsById, inventoryItems, addInternalRequestComment, toast]);
-  
-  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = internalRequestsById[requestId];
-    if (!request || request.status !== 'Disputed') return;
-  
-    const newStatus: InternalRequestStatus = resolution === 'reissue' ? 'Approved' : 'Issued';
-    
-    const actionComment = resolution === 'reissue'
-      ? `Dispute accepted by ${user.name}. Items will be re-issued. Comment: ${comment}`
-      : `Dispute reversed by ${user.name}. Items confirmed as issued. Comment: ${comment}`;
-    
-    updateInternalRequestStatus(requestId, newStatus, actionComment);
-  
-    const requester = users.find(u => u.id === request.requesterId);
-    if(requester && requester.email) {
-      createAndSendNotification(
-        requester.email,
-        `Request Dispute Resolved #${requestId.slice(-6)}`,
-        'An issue you claimed has been resolved.',
-        { 
-          'Resolution': `The dispute was resolved by ${user.name}. The request has been moved to '${newStatus}'.`,
-          'Comment': comment
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, can.approve_store_requests, internalRequestsById, users, updateInternalRequestStatus]);
   
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -2273,6 +2223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const requester = users.find(u => u.id === request.requesterId);
     if (requester && requester.email) {
+        const vendor = vendors.find(v => v.id === payment.vendorId);
         createAndSendNotification(
             requester.email,
             `Update on your request: ${request.subject}`,
@@ -2343,7 +2294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         rejoiningDate: employee?.leaveHistory && Object.values(employee.leaveHistory).find(l => l.rejoinedDate)?.rejoinedDate ? format(parseISO(Object.values(employee.leaveHistory).find(l => l.rejoinedDate)!.rejoinedDate!), 'dd MMM, yyyy') : 'N/A',
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility,
+        eligibility: requestData.eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2439,7 +2390,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, ppeRequests, ppeStock, addActivityLog, users, manpowerProfiles]);
   
   const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-    if (!user || !can.approve_store_requests) return;
+    if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request || request.status !== 'Disputed') return;
   
@@ -2466,7 +2417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, ppeRequests, can.approve_store_requests, updatePpeRequestStatus, users]);
+  }, [user, ppeRequests, updatePpeRequestStatus, users]);
 
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -2511,7 +2462,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     if (newRecord.ppeType === 'Coverall' && newRecord.sizes) {
       const stock = ppeStock.find(s => s.id === 'coveralls');
-      const currentSizes = stock && 'sizes' in stock ? stock.sizes || {} : {};
+      const currentSizes = stock && 'sizes' in stock ? stock.sizes || {};
       for (const size in newRecord.sizes) {
         updates[`ppeStock/coveralls/sizes/${size}`] = (currentSizes[size] || 0) + (newRecord.sizes[size] || 0);
       }
@@ -2698,7 +2649,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
 
   const updateInventoryItemGroup = useCallback((itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
-    if (!user || !can.manage_inventory) {
+    if (!user) {
         toast({ variant: 'destructive', title: 'Permission Denied' });
         return;
     }
@@ -2717,7 +2668,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), dbUpdates);
     addActivityLog(user.id, 'Bulk TP Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
     toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
-}, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
+}, [user, inventoryItems, addActivityLog, toast]);
 
   const deleteInventoryItem = useCallback(async (itemId: string): Promise<void> => {
     const item = inventoryItems.find(i => i.id === itemId);
@@ -3187,7 +3138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!building || !building.rooms) return;
 
     // Firebase stores array-like objects. Find the key associated with the roomId.
-    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any].id === roomId);
+    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any]?.id === roomId);
     if (roomKey) {
         remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}`));
     }
@@ -3423,18 +3374,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       date: new Date().toISOString(),
     };
     set(newRef, newPurchase);
-    // Link to payment
-    const paymentRef = push(ref(rtdb, 'payments'));
-    const newPayment: Omit<Payment, 'id'> = {
-      vendorId: newPurchase.vendorId,
-      amount: newPurchase.grandTotal,
-      requesterId: user.id,
-      status: 'Pending',
-      date: new Date().toISOString(),
-      purchaseRegisterId: newRef.key!,
-      comments: [],
-    };
-    set(paymentRef, newPayment);
   }, [user]);
 
   const updatePurchaseRegister = useCallback((purchase: PurchaseRegister) => {
@@ -3449,11 +3388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deletePurchaseRegister = useCallback((id: string) => {
     if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `purchaseRegisters/${id}`));
-    const paymentToDelete = payments.find(p => p.purchaseRegisterId === id);
-    if(paymentToDelete) {
-        remove(ref(rtdb, `payments/${paymentToDelete.id}`));
-    }
-  }, [user, payments]);
+  }, [user]);
 
   const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
     if (!user) return;
@@ -3504,7 +3439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const markFeedbackAsViewed = useCallback(() => {
-    if (!user || !can.manage_feedback) return;
+    if (!user) return;
     const updates: { [key: string]: any } = {};
     feedback.forEach(f => {
       if (!f.viewedBy?.[user.id]) {
@@ -3514,7 +3449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (Object.keys(updates).length > 0) {
       update(ref(rtdb), updates);
     }
-  }, [user, feedback, can.manage_feedback]);
+  }, [user, feedback]);
 
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
@@ -3771,13 +3706,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
-
-  const addDocument = useCallback((data: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'downloadableDocuments'));
-    set(newRef, { ...data, uploadedBy: user.id, createdAt: new Date().toISOString() });
-  }, [user]);
   
+  const addDocument = useCallback((data: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'downloadableDocuments'));
+    const newDoc: Omit<DownloadableDocument, 'id'> = {
+      ...data,
+      uploadedBy: user.id,
+      createdAt: new Date().toISOString(),
+    };
+    set(newRef, newDoc);
+  }, [user]);
+
   const updateDocument = useCallback((doc: DownloadableDocument) => {
     const { id, ...data } = doc;
     update(ref(rtdb, `downloadableDocuments/${id}`), data);
@@ -3789,54 +3729,147 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addLogbookRequest = useCallback((manpowerId: string, remarks?: string) => {
     if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'logbookRequests'));
+    const newRef = push(ref(rtdb, 'logbookRequests'));
     const newRequest: Omit<LogbookRequest, 'id'> = {
       manpowerId,
       requesterId: user.id,
       requestDate: new Date().toISOString(),
       status: 'Pending',
       remarks,
-      viewedBy: { [user.id]: true }
+      viewedBy: { [user.id]: true },
     };
-    set(newRequestRef, newRequest);
+    set(newRef, newRequest);
   }, [user]);
-
+  
   const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
     if (!user) return;
-    const request = logbookRequestsById[requestId];
+    const request = logbookRequests.find(r => r.id === requestId);
     if (!request) return;
-
-    addLogbookRequestComment(requestId, `Status set to ${status}. Reason: ${comment}`);
 
     const updates: { [key: string]: any } = {};
     updates[`logbookRequests/${requestId}/status`] = status;
-    updates[`logbookRequests/${requestId}/approverId`] = user.id;
-
+    
     if (status === 'Completed') {
       updates[`manpowerProfiles/${request.manpowerId}/logbook/status`] = 'Sent back as requested';
       updates[`manpowerProfiles/${request.manpowerId}/logbook/outDate`] = new Date().toISOString();
     }
     
+    addLogbookRequestComment(requestId, `${status}: ${comment}`);
+    
     update(ref(rtdb), updates);
-  }, [user, logbookRequestsById]);
-  
-  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
-    if (!user) return;
-    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = {
-        userId: user.id,
-        text: text,
-        date: new Date().toISOString()
-    };
-    set(newCommentRef, newComment);
-    update(ref(rtdb, `logbookRequests/${requestId}/viewedBy`), { [user.id]: true });
-  }, [user]);
-  
+
+  }, [user, logbookRequests, addLogbookRequestComment]);
+
   const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
-      if(!user || !can.manage_logbook) return;
-      remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`)).then(onComplete);
-  }, [user, can.manage_logbook]);
-  
+    if (!user) return;
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`)).then(() => {
+        onComplete();
+    });
+  }, [user]);
+
+  const can = useMemo(() => {
+    const permissions = new Set<Permission>();
+    if (user && !loading && roles.length > 0) {
+        const userRole = roles.find(r => r.name === user.role);
+        if (userRole && userRole.permissions) {
+            userRole.permissions.forEach(p => permissions.add(p));
+        }
+    }
+    const canObject: PermissionsObject = {} as any;
+    for (const p of ALL_PERMISSIONS) canObject[p] = permissions.has(p);
+    return canObject;
+  }, [user, roles, loading]);
+
+  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
+    if (!user) return {
+      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [], pendingLogbookRequestCount: 0,
+    };
+    
+    const pendingTaskApprovalCount = tasks.filter(t => t.approverId === user.id && t.statusRequest?.status === 'Pending').length;
+    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
+    const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
+
+    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
+
+    const isStoreManager = can.approve_store_requests;
+    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    
+    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
+        if (!dayComment.day || !dayComment.comments) return false;
+        const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+        if (eventsOnDay.length === 0) return false;
+
+        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
+        return comments.some(c => {
+            if (!c) return false;
+            const event = eventsOnDay.find(e => e.id === c.eventId);
+            if (!event) return false;
+            const isParticipant = event.userId === user.id || event.creatorId === user.id;
+            return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+        });
+    });
+    const plannerNotificationCount = unreadCommentsForUser.length;
+
+    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
+    
+    const updatedInternalRequestCount = internalRequests.filter(r => {
+        const isMyRequest = r.requesterId === user.id;
+        if (!isMyRequest) return false;
+    
+        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
+        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+        
+        return isRejectedButActive || isStandardUpdate;
+    }).length;
+
+    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
+    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
+    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
+
+    const incidentNotificationCount = incidentReports.filter(i => {
+      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
+      const isUnread = !i.viewedBy?.[user.id];
+      return isParticipant && isUnread;
+    }).length;
+    
+    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
+    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
+    
+    const pendingApproval = canApprovePpe ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
+    const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
+    const pendingDisputes = (canApprovePpe || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
+    const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
+
+    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
+    
+    const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
+    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
+    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
+    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
+
+    const canApproveTransfers = can.approve_store_requests;
+    const pendingInventoryTransferRequestCount = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+    const allCompletedTransferRequests = can.approve_store_requests ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
+
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todaysLogs = manpowerLogs.filter(log => log.date === todayStr);
+    
+    const { workingManpowerCount, onLeaveManpowerCount } = todaysLogs.reduce((acc, log) => {
+        acc.workingManpowerCount += (log.total || 0);
+        acc.onLeaveManpowerCount += (log.countOnLeave || 0);
+        return acc;
+    }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
+
+    const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
+
+    return {
+      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount
+    };
+  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, manpowerLogs, plannerEvents, logbookRequests]);
+
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, appName, appLogo,
     can,
@@ -4027,5 +4060,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
