@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -36,6 +37,7 @@ export default function RecentPlannerActivity() {
 
     const allUnread: UnreadCommentInfo[] = [];
     const allPendingUpdates: PendingUpdateInfo[] = [];
+    const userMap = new Map(users.map(u => [u.id, u]));
 
     // Check for unread comments
     dailyPlannerComments.forEach(dayComment => {
@@ -47,7 +49,7 @@ export default function RecentPlannerActivity() {
         if (!comment) return;
 
         const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
-        if (!eventForComment) return;
+        if (!eventForComment || !userMap.has(eventForComment.userId)) return;
 
         const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
         const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
@@ -66,7 +68,12 @@ export default function RecentPlannerActivity() {
     });
 
     // Check for delegated events with no comments from assignee
-    const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && isPast(parseISO(e.date)));
+    const myDelegatedEvents = plannerEvents.filter(e => 
+      e.creatorId === user.id && 
+      e.userId !== user.id && 
+      isPast(parseISO(e.date)) &&
+      userMap.has(e.userId) // Ensure assignee exists
+    );
     
     myDelegatedEvents.forEach(event => {
       const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
@@ -78,8 +85,7 @@ export default function RecentPlannerActivity() {
           const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
           const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
           
-          const dismissedUpdates = user.dismissedPendingUpdates || {};
-          const isDismissed = dismissedUpdates[`${event.id}_${dayStr}`];
+          const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
 
           if (!assigneeCommented && !isDismissed) {
               allPendingUpdates.push({
@@ -130,7 +136,7 @@ export default function RecentPlannerActivity() {
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" />
-          Planner Activity Review
+          Delegated Event Report/Review
         </CardTitle>
       </CardHeader>
       <CardContent>
