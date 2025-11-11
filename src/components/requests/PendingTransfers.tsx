@@ -11,7 +11,7 @@ import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2 } 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import type { InventoryTransferRequest } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -149,7 +149,10 @@ export default function PendingTransfers() {
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Approve Transfer?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will move {req.items.length} item(s) to {toProject?.name} pending supervisor acknowledgement. This action is final.</AlertDialogDescription>
+                                            <AlertDialogDescription>
+                                                This will move {req.items.length} item(s) to {toProject?.name} pending supervisor acknowledgement. This action is final.
+                                                {req.remarks && <p className="mt-2 italic">Remarks: &quot;{req.remarks}&quot;</p>}
+                                            </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -167,6 +170,7 @@ export default function PendingTransfers() {
                                             <AlertDialogTitle>Approve &amp; Create TP List?</AlertDialogTitle>
                                             <AlertDialogDescription>
                                                 This will move the items and automatically create a new, one-time editable TP Certification list.
+                                                {req.remarks && <p className="mt-2 italic">Remarks: &quot;{req.remarks}&quot;</p>}
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
