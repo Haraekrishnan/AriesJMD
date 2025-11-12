@@ -282,7 +282,8 @@ export const ALL_PERMISSIONS = [
   'create_broadcast',
   'manage_job_record',
   'manage_downloads',
-  'manage_logbook'
+  'manage_logbook',
+  'perform_inventory_inspection'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -907,9 +908,28 @@ export type LogbookRequest = {
     viewedBy: { [key: string]: boolean };
     comments?: Comment[];
 };
+
+export type InspectionChecklist = {
+    id: string;
+    itemId: string;
+    inspectedById: string;
+    reviewedById: string;
+    inspectionDate: string; // ISO
+    nextDueDate: string; // ISO
+    knownHistory?: string;
+    preliminaryObservation: string;
+    conditionSheath: string;
+    conditionCore: string;
+    sheathsAndTerminations: string;
+    otherComponents: string;
+    comments?: string;
+    remarks?: string;
+    verdict: string;
+};
       
 
     
+
 
 
 
