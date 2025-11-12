@@ -59,6 +59,7 @@ const FindingSelect = ({ control, name }: { control: any, name: any }) => (
 export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInspectionDialogProps) {
   const { user, inventoryItems, addInspectionChecklist, users } = useAppContext();
   const { toast } = useToast();
+  const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -73,6 +74,15 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
       verdict: verdictOptions[0]
     },
   });
+  
+  const uniqueItemNames = useMemo(() => {
+    return Array.from(new Set(inventoryItems.filter(i => i.category === 'General').map(i => i.name)));
+  }, [inventoryItems]);
+
+  const availableItems = useMemo(() => {
+    if (!selectedItemName) return [];
+    return inventoryItems.filter(i => i.category === 'General' && i.name === selectedItemName);
+  }, [inventoryItems, selectedItemName]);
 
   const selectedItemId = form.watch('itemId');
   const selectedItem = useMemo(() => inventoryItems.find(i => i.id === selectedItemId), [selectedItemId, inventoryItems]);
@@ -99,9 +109,18 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
   };
   
   const handleOpenChange = (open: boolean) => {
-    if(!open) form.reset();
+    if(!open) {
+      form.reset();
+      setSelectedItemName(null);
+    }
     setIsOpen(open);
   }
+  
+  const handleItemNameChange = (name: string) => {
+    setSelectedItemName(name);
+    form.setValue('itemId', ''); // Reset specific item when type changes
+  };
+
 
   const renderField = (label: string, fieldName: keyof ChecklistFormValues) => (
      <div className="grid grid-cols-[1fr,auto] items-center">
@@ -120,23 +139,38 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label>Select Item</Label>
-                    <Controller
-                        name="itemId"
-                        control={form.control}
-                        render={({ field }) => (
-                           <Select onValueChange={field.onChange} value={field.value}>
-                               <SelectTrigger><SelectValue placeholder="Select an inventory item..." /></SelectTrigger>
-                               <SelectContent>
-                                   {inventoryItems.filter(i => i.category === 'General').map(item => (
-                                       <SelectItem key={item.id} value={item.id}>{item.name} (SN: {item.serialNumber})</SelectItem>
-                                   ))}
-                               </SelectContent>
-                           </Select>
-                        )}
-                    />
-                    {form.formState.errors.itemId && <p className="text-xs text-destructive">{form.formState.errors.itemId.message}</p>}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Select Item Type</Label>
+                    <Select onValueChange={handleItemNameChange} value={selectedItemName || ''}>
+                        <SelectTrigger><SelectValue placeholder="Select item type..." /></SelectTrigger>
+                        <SelectContent>
+                            {uniqueItemNames.map(name => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label>Select Specific Item</Label>
+                      <Controller
+                          name="itemId"
+                          control={form.control}
+                          render={({ field }) => (
+                             <Select onValueChange={field.onChange} value={field.value} disabled={!selectedItemName}>
+                                 <SelectTrigger><SelectValue placeholder="Select an inventory item..." /></SelectTrigger>
+                                 <SelectContent>
+                                     {availableItems.map(item => (
+                                         <SelectItem key={item.id} value={item.id}>
+                                            {item.serialNumber} (ID: {item.ariesId || 'N/A'})
+                                         </SelectItem>
+                                     ))}
+                                 </SelectContent>
+                             </Select>
+                          )}
+                      />
+                      {form.formState.errors.itemId && <p className="text-xs text-destructive">{form.formState.errors.itemId.message}</p>}
+                  </div>
                 </div>
 
                 {selectedItem && (
