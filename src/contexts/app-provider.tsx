@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -3795,7 +3796,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'inspectionChecklists'));
-    const newChecklist = { ...checklist, id: newRef.key };
+    
+    // Ensure optional date fields are null if not present
+    const dataToSave = {
+        ...checklist,
+        purchaseDate: checklist.purchaseDate || null,
+        firstUseDate: checklist.firstUseDate || null,
+    };
+    
+    const newChecklist = { ...dataToSave, id: newRef.key };
     set(newRef, newChecklist);
 
     // Also update the inspection due date on the inventory item
@@ -4135,3 +4144,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
