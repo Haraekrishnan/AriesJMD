@@ -25,12 +25,14 @@ import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialo
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
+import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+    const [isBulkInspectionUpdateOpen, setIsBulkInspectionUpdateOpen] = useState(false);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
     const [isTransferRequestOpen, setIsTransferRequestOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
@@ -201,9 +203,10 @@ export default function StoreInventoryPage() {
                     </Button>
                     {canManageInventory && (
                         <>
-                            <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/>TP Certification</Link></Button>
-                            <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
+                            <Button asChild variant="outline"><Link href="/inspections"><FileText className="mr-2 h-4 w-4"/>Inspections</Link></Button>
+                            <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
+                            <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
                             <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button>
                             <Button onClick={() => setIsAddItemOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                         </>
@@ -365,6 +368,7 @@ export default function StoreInventoryPage() {
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
+            <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
             <NewInventoryTransferRequestDialog isOpen={isTransferRequestOpen} setIsOpen={setIsTransferRequestOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
