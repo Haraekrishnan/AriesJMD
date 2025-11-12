@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -190,7 +191,7 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
                     <Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
                 </div>
                 
-                {selectedItemName === 'Harness' && (
+                {selectedItem?.name === 'Harness' && (
                   <div className="p-4 border rounded-md space-y-3">
                       <h3 className="font-semibold border-b pb-2">Inspection Criteria</h3>
                       {HARNESS_INSPECTION_CRITERIA.map(criterion => (
