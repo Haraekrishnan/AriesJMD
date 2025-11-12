@@ -179,6 +179,17 @@
     "downloadableDocuments": {
         ".read": "auth != null",
         ".write": "auth != null"
+    },
+    "logbookRequests": {
+        ".read": true,
+        ".write": true
+    },
+    "inspectionChecklists": {
+        ".read": true,
+        ".write": true
     }
   }
 }
+
+
+    
