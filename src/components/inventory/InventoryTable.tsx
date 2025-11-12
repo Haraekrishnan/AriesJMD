@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -13,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
 import { format, isPast, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import RequestCertificateDialog from './RequestCertificateDialog';
+import NewCertificateRequestDialog from './NewCertificateRequestDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import RenameItemGroupDialog from './RenameItemGroupDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -345,7 +346,8 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                         <ArrowUpDown className="ml-2 h-4 w-4" />
                                                     </Button>
                                                 </TableHead>
-                                                <TableHead>Certificate</TableHead>
+                                                <TableHead>TP Cert.</TableHead>
+                                                <TableHead>Insp. Cert.</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -375,7 +377,19 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                                         <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>View Certificate</TooltipContent>
+                                                                <TooltipContent>View TP Certificate</TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {item.inspectionCertificateUrl && (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button asChild variant="ghost" size="icon">
+                                                                        <a href={item.inspectionCertificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>View Inspection Certificate</TooltipContent>
                                                             </Tooltip>
                                                         )}
                                                     </TableCell>
@@ -411,8 +425,10 @@ export default function InventoryTable({ items }: InventoryTableProps) {
             </div>
 
             {selectedItem && canManage && <EditItemDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} item={selectedItem} />}
-            {selectedItem && <RequestCertificateDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} item={selectedItem} />}
+            {selectedItem && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} item={selectedItem} />}
             {selectedItemGroup && <RenameItemGroupDialog isOpen={isRenameOpen} setIsOpen={setIsRenameOpen} currentItemName={selectedItemGroup} />}
         </TooltipProvider>
     );
 }
+
+    

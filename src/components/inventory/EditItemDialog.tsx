@@ -31,6 +31,7 @@ const itemSchema = z.object({
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  inspectionCertificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   category: z.enum(['General', 'Daily Consumable', 'Job Consumable']).default('General'),
   remarks: z.string().optional(),
   quantity: z.coerce.number().optional(),
@@ -210,9 +211,14 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                     <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
                     <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>
                     <div>
-                        <Label htmlFor="certificateUrl">Certificate URL</Label>
+                        <Label htmlFor="certificateUrl">TP Certificate URL</Label>
                         <Input id="certificateUrl" {...form.register('certificateUrl')} placeholder="https://..." />
                         {form.formState.errors.certificateUrl && <p className="text-xs text-destructive">{form.formState.errors.certificateUrl.message}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="inspectionCertificateUrl">Inspection Certificate URL</Label>
+                        <Input id="inspectionCertificateUrl" {...form.register('inspectionCertificateUrl')} placeholder="https://..." />
+                        {form.formState.errors.inspectionCertificateUrl && <p className="text-xs text-destructive">{form.formState.errors.inspectionCertificateUrl.message}</p>}
                     </div>
                 </>
                 )}
@@ -232,3 +238,5 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
     </Dialog>
   );
 }
+
+    

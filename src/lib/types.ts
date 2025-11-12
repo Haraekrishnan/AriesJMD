@@ -1,3 +1,4 @@
+
 'use client';
 
 export type Broadcast = {
@@ -283,7 +284,6 @@ export const ALL_PERMISSIONS = [
   'manage_job_record',
   'manage_downloads',
   'manage_logbook',
-  'perform_inventory_inspection'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -605,6 +605,7 @@ export type InventoryItem = {
   inspectionDueDate?: string; // ISO string
   tpInspectionDueDate?: string; // ISO string
   certificateUrl?: string;
+  inspectionCertificateUrl?: string;
   lastUpdated: string; // ISO string
   remarks?: string;
   category?: InventoryCategory;
@@ -910,21 +911,25 @@ export type LogbookRequest = {
 };
 
 export type InspectionChecklist = {
-    id: string;
-    itemId: string;
-    inspectedById: string;
-    reviewedById: string;
-    inspectionDate: string; // ISO
-    nextDueDate: string; // ISO
-    knownHistory?: string;
-    preliminaryObservation: string;
-    conditionSheath: string;
-    conditionCore: string;
-    sheathsAndTerminations: string;
-    otherComponents: string;
-    comments?: string;
-    remarks?: string;
-    verdict: string;
+  id: string;
+  itemId: string;
+  inspectedById: string;
+  reviewedById: string;
+  inspectionDate: string; // ISO
+  nextDueDate: string; // ISO
+  knownHistory?: string;
+  findings?: Record<string, string>;
+  preliminaryObservation: string;
+  conditionSheath: string;
+  conditionCore: string;
+  sheathsAndTerminations: string;
+  otherComponents: string;
+  comments?: string;
+  remarks?: string;
+  verdict: string;
+  yearOfManufacture?: string;
+  purchaseDate?: string | null;
+  firstUseDate?: string | null;
 };
       
 
@@ -936,3 +941,6 @@ export type InspectionChecklist = {
 
 
 
+
+
+    
