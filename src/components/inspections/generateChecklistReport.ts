@@ -1,3 +1,4 @@
+
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -6,7 +7,7 @@ import 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
 import type { InspectionChecklist, InventoryItem, User } from '@/lib/types';
 
-// Utility to fetch logo for PDF
+// Helper: fetch logo as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
   const response = await fetch(url);
   const blob = await response.blob();
@@ -30,10 +31,16 @@ export async function generateChecklistPdf(
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const blue = '#0070C0';
   const black = '#000000';
+  const lightBlue = '#E8F1FA';
 
   // Add Aries logo
-  const logo = await fetchImageAsBase64('/images/Aries_logo.png');
-  doc.addImage(logo, 'PNG', 14, 12, 40, 20);
+  let logoBase64;
+  try {
+    logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
+    doc.addImage(logoBase64, 'PNG', 14, 12, 40, 20);
+  } catch (e) {
+    console.warn("Could not load logo for PDF");
+  }
 
   // Title
   doc.setFont('helvetica', 'bold');
@@ -50,9 +57,9 @@ export async function generateChecklistPdf(
       startY,
       body: [
         [
-          { content: label1, styles: { fillColor: '#E8F1FA', textColor: black, fontStyle: 'bold' } },
+          { content: label1, styles: { fillColor: lightBlue, textColor: black, fontStyle: 'bold' } },
           value1,
-          { content: label2, styles: { fillColor: '#E8F1FA', textColor: black, fontStyle: 'bold' } },
+          { content: label2, styles: { fillColor: lightBlue, textColor: black, fontStyle: 'bold' } },
           value2,
         ],
       ],
@@ -71,9 +78,7 @@ export async function generateChecklistPdf(
   // Equipment info
   addRow('Aries ID:', item.ariesId || '', 'Model:', item.name || '');
   addRow('Manufacturer Serial No:', item.serialNumber || '', 'Year of manufacture:', '2024');
-  if(item.inspectionDate){
-    addRow('Date of purchase:', format(new Date(item.inspectionDate), 'dd-MMM-yyyy'), 'Date of first use:', format(new Date(item.inspectionDate), 'dd-MMM-yyyy'));
-  }
+  addRow('Date of purchase:', item.inspectionDate ? format(new Date(item.inspectionDate), 'dd-MMM-yyyy') : 'N/A', 'Date of first use:', item.inspectionDate ? format(new Date(item.inspectionDate), 'dd-MMM-yyyy') : 'N/A');
   addRow('Procedure ref. No:', 'ARIES-RAOP-001 [Rev 07]', 'User:', 'PETZL');
 
   // Known Product History
@@ -101,8 +106,8 @@ export async function generateChecklistPdf(
     startY,
     head: [
       [
-        { content: 'Inspection Criteria', styles: { fillColor: '#E8F1FA', textColor: black } },
-        { content: 'Inspection Findings', styles: { fillColor: '#E8F1FA', textColor: black } },
+        { content: 'Inspection Criteria', styles: { fillColor: lightBlue, textColor: black } },
+        { content: 'Inspection Findings', styles: { fillColor: lightBlue, textColor: black } },
       ],
     ],
     body: [
@@ -124,7 +129,7 @@ export async function generateChecklistPdf(
     (doc as any).autoTable({
       startY,
       body: [[
-        { content: label, styles: { fillColor: '#E8F1FA', textColor: black, fontStyle: 'bold' } },
+        { content: label, styles: { fillColor: lightBlue, textColor: black, fontStyle: 'bold' } },
         value,
       ]],
       theme: 'grid',
@@ -155,7 +160,7 @@ export async function generateChecklistPdf(
       ['Signature', '', ''],
     ],
     theme: 'grid',
-    headStyles: { fillColor: '#E8F1FA', textColor: black, fontStyle: 'bold' },
+    headStyles: { fillColor: lightBlue, textColor: black, fontStyle: 'bold' },
     styles: { fontSize: 9, cellPadding: 2 },
     columnStyles: { 1: { cellWidth: 70 }, 2: { cellWidth: 70 } },
   });
@@ -176,7 +181,7 @@ export async function generateChecklistPdf(
     theme: 'grid',
     styles: {
       fontSize: 8,
-      fillColor: '#E8F1FA',
+      fillColor: lightBlue,
       halign: 'center',
     },
   });
@@ -196,7 +201,7 @@ export async function generateChecklistExcel(
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Harness Checklist');
   const blue = '0070C0';
-  const border = { style: 'thin', color: { argb: '000000' } };
+  const border = { style: 'thin' as const, color: { argb: '000000' } };
 
   // Logo
   try {
@@ -238,9 +243,7 @@ export async function generateChecklistExcel(
 
   addRow('Aries ID:', item.ariesId || '', 'Model:', item.name || '');
   addRow('Manufacturer Serial No:', item.serialNumber || '', 'Year of manufacture:', '2024');
-  if(item.inspectionDate){
-    addRow('Date of purchase:', format(new Date(item.inspectionDate), 'dd-MMM-yyyy'), 'Date of first use:', format(new Date(item.inspectionDate), 'dd-MMM-yyyy'));
-  }
+  addRow('Date of purchase:', item.inspectionDate ? format(new Date(item.inspectionDate), 'dd-MMM-yyyy') : 'N/A', 'Date of first use:', item.inspectionDate ? format(new Date(item.inspectionDate), 'dd-MMM-yyyy') : 'N/A');
   addRow('Procedure ref. No', 'ARIES-RAOP-001 [Rev 07]', 'User:', 'PETZL');
 
   // Known product history
@@ -267,18 +270,18 @@ export async function generateChecklistExcel(
     sheet.getCell(`A${row}`).value = criteria;
     sheet.getCell(`B${row}`).value = finding;
     sheet.getRow(row).eachCell((c) => {
-      c.border = { top: border, left: border, bottom: border, right: border };
       c.font = { size: 10 };
+      c.border = { top: border, left: border, bottom: border, right: border };
     });
     sheet.getCell(`B${row}`).alignment = { horizontal: 'center' };
     row++;
   };
 
-  addCriteria('Preliminary Observation', 'G');
-  addCriteria('Checking the condition of the straps', 'G');
-  addCriteria('Checking the attachment points', 'G');
-  addCriteria('Checking the adjustment buckles', 'G');
-  addCriteria('Checking the comfort parts', 'G');
+  addCriteria('Preliminary Observation', checklist.preliminaryObservation || 'G');
+  addCriteria('Checking the condition of the straps', checklist.conditionSheath || 'G');
+  addCriteria('Checking the attachment points', checklist.conditionCore || 'G');
+  addCriteria('Checking the adjustment buckles', checklist.sheathsAndTerminations || 'G');
+  addCriteria('Checking the comfort parts', checklist.otherComponents || 'G');
   row += 2;
 
   // Comments/Remarks/Verdict
@@ -293,7 +296,7 @@ export async function generateChecklistExcel(
     row++;
   };
 
-  addSingle('Comments (if any):', '');
+  addSingle('Comments (if any):', checklist.comments || '');
   addSingle('Remarks:', checklist.remarks || '');
   addSingle('Verdict:', checklist.verdict || '');
   row += 2;
@@ -327,7 +330,7 @@ export async function generateChecklistExcel(
   });
 
   // Footer
-  sheet.mergeCells(`A${row}:C${row}`);
+  sheet.mergeCells(`A${row}:D${row}`);
   sheet.getCell(`A${row}`).value = `Next Semi-Annual Inspection Due Date: ${format(
     new Date(checklist.nextDueDate),
     'dd-MMM-yyyy'
@@ -335,7 +338,7 @@ export async function generateChecklistExcel(
   sheet.getCell(`A${row}`).font = { bold: true };
   row++;
 
-  sheet.mergeCells(`A${row}:C${row}`);
+  sheet.mergeCells(`A${row}:D${row}`);
   sheet.getCell(`A${row}`).value =
     'LEGEND: G: Good condition / TM: To Monitor / TR: To Repair / R: Do not use, retire / N/A: Not applicable';
   sheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
