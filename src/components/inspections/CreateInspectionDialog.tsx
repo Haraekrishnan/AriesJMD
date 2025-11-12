@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +15,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import type { InventoryItem } from '@/lib/types';
 import { format, addMonths } from 'date-fns';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { HARNESS_INSPECTION_CRITERIA } from '@/lib/inspection-criteria';
 
 const findingOptions = ['G', 'TM', 'TR', 'R', 'N/A'];
 const verdictOptions = ['This equipment is fit to remain in service (PASS)', 'This equipment is NOT fit to remain in service (FAIL)'];
@@ -23,15 +24,14 @@ const checklistSchema = z.object({
   itemId: z.string().min(1, 'Please select an item to inspect.'),
   inspectionDate: z.date({ required_error: "Inspection date is required." }),
   knownHistory: z.string().optional(),
-  preliminaryObservation: z.string().min(1),
-  conditionSheath: z.string().min(1),
-  conditionCore: z.string().min(1),
-  sheathsAndTerminations: z.string().min(1),
-  otherComponents: z.string().min(1),
+  findings: z.record(z.string()).default({}),
   comments: z.string().optional(),
   remarks: z.string().optional(),
   verdict: z.string().min(1),
   reviewedById: z.string().min(1, "Please select a reviewer."),
+  yearOfManufacture: z.string().optional(),
+  purchaseDate: z.date().optional().nullable(),
+  firstUseDate: z.date().optional().nullable(),
 });
 
 type ChecklistFormValues = z.infer<typeof checklistSchema>;
@@ -41,13 +41,14 @@ interface CreateInspectionDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const FindingSelect = ({ control, name }: { control: any, name: any }) => (
+const FindingSelect = ({ control, name, defaultValue = 'G' }: { control: any, name: any, defaultValue?: string }) => (
     <Controller
         name={name}
         control={control}
+        defaultValue={defaultValue}
         render={({ field }) => (
             <Select onValueChange={field.onChange} value={field.value}>
-                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-24 h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                     {findingOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                 </SelectContent>
@@ -65,11 +66,7 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
     resolver: zodResolver(checklistSchema),
     defaultValues: {
       inspectionDate: new Date(),
-      preliminaryObservation: 'G',
-      conditionSheath: 'G',
-      conditionCore: 'G',
-      sheathsAndTerminations: 'G',
-      otherComponents: 'G',
+      findings: {},
       remarks: 'Inspection of this equipment has been carried out as per the manufacturer technical notice/guidelines.',
       verdict: verdictOptions[0]
     },
@@ -90,6 +87,13 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
   const reviewers = useMemo(() => {
     return users.filter(u => ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'PPE Inspector'].includes(u.role));
   }, [users]);
+
+  useEffect(() => {
+    if(selectedItem && selectedItem.inspectionDate) {
+      form.setValue('purchaseDate', new Date(selectedItem.inspectionDate));
+      form.setValue('firstUseDate', new Date(selectedItem.inspectionDate));
+    }
+  }, [selectedItem, form]);
   
   const onSubmit = (data: ChecklistFormValues) => {
     if (!selectedItem || !user) return;
@@ -101,7 +105,9 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
       itemId: selectedItem.id,
       inspectionDate: data.inspectionDate.toISOString(),
       nextDueDate: nextDueDate.toISOString(),
-      inspectedById: user.id
+      inspectedById: user.id,
+      purchaseDate: data.purchaseDate?.toISOString(),
+      firstUseDate: data.firstUseDate?.toISOString(),
     });
 
     toast({ title: 'Inspection Checklist Created', description: 'The new checklist has been saved.' });
@@ -121,13 +127,6 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
     form.setValue('itemId', ''); // Reset specific item when type changes
   };
 
-
-  const renderField = (label: string, fieldName: keyof ChecklistFormValues) => (
-     <div className="grid grid-cols-[1fr,auto] items-center">
-        <p className="text-sm">{label}</p>
-        <FindingSelect control={form.control} name={fieldName} />
-     </div>
-  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -178,9 +177,11 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
                     <div><span className="font-semibold">Aries ID:</span> {selectedItem.ariesId || 'N/A'}</div>
                     <div><span className="font-semibold">Serial No:</span> {selectedItem.serialNumber}</div>
                     <div><span className="font-semibold">Model:</span> {selectedItem.name}</div>
-                    <div><span className="font-semibold">Date of Purchase:</span> {selectedItem.inspectionDate ? format(new Date(selectedItem.inspectionDate), 'dd-MMM-yyyy') : 'N/A'}</div>
-                    <div className="lg:col-span-2"><Label>Known Product History</Label><Input {...form.register('knownHistory')} /></div>
-                    <div className="lg:col-span-2"><Label>Procedure Ref. No</Label><Input defaultValue="ARIES-RAOP-001 [Rev 07]" readOnly /></div>
+                    <div className="space-y-1"><Label>Year of Manufacture</Label><Input {...form.register('yearOfManufacture')} placeholder="e.g. 2024" /></div>
+                    <div className="space-y-1"><Label>Date of Purchase</Label><Controller name="purchaseDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+                    <div className="space-y-1"><Label>Date of First Use</Label><Controller name="firstUseDate" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+                    <div className="lg:col-span-2 space-y-1"><Label>Known Product History</Label><Input {...form.register('knownHistory')} /></div>
+                    <div className="lg:col-span-2 space-y-1"><Label>Procedure Ref. No</Label><Input defaultValue="ARIES-RAOP-001 [Rev 07]" readOnly /></div>
                   </div>
                 )}
                 
@@ -189,14 +190,22 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
                     <Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
                 </div>
                 
-                <div className="p-4 border rounded-md space-y-3">
-                    <h3 className="font-semibold border-b pb-2">Inspection Criteria</h3>
-                    {renderField("Verify the presence and legibility of the serial number and CE mark / ARIES ID", "preliminaryObservation")}
-                    {renderField("Checking the condition of the sheath over the full length of the rope", "conditionSheath")}
-                    {renderField("Do a tactile inspection of the core over the full length of the rope", "conditionCore")}
-                    {renderField("Check the condition of the sewn terminations and the safety stitching", "sheathsAndTerminations")}
-                    {renderField("Condition of the protection components and knots", "otherComponents")}
-                </div>
+                {selectedItemName === 'Harness' && (
+                  <div className="p-4 border rounded-md space-y-3">
+                      <h3 className="font-semibold border-b pb-2">Inspection Criteria</h3>
+                      {HARNESS_INSPECTION_CRITERIA.map(criterion => (
+                          <div key={criterion.id}>
+                            <p className="font-semibold text-sm mb-2">{criterion.label}</p>
+                            <div className="grid grid-cols-[1fr,auto] items-center">
+                              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                                {criterion.points.map((point, index) => <li key={index}>{point}</li>)}
+                              </ul>
+                              <FindingSelect control={form.control} name={`findings.${criterion.id}`} />
+                            </div>
+                          </div>
+                      ))}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                     <Label>Comments (if any)</Label>
