@@ -158,7 +158,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
         const ariesId = group.ariesIds[index];
         let manufacturerSrNo = serial;
         if (isWireSling && ariesId) {
-            manufacturerSrNo = `${serial} (Aries ID: ${ariesId})`;
+            manufacturerSrNo = `${serial} (${ariesId})`;
         }
         
         const rowData = [
@@ -258,7 +258,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       const ariesId = group.ariesIds[index];
       let manufacturerSrNo = serial;
       if (isWireSling && ariesId) {
-          manufacturerSrNo = `${serial} (Aries ID: ${ariesId})`;
+          manufacturerSrNo = `${serial} (${ariesId})`;
       }
       
       const rowData = [

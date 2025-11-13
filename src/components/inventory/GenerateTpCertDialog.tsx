@@ -229,7 +229,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                   selectedItems.map((item, index) => {
                     const isWireSling = item.materialName.toLowerCase() === 'wire sling';
                     const displaySerial = isWireSling && item.ariesId
-                      ? `${item.manufacturerSrNo} (Aries ID: ${item.ariesId})`
+                      ? `${item.manufacturerSrNo} (${item.ariesId})`
                       : item.manufacturerSrNo;
                     
                     return (
