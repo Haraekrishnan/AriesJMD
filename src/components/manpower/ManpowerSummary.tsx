@@ -2,52 +2,33 @@
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Users, Plane, UserX, UserMinus } from 'lucide-react';
+import { Users, UserCheck, UserX } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 
 export default function ManpowerSummary() {
-  const { manpowerProfiles } = useAppContext();
+  const { workingManpowerCount, onLeaveManpowerCount } = useAppContext();
 
-  const statusCounts = useMemo(() => {
-    const counts = {
-      Working: 0,
-      'On Leave': 0,
-      Resigned: 0,
-      Terminated: 0
-    };
-    manpowerProfiles.forEach(p => {
-        if (p.status in counts) {
-            counts[p.status as keyof typeof counts]++;
-        }
-    });
-    return counts;
-  }, [manpowerProfiles]);
+  const activeManpower = workingManpowerCount - onLeaveManpowerCount;
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-6 md:grid-cols-3">
        <StatCard 
           title="Total Working" 
-          value={statusCounts.Working} 
+          value={workingManpowerCount} 
           icon={Users} 
-          description="Current active manpower count"
+          description="Total manpower count for today"
         />
         <StatCard 
-          title="On Leave" 
-          value={statusCounts['On Leave']}
-          icon={Plane} 
-          description="Manpower currently on leave"
+          title="Today's Active" 
+          value={activeManpower}
+          icon={UserCheck} 
+          description="Working manpower minus those on leave"
         />
         <StatCard 
-          title="Resigned" 
-          value={statusCounts.Resigned} 
-          icon={UserMinus} 
-          description="Total resigned manpower"
-        />
-        <StatCard 
-          title="Terminated" 
-          value={statusCounts.Terminated} 
+          title="Today's Leave" 
+          value={onLeaveManpowerCount} 
           icon={UserX} 
-          description="Total terminated manpower"
+          description="Manpower on leave today"
         />
     </div>
   );
