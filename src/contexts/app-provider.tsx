@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -758,6 +757,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
   
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
+
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -1533,7 +1547,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Find previous day's total
     const previousLogs = manpowerLogs.filter(l => l.projectId === logData.projectId && isBefore(parseISO(l.date), startOfDay(logDate)))
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const openingManpower = logData.openingManpower ?? previousLogs[0]?.total ?? 0;
+    const mostRecentPreviousLog = previousLogs[0];
+    const openingManpower = logData.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
     
     const countIn = logData.countIn ?? 0;
     const countOut = logData.countOut ?? 0;
@@ -1860,21 +1875,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
-  
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
   
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
@@ -2689,7 +2689,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     itemsToUpdate.forEach(item => {
-        dbUpdates[`inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
+        if (updates.certificateUrl) dbUpdates[`inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
         dbUpdates[`inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
     });
     update(ref(rtdb), dbUpdates);
@@ -3965,19 +3965,45 @@ const updateInventoryItemGroupByProject = useCallback((
 
     const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const todaysLogs = manpowerLogs.filter(log => log.date === todayStr);
+    const { totalWorking, totalOnLeave } = useMemo(() => {
+        const today = new Date();
+        const dateStr = format(today, 'yyyy-MM-dd');
+        
+        let totalWorking = 0;
+        let totalOnLeave = 0;
     
-    const { workingManpowerCount, onLeaveManpowerCount } = todaysLogs.reduce((acc, log) => {
-        acc.workingManpowerCount += (log.total || 0);
-        acc.onLeaveManpowerCount += (log.countOnLeave || 0);
-        return acc;
-    }, { workingManpowerCount: 0, onLeaveManpowerCount: 0 });
+        projects.forEach(project => {
+            const logsForProjectDay = manpowerLogs.filter(log => log.date === dateStr && log.projectId === project.id);
+            const latestLogForDay = logsForProjectDay.length > 0
+                ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+                : null;
+    
+            const previousLogs = manpowerLogs
+                .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(today)))
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                
+            const mostRecentPreviousLog = previousLogs[0];
+            
+            const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
+            const countIn = latestLogForDay?.countIn || 0;
+            const countOut = latestLogForDay?.countOut || 0;
+            const dayTotal = openingManpower + countIn - countOut;
+            const onLeave = latestLogForDay?.countOnLeave || 0;
+    
+            totalWorking += dayTotal;
+            totalOnLeave += onLeave;
+        });
+        
+        return { totalWorking, totalOnLeave };
+      }, [manpowerLogs, projects]);
+      
+    const workingManpowerCount = totalWorking;
+    const onLeaveManpowerCount = totalOnLeave;
 
     return {
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount,
     };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs]);
+  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs, projects]);
 
   // All other function definitions exist here...
   // ... including login, logout, etc.
