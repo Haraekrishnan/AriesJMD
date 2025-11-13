@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1558,7 +1559,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Manpower Log Added', `Project: ${projects.find(p => p.id === logData.projectId)?.name}, Date: ${logDateStr}`);
 }, [user, projects, addActivityLog, manpowerLogs]);
 
-  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'reason' | 'countOnLeave' | 'openingManpower'>>) => {
+  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName' | 'openingManpower'>>) => {
     if (!user) return;
 
     const log = manpowerLogs.find(l => l.id === logId);
@@ -1859,6 +1860,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
+  
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
   
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
@@ -3490,7 +3506,7 @@ const updateInventoryItemGroupByProject = useCallback((
       update(ref(rtdb), updates);
     }
   }, [user, feedback, can.manage_feedback]);
-
+  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -3502,7 +3518,7 @@ const updateInventoryItemGroupByProject = useCallback((
     set(newRef, newList);
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
   }, [user, addActivityLog]);
-
+  
   const updateTpCertList = useCallback((listData: TpCertList) => {
     const { id, ...data } = listData;
     const sanitizedData = {
@@ -3691,6 +3707,7 @@ const updateInventoryItemGroupByProject = useCallback((
           manufacturerSrNo: item.serialNumber,
           itemId: item.itemId,
           itemType: item.itemType,
+          ariesId: item.ariesId,
         })),
       };
       addTpCertList(newListData);
@@ -3962,6 +3979,10 @@ const updateInventoryItemGroupByProject = useCallback((
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs]);
 
+  // All other function definitions exist here...
+  // ... including login, logout, etc.
+
+  // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can,
