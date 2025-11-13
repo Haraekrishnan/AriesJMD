@@ -101,7 +101,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
-      materialName: item.name || item.machineName,
+      materialName: (item as any).name || (item as any).machineName,
       manufacturerSrNo: item.serialNumber,
       chestCrollNo: item.itemType === 'Inventory' && (item as InventoryItem).name.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
     };
@@ -202,7 +202,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                 onSelect={() => handleSelect(item)}
                                 className="cursor-pointer"
                             >
-                                {item.name || item.machineName} — (SN: {item.serialNumber || 'N/A'})
+                                {(item as any).name || (item as any).machineName} — (SN: {item.serialNumber || 'N/A'})
                             </CommandItem>
                             ))}
                         </CommandGroup>
@@ -219,6 +219,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                   <TableHead>Sr. No.</TableHead>
                   <TableHead>Material Name</TableHead>
                   <TableHead>Manufacturer Sr. No.</TableHead>
+                  <TableHead>Chest Croll No.</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -229,6 +230,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{item.materialName}</TableCell>
                       <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
+                      <TableCell>{item.chestCrollNo || '-'}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -238,7 +240,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No items added to the list.
                     </TableCell>
                   </TableRow>
@@ -256,12 +258,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               onChange={(e) => setListName(e.target.value)} 
               className="w-48"
             />
-             {existingList && (
-                <div className="flex items-center gap-2">
-                    <Label className="text-sm shrink-0">List Date:</Label>
-                    <DatePickerInput value={listDate} onChange={setListDate} />
-                </div>
-            )}
+            <div className="flex items-center gap-2">
+                <Label className="text-sm shrink-0">List Date:</Label>
+                <DatePickerInput value={listDate} onChange={setListDate} />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleClose}>Cancel</Button>
