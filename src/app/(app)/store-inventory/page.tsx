@@ -203,7 +203,6 @@ export default function StoreInventoryPage() {
                     </Button>
                     {canManageInventory && (
                         <>
-                            <Button asChild variant="outline"><Link href="/inspections"><FileText className="mr-2 h-4 w-4"/>Inspections</Link></Button>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
                             <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
