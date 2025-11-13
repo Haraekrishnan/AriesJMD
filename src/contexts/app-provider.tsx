@@ -449,7 +449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
-  
+
   // SECTION: PERMISSIONS
   const can = useMemo(() => {
     const permissions = new Set<Permission>();
@@ -715,6 +715,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return assignable;
   }, [user, users, getVisibleUsers]);
   
+  const addComment = useCallback((taskId: string, commentText: string) => {
+    if(!user) return;
+    const task = tasksById[taskId];
+    if(!task) return;
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+    const allParticipants = new Set(task.participants || []);
+    if (task.creatorId) allParticipants.add(task.creatorId);
+    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
+        }
+    });
+
+    update(ref(rtdb), updates);
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            const participant = users.find(u => u.id === participantId);
+            if (participant && participant.email) {
+                createAndSendNotification(
+                    participant.email,
+                    `New comment on task: ${task.title}`,
+                    `New comment from ${user.name}`,
+                    {
+                        'Task': task.title,
+                        'Comment': commentText
+                    },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                    'View Task'
+                );
+            }
+        }
+    });
+  }, [user, tasksById, users]);
+
   const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -777,49 +820,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
-  
-  const addComment = useCallback((taskId: string, commentText: string) => {
-    if(!user) return;
-    const task = tasksById[taskId];
-    if(!task) return;
-
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-
-    const allParticipants = new Set(task.participants || []);
-    if (task.creatorId) allParticipants.add(task.creatorId);
-    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
-
-    allParticipants.forEach(participantId => {
-        if (participantId !== user.id) {
-            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
-        }
-    });
-
-    update(ref(rtdb), updates);
-
-    allParticipants.forEach(participantId => {
-        if (participantId !== user.id) {
-            const participant = users.find(u => u.id === participantId);
-            if (participant && participant.email) {
-                createAndSendNotification(
-                    participant.email,
-                    `New comment on task: ${task.title}`,
-                    `New comment from ${user.name}`,
-                    {
-                        'Task': task.title,
-                        'Comment': commentText
-                    },
-                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-                    'View Task'
-                );
-            }
-        }
-    });
-  }, [user, tasksById, users]);
   
   const updateTask = useCallback((updatedTask: Task) => {
     if(!user) return;
@@ -2780,276 +2780,100 @@ const updateInventoryItemGroupByProject = useCallback((
     };
     update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
   }, []);
-
-  const deleteTpCertList = useCallback((listId: string) => {
-    remove(ref(rtdb, `tpCertLists/${listId}`));
-  }, []);
-  
-  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
-    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-      ...requestData,
-      requesterId: user.id,
-      requestDate: new Date().toISOString(),
-      status: 'Pending',
-    };
-    set(newRef, newRequest);
-    addActivityLog(user.id, 'Inventory Transfer Request Created');
-
-    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
-    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-
-    approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Request from ${user.name}`,
-          'New Inventory Transfer Request',
-          {
-            'Requester': user.name,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': requestData.reason,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Request'
-        );
-      }
-    });
-
-  }, [user, addActivityLog, users, roles, projects]);
-
-  const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
-    if (!user) return;
-  
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
-    updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
-    updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
-  
-    if (createTpList && request.reason === 'For TP certification') {
-      const newListData: Omit<TpCertList, 'id'|'creatorId'|'createdAt'> = {
-        name: `Transfer to TP - ${format(new Date(), 'dd-MM-yyyy')}`,
-        date: new Date().toISOString().split('T')[0],
-        items: request.items.map(item => ({
-          itemId: item.itemId,
-          itemType: item.itemType,
-          materialName: item.name,
-          manufacturerSrNo: item.serialNumber,
-          ariesId: item.ariesId,
-        })),
-      };
-      addTpCertList(newListData);
-    }
-  
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    const destSupervisor = users.find(u => u.projectId === request.toProjectId && u.role === 'Supervisor');
-
-    const recipients = new Set<User>();
-    if (requester) recipients.add(requester);
-    if (destSupervisor) recipients.add(destSupervisor);
-
-    const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
-    
-    recipients.forEach(recipient => {
-        if(recipient.email) {
-            createAndSendNotification(
-                recipient.email,
-                `Inventory Transfer Approved: #${request.id.slice(-6)}`,
-                'Inventory Transfer Approved',
-                {
-                    'Request ID': `#${request.id.slice(-6)}`,
-                    'From': fromProjectName || 'Unknown',
-                    'To': toProjectName || 'Unknown',
-                    'Approved By': user.name,
-                    'Info': 'The items are now in transit. Please acknowledge receipt at the destination.'
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-                'View Transfers'
-            );
-        }
-    });
-
-  }, [user, addActivityLog, addTpCertList, users, projects]);
-  
-  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    const request = inventoryTransferRequests.find(req => req.id === requestId);
-    if (!request) return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
-    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
-    updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
-    
-    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString() };
-    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email) {
-        createAndSendNotification(
-            requester.email,
-            `Inventory Transfer Rejected: #${requestId.slice(-6)}`,
-            'Inventory Transfer Rejected',
-            {
-                'Request ID': `#${requestId.slice(-6)}`,
-                'Rejected By': user.name,
-                'Reason': comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-            'View Transfers'
-        );
-    }
-  }, [user, inventoryTransferRequests, addActivityLog, users]);
-
-  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    const request = inventoryTransferRequestsById[requestId];
-    if (!request || request.status !== 'Approved') return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
-    
-    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Disputed: ${comment}`, date: new Date().toISOString() };
-    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
-    toast({ title: 'Transfer Disputed', description: 'The store has been notified of the issue.' });
-
-    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
-    approvers.forEach(approver => {
-        if(approver.email) {
-            createAndSendNotification(
-                approver.email,
-                `Dispute Raised for Transfer #${requestId.slice(-6)}`,
-                'Inventory Transfer Disputed',
-                {
-                    'Request ID': `#${requestId.slice(-6)}`,
-                    'Disputed By': user.name,
-                    'Reason': comment,
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-                'Review Dispute'
-            );
-        }
-    });
-
-  }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
-
-  const acknowledgeTransfer = useCallback((requestId: string) => {
-    if (!user) return;
-    const request = inventoryTransferRequestsById[requestId];
-    if (!request || request.status !== 'Approved') return;
-  
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
-    updates[`inventoryTransferRequests/${requestId}/acknowledgedBy`] = user.id;
-    updates[`inventoryTransferRequests/${requestId}/acknowledgedDate`] = new Date().toISOString();
-  
-    request.items.forEach(item => {
-      let path: string;
-      switch (item.itemType) {
-        case 'Inventory': path = `inventoryItems/${item.itemId}`; break;
-        case 'UTMachine': path = `utMachines/${item.itemId}`; break;
-        case 'DftMachine': path = `dftMachines/${item.itemId}`; break;
-        case 'DigitalCamera': path = `digitalCameras/${item.itemId}`; break;
-        case 'Anemometer': path = `anemometers/${item.itemId}`; break;
-        case 'OtherEquipment': path = `otherEquipments/${item.itemId}`; break;
-        default: return;
-      }
-      updates[`${path}/projectId`] = request.toProjectId;
-      updates[`${path}/lastUpdated`] = new Date().toISOString();
-    });
-  
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
-    toast({ title: 'Transfer Completed', description: 'The items have been moved to the new project inventory.' });
-
-    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
-    approvers.forEach(approver => {
-        if(approver.email) {
-            createAndSendNotification(
-                approver.email,
-                `Transfer #${requestId.slice(-6)} Completed`,
-                'Inventory Transfer Completed',
-                {
-                    'Request ID': `#${requestId.slice(-6)}`,
-                    'Acknowledged By': user.name,
-                    'Status': 'Completed',
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-                'View Transfers'
-            );
-        }
-    });
-
-  }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
   
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
-    if (user?.role === 'Admin') {
-        remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
-        addActivityLog(user.id, 'Inventory Transfer Deleted', `ID: ${requestId}`);
-    } else {
-        toast({ title: 'Permission Denied', variant: 'destructive' });
+    if (!user || user.role !== 'Admin') {
+      toast({ variant: 'destructive', title: 'Permission Denied' });
+      return;
     }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+    addActivityLog(user.id, 'Inventory Transfer Request Deleted', `Request ID: ${requestId}`);
+    toast({ title: 'Transfer Request Deleted' });
   }, [user, addActivityLog, toast]);
 
-  const clearInventoryTransferHistory = useCallback(() => {
-    if (user?.role !== 'Admin') return;
-    const updates: { [key: string]: null } = {};
-    inventoryTransferRequests.forEach(req => {
-        if (req.status === 'Completed' || req.status === 'Rejected') {
-            updates[`inventoryTransferRequests/${req.id}`] = null;
+  const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'certificateRequests'));
+    const newRequest: Omit<CertificateRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      status: 'Pending',
+      requestDate: new Date().toISOString(),
+      comments: [{ id: `comm-init`, text: requestData.remarks || 'Request created.', userId: user.id, date: new Date().toISOString() }],
+    };
+    set(newRequestRef, newRequest);
+    
+    addActivityLog(user.id, "Certificate Request Created");
+
+    const storeManagers = users.filter(u => u.role === 'Store in Charge' || u.role === 'Document Controller');
+    storeManagers.forEach(manager => {
+        if(manager.email) {
+            createAndSendNotification(
+                manager.email,
+                `New Certificate Request from ${user.name}`,
+                'New Certificate Request',
+                {
+                    'Requested By': user.name,
+                    'Type': requestData.requestType,
+                    'Item ID': requestData.itemId || requestData.utMachineId || 'N/A',
+                    'Remarks': requestData.remarks || 'None'
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'View Request'
+            );
         }
     });
-    update(ref(rtdb), updates);
-  }, [user, inventoryTransferRequests]);
+
+  }, [user, addActivityLog, users]);
   
-  const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
+  const addCertificateRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
-    const newRef = push(ref(rtdb, 'inspectionChecklists'));
+    const request = certificateRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     
-    const dataToSave: Partial<InspectionChecklist> = {
-        ...checklist,
-        purchaseDate: checklist.purchaseDate || null,
-        firstUseDate: checklist.firstUseDate || null,
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, certificateRequestsById]);
+
+  const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = certificateRequestsById[requestId];
+    if (!request) return;
+
+    addCertificateRequestComment(requestId, `Request fulfilled by ${user.name}. Comment: ${comment}`);
+
+    const updates: { [key: string]: any } = {
+        [`certificateRequests/${requestId}/status`]: 'Completed',
+        [`certificateRequests/${requestId}/completionDate`]: new Date().toISOString(),
+        [`certificateRequests/${requestId}/viewedByRequester`]: false,
     };
     
-    const newChecklist = { ...dataToSave, id: newRef.key! };
-    set(newRef, newChecklist);
+    const urlRegex = /(https?:\/\/[^\s]+)/;
+    const match = comment.match(urlRegex);
+    if(match) {
+      const url = match[0];
+      let path: string | null = null;
+      if (request.itemId) {
+        path = `inventoryItems/${request.itemId}/certificateUrl`;
+      } else if (request.utMachineId) {
+        path = `utMachines/${request.utMachineId}/certificateUrl`;
+      } else if (request.dftMachineId) {
+        path = `dftMachines/${request.dftMachineId}/certificateUrl`;
+      }
+      if (path) {
+          updates[path] = url;
+      }
+    }
+    
+    update(ref(rtdb), updates);
 
-    // Also update the inspection due date on the inventory item
-    update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
-      inspectionDueDate: checklist.nextDueDate,
-      lastUpdated: new Date().toISOString()
-    });
-
-    addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
-  }, [user, addActivityLog]);
-
-  const updateInspectionChecklist = useCallback((checklist: InspectionChecklist) => {
-    if (!user) return;
-    const { id, ...data } = checklist;
-    update(ref(rtdb, `inspectionChecklists/${id}`), data);
-  }, [user]);
-  
-  const deleteInspectionChecklist = useCallback((id: string) => {
-    if (!user) return;
-    remove(ref(rtdb, `inspectionChecklists/${id}`));
-  }, [user]);
+  }, [user, certificateRequestsById, addCertificateRequestComment]);
 
   // All other function definitions exist here...
   // ... including login, logout, etc.
@@ -3381,4 +3205,10 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+
+
+    
+
 
