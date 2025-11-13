@@ -98,6 +98,7 @@ export default function PendingTransfers() {
               const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
               const isDisputed = req.status === 'Disputed';
               const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+              const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
 
               return (
                 <div key={req.id} className={`p-4 border rounded-lg ${isDisputed ? 'bg-destructive/10' : 'bg-muted/50'}`}>
@@ -160,7 +161,7 @@ export default function PendingTransfers() {
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
-                                {req.reason === 'For TP certification' && (
+                                {showTpOption && (
                                  <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <DropdownMenuItem onSelect={e => e.preventDefault()}>Approve &amp; Send to TP</DropdownMenuItem>
