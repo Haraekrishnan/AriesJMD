@@ -730,89 +730,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
   
-  const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
-    if (!user) return;
-    const dayCommentId = `${day}_${plannerUserId}`;
-    const commentId = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`)).key;
-    const newComment: Omit<Comment, 'id'> = {
-      userId: user.id,
-      text: text,
-      date: new Date().toISOString(),
-      eventId: eventId,
-    };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
-    updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
-    updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
-    updates[`dailyPlannerComments/${dayCommentId}/comments/${commentId}`] = { ...newComment, id: commentId };
-    updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
-
-    const event = plannerEvents.find(e => e.id === eventId);
-    if(event) {
-        if(user.id !== event.creatorId) updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${event.creatorId}`] = false;
-        if(user.id !== event.userId) updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${event.userId}`] = false;
-    }
-
-    update(ref(rtdb), updates);
-  }, [user, plannerEvents]);
-  
-  const addComment = useCallback((taskId: string, commentText: string) => {
-    if(!user) return;
-    const task = tasksById[taskId];
-    if(!task) return;
-
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-
-    const allParticipants = new Set(task.participants || []);
-    if (task.creatorId) allParticipants.add(task.creatorId);
-    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
-
-    allParticipants.forEach(participantId => {
-        if (participantId !== user.id) {
-            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
-        }
-    });
-
-    update(ref(rtdb), updates);
-
-    allParticipants.forEach(participantId => {
-        if (participantId !== user.id) {
-            const participant = users.find(u => u.id === participantId);
-            if (participant && participant.email) {
-                createAndSendNotification(
-                    participant.email,
-                    `New comment on task: ${task.title}`,
-                    `New comment from ${user.name}`,
-                    {
-                        'Task': task.title,
-                        'Comment': commentText
-                    },
-                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-                    'View Task'
-                );
-            }
-        }
-    });
-  }, [user, tasksById, users]);
-  
-  const updateTask = useCallback((updatedTask: Task) => {
-    const { id, ...data } = updatedTask;
-    update(ref(rtdb, `tasks/${id}`), { ...data, lastUpdated: new Date().toISOString() });
-    if(user) addActivityLog(user.id, 'Task Updated', `Updated task: ${updatedTask.title}`);
-  }, [user, addActivityLog]);
-
-  const deleteTask = useCallback((taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    remove(ref(rtdb, `tasks/${taskId}`));
-    if(user) addActivityLog(user.id, 'Task Deleted', `Deleted task: ${task.title}`);
-  }, [tasks, user, addActivityLog]);
-
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -860,6 +777,76 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
+  
+  const addComment = useCallback((taskId: string, commentText: string) => {
+    if(!user) return;
+    const task = tasksById[taskId];
+    if(!task) return;
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+    const allParticipants = new Set(task.participants || []);
+    if (task.creatorId) allParticipants.add(task.creatorId);
+    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
+        }
+    });
+
+    update(ref(rtdb), updates);
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            const participant = users.find(u => u.id === participantId);
+            if (participant && participant.email) {
+                createAndSendNotification(
+                    participant.email,
+                    `New comment on task: ${task.title}`,
+                    `New comment from ${user.name}`,
+                    {
+                        'Task': task.title,
+                        'Comment': commentText
+                    },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                    'View Task'
+                );
+            }
+        }
+    });
+  }, [user, tasksById, users]);
+
+  const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
+    if (!user) return;
+    const dayCommentId = `${day}_${plannerUserId}`;
+    const commentId = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`)).key;
+    const newComment: Omit<Comment, 'id'> = {
+      userId: user.id,
+      text: text,
+      date: new Date().toISOString(),
+      eventId: eventId,
+    };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
+    updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
+    updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
+    updates[`dailyPlannerComments/${dayCommentId}/comments/${commentId}`] = { ...newComment, id: commentId };
+    updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+
+    const event = plannerEvents.find(e => e.id === eventId);
+    if(event) {
+        if(user.id !== event.creatorId) updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${event.creatorId}`] = false;
+        if(user.id !== event.userId) updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${event.userId}`] = false;
+    }
+
+    update(ref(rtdb), updates);
+  }, [user, plannerEvents]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
@@ -1087,6 +1074,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [plannerEvents]);
 
   // All other function definitions exist here...
+  const updateTask = useCallback((updatedTask: Task) => {
+    const { id, ...data } = updatedTask;
+    update(ref(rtdb, `tasks/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    if(user) addActivityLog(user.id, 'Task Updated', `Updated task: ${updatedTask.title}`);
+  }, [user, addActivityLog]);
+
+  const deleteTask = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    remove(ref(rtdb, `tasks/${taskId}`));
+    if(user) addActivityLog(user.id, 'Task Deleted', `Deleted task: ${task.title}`);
+  }, [tasks, user, addActivityLog]);
   
   // SECTION: Computed Values (Memoized)
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
@@ -1403,5 +1402,7 @@ export const useAppContext = (): AppContextType => {
     
 
 
+
+    
 
     
