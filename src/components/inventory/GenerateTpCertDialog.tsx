@@ -104,6 +104,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       materialName: (item as any).name || (item as any).machineName,
       manufacturerSrNo: item.serialNumber,
       chestCrollNo: item.itemType === 'Inventory' && (item as InventoryItem).name.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
+      ariesId: item.ariesId,
     };
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
       setSelectedItems(prev => [...prev, newItem]);
@@ -225,19 +226,26 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               </TableHeader>
               <TableBody>
                 {selectedItems.length > 0 ? (
-                  selectedItems.map((item, index) => (
-                    <TableRow key={`${item.itemId}-${item.itemType}`}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{item.materialName}</TableCell>
-                      <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
-                      <TableCell>{item.chestCrollNo || '-'}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  selectedItems.map((item, index) => {
+                    const isWireSling = item.materialName.toLowerCase() === 'wire sling';
+                    const displaySerial = isWireSling && item.ariesId
+                      ? `${item.manufacturerSrNo} (Aries ID: ${item.ariesId})`
+                      : item.manufacturerSrNo;
+                    
+                    return (
+                        <TableRow key={`${item.itemId}-${item.itemType}`}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{item.materialName}</TableCell>
+                          <TableCell>{displaySerial || '-'}</TableCell>
+                          <TableCell>{item.chestCrollNo || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">

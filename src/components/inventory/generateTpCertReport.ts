@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -10,6 +11,7 @@ interface CertItem {
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
+  ariesId?: string;
 }
 
 // Helper to get capacity from material name
@@ -43,18 +45,20 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined)[], capacity: string }>();
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined)[], capacity: string, ariesIds: (string | undefined)[] }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
             itemMap.get(key)!.chestCrollNos.push(item.chestCrollNo);
+            itemMap.get(key)!.ariesIds.push(item.ariesId);
         } else {
             itemMap.set(key, {
                 materialName: item.materialName,
                 serialNumbers: [item.manufacturerSrNo],
                 chestCrollNos: [item.chestCrollNo],
+                ariesIds: [item.ariesId],
                 capacity: getCapacity(item.materialName),
             });
         }
@@ -147,13 +151,20 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     const groupStartRow = currentRowIndex;
     const groupSize = group.serialNumbers.length;
     const isHarness = group.materialName.toLowerCase() === 'harness';
+    const isWireSling = group.materialName.toLowerCase() === 'wire sling';
     
     group.serialNumbers.forEach((serial, index) => {
         const chestCrollNo = group.chestCrollNos[index];
+        const ariesId = group.ariesIds[index];
+        let manufacturerSrNo = serial;
+        if (isWireSling && ariesId) {
+            manufacturerSrNo = `${serial} (Aries ID: ${ariesId})`;
+        }
+        
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            serial,
+            manufacturerSrNo,
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -240,13 +251,21 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   processedItems.forEach(group => {
     const groupSize = group.serialNumbers.length;
     const isHarness = group.materialName.toLowerCase() === 'harness';
+    const isWireSling = group.materialName.toLowerCase() === 'wire sling';
 
     group.serialNumbers.forEach((serial, index) => {
+      const chestCrollNo = group.chestCrollNos[index];
+      const ariesId = group.ariesIds[index];
+      let manufacturerSrNo = serial;
+      if (isWireSling && ariesId) {
+          manufacturerSrNo = `${serial} (Aries ID: ${ariesId})`;
+      }
+      
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        serial || '',
-        isHarness ? (group.chestCrollNos[index] || '') : '',
+        manufacturerSrNo || '',
+        isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 },
