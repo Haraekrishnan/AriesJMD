@@ -1614,25 +1614,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         return null;
       };
-
-      const mappedProfile: Partial<ManpowerProfile> = {
-        name,
-        mobileNumber: profileData['Mobile Number']?.toString(),
-        gender: profileData['Gender'],
-        workOrderNumber: profileData['Work Order Number'],
-        labourLicenseNo: profileData['Labour License No'],
-        eic: projects.find(p => p.name === profileData['EIC'])?.id || '',
-        workOrderExpiryDate: parseDateFromExcel(profileData['Work Order Expiry Date']),
-        labourLicenseExpiryDate: parseDateFromExcel(profileData['Labour License Expiry Date']),
-        joiningDate: parseDateFromExcel(profileData['Joining Date']),
-        epNumber: profileData['EP Number']?.toString(),
-        aadharNumber: profileData['Aadhar Number']?.toString(),
-        dob: parseDateFromExcel(profileData['Date Of Birth']),
-        uanNumber: profileData['UAN Number']?.toString(),
-        wcPolicyNumber: profileData['WC Policy Number'],
-        wcPolicyExpiryDate: parseDateFromExcel(profileData['WC Policy Expiry Date']),
-        cardCategory: profileData['Card Category'],
-        cardType: profileData['Card Type'],
+        
+        const projectName = profileData['EIC']?.trim();
+        const project = projects.find(p => p.name === projectName);
+      
+        const mappedProfile: Partial<ManpowerProfile> = {
+          name,
+          hardCopyFileNo,
+          mobileNumber: profileData['Mobile Number']?.toString(),
+          gender: profileData['Gender'],
+          workOrderNumber: profileData['Work Order Number'],
+          labourLicenseNo: profileData['Labour License No'],
+          eic: project ? project.id : '',
+          workOrderExpiryDate: parseDateFromExcel(profileData['Work Order Expiry Date']),
+          labourLicenseExpiryDate: parseDateFromExcel(profileData['Labour License Expiry Date']),
+          joiningDate: parseDateFromExcel(profileData['Joining Date']),
+          epNumber: profileData['EP Number']?.toString(),
+          aadharNumber: profileData['Aadhar Number']?.toString(),
+          dob: parseDateFromExcel(profileData['Date Of Birth']),
+          uanNumber: profileData['UAN Number']?.toString(),
+          wcPolicyNumber: profileData['WC Policy Number'],
+          wcPolicyExpiryDate: parseDateFromExcel(profileData['WC Policy Expiry Date']),
+          cardCategory: profileData['Card Category'],
+          cardType: profileData['Card Type'],
       };
       
       const finalProfileData = { ...(existingProfile || {}), ...mappedProfile };
@@ -1813,7 +1817,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     return { importedCount, notFoundCount };
   }, [user, manpowerProfiles, addActivityLog]);
-
+  
   const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -1828,12 +1832,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
-  
+
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
     
-    // Ensure `inventoryItemId` is null if it's undefined
     const sanitizedItems = requestData.items.map(item => ({
         ...item,
         inventoryItemId: item.inventoryItemId || null,
@@ -2333,7 +2336,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             'Reply to Query'
         );
     }
-}, [user, ppeRequests, users, manpowerProfiles]);
+  }, [user, ppeRequests, users, manpowerProfiles]);
 
   const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
     if (!user) return;
@@ -3634,6 +3637,232 @@ const updateInventoryItemGroupByProject = useCallback((
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
   
+  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      requestDate: new Date().toISOString(),
+      status: 'Pending',
+    };
+    set(newRef, newRequest);
+    addActivityLog(user.id, 'Inventory Transfer Request Created');
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
+
+  }, [user, addActivityLog, users, roles, projects]);
+
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({ title: 'Permission Denied', description: 'Only Admins can delete history items.', variant: 'destructive'});
+      return;
+    }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+  }, [user, toast]);
+
+  const clearInventoryTransferHistory = useCallback(() => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, 'inventoryTransferRequests'));
+    addActivityLog(user.id, 'Inventory Transfer History Cleared');
+  }, [user, addActivityLog]);
+   
+  const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
+    if (!user) return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
+    updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
+    updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
+  
+    if (createTpList && request.reason === 'For TP certification') {
+      const newListData = {
+        name: `Transfer to TP - ${format(new Date(), 'dd-MM-yyyy')}`,
+        date: new Date().toISOString().split('T')[0],
+        items: request.items.map(item => ({
+          materialName: item.name,
+          manufacturerSrNo: item.serialNumber,
+          itemId: item.itemId,
+          itemType: item.itemType,
+        })),
+      };
+      addTpCertList(newListData);
+    }
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    const destSupervisor = users.find(u => u.projectId === request.toProjectId && u.role === 'Supervisor');
+
+    const recipients = new Set<User>();
+    if (requester) recipients.add(requester);
+    if (destSupervisor) recipients.add(destSupervisor);
+
+    const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
+    
+    recipients.forEach(recipient => {
+        if(recipient.email) {
+            createAndSendNotification(
+                recipient.email,
+                `Inventory Transfer Approved: #${request.id.slice(-6)}`,
+                'Inventory Transfer Approved',
+                {
+                    'Request ID': `#${request.id.slice(-6)}`,
+                    'From': fromProjectName || 'Unknown',
+                    'To': toProjectName || 'Unknown',
+                    'Approved By': user.name,
+                    'Info': 'The items are now in transit. Please acknowledge receipt at the destination.'
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'View Transfers'
+            );
+        }
+    });
+
+  }, [user, addActivityLog, addTpCertList, users, projects]);
+
+  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequests.find(req => req.id === requestId);
+    if (!request) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
+    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+    updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
+    
+    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Rejected: ${comment}`, date: new Date().toISOString() };
+    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester?.email) {
+        createAndSendNotification(
+            requester.email,
+            `Inventory Transfer Rejected: #${requestId.slice(-6)}`,
+            'Inventory Transfer Rejected',
+            {
+                'Request ID': `#${requestId.slice(-6)}`,
+                'Rejected By': user.name,
+                'Reason': comment,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+            'View Transfers'
+        );
+    }
+  }, [user, inventoryTransferRequests, addActivityLog, users]);
+
+  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequestsById[requestId];
+    if (!request || request.status !== 'Approved') return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
+    
+    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Disputed: ${comment}`, date: new Date().toISOString() };
+    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
+    toast({ title: 'Transfer Disputed', description: 'The store has been notified of the issue.' });
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    approvers.forEach(approver => {
+        if(approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `Dispute Raised for Transfer #${requestId.slice(-6)}`,
+                'Inventory Transfer Disputed',
+                {
+                    'Request ID': `#${requestId.slice(-6)}`,
+                    'Disputed By': user.name,
+                    'Reason': comment,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'Review Dispute'
+            );
+        }
+    });
+
+  }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
+
+  const acknowledgeTransfer = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequestsById[requestId];
+    if (!request || request.status !== 'Approved') return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
+    updates[`inventoryTransferRequests/${requestId}/acknowledgedBy`] = user.id;
+    updates[`inventoryTransferRequests/${requestId}/acknowledgedDate`] = new Date().toISOString();
+  
+    request.items.forEach(item => {
+      let path: string;
+      switch (item.itemType) {
+        case 'Inventory': path = `inventoryItems/${item.itemId}`; break;
+        case 'UTMachine': path = `utMachines/${item.itemId}`; break;
+        case 'DftMachine': path = `dftMachines/${item.itemId}`; break;
+        case 'DigitalCamera': path = `digitalCameras/${item.itemId}`; break;
+        case 'Anemometer': path = `anemometers/${item.itemId}`; break;
+        case 'OtherEquipment': path = `otherEquipments/${item.itemId}`; break;
+        default: return;
+      }
+      updates[`${path}/projectId`] = request.toProjectId;
+      updates[`${path}/lastUpdated`] = new Date().toISOString();
+    });
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
+    toast({ title: 'Transfer Completed', description: 'The items have been moved to the new project inventory.' });
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    approvers.forEach(approver => {
+        if(approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `Transfer #${requestId.slice(-6)} Completed`,
+                'Inventory Transfer Completed',
+                {
+                    'Request ID': `#${requestId.slice(-6)}`,
+                    'Acknowledged By': user.name,
+                    'Status': 'Completed',
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'View Transfers'
+            );
+        }
+    });
+
+  }, [user, inventoryTransferRequestsById, addActivityLog, toast, users, roles]);
+
   // SECTION: Computed Values (Memoized)
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
     if (!user) return {
@@ -3939,5 +4168,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
