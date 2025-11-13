@@ -730,6 +730,137 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
   
+  const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
+    if (!user) return;
+    const dayCommentId = `${day}_${plannerUserId}`;
+    const commentId = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`)).key;
+    const newComment: Omit<Comment, 'id'> = {
+      userId: user.id,
+      text: text,
+      date: new Date().toISOString(),
+      eventId: eventId,
+    };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
+    updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
+    updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
+    updates[`dailyPlannerComments/${dayCommentId}/comments/${commentId}`] = { ...newComment, id: commentId };
+    updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+
+    const event = plannerEvents.find(e => e.id === eventId);
+    if(event) {
+        if(user.id !== event.creatorId) updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${event.creatorId}`] = false;
+        if(user.id !== event.userId) updates[`dailyPlannerComments/${dayCommentId}/viewedBy/${event.userId}`] = false;
+    }
+
+    update(ref(rtdb), updates);
+  }, [user, plannerEvents]);
+  
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
+    if (!user) return;
+
+    const newRef = push(ref(rtdb, 'tasks'));
+
+    const subtasks: { [userId: string]: Subtask } = {};
+    taskData.assigneeIds.forEach(id => {
+      subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
+    });
+
+    const newTask: Omit<Task, 'id'> = {
+      ...taskData,
+      creatorId: user.id,
+      assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
+      status: 'To Do',
+      subtasks: subtasks,
+      comments: [],
+      participants: [user.id, ...taskData.assigneeIds],
+      lastUpdated: new Date().toISOString(),
+      approvalState: 'none',
+      isViewedByAssignee: false,
+      viewedBy: { [user.id]: true }
+    };
+    
+    set(newRef, newTask);
+    addActivityLog(user.id, 'Task Created', taskData.title);
+
+    taskData.assigneeIds.forEach(assigneeId => {
+      const assignee = users.find(u => u.id === assigneeId);
+      if (assignee && assignee.email) {
+        createAndSendNotification(
+          assignee.email,
+          `New Task Assigned: ${taskData.title}`,
+          'You have a new task!',
+          {
+            'Task': taskData.title,
+            'Assigned by': user.name,
+            'Due Date': format(new Date(taskData.dueDate), 'PPP'),
+            'Priority': taskData.priority,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+          'View Task'
+        );
+      }
+    });
+
+  }, [user, users, addActivityLog]);
+  
+  const updateTask = useCallback((updatedTask: Task) => {
+    const { id, ...data } = updatedTask;
+    update(ref(rtdb, `tasks/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    if(user) addActivityLog(user.id, 'Task Updated', `Updated task: ${updatedTask.title}`);
+  }, [user, addActivityLog]);
+
+  const deleteTask = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    remove(ref(rtdb, `tasks/${taskId}`));
+    if(user) addActivityLog(user.id, 'Task Deleted', `Deleted task: ${task.title}`);
+  }, [tasks, user, addActivityLog]);
+
+  const addComment = useCallback((taskId: string, commentText: string) => {
+    if(!user) return;
+    const task = tasksById[taskId];
+    if(!task) return;
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+    const allParticipants = new Set(task.participants || []);
+    if (task.creatorId) allParticipants.add(task.creatorId);
+    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
+        }
+    });
+
+    update(ref(rtdb), updates);
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            const participant = users.find(u => u.id === participantId);
+            if (participant && participant.email) {
+                createAndSendNotification(
+                    participant.email,
+                    `New comment on task: ${task.title}`,
+                    `New comment from ${user.name}`,
+                    {
+                        'Task': task.title,
+                        'Comment': commentText
+                    },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                    'View Task'
+                );
+            }
+        }
+    });
+  }, [user, tasksById, users]);
+  
   const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
@@ -786,6 +917,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
   }, [user, addActivityLog]);
 
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    const { id, ...data } = listData;
+    const sanitizedData = {
+      ...data,
+      items: data.items.map(item => ({
+        ...item,
+        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+      })),
+    };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+  }, []);
+  
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
@@ -901,67 +1044,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
   }, [user, addActivityLog]);
-  
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
-    if (!user) return;
-
-    const newRef = push(ref(rtdb, 'tasks'));
-
-    const subtasks: { [userId: string]: Subtask } = {};
-    taskData.assigneeIds.forEach(id => {
-      subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
-    });
-
-    const newTask: Omit<Task, 'id'> = {
-      ...taskData,
-      creatorId: user.id,
-      assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
-      status: 'To Do',
-      subtasks: subtasks,
-      comments: [],
-      participants: [user.id, ...taskData.assigneeIds],
-      lastUpdated: new Date().toISOString(),
-      approvalState: 'none',
-      isViewedByAssignee: false,
-      viewedBy: { [user.id]: true }
-    };
-    
-    set(newRef, newTask);
-    addActivityLog(user.id, 'Task Created', taskData.title);
-
-    taskData.assigneeIds.forEach(assigneeId => {
-      const assignee = users.find(u => u.id === assigneeId);
-      if (assignee && assignee.email) {
-        createAndSendNotification(
-          assignee.email,
-          `New Task Assigned: ${taskData.title}`,
-          'You have a new task!',
-          {
-            'Task': taskData.title,
-            'Assigned by': user.name,
-            'Due Date': format(new Date(taskData.dueDate), 'PPP'),
-            'Priority': taskData.priority,
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-          'View Task'
-        );
-      }
-    });
-
-  }, [user, users, addActivityLog]);
-
-  const updateTask = useCallback((updatedTask: Task) => {
-    const { id, ...data } = updatedTask;
-    update(ref(rtdb, `tasks/${id}`), { ...data, lastUpdated: new Date().toISOString() });
-    if(user) addActivityLog(user.id, 'Task Updated', `Updated task: ${updatedTask.title}`);
-  }, [user, addActivityLog]);
-
-  const deleteTask = useCallback((taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    remove(ref(rtdb, `tasks/${taskId}`));
-    if(user) addActivityLog(user.id, 'Task Deleted', `Deleted task: ${task.title}`);
-  }, [tasks, user, addActivityLog]);
 
   // All other function definitions exist here...
   
@@ -1078,9 +1160,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs]);
 
-  // SECTION: All other function definitions
-  // ... including login, logout, etc.
-  
   // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
@@ -1281,3 +1360,4 @@ export const useAppContext = (): AppContextType => {
     
 
     
+
