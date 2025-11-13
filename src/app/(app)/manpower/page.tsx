@@ -23,8 +23,6 @@ import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 
 export default function ManpowerPage() {
     const { can } = useAppContext();
-    const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
-    const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
     const [isLogbookRequestOpen, setIsLogbookRequestOpen] = useState(false);
     const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
@@ -49,18 +47,6 @@ export default function ManpowerPage() {
                     <Button variant="outline" onClick={() => setIsLogbookRequestOpen(true)}><Book className="mr-2 h-4 w-4" /> Request Logbook</Button>
                     {can.manage_logbook && (
                         <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
-                    )}
-                    {can.log_manpower && (
-                        <>
-                            <Button variant="outline" onClick={() => setIsLeaveDialogOpen(true)}>
-                                <Plane className="mr-2 h-4 w-4" />
-                                Log Daily Leave
-                            </Button>
-                            <Button onClick={() => setIsLogDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Log Manpower
-                            </Button>
-                        </>
                     )}
                 </div>
             </div>
@@ -150,8 +136,6 @@ export default function ManpowerPage() {
                 </CardContent>
             </Card>
 
-            <ManpowerLogDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} />
-            <LogLeaveDialog isOpen={isLeaveDialogOpen} setIsOpen={setIsLeaveDialogOpen} />
             <LogbookRegisterDialog isOpen={isLogbookRegisterOpen} setIsOpen={setIsLogbookRegisterOpen} />
             <LogbookRequestDialog isOpen={isLogbookRequestOpen} setIsOpen={setIsLogbookRequestOpen} />
             <LogbookHistoryDialog isOpen={isLogbookHistoryOpen} setIsOpen={setIsLogbookHistoryOpen} />
