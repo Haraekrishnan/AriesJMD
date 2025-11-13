@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -450,6 +449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
+  // SECTION: PERMISSIONS
   const can = useMemo(() => {
     const permissions = new Set<Permission>();
     if (user && !loading && roles.length > 0) {
@@ -462,7 +462,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     for (const p of ALL_PERMISSIONS) canObject[p] = permissions.has(p);
     return canObject;
   }, [user, roles, loading]);
-
+  
+  // SECTION: ALL FUNCTION DEFINITIONS START HERE
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) {
         console.error("addActivityLog: userId is undefined or null");
@@ -775,7 +776,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
-
+  
   const updateTask = useCallback((updatedTask: Task) => {
     const { id, ...data } = updatedTask;
     update(ref(rtdb, `tasks/${id}`), { ...data, lastUpdated: new Date().toISOString() });
@@ -1002,190 +1003,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, tasksById, addComment]);
   
-  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        createAndSendNotification(
-            requester.email,
-            `New Query on your PPE Request for ${employee?.name || '...'}`,
-            `Query from ${user.name}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Question': commentText,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'Reply to Query'
-        );
-    }
-  }, [user, ppeRequests, users, manpowerProfiles]);
-  
-  const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'inventoryItems'));
-    const dataToSave = { 
-      ...itemData, 
-      lastUpdated: new Date().toISOString(),
-      movedToProjectId: itemData.movedToProjectId || null,
-    };
-    set(newRef, dataToSave);
-    addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
-  }, [user, addActivityLog]);
-  
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const newList: Omit<TpCertList, 'id'> = {
-      ...listData,
-      creatorId: user.id,
-      createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
-
-  const updateTpCertList = useCallback((listData: TpCertList) => {
-    const { id, ...data } = listData;
-    const sanitizedData = {
-      ...data,
-      items: data.items.map(item => ({
-        ...item,
-        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
-      })),
-    };
-    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-  }, []);
-  
-  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
-    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-      ...requestData,
-      requesterId: user.id,
-      requestDate: new Date().toISOString(),
-      status: 'Pending',
-    };
-    set(newRef, newRequest);
-    addActivityLog(user.id, 'Inventory Transfer Request Created');
-
-    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
-    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-
-    approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Request from ${user.name}`,
-          'New Inventory Transfer Request',
-          {
-            'Requester': user.name,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': requestData.reason,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Request'
-        );
-      }
-    });
-
-  }, [user, addActivityLog, users, roles, projects]);
-
-  const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
-    if (!user) return;
-  
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
-    updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
-    updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
-  
-    if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
-      const newListData = {
-        name: `${request.reason === 'Expired materials' ? 'Expired' : 'TP'} - ${format(new Date(), 'dd-MM-yyyy')}`,
-        date: new Date().toISOString().split('T')[0],
-        items: request.items.map(item => ({
-          materialName: item.name,
-          manufacturerSrNo: item.serialNumber,
-          itemId: item.itemId,
-          itemType: item.itemType,
-          chestCrollNo: 'ariesId' in item ? item.ariesId : undefined,
-        })),
-      };
-      addTpCertList(newListData);
-    }
-  
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    const destSupervisor = users.find(u => u.projectId === request.toProjectId && u.role === 'Supervisor');
-
-    const recipients = new Set<User>();
-    if (requester) recipients.add(requester);
-    if (destSupervisor) recipients.add(destSupervisor);
-
-    const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
-    
-    recipients.forEach(recipient => {
-        if(recipient.email) {
-            createAndSendNotification(
-                recipient.email,
-                `Inventory Transfer Approved: #${request.id.slice(-6)}`,
-                'Inventory Transfer Approved',
-                {
-                    'Request ID': `#${request.id.slice(-6)}`,
-                    'From': fromProjectName || 'Unknown',
-                    'To': toProjectName || 'Unknown',
-                    'Approved By': user.name,
-                    'Info': 'The items are now in transit. Please acknowledge receipt at the destination.'
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-                'View Transfers'
-            );
-        }
-    });
-
-  }, [user, addActivityLog, addTpCertList, users, projects]);
-  
-  const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'inspectionChecklists'));
-    
-    const dataToSave: Partial<InspectionChecklist> = {
-        ...checklist,
-        purchaseDate: checklist.purchaseDate || null,
-        firstUseDate: checklist.firstUseDate || null,
-    };
-    
-    const newChecklist = { ...dataToSave, id: newRef.key! };
-    set(newRef, newChecklist);
-
-    // Also update the inspection due date on the inventory item
-    update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
-      inspectionDueDate: checklist.nextDueDate,
-      lastUpdated: new Date().toISOString()
-    });
-
-    addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
-  }, [user, addActivityLog]);
-  
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
@@ -1278,6 +1095,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const path = `dailyPlannerComments/${day}_${plannerUserId}/comments/${commentId}/viewedBy/${user.id}`;
     update(ref(rtdb), { [path]: true });
   }, [user]);
+
+  const markPlannerCommentsAsRead = useCallback((plannerUserId: string, day: string) => {
+      if (!user) return;
+      const dayCommentId = `${day}_${plannerUserId}`;
+      const dayComment = dailyPlannerCommentsById[dayCommentId];
+      if (!dayComment || !dayComment.comments) return;
+
+      const updates: { [key: string]: boolean } = {};
+      Object.values(dayComment.comments).forEach(comment => {
+          if (comment && comment.userId !== user.id) {
+              updates[`dailyPlannerComments/${dayCommentId}/comments/${comment.id}/viewedBy/${user.id}`] = true;
+          }
+      });
+      if (Object.keys(updates).length > 0) {
+          update(ref(rtdb), updates);
+      }
+  }, [user, dailyPlannerCommentsById]);
   
   const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
     if(!user) return;
@@ -1412,8 +1246,163 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(user) addActivityLog(user.id, 'Driver Deleted', `Deleted driver: ${driverToDelete.name}`);
   }, [drivers, user, addActivityLog]);
   
-  // All other function definitions exist here...
-  // ... including login, logout, etc.
+  const addIncidentReport = useCallback((incidentData: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
+    if (!user) return;
+
+    const supervisorId = user.supervisorId;
+    const hseUsers = users.filter(u => u.role === 'Senior Safety Supervisor').map(u => u.id);
+    
+    const reportedToUserIds = new Set<string>();
+    if (supervisorId) reportedToUserIds.add(supervisorId);
+    hseUsers.forEach(id => reportedToUserIds.add(id));
+
+    const newRef = push(ref(rtdb, 'incidentReports'));
+    const newIncident: Omit<IncidentReport, 'id'> = {
+      ...incidentData,
+      reporterId: user.id,
+      reportTime: new Date().toISOString(),
+      status: 'New',
+      isPublished: false,
+      comments: [{ id: 'comment-0', userId: user.id, text: 'Incident Reported.', date: new Date().toISOString() }],
+      reportedToUserIds: Array.from(reportedToUserIds),
+      lastUpdated: new Date().toISOString(),
+      viewedBy: { [user.id]: true }
+    };
+    set(newRef, newIncident);
+
+    addActivityLog(user.id, 'Incident Reported', `Incident at ${projects.find(p => p.id === incidentData.projectId)?.name}`);
+  }, [user, users, addActivityLog, projects]);
+
+  const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
+    if (!user) return;
+    const { id, ...data } = incident;
+    const updates: { [key: string]: any } = {
+        [`incidentReports/${id}`]: { ...data, lastUpdated: new Date().toISOString() }
+    };
+    const newCommentRef = push(ref(rtdb, `incidentReports/${id}/comments`));
+    updates[`incidentReports/${id}/comments/${newCommentRef.key}`] = {
+        id: newCommentRef.key,
+        userId: user.id,
+        text: comment,
+        date: new Date().toISOString(),
+    };
+    
+    // Mark as unread for all participants
+    const participants = new Set(incident.reportedToUserIds);
+    participants.add(incident.reporterId);
+    participants.forEach(pId => {
+        updates[`incidentReports/${id}/viewedBy/${pId}`] = false;
+    });
+
+    update(ref(rtdb), updates);
+  }, [user]);
+
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
+    if(!user) return;
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+    
+    const updates: { [key: string]: any } = {};
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = {
+        id: newCommentRef.key,
+        userId: user.id,
+        text,
+        date: new Date().toISOString(),
+    };
+    updates[`incidentReports/${incidentId}/lastUpdated`] = new Date().toISOString();
+
+    const participants = new Set(incident.reportedToUserIds);
+    participants.add(incident.reporterId);
+    participants.forEach(pId => {
+        updates[`incidentReports/${incidentId}/viewedBy/${pId}`] = false;
+    });
+
+    update(ref(rtdb), updates);
+  }, [user, incidentReports]);
+
+  const publishIncident = useCallback((incidentId: string, comment: string) => {
+    if(!user) return;
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if(!incident) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`incidentReports/${incidentId}/isPublished`] = true;
+    
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = {
+        id: newCommentRef.key,
+        userId: user.id,
+        text: comment,
+        date: new Date().toISOString(),
+    };
+    
+    update(ref(rtdb), updates);
+  }, [user, incidentReports]);
+  
+  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
+    if(!user) return;
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident) return;
+
+    const currentParticipants = new Set(incident.reportedToUserIds || []);
+    userIds.forEach(id => currentParticipants.add(id));
+    
+    const updates: { [key: string]: any } = {};
+    updates[`incidentReports/${incidentId}/reportedToUserIds`] = Array.from(currentParticipants);
+
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = {
+        id: newCommentRef.key,
+        userId: user.id,
+        text: comment,
+        date: new Date().toISOString(),
+    };
+
+    update(ref(rtdb), updates);
+  }, [user, incidentReports]);
+  
+  const markIncidentAsViewed = useCallback((incidentId: string) => {
+    if (user) {
+        update(ref(rtdb, `incidentReports/${incidentId}/viewedBy`), { [user.id]: true });
+    }
+  }, [user]);
+
+  const addManpowerLog = useCallback(async (
+    logData: Partial<Omit<ManpowerLog, 'id' | 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string },
+    logDate: Date = new Date()
+  ) => {
+      if (!user) return;
+  
+      const dateStr = format(logDate, 'yyyy-MM-dd');
+      const yesterdayStr = format(sub(logDate, { days: 1 }), 'yyyy-MM-dd');
+  
+      // Find the most recent log for this project on the previous day or earlier
+      const previousLogs = Object.values(manpowerLogsById)
+          .filter(l => l.projectId === logData.projectId && l.date <= yesterdayStr)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+      const yesterdayTotal = previousLogs.length > 0 ? (previousLogs[0].total || 0) : 0;
+      
+      const newLogRef = push(ref(rtdb, 'manpowerLogs'));
+      
+      const newLog: Omit<ManpowerLog, 'id'> = {
+          projectId: logData.projectId,
+          date: dateStr,
+          countIn: logData.countIn ?? 0,
+          personInName: logData.personInName,
+          countOut: logData.countOut ?? 0,
+          personOutName: logData.personOutName,
+          countOnLeave: logData.countOnLeave ?? 0,
+          personOnLeaveName: logData.personOnLeaveName,
+          reason: logData.reason || '',
+          updatedBy: user.id,
+          yesterdayCount: yesterdayTotal,
+          total: logData.newTotal !== undefined ? logData.newTotal : (yesterdayTotal + (logData.countIn || 0) - (logData.countOut || 0)),
+      };
+      
+      await set(newLogRef, newLog);
+  }, [user, manpowerLogsById]);
 
   // SECTION: Computed Values (Memoized)
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
@@ -1528,13 +1517,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs]);
 
+  // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markSinglePlannerCommentAsRead, dismissPendingUpdate, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList, addDocument, updateDocument, deleteDocument, addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, deleteLogbookRecord, addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markSinglePlannerCommentAsRead, dismissPendingUpdate, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList, addDocument, updateDocument, deleteDocument, addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, deleteLogbookRecord, addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
   };
 
+  // SECTION: useEffect for Initialization and Data Listening
   useEffect(() => {
     if (!rtdb) {
       console.error("Firebase Realtime Database is not initialized.");
@@ -1719,6 +1710,8 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
 
 
     
