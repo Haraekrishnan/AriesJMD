@@ -2801,15 +2801,19 @@ const updateInventoryItemGroupByProject = useCallback((
 
   }, [user, addActivityLog, users, roles, projects]);
 
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+  }, []);
+
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = inventoryTransferRequests.find(r => r.id === requestId);
+    if (!user) return;
+    const request = inventoryTransferRequestsById[requestId];
     if (!request) return;
 
     const updates: { [key: string]: any } = {};
     updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
     updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
-    updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString(); // Using approval date for rejection date as well
+    updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
     updates[`inventoryTransferRequests/${requestId}/viewedByRequester`] = false;
 
     const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
@@ -2838,7 +2842,50 @@ const updateInventoryItemGroupByProject = useCallback((
             'View Transfers'
         );
     }
-  }, [user, can.approve_store_requests, inventoryTransferRequests, users, addActivityLog]);
+  }, [user, inventoryTransferRequestsById, users, addActivityLog]);
+  
+  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequestsById[requestId];
+    if (!request) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
+    
+    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = {
+        userId: user.id,
+        text: `Dispute Raised: ${comment}`,
+        date: new Date().toISOString()
+    };
+    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
+
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Disputed: #${requestId.slice(-6)}`,
+          'Inventory Transfer Request Disputed',
+          {
+            'Request ID': `#${requestId.slice(-6)}`,
+            'Disputed By': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': comment,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Transfers'
+        );
+      }
+    });
+  }, [user, addActivityLog, users, roles, projects, inventoryTransferRequestsById]);
   
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
@@ -2956,7 +3003,7 @@ const updateInventoryItemGroupByProject = useCallback((
         }
     });
   }, [user, users, addActivityLog]);
-  
+
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const request = certificateRequestsById[requestId];
@@ -2979,11 +3026,10 @@ const updateInventoryItemGroupByProject = useCallback((
 
     addCertificateRequestComment(requestId, `Request fulfilled by ${user.name}. Comment: ${comment}`);
 
-    const updates: { [key: string]: any } = {
-        [`certificateRequests/${requestId}/status`]: 'Completed',
-        [`certificateRequests/${requestId}/completionDate`]: new Date().toISOString(),
-        [`certificateRequests/${requestId}/viewedByRequester`]: false,
-    };
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/status`] = 'Completed';
+    updates[`certificateRequests/${requestId}/completionDate`] = new Date().toISOString();
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     
     const urlRegex = /(https?:\/\/[^\s]+)/;
     const match = comment.match(urlRegex);
@@ -3005,82 +3051,6 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), updates);
 
   }, [user, certificateRequestsById, addCertificateRequestComment]);
-
-  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = inventoryTransferRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
-    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
-    updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString(); // Using approval date for rejection date as well
-    updates[`inventoryTransferRequests/${requestId}/viewedByRequester`] = false;
-
-    const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = {
-        userId: user.id,
-        text: `Request Rejected. Reason: ${comment}`,
-        date: new Date().toISOString()
-    };
-    updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email) {
-        createAndSendNotification(
-            requester.email,
-            `Inventory Transfer Rejected: #${requestId.slice(-6)}`,
-            'Your Inventory Transfer Request was Rejected',
-            {
-                'Request ID': `#${requestId.slice(-6)}`,
-                'Rejected By': user.name,
-                'Reason': comment
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-            'View Transfers'
-        );
-    }
-  }, [user, can.approve_store_requests, inventoryTransferRequests, users, addActivityLog]);
-
-  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    const request = inventoryTransferRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
-    updates[`inventoryTransferRequests/${requestId}/disputeComment`] = comment;
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
-
-    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
-    const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
-
-    approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Disputed: #${requestId.slice(-6)}`,
-          'Inventory Transfer Request Disputed',
-          {
-            'Request ID': `#${requestId.slice(-6)}`,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': request.reason,
-            'Item Count': request.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Transfers'
-        );
-      }
-    });
-
-  }, [user, addActivityLog, users, roles, projects]);
 
   const acknowledgeTransfer = useCallback((requestId: string) => {
     if (!user) return;
@@ -3616,7 +3586,7 @@ const updateInventoryItemGroupByProject = useCallback((
     const { id, ...data } = checklist;
     update(ref(rtdb, `inspectionChecklists/${id}`), data);
   }, []);
-
+  
   const deleteInspectionChecklist = useCallback((id: string) => {
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, []);
@@ -3949,4 +3919,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
