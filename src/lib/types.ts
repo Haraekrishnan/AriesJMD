@@ -513,6 +513,7 @@ export type ManpowerLog = {
   id: string;
   projectId: string;
   date: string; // YYYY-MM-DD
+  openingManpower: number;
   countIn: number;
   personInName?: string;
   countOut: number;
@@ -521,7 +522,7 @@ export type ManpowerLog = {
   personOnLeaveName?: string;
   reason: string;
   updatedBy: string;
-  yesterdayCount: number;
+  updatedAt: string; // ISO String
   total: number;
 };
 
@@ -842,7 +843,6 @@ export type TpCertListItem = {
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
-  ariesId?: string;
 };
 
 export type TpCertList = {
@@ -946,3 +946,4 @@ export type InspectionChecklist = {
 
 
     
+

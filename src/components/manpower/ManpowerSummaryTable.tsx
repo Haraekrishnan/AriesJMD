@@ -3,9 +3,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, isBefore, parseISO } from 'date-fns';
+import { format, isBefore, parseISO, startOfDay, subDays } from 'date-fns';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
+import type { ManpowerLog } from '@/lib/types';
 
 interface ManpowerSummaryTableProps {
   selectedDate?: Date;
@@ -13,7 +14,7 @@ interface ManpowerSummaryTableProps {
 
 interface EditableCell {
   projectId: string;
-  field: 'countIn' | 'countOut' | 'reason' | 'countOnLeave';
+  field: 'openingManpower' | 'countIn' | 'countOut' | 'reason' | 'countOnLeave';
   value: string | number;
 }
 
@@ -31,27 +32,30 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
     
     const summaryData = projects.map(project => {
         const logsForProjectDay = manpowerLogs.filter(log => log.date === dateStr && log.projectId === project.id);
-        const latestLog = logsForProjectDay.length > 0
+        const latestLogForDay = logsForProjectDay.length > 0
             ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
             : null;
-        
-        let dayTotal = 0;
-        if (latestLog) {
-            dayTotal = latestLog.total;
-        } else {
-            const previousLogs = manpowerLogs
-                .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), selectedDate))
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            dayTotal = previousLogs.length > 0 ? (previousLogs[0].total || 0) : 0;
-        }
 
-        const onLeave = latestLog?.countOnLeave || 0;
+        const previousLogs = manpowerLogs
+            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(selectedDate)))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+        const mostRecentPreviousLog = previousLogs[0];
+        
+        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
+        const countIn = latestLogForDay?.countIn || 0;
+        const countOut = latestLogForDay?.countOut || 0;
+        const dayTotal = openingManpower + countIn - countOut;
+        const onLeave = latestLogForDay?.countOnLeave || 0;
         const active = dayTotal - onLeave;
 
         return {
             projectId: project.id,
             projectName: project.name,
-            log: latestLog,
+            log: latestLogForDay,
+            openingManpower,
+            countIn,
+            countOut,
             total: dayTotal,
             onLeave,
             active,
@@ -69,8 +73,9 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
     const data: Record<string, Partial<any>> = {};
     summary.summary.forEach(row => {
         data[row.projectId] = {
-            countIn: row.log?.countIn || 0,
-            countOut: row.log?.countOut || 0,
+            openingManpower: row.openingManpower,
+            countIn: row.log?.countIn ?? 0,
+            countOut: row.log?.countOut ?? 0,
             reason: row.log?.reason || '',
             countOnLeave: row.onLeave || 0
         }
@@ -94,10 +99,10 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
     const projectData = editableData[projectId];
     if (!projectData) return;
 
-    const logDateStr = format(selectedDate, 'yyyy-MM-dd');
     const existingLog = summary.summary.find(s => s.projectId === projectId)?.log;
 
     const logPayload = {
+        openingManpower: Number(projectData.openingManpower),
         countIn: Number(projectData.countIn || 0),
         countOut: Number(projectData.countOut || 0),
         reason: projectData.reason || '',
@@ -129,6 +134,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
         <TableHeader>
             <TableRow>
                 <TableHead>Project / Location</TableHead>
+                <TableHead className="text-center">Opening</TableHead>
                 <TableHead className="text-center">In</TableHead>
                 <TableHead className="text-center">Out</TableHead>
                 <TableHead>Reason</TableHead>
@@ -141,6 +147,15 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
             {summary.summary.map(row => (
                 <TableRow key={row.projectId}>
                     <TableCell className="font-medium">{row.projectName}</TableCell>
+                    <TableCell>
+                        <Input
+                            type="number"
+                            className="w-20 text-center h-8"
+                            value={editableData[row.projectId]?.openingManpower ?? 0}
+                            onChange={(e) => handleInputChange(row.projectId, 'openingManpower', e.target.value)}
+                            onBlur={() => handleBlur(row.projectId)}
+                        />
+                    </TableCell>
                     <TableCell>
                         <Input
                             type="number"
@@ -183,6 +198,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
             ))}
             <TableRow className="font-bold bg-muted/50">
                 <TableCell>Overall Total</TableCell>
+                <TableCell></TableCell>
                 <TableCell></TableCell>
                 <TableCell></TableCell>
                 <TableCell></TableCell>

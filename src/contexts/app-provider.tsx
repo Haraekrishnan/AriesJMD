@@ -162,8 +162,8 @@ type AppContextType = {
   publishIncident: (incidentId: string, comment: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
   markIncidentAsViewed: (incidentId: string) => void;
-  addManpowerLog: (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate?: Date) => Promise<void>;
-  updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => Promise<void>;
+  addManpowerLog: (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'total'>> & { projectId: string }, logDate?: Date) => Promise<void>;
+  updateManpowerLog: (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName' | 'openingManpower'>>) => Promise<void>;
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => Promise<void>;
   addMultipleManpowerProfiles: (profiles: any[]) => number;
   updateManpowerProfile: (profile: ManpowerProfile) => Promise<void>;
@@ -1525,59 +1525,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `incidentReports/${incidentId}`), { [`viewedBy/${user.id}`]: true });
   }, [user]);
 
-  const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'yesterdayCount' | 'total'>> & { projectId: string }, logDate: Date = new Date()): Promise<void> => {
+  const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'total'>> & { projectId: string }, logDate: Date = new Date()): Promise<void> => {
     if (!user) return;
     const logDateStr = format(logDate, 'yyyy-MM-dd');
-    const existingLogRef = query(ref(rtdb, 'manpowerLogs'), orderByChild('date'), equalTo(logDateStr));
-    const snapshot = await get(existingLogRef);
     
-    if (snapshot.exists()) {
-      const existingLogs = snapshot.val();
-      for (const key in existingLogs) {
-        const existingLog = existingLogs[key];
-        if (existingLog.projectId === logData.projectId) {
-          console.warn(`Manpower log already exists for project ${logData.projectId} on ${logDateStr}. Use updateManpowerLog instead.`);
-          toast({ variant: "destructive", title: "Duplicate Log", description: `A log already exists for this project on this date. Please update the existing log.` });
-          return;
-        }
-      }
-    }
+    // Find previous day's total
+    const previousLogs = manpowerLogs.filter(l => l.projectId === logData.projectId && isBefore(parseISO(l.date), startOfDay(logDate)))
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const openingManpower = logData.openingManpower ?? previousLogs[0]?.total ?? 0;
+    
+    const countIn = logData.countIn ?? 0;
+    const countOut = logData.countOut ?? 0;
+    
+    const newTotal = openingManpower + countIn - countOut;
 
     const newLogRef = push(ref(rtdb, 'manpowerLogs'));
     const newLog: Omit<ManpowerLog, 'id'> = {
-      date: logDateStr,
-      ...logData,
-      yesterdayCount: logData.countIn || 0,
-      total: (logData.countIn || 0) - (logData.countOut || 0),
-      updatedBy: user.id,
-    } as any;
+        date: logDateStr,
+        projectId: logData.projectId,
+        openingManpower: openingManpower,
+        countIn: countIn,
+        countOut: countOut,
+        total: newTotal,
+        countOnLeave: logData.countOnLeave || 0,
+        personOnLeaveName: logData.personOnLeaveName,
+        reason: logData.reason || '',
+        updatedBy: user.id,
+        updatedAt: new Date().toISOString()
+    };
 
-    set(newLogRef, newLog);
+    await set(newLogRef, newLog);
     addActivityLog(user.id, 'Manpower Log Added', `Project: ${projects.find(p => p.id === logData.projectId)?.name}, Date: ${logDateStr}`);
+}, [user, projects, addActivityLog, manpowerLogs]);
 
-  }, [user, projects, addActivityLog, toast]);
-
-  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'personInName' | 'personOutName' | 'reason' | 'countOnLeave' | 'personOnLeaveName'>>) => {
+  const updateManpowerLog = useCallback(async (logId: string, data: Partial<Pick<ManpowerLog, 'countIn' | 'countOut' | 'reason' | 'countOnLeave' | 'openingManpower'>>) => {
     if (!user) return;
 
     const log = manpowerLogs.find(l => l.id === logId);
     if (!log) {
-      console.error(`Manpower log not found with id: ${logId}`);
-      return;
+        console.error(`Manpower log not found with id: ${logId}`);
+        return;
     }
 
-    const updates: Partial<ManpowerLog> = { ...data, updatedBy: user.id };
+    const updates: Partial<ManpowerLog> = { ...data, updatedBy: user.id, updatedAt: new Date().toISOString() };
     
-    if(data.countIn !== undefined || data.countOut !== undefined) {
-        const newCountIn = data.countIn !== undefined ? data.countIn : log.countIn || 0;
-        const newCountOut = data.countOut !== undefined ? data.countOut : log.countOut || 0;
-        updates.total = newCountIn - newCountOut;
-    }
+    const openingManpower = data.openingManpower ?? log.openingManpower ?? 0;
+    const countIn = data.countIn ?? log.countIn ?? 0;
+    const countOut = data.countOut ?? log.countOut ?? 0;
+    
+    updates.total = openingManpower + countIn - countOut;
 
-    update(ref(rtdb, `manpowerLogs/${logId}`), updates);
+    await update(ref(rtdb, `manpowerLogs/${logId}`), updates);
     const project = projects.find(p => p.id === log.projectId)?.name;
     addActivityLog(user.id, 'Manpower Log Updated', `Project: ${project}, Date: ${log.date}`);
-  }, [user, manpowerLogs, projects, addActivityLog]);
+}, [user, manpowerLogs, projects, addActivityLog]);
   
   const addManpowerProfile = useCallback(async (profile: Omit<ManpowerProfile, 'id'>): Promise<void> => {
     if (!user) return;
@@ -1818,21 +1819,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { importedCount, notFoundCount };
   }, [user, manpowerProfiles, addActivityLog]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
-
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
