@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquareQuestion } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -161,7 +161,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
 
     return (
-        <Card className={cn("relative", hasUpdate && "border-blue-500")}>
+        <Card className={cn("relative flex flex-col", hasUpdate && "border-blue-500")}>
             {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
             <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
@@ -218,10 +218,10 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     </AccordionItem>
                 </Accordion>
             </CardContent>
-            <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
+            <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2 mt-auto">
                  {canApprove && req.status === 'Pending' && (
                     <>
-                        <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Query')}><MessageSquareQuestion className="mr-2 h-4 w-4" /> Query</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Query')}><MessageSquare className="mr-2 h-4 w-4" /> Query</Button>
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
                         <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                     </>
@@ -284,7 +284,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                 <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Attachment Viewer</DialogTitle>
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                             {!isPdf && (
                                 <>
                                     <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
@@ -376,7 +376,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConfirmAction}>{action}</AlertDialogAction>
+                            <AlertDialogAction onClick={() => handleConfirmAction()}>{action}</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
