@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2 } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquareQuestion } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -35,10 +34,10 @@ const statusVariant: Record<PpeRequestStatus, 'default' | 'secondary' | 'destruc
 };
 
 const RequestCard = ({ req }: { req: PpeRequest }) => {
-    const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock, resolvePpeDispute } = useAppContext();
+    const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, addPpeRequestComment, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock, resolvePpeDispute } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
     const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
-    const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | null>(null);
+    const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
     const [comment, setComment] = useState('');
     const { toast } = useToast();
     const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
@@ -59,7 +58,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
         return storeRoles.includes(user.role);
     }, [user]);
     
-    const handleActionClick = (req: PpeRequest, act: 'Approved' | 'Rejected' | 'Issued' | 'Disputed') => {
+    const handleActionClick = (req: PpeRequest, act: 'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query') => {
         setSelectedRequest(req);
         setAction(act);
         setComment(act === 'Disputed' ? 'I have not received the issued item. Please investigate.' : '');
@@ -67,13 +66,19 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
 
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
-        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed')) {
-            toast({ title: 'Comment required', variant: 'destructive' });
+        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed' || action === 'Query')) {
+            toast({ title: 'Comment required', variant: 'destructive'});
             return;
         }
 
-        updatePpeRequestStatus(selectedRequest.id, action, comment);
-        toast({ title: `Request ${action}` });
+        if (action === 'Query') {
+            addPpeRequestComment(selectedRequest.id, comment);
+            toast({ title: 'Query Sent'});
+        } else {
+            updatePpeRequestStatus(selectedRequest.id, action, comment);
+            toast({ title: `Request ${action}` });
+        }
+
         setSelectedRequest(null);
         setAction(null);
     }
@@ -215,8 +220,9 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2">
                  {canApprove && req.status === 'Pending' && (
                     <>
-                        <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Query')}><MessageSquareQuestion className="mr-2 h-4 w-4" /> Query</Button>
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
+                        <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                     </>
                  )}
                  {canMarkAsIssued && req.status === 'Approved' && (
@@ -325,41 +331,45 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>{action} Request?</AlertDialogTitle>
-                            <AlertDialogDescription>Review the details before confirming.</AlertDialogDescription>
+                            <AlertDialogDescription>
+                                {action === 'Query' ? 'Ask a question or request more information from the user.' : 'Please review the details before confirming.'}
+                            </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="space-y-4 text-sm">
-                            <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 p-2 border rounded-md">
-                                <div className="font-semibold">Employee:</div>
-                                <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
+                            {action !== 'Query' && (
+                                <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 p-2 border rounded-md">
+                                    <div className="font-semibold">Employee:</div>
+                                    <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
 
-                                <div className="font-semibold">Size &amp; Quantity:</div>
-                                <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
-                                
-                                <div className="font-semibold">Stock Availability:</div>
-                                <div>{stockInfo}</div>
+                                    <div className="font-semibold">Size &amp; Quantity:</div>
+                                    <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
+                                    
+                                    <div className="font-semibold">Stock Availability:</div>
+                                    <div>{stockInfo}</div>
 
-                                <div className="font-semibold">Last Issue Date:</div>
-                                <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
+                                    <div className="font-semibold">Last Issue Date:</div>
+                                    <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
 
-                                {(selectedRequest.newRequestJustification || selectedRequest.remarks) && (
-                                    <>
-                                     <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
-                                     <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks}</div>
-                                    </>
-                                )}
-                                 {selectedRequest.attachmentUrl && (
-                                    <>
-                                        <div className="font-semibold">Attachment:</div>
-                                        <div>
-                                            <button onClick={() => setViewingAttachmentUrl(selectedRequest.attachmentUrl!)} className="text-blue-600 hover:underline">
-                                                View Attached File
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
+                                    {(selectedRequest.newRequestJustification || selectedRequest.remarks) && (
+                                        <>
+                                         <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
+                                         <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks}</div>
+                                        </>
+                                    )}
+                                     {selectedRequest.attachmentUrl && (
+                                        <>
+                                            <div className="font-semibold">Attachment:</div>
+                                            <div>
+                                                <button onClick={() => setViewingAttachmentUrl(selectedRequest.attachmentUrl!)} className="text-blue-600 hover:underline">
+                                                    View Attached File
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                             <div>
-                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' ? '(Required)' : '(Optional)'}</Label>
+                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' || action === 'Query' ? '(Required)' : '(Optional)'}</Label>
                                 <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                             </div>
                         </div>
@@ -443,5 +453,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
-
-    
