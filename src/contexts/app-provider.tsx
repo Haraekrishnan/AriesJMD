@@ -450,6 +450,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
+  const can: PermissionsObject = useMemo(() => {
+    const permissions = new Set<Permission>(user && user.role && roles.find(r => r.name === user.role)?.permissions || []);
+    const permissionsObject: PermissionsObject = {} as PermissionsObject;
+    for (const p of ALL_PERMISSIONS) {
+        permissionsObject[p] = permissions.has(p);
+    }
+    return permissionsObject;
+  }, [user, roles]);
+
   // SECTION: ALL FUNCTION DEFINITIONS START HERE
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) {
@@ -2139,7 +2148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can.approve_store_requests, internalRequestsById, users, updateInternalRequestStatus]);
+  }, [user, can, internalRequestsById, users, updateInternalRequestStatus]);
   
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -2429,7 +2438,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, ppeRequests, can.approve_store_requests, updatePpeRequestStatus, users]);
+  }, [user, ppeRequests, can, updatePpeRequestStatus, users]);
 
   const deletePpeRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -2682,7 +2691,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), dbUpdates);
     addActivityLog(user.id, 'Bulk TP Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
     toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
-}, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
+}, [user, can, inventoryItems, addActivityLog, toast]);
 
 const updateInventoryItemGroupByProject = useCallback((
     itemName: string,
@@ -2711,7 +2720,7 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), dbUpdates);
     addActivityLog(user.id, 'Bulk Inspection Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
     toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
-}, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
+}, [user, can, inventoryItems, addActivityLog, toast]);
 
   const deleteInventoryItem = useCallback(async (itemId: string): Promise<void> => {
     const item = inventoryItems.find(i => i.id === itemId);
@@ -2782,7 +2791,7 @@ const updateInventoryItemGroupByProject = useCallback((
         );
       }
     });
-  }, [user, addActivityLog, users, projects, can.approve_store_requests]);
+  }, [user, addActivityLog, users, projects, can]);
 
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
@@ -2900,9 +2909,9 @@ const updateInventoryItemGroupByProject = useCallback((
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-  }, [user, can.approve_store_requests, addActivityLog]);
+  }, [user, can, addActivityLog]);
   
-    const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
+  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const request = inventoryTransferRequests.find(r => r.id === requestId);
     if (!request) return;
@@ -2972,10 +2981,11 @@ const updateInventoryItemGroupByProject = useCallback((
 
     addCertificateRequestComment(requestId, `Request fulfilled by ${user.name}. Comment: ${comment}`);
 
-    const updates: { [key: string]: any } = {};
-    updates[`certificateRequests/${requestId}/status`] = 'Completed';
-    updates[`certificateRequests/${requestId}/completionDate`] = new Date().toISOString();
-    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+    const updates: { [key: string]: any } = {
+        [`certificateRequests/${requestId}/status`]: 'Completed',
+        [`certificateRequests/${requestId}/completionDate`]: new Date().toISOString(),
+        [`certificateRequests/${requestId}/viewedByRequester`]: false,
+    };
     
     const urlRegex = /(https?:\/\/[^\s]+)/;
     const match = comment.match(urlRegex);
@@ -2997,7 +3007,7 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), updates);
 
   }, [user, certificateRequestsById, addCertificateRequestComment]);
-
+  
   // All other function definitions exist here...
   // ... including login, logout, etc.
 
