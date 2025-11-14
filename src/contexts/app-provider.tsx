@@ -415,9 +415,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const manpowerLogs = useMemo(() => Object.values(manpowerLogsById), [manpowerLogsById]);
   const manpowerProfiles = useMemo(() => Object.values(manpowerProfilesById), [manpowerProfilesById]);
   const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
-  const inventoryTransferRequests = useMemo(() => Object.values(inventoryTransferRequestsById), [inventoryTransferRequestsById]);
   const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
   const inventoryItems = useMemo(() => Object.values(inventoryItemsById), [inventoryItemsById]);
+  const inventoryTransferRequests = useMemo(() => Object.values(inventoryTransferRequestsById), [inventoryTransferRequestsById]);
   const utMachines = useMemo(() => Object.values(utMachinesById), [utMachinesById]);
   const dftMachines = useMemo(() => Object.values(dftMachinesById), [dftMachinesById]);
   const mobileSims = useMemo(() => Object.values(mobileSimsById), [mobileSimsById]);
@@ -2586,8 +2586,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updates['ppeStock/coveralls/lastUpdated'] = new Date().toISOString();
     } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
       const stock = ppeStock.find(s => s.id === 'safetyShoes');
-      const currentQuantity = stock && 'quantity' in stock ? stock.quantity || 0 : 0;
-      updates['ppeStock/safetyShoes/quantity'] = Math.max(0, currentQuantity - record.quantity);
+      const currentQty = stock && 'quantity' in stock ? stock.quantity || 0 : 0;
+      updates['ppeStock/safetyShoes/quantity'] = Math.max(0, currentQty - record.quantity);
       updates['ppeStock/safetyShoes/lastUpdated'] = new Date().toISOString();
     }
   
@@ -2763,11 +2763,65 @@ const updateInventoryItemGroupByProject = useCallback((
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
   
+  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      requestDate: new Date().toISOString(),
+      status: 'Pending',
+    };
+    set(newRef, newRequest);
+    addActivityLog(user.id, 'Inventory Transfer Request Created');
+
+    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
+
+  }, [user, addActivityLog, users, roles, projects]);
+  
+  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
+    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
+  }, [user, can.approve_store_requests, addActivityLog]);
+
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
+      ...item,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo || null,
+    }));
     const newList: Omit<TpCertList, 'id'> = {
       ...listData,
+      items: sanitizedItems,
       creatorId: user.id,
       createdAt: new Date().toISOString(),
     };
@@ -2806,7 +2860,7 @@ const updateInventoryItemGroupByProject = useCallback((
           itemId: item.itemId,
           itemType: item.itemType,
           ariesId: item.ariesId || null,
-          chestCrollNo: 'chestCrollNo' in item ? (item as any).chestCrollNo : null,
+          chestCrollNo: (item as any).chestCrollNo || null,
         })),
       };
       addTpCertList(newListData);
@@ -2928,574 +2982,6 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), updates);
 
   }, [user, certificateRequestsById, addCertificateRequestComment]);
-
-  const acknowledgeTransfer = useCallback((requestId: string) => {
-    if (!user) return;
-    const request = inventoryTransferRequests.find(r => r.id === requestId);
-    if (!request) return;
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
-    updates[`inventoryTransferRequests/${requestId}/acknowledgedDate`] = new Date().toISOString();
-    updates[`inventoryTransferRequests/${requestId}/receiverId`] = user.id;
-
-    // Move items to new project
-    request.items.forEach(item => {
-        let itemPath: string | null = null;
-        switch (item.itemType) {
-            case 'Inventory': itemPath = `inventoryItems/${item.itemId}`; break;
-            case 'UTMachine': itemPath = `utMachines/${item.itemId}`; break;
-            case 'DftMachine': itemPath = `dftMachines/${item.itemId}`; break;
-            case 'DigitalCamera': itemPath = `digitalCameras/${item.itemId}`; break;
-            case 'Anemometer': itemPath = `anemometers/${item.itemId}`; break;
-            case 'OtherEquipment': itemPath = `otherEquipments/${item.itemId}`; break;
-        }
-        if (itemPath) {
-            updates[`${itemPath}/projectId`] = request.toProjectId;
-        }
-    });
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
-  }, [user, addActivityLog, inventoryTransferRequests]);
-
-  const clearInventoryTransferHistory = useCallback(() => {
-    if (!user || user.role !== 'Admin') return;
-
-    const twoMonthsAgo = sub(new Date(), { months: 2 }).toISOString();
-
-    const transfersToDelete = inventoryTransferRequests.filter(r => {
-      if (!r.acknowledgedDate) return false;
-      return isBefore(parseISO(r.acknowledgedDate), parseISO(twoMonthsAgo));
-    });
-
-    const updates: { [key: string]: null } = {};
-    transfersToDelete.forEach(r => {
-        updates[`inventoryTransferRequests/${r.id}`] = null;
-    });
-
-    update(ref(rtdb), updates).then(() => {
-        console.log(`Deleted ${transfersToDelete.length} old inventory transfers.`);
-    });
-  }, [user, inventoryTransferRequests]);
-
-  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
-    if (!user) return;
-    const requestsToMark = certificateRequests.filter(r => r.status === 'Completed' && r.requesterId === user.id && (requestType === 'store' ? r.itemId : (r.utMachineId || r.dftMachineId)) && !r.viewedByRequester);
-    const updates: { [key: string]: any } = {};
-    requestsToMark.forEach(req => {
-      updates[`certificateRequests/${req.id}/viewedByRequester`] = true;
-    });
-    update(ref(rtdb), updates);
-  }, [user, certificateRequests]);
-
-  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
-    if (!user) return;
-    update(ref(rtdb, `certificateRequests/${requestId}`), { viewedByRequester: true });
-  }, [user]);
-  
-  const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'utMachines'));
-    set(newRef, machine);
-  }, [user]);
-
-  const updateUTMachine = useCallback((machine: UTMachine) => {
-    if(!user) return;
-    const { id, ...data } = machine;
-    update(ref(rtdb, `utMachines/${id}`), data);
-  }, [user]);
-
-  const deleteUTMachine = useCallback((machineId: string) => {
-    remove(ref(rtdb, `utMachines/${machineId}`));
-  }, []);
-  
-  const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'dftMachines'));
-    set(newRef, machine);
-  }, [user]);
-
-  const updateDftMachine = useCallback((machine: DftMachine) => {
-    if(!user) return;
-    const { id, ...data } = machine;
-    update(ref(rtdb, `dftMachines/${id}`), data);
-  }, [user]);
-
-  const deleteDftMachine = useCallback((machineId: string) => {
-    remove(ref(rtdb, `dftMachines/${machineId}`));
-  }, []);
-  
-  const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'mobileSims'));
-    set(newRef, item);
-  }, [user]);
-
-  const updateMobileSim = useCallback((item: MobileSim) => {
-    if(!user) return;
-    const { id, ...data } = item;
-    update(ref(rtdb, `mobileSims/${id}`), data);
-  }, [user]);
-
-  const deleteMobileSim = useCallback((itemId: string) => {
-    remove(ref(rtdb, `mobileSims/${itemId}`));
-  }, []);
-  
-  const addLaptopDesktop = useCallback((item: Omit<LaptopDesktop, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'laptopsDesktops'));
-    set(newRef, item);
-  }, [user]);
-
-  const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
-    if(!user) return;
-    const { id, ...data } = item;
-    update(ref(rtdb, `laptopsDesktops/${id}`), data);
-  }, [user]);
-
-  const deleteLaptopDesktop = useCallback((itemId: string) => {
-    remove(ref(rtdb, `laptopsDesktops/${itemId}`));
-  }, []);
-  
-  const addDigitalCamera = useCallback((camera: Omit<DigitalCamera, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'digitalCameras'));
-    set(newRef, camera);
-  }, [user]);
-
-  const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
-    if(!user) return;
-    const { id, ...data } = camera;
-    update(ref(rtdb, `digitalCameras/${id}`), data);
-  }, [user]);
-
-  const deleteDigitalCamera = useCallback((cameraId: string) => {
-    remove(ref(rtdb, `digitalCameras/${cameraId}`));
-  }, []);
-
-  const addAnemometer = useCallback((anemometer: Omit<Anemometer, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'anemometers'));
-    set(newRef, anemometer);
-  }, [user]);
-
-  const updateAnemometer = useCallback((anemometer: Anemometer) => {
-    if(!user) return;
-    const { id, ...data } = anemometer;
-    update(ref(rtdb, `anemometers/${id}`), data);
-  }, [user]);
-
-  const deleteAnemometer = useCallback((anemometerId: string) => {
-    remove(ref(rtdb, `anemometers/${anemometerId}`));
-  }, []);
-
-  const addOtherEquipment = useCallback((equipment: Omit<OtherEquipment, 'id'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'otherEquipments'));
-    set(newRef, equipment);
-  }, [user]);
-
-  const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
-    if(!user) return;
-    const { id, ...data } = equipment;
-    update(ref(rtdb, `otherEquipments/${id}`), data);
-  }, [user]);
-
-  const deleteOtherEquipment = useCallback((equipmentId: string) => {
-    remove(ref(rtdb, `otherEquipments/${equipmentId}`));
-  }, []);
-
-  const addMachineLog = useCallback((log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, `machineLogs`));
-    set(newRef, { ...log, loggedByUserId: user.id, machineId: machineId, id: newRef.key });
-  }, [user]);
-
-  const deleteMachineLog = useCallback((logId: string) => {
-    remove(ref(rtdb, `machineLogs/${logId}`));
-  }, []);
-
-  const getMachineLogs = useCallback((machineId: string) => {
-    return machineLogs.filter(log => log.machineId === machineId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [machineLogs]);
-
-  const updateBranding = useCallback((name: string, logo: string | null) => {
-    if (!user || user.role !== 'Admin') return;
-    update(ref(rtdb, 'branding'), { appName: name, appLogo: logo });
-    toast({ title: "Branding Updated" });
-  }, [user, toast]);
-
-  const addAnnouncement = useCallback((data: Partial<Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'announcements'));
-    const newAnnouncement: Omit<Announcement, 'id'> = {
-        ...data,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-        status: 'Pending',
-        comments: [],
-    };
-    set(newRef, newAnnouncement);
-    addActivityLog(user.id, 'Announcement Created', data.title);
-  }, [user, addActivityLog]);
-
-  const updateAnnouncement = useCallback((announcement: Announcement) => {
-    if(!user) return;
-    const { id, ...data } = announcement;
-    update(ref(rtdb, `announcements/${id}`), data);
-    addActivityLog(user.id, 'Announcement Updated', data.title);
-  }, [user, addActivityLog]);
-
-  const approveAnnouncement = useCallback((announcementId: string) => {
-    if(!user) return;
-    update(ref(rtdb, `announcements/${announcementId}`), { status: 'Approved', approverId: user.id });
-  }, [user]);
-
-  const rejectAnnouncement = useCallback((announcementId: string) => {
-    if(!user) return;
-    update(ref(rtdb, `announcements/${announcementId}`), { status: 'Rejected', approverId: user.id });
-  }, [user]);
-
-  const deleteAnnouncement = useCallback((announcementId: string) => {
-    if(!user) return;
-    remove(ref(rtdb, `announcements/${announcementId}`));
-  }, [user]);
-
-  const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
-    if(!user) return;
-    const newCommentRef = push(ref(rtdb, `announcements/${announcementId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    set(newCommentRef, newComment);
-    
-    const updates: { [key: string]: any } = {};
-    updates[`announcements/${announcementId}/status`] = 'Pending';
-    updates[`announcements/${announcementId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-
-    update(ref(rtdb), updates);
-  }, [user]);
-
-  const dismissBroadcast = useCallback((broadcastId: string) => {
-    if(!user) return;
-    update(ref(rtdb, `broadcasts/${broadcastId}`), { [`dismissedBy/${user.id}`]: true });
-  }, [user]);
-
-  const addBroadcast = useCallback((broadcastData: Omit<Broadcast, 'id'|'creatorId'|'createdAt'|'dismissedBy'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'broadcasts'));
-    const newBroadcast: Omit<Broadcast, 'id'> = {
-        ...broadcastData,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newBroadcast);
-  }, [user]);
-
-  const dismissAnnouncement = useCallback((announcementId: string) => {
-    if(!user) return;
-    update(ref(rtdb, `announcements/${announcementId}`), { [`dismissedBy/${user.id}`]: true });
-  }, [user]);
-
-  const addBuilding = useCallback((buildingNumber: string) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'buildings'));
-    set(newRef, { buildingNumber });
-  }, [user]);
-
-  const updateBuilding = useCallback((building: Building) => {
-    if(!user) return;
-    const { id, ...data } = building;
-    update(ref(rtdb, `buildings/${id}`), data);
-  }, [user]);
-
-  const deleteBuilding = useCallback((buildingId: string) => {
-    remove(ref(rtdb, `buildings/${buildingId}`));
-  }, []);
-
-  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
-    const beds: { [key: string]: Bed } = {};
-    for (let i = 1; i <= roomData.numberOfBeds; i++) {
-        const bedId = `bed-${i}`;
-        beds[bedId] = { id: bedId, bedNumber: i.toString(), bedType: 'Bunk' };
-    }
-    set(newRef, { ...roomData, beds, id: newRef.key });
-  }, [user]);
-
-  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
-    remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}`));
-  }, []);
-
-  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    const updates: { [key: string]: any } = {};
-    updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = occupantId;
-    update(ref(rtdb), updates);
-  }, []);
-
-  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    const updates: { [key: string]: any } = {};
-    updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
-    update(ref(rtdb), updates);
-  }, []);
-
-  const saveJobSchedule = useCallback((schedule: JobSchedule) => {
-    const { id, ...data } = schedule;
-    const dataToSave = {
-        ...data,
-        items: data.items || [],
-    };
-    update(ref(rtdb, `jobSchedules/${id}`), dataToSave);
-  }, []);
-
-  const addJobRecordPlant = useCallback((plantName: string) => {
-    const newRef = push(ref(rtdb, 'jobRecordPlants'));
-    set(newRef, { name: plantName });
-  }, []);
-
-  const deleteJobRecordPlant = useCallback((plantId: string) => {
-    remove(ref(rtdb, `jobRecordPlants/${plantId}`));
-  }, []);
-
-  const addJobCode = useCallback((jobCode: Omit<JobCode, 'id'>) => {
-    const newRef = push(ref(rtdb, 'jobCodes'));
-    set(newRef, jobCode);
-  }, []);
-
-  const updateJobCode = useCallback((jobCode: JobCode) => {
-    const { id, ...data } = jobCode;
-    update(ref(rtdb, `jobCodes/${id}`), data);
-  }, []);
-
-  const deleteJobCode = useCallback((jobCodeId: string) => {
-    remove(ref(rtdb, `jobCodes/${jobCodeId}`));
-  }, []);
-
-  const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => {
-    let path = `jobRecords/${monthKey}/records/${employeeId}`;
-
-    if (type === 'status' && day !== null) {
-      path += `/days/${day}`;
-    } else if (type === 'dailyOvertime' && day !== null) {
-      path += `/dailyOvertime/${day}`;
-    } else if (type === 'dailyComments' && day !== null) {
-      path += `/dailyComments/${day}`;
-    } else if (type === 'plant') {
-      path += '/plant';
-    } else if (type === 'sundayDuty') {
-        path += '/additionalSundayDuty';
-    } else {
-        return;
-    }
-    
-    set(ref(rtdb, path), codeOrValue);
-  }, []);
-
-  const savePlantOrder = useCallback((monthKey: string, plantName: string, orderedIds: string[]) => {
-    const path = `jobRecords/${monthKey}/plantsOrder/${plantName}`;
-    set(ref(rtdb, path), orderedIds);
-  }, []);
-
-  const lockJobSchedule = useCallback((date: string) => {
-    jobSchedules.forEach(schedule => {
-        if(schedule.date === date) {
-            update(ref(rtdb, `jobSchedules/${schedule.id}`), { isLocked: true });
-        }
-    });
-  }, [jobSchedules]);
-
-  const unlockJobSchedule = useCallback((date: string, projectId: string) => {
-      const scheduleId = `${projectId}_${date}`;
-      update(ref(rtdb, `jobSchedules/${scheduleId}`), { isLocked: false });
-  }, []);
-
-  const lockJobRecordSheet = useCallback((monthKey: string) => {
-    update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: true });
-  }, []);
-
-  const unlockJobRecordSheet = useCallback((monthKey: string) => {
-    update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: false });
-  }, []);
-
-  const addVendor = useCallback((vendor: Omit<Vendor, 'id'>) => {
-    const newRef = push(ref(rtdb, 'vendors'));
-    set(newRef, vendor);
-  }, []);
-
-  const updateVendor = useCallback((vendor: Vendor) => {
-    const { id, ...data } = vendor;
-    update(ref(rtdb, `vendors/${id}`), data);
-  }, []);
-
-  const deleteVendor = useCallback((vendorId: string) => {
-    remove(ref(rtdb, `vendors/${vendorId}`));
-  }, []);
-
-  const addPayment = useCallback((payment: Omit<Payment, 'id'|'requesterId'|'status'|'approverId'|'date'|'comments'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'payments'));
-    const newPayment: Omit<Payment, 'id'> = {
-      ...payment,
-      requesterId: user.id,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      comments: [],
-    };
-    set(newRef, newPayment);
-  }, [user]);
-
-  const updatePayment = useCallback((payment: Payment) => {
-    const { id, ...data } = payment;
-    update(ref(rtdb, `payments/${id}`), data);
-  }, []);
-
-  const updatePaymentStatus = useCallback((paymentId: string, status: PaymentStatus, comment: string) => {
-    update(ref(rtdb, `payments/${paymentId}`), { status, comment });
-  }, []);
-
-  const deletePayment = useCallback((paymentId: string) => {
-    remove(ref(rtdb, `payments/${paymentId}`));
-  }, []);
-
-  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'purchaseRegisters'));
-    const newPurchase: Omit<PurchaseRegister, 'id'> = {
-      ...purchase,
-      creatorId: user.id,
-      date: new Date().toISOString(),
-    };
-    set(newRef, newPurchase);
-  }, [user]);
-
-  const updatePurchaseRegister = useCallback((purchase: PurchaseRegister) => {
-    const { id, ...data } = purchase;
-    update(ref(rtdb, `purchaseRegisters/${id}`), data);
-  }, []);
-
-  const updatePurchaseRegisterPoNumber = useCallback((purchaseRegisterId: string, poNumber: string) => {
-    update(ref(rtdb, `purchaseRegisters/${purchaseRegisterId}`), { poNumber });
-  }, []);
-
-  const deletePurchaseRegister = useCallback((id: string) => {
-    remove(ref(rtdb, `purchaseRegisters/${id}`));
-  }, []);
-
-  const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'igpOgpRecords'));
-    const newRecord: Omit<IgpOgpRecord, 'id'> = {
-      ...record,
-      creatorId: user.id,
-    };
-    set(newRef, newRecord);
-  }, [user]);
-
-  const addFeedback = useCallback((subject: string, message: string) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'feedback'));
-    const newFeedback: Omit<Feedback, 'id'> = {
-      subject,
-      message,
-      userId: user.id,
-      date: new Date().toISOString(),
-      status: 'New',
-      viewedBy: {},
-    };
-    set(newRef, newFeedback);
-  }, [user]);
-  
-  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
-    if (!user) return;
-    update(ref(rtdb, `feedback/${feedbackId}`), { status });
-  }, [user]);
-
-  const markFeedbackAsViewed = useCallback(() => {
-    if (!user) return;
-    const updates: { [key: string]: boolean } = {};
-    feedback.forEach(f => {
-      if (!f.viewedBy?.[user.id]) {
-        updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
-      }
-    });
-    update(ref(rtdb), updates);
-  }, [user, feedback]);
-
-  const addDocument = useCallback((data: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'downloadableDocuments'));
-    const newDocument: Omit<DownloadableDocument, 'id'> = {
-      ...data,
-      uploadedBy: user.id,
-      createdAt: new Date().toISOString(),
-    };
-    set(newRef, newDocument);
-  }, [user]);
-
-  const updateDocument = useCallback((doc: DownloadableDocument) => {
-    const { id, ...data } = doc;
-    update(ref(rtdb, `downloadableDocuments/${id}`), data);
-  }, []);
-
-  const deleteDocument = useCallback((docId: string) => {
-    remove(ref(rtdb, `downloadableDocuments/${docId}`));
-  }, []);
-
-  const addLogbookRequest = useCallback((manpowerId: string, remarks?: string) => {
-    if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'logbookRequests'));
-    const newRequest: Omit<LogbookRequest, 'id'|'manpowerId'|'status'|'comments'|'requestDate'> = {
-        requesterId: user.id,
-        remarks: remarks || '',
-    };
-    set(newRequestRef, { ...newRequest, manpowerId: manpowerId, status: 'Pending', comments: [], requestDate: new Date().toISOString() });
-  }, [user]);
-
-  const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
-    update(ref(rtdb, `logbookRequests/${requestId}`), { status, comment });
-  }, []);
-
-  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
-    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user!.id, text, date: new Date().toISOString() };
-    set(newCommentRef, { ...newComment, id: newCommentRef.key });
-  }, [user]);
-  
-  const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`)).then(() => onComplete());
-  }, []);
-
-  const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'inspectionChecklists'));
-    
-    const dataToSave: Partial<InspectionChecklist> = {
-        ...checklist,
-        purchaseDate: checklist.purchaseDate || null,
-        firstUseDate: checklist.firstUseDate || null,
-    };
-    
-    const newChecklist = { ...dataToSave, id: newRef.key! };
-    set(newRef, newChecklist);
-
-    // Also update the inspection due date on the inventory item
-    update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
-      inspectionDueDate: checklist.nextDueDate,
-      lastUpdated: new Date().toISOString()
-    });
-
-    addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
-  }, [user, addActivityLog]);
-
-  const updateInspectionChecklist = useCallback((checklist: InspectionChecklist) => {
-    if (!user) return;
-    const { id, ...data } = checklist;
-    update(ref(rtdb, `inspectionChecklists/${id}`), data);
-  }, [user]);
-  
-  const deleteInspectionChecklist = useCallback((id: string) => {
-    if (!user) return;
-    remove(ref(rtdb, `inspectionChecklists/${id}`));
-  }, [user]);
 
   // All other function definitions exist here...
   // ... including login, logout, etc.
@@ -3826,7 +3312,4 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
 
-
-
-
-
+    
