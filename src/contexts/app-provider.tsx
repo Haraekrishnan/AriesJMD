@@ -415,9 +415,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const manpowerLogs = useMemo(() => Object.values(manpowerLogsById), [manpowerLogsById]);
   const manpowerProfiles = useMemo(() => Object.values(manpowerProfilesById), [manpowerProfilesById]);
   const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
+  const inventoryTransferRequests = useMemo(() => Object.values(inventoryTransferRequestsById), [inventoryTransferRequestsById]);
   const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
   const inventoryItems = useMemo(() => Object.values(inventoryItemsById), [inventoryItemsById]);
-  const inventoryTransferRequests = useMemo(() => Object.values(inventoryTransferRequestsById), [inventoryTransferRequestsById]);
   const utMachines = useMemo(() => Object.values(utMachinesById), [utMachinesById]);
   const dftMachines = useMemo(() => Object.values(dftMachinesById), [dftMachinesById]);
   const mobileSims = useMemo(() => Object.values(mobileSimsById), [mobileSimsById]);
@@ -2007,7 +2007,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
             if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
               const currentStock = inventoryItem.quantity || 0;
-              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, currentStock - item.quantity);
+              updates[`inventoryItems/${inventoryItem.id}/quantity`] = Math.max(0, (inventoryItem.quantity || 0) - item.quantity);
             }
           }
         }
@@ -2774,7 +2774,7 @@ const updateInventoryItemGroupByProject = useCallback((
         status: 'Pending',
         items: requestData.items.map(item => ({
             ...item,
-            ariesId: item.ariesId || null
+            ariesId: item.ariesId || null,
         }))
     };
     set(newRequestRef, newRequest);
@@ -3235,18 +3235,16 @@ const updateInventoryItemGroupByProject = useCallback((
 
   const addMachineLog = useCallback((log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
     if(!user) return;
-    const newRef = push(ref(rtdb, `machines/${machineId}/logs`));
-    set(newRef, { ...log, loggedByUserId: user.id });
+    const newRef = push(ref(rtdb, `machineLogs`));
+    set(newRef, { ...log, loggedByUserId: user.id, machineId: machineId, id: newRef.key });
   }, [user]);
 
   const deleteMachineLog = useCallback((logId: string) => {
-    // Implement the logic to delete the machine log
     remove(ref(rtdb, `machineLogs/${logId}`));
   }, []);
 
   const getMachineLogs = useCallback((machineId: string) => {
-    // Implement the logic to get machine logs
-    return machineLogs.filter(log => log.machineId === machineId);
+    return machineLogs.filter(log => log.machineId === machineId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [machineLogs]);
 
   const updateBranding = useCallback((name: string, logo: string | null) => {
@@ -3344,11 +3342,12 @@ const updateInventoryItemGroupByProject = useCallback((
   const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
     if(!user) return;
     const newRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
-    const beds: { [key: string]: { isOccupied: boolean } } = {};
+    const beds: { [key: string]: Bed } = {};
     for (let i = 1; i <= roomData.numberOfBeds; i++) {
-      beds[`bed-${i}`] = { isOccupied: false };
+        const bedId = `bed-${i}`;
+        beds[bedId] = { id: bedId, bedNumber: i.toString(), bedType: 'Bunk' };
     }
-    set(newRef, { ...roomData, beds });
+    set(newRef, { ...roomData, beds, id: newRef.key });
   }, [user]);
 
   const deleteRoom = useCallback((buildingId: string, roomId: string) => {
@@ -3358,14 +3357,12 @@ const updateInventoryItemGroupByProject = useCallback((
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
     const updates: { [key: string]: any } = {};
     updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = occupantId;
-    updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/isOccupied`] = true;
     update(ref(rtdb), updates);
   }, []);
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
     const updates: { [key: string]: any } = {};
     updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
-    updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/isOccupied`] = false;
     update(ref(rtdb), updates);
   }, []);
 
@@ -3600,18 +3597,37 @@ const updateInventoryItemGroupByProject = useCallback((
   }, []);
 
   const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
+    if (!user) return;
     const newRef = push(ref(rtdb, 'inspectionChecklists'));
-    set(newRef, checklist);
-  }, []);
+    
+    const dataToSave: Partial<InspectionChecklist> = {
+        ...checklist,
+        purchaseDate: checklist.purchaseDate || null,
+        firstUseDate: checklist.firstUseDate || null,
+    };
+    
+    const newChecklist = { ...dataToSave, id: newRef.key! };
+    set(newRef, newChecklist);
+
+    // Also update the inspection due date on the inventory item
+    update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
+      inspectionDueDate: checklist.nextDueDate,
+      lastUpdated: new Date().toISOString()
+    });
+
+    addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
+  }, [user, addActivityLog]);
 
   const updateInspectionChecklist = useCallback((checklist: InspectionChecklist) => {
+    if (!user) return;
     const { id, ...data } = checklist;
     update(ref(rtdb, `inspectionChecklists/${id}`), data);
-  }, []);
+  }, [user]);
   
   const deleteInspectionChecklist = useCallback((id: string) => {
+    if (!user) return;
     remove(ref(rtdb, `inspectionChecklists/${id}`));
-  }, []);
+  }, [user]);
 
   // All other function definitions exist here...
   // ... including login, logout, etc.
@@ -3714,10 +3730,10 @@ const updateInventoryItemGroupByProject = useCallback((
     const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
 
     const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => ['Completed', 'Rejected', 'Approved'].includes(r.status)) : [];
-
+    
     let totalWorking = 0;
     let totalOnLeave = 0;
-
+    
     projects.forEach(project => {
         const logsForProjectDay = manpowerLogs.filter(log => log.date === format(new Date(), 'yyyy-MM-dd') && log.projectId === project.id);
         const latestLogForDay = logsForProjectDay.length > 0
@@ -3941,6 +3957,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 
