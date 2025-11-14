@@ -335,7 +335,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                             <TableRow>
                                                 <TableHead>Serial No.</TableHead>
                                                 <TableHead>Aries ID</TableHead>
-                                                {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No</TableHead>}
+                                                {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
                                                 <TableHead>Status</TableHead>
                                                 <TableHead>Location</TableHead>
                                                 <TableHead>Insp. Due</TableHead>
@@ -430,5 +430,3 @@ export default function InventoryTable({ items }: InventoryTableProps) {
         </TooltipProvider>
     );
 }
-
-    

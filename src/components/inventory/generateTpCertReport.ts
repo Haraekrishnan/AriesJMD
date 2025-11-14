@@ -8,6 +8,8 @@ import type { TpCertListItem } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
 interface CertItem {
+  itemId: string;
+  itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
