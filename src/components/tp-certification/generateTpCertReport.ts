@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -248,9 +249,9 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   processedItems.forEach(group => {
     const groupSize = group.serialNumbers.length;
     const isHarness = group.materialName.toLowerCase() === 'harness';
-    const isWireSling = group.materialName.toLowerCase() === 'wire sling';
 
     group.serialNumbers.forEach((serial, index) => {
+        const isWireSling = group.materialName.toLowerCase() === 'wire sling';
         let manufacturerSrNo = serial;
         if (isWireSling && group.ariesIds[index]) {
             manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
