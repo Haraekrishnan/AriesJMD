@@ -449,7 +449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
-
+  
   // SECTION: PERMISSIONS
   const can = useMemo(() => {
     const permissions: Partial<PermissionsObject> = {};
@@ -2766,19 +2766,26 @@ const updateInventoryItemGroupByProject = useCallback((
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    
+    const sanitizedItems = requestData.items.map(item => ({
+        ...item,
+        ariesId: item.ariesId || null,
+    }));
+
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-      ...requestData,
-      requesterId: user.id,
-      requestDate: new Date().toISOString(),
-      status: 'Pending',
+        ...requestData,
+        items: sanitizedItems,
+        requesterId: user.id,
+        requestDate: new Date().toISOString(),
+        status: 'Pending',
     };
     set(newRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
-
+  
     const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
     const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
     const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-
+  
     approvers.forEach(approver => {
       if (approver.email) {
         createAndSendNotification(
@@ -2797,33 +2804,39 @@ const updateInventoryItemGroupByProject = useCallback((
         );
       }
     });
-
   }, [user, addActivityLog, users, roles, projects]);
   
-  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
-    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-  }, [user, can.approve_store_requests, addActivityLog]);
-
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only an administrator can delete transfer requests.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+    toast({
+      title: 'Transfer Request Deleted',
+      description: 'The request has been permanently removed.',
+      variant: 'destructive',
+    });
+    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
+  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
     const sanitizedItems = listData.items.map(item => ({
-      ...item,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo || null,
+        ...item,
+        ariesId: item.ariesId || null,
+        chestCrollNo: item.chestCrollNo || null,
     }));
     const newList: Omit<TpCertList, 'id'> = {
-      ...listData,
-      items: sanitizedItems,
-      creatorId: user.id,
-      createdAt: new Date().toISOString(),
+        ...listData,
+        items: sanitizedItems,
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
     };
     set(newRef, newList);
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
@@ -2900,6 +2913,17 @@ const updateInventoryItemGroupByProject = useCallback((
 
   }, [user, addActivityLog, addTpCertList, users, projects]);
   
+  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
+    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
+  }, [user, can.approve_store_requests, addActivityLog]);
+  
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -2933,7 +2957,7 @@ const updateInventoryItemGroupByProject = useCallback((
         }
     });
   }, [user, users, addActivityLog]);
-  
+
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const request = certificateRequestsById[requestId];
@@ -3313,3 +3337,4 @@ export const useAppContext = (): AppContextType => {
 };
 
     
+
