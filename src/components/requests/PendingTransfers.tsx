@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -10,14 +11,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
-import type { InventoryTransferRequest, TpCertList } from '@/lib/types';
+import type { InventoryItem, InventoryTransferRequest, TpCertList, UTMachine } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, inventoryItems, utMachines, dftMachines } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [rejectionComment, setRejectionComment] = useState('');
@@ -75,16 +76,28 @@ export default function PendingTransfers() {
   };
   
   const handleCreateTpList = (request: InventoryTransferRequest) => {
+    const fullItems = request.items.map(item => {
+        let fullItem;
+        if (item.itemType === 'Inventory') {
+            fullItem = inventoryItems.find(i => i.id === item.itemId);
+        } else if (item.itemType === 'UTMachine') {
+            fullItem = utMachines.find(i => i.id === item.itemId);
+        } else if (item.itemType === 'DftMachine') {
+            fullItem = dftMachines.find(i => i.id === item.itemId);
+        }
+        return fullItem ? { ...item, ...fullItem } : item;
+    });
+
     const listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> = {
       name: `From Transfer ${request.id.slice(-6)}`,
       date: new Date().toISOString().split('T')[0],
-      items: request.items.map(item => ({
+      items: fullItems.map(item => ({
         itemId: item.itemId,
         itemType: item.itemType,
         materialName: item.name,
         manufacturerSrNo: item.serialNumber,
         ariesId: item.ariesId,
-        chestCrollNo: (item as any).chestCrollNo,
+        chestCrollNo: (item as InventoryItem).chestCrollNo,
       })),
     };
     addTpCertList(listData);
