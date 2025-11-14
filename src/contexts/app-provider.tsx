@@ -1929,7 +1929,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, internalRequestsById, addInternalRequestComment, toast]);
   
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user) return;
+    if (!user || !can.approve_store_requests) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
   
@@ -2038,7 +2038,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
+  }, [user, can.approve_store_requests, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
 
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if(!user) return;
@@ -2748,49 +2748,24 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
-  
-  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+
+  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
-    
-    const sanitizedItems = requestData.items.map(item => ({
+    const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
       ...item,
       ariesId: item.ariesId || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
     }));
-  
-    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-        ...requestData,
+    const newList: Omit<TpCertList, 'id'> = {
+        ...listData,
         items: sanitizedItems,
-        requesterId: user.id,
-        requestDate: new Date().toISOString(),
-        status: 'Pending',
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
     };
-    set(newRequestRef, newRequest);
-    addActivityLog(user.id, 'Inventory Transfer Request Created');
-  
-    const approvers = users.filter(u => can.approve_store_requests);
-    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-  
-    approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Request from ${user.name}`,
-          'New Inventory Transfer Request',
-          {
-            'Requester': user.name,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': requestData.reason,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Request'
-        );
-      }
-    });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects]);
+    set(newRef, newList);
+    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
 
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
@@ -2850,6 +2825,49 @@ const updateInventoryItemGroupByProject = useCallback((
 
   }, [user, addActivityLog, addTpCertList, users, projects]);
   
+  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    
+    const sanitizedItems = requestData.items.map(item => ({
+      ...item,
+      ariesId: item.ariesId || null,
+    }));
+  
+    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+        ...requestData,
+        items: sanitizedItems,
+        requesterId: user.id,
+        requestDate: new Date().toISOString(),
+        status: 'Pending',
+    };
+    set(newRequestRef, newRequest);
+    addActivityLog(user.id, 'Inventory Transfer Request Created');
+  
+    const approvers = users.filter(u => can.approve_store_requests);
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+  
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
+  }, [user, addActivityLog, users, can, projects]);
+  
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
     if (!user || !can.approve_store_requests) return;
 
@@ -2871,10 +2889,8 @@ const updateInventoryItemGroupByProject = useCallback((
     
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
-    // A comment should also be added, but this depends on a unified comment system for transfers.
-    // For now, the status change and log are the key actions.
   }, [user, inventoryTransferRequests, addActivityLog]);
-  
+
   const acknowledgeTransfer = useCallback((requestId: string) => {
     if (!user) return;
     const request = inventoryTransferRequests.find(r => r.id === requestId);
@@ -2904,7 +2920,7 @@ const updateInventoryItemGroupByProject = useCallback((
     toast({ title: 'Transfer Completed', description: 'The items have been received and their location updated.' });
     addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
   }, [user, inventoryTransferRequests, toast, addActivityLog]);
-
+  
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
       toast({
@@ -2923,37 +2939,17 @@ const updateInventoryItemGroupByProject = useCallback((
     addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
   }, [user, toast, addActivityLog]);
   
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      ...item,
-      ariesId: item.ariesId || null,
-      chestCrollNo: (item as any).chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
+  const clearInventoryTransferHistory = useCallback(() => {
+    if(!user || user.role !== 'Admin') return;
+    const updates: { [key: string]: null } = {};
+    inventoryTransferRequests.forEach(req => {
+        if(req.status === 'Completed' || req.status === 'Rejected') {
+            updates[`inventoryTransferRequests/${req.id}`] = null;
+        }
+    });
+    update(ref(rtdb), updates);
+  }, [user, inventoryTransferRequests]);
   
-  const updateTpCertList = useCallback((listData: TpCertList) => {
-    const { id, ...data } = listData;
-    const sanitizedData = {
-      ...data,
-      items: data.items.map(item => ({
-        ...item,
-        ariesId: item.ariesId === undefined ? null : item.ariesId,
-        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
-      })),
-    };
-    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-  }, []);
-
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -2987,7 +2983,7 @@ const updateInventoryItemGroupByProject = useCallback((
         }
     });
   }, [user, users, addActivityLog]);
-
+  
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const request = certificateRequestsById[requestId];
@@ -3168,7 +3164,7 @@ const updateInventoryItemGroupByProject = useCallback((
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount,
     };
   }, [user, can, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs, projects]);
-
+  
   // All other function definitions exist here...
   // ... including login, logout, etc.
 
