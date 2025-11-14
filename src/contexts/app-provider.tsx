@@ -755,6 +755,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
   
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
+  
   const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
@@ -787,21 +802,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, ppeRequests, users, manpowerProfiles]);
 
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
-  
   const addManagementRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
     const request = managementRequestsById[requestId];
@@ -1795,7 +1795,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb), updates);
-  }, [user, internalRequestsById, addInternalRequestComment, can.approve_store_requests]);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -1886,17 +1886,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const request = managementRequestsById[requestId];
     if(!request) return;
 
-    const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    addManagementRequestComment(requestId, comment);
     
     const updates: { [key: string]: any } = {};
-    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`managementRequests/${requestId}/status`] = status;
     updates[`managementRequests/${requestId}/approverId`] = user.id;
     updates[`managementRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
-  }, [user, managementRequestsById]);
+  }, [user, managementRequestsById, addManagementRequestComment]);
 
   const deleteManagementRequest = useCallback((requestId: string) => {
     if (user?.role !== 'Admin') return;
@@ -2089,10 +2087,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    if (!user) return;
+    if(!user) return;
     const newRef = push(ref(rtdb, 'inventoryItems'));
-    const dataToSave = {
-      ...itemData,
+    const dataToSave = { 
+      ...itemData, 
       lastUpdated: new Date().toISOString(),
       movedToProjectId: itemData.movedToProjectId || null,
       chestCrollNo: itemData.chestCrollNo || null,
@@ -2148,8 +2146,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
-    const updates = {
-      ...data,
+    const updates = { 
+      ...data, 
       lastUpdated: new Date().toISOString(),
       movedToProjectId: data.movedToProjectId || null,
       chestCrollNo: data.chestCrollNo || null,
@@ -3203,6 +3201,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     seedData();
 
+    // Data migration for chestCrollNo
+    const migrateHarnessData = async () => {
+      const inventorySnapshot = await get(ref(rtdb, 'inventoryItems'));
+      if (inventorySnapshot.exists()) {
+        const items = inventorySnapshot.val();
+        const updates: { [key: string]: any } = {};
+        for (const key in items) {
+          if (items[key].name === 'Harness' && items[key].chestCrollNo === undefined) {
+            updates[`/inventoryItems/${key}/chestCrollNo`] = null; // Use null for Firebase
+          }
+        }
+        if (Object.keys(updates).length > 0) {
+          console.log(`Migrating ${Object.keys(updates).length} harness items...`);
+          await update(ref(rtdb), updates);
+        }
+      }
+    };
+    if(user?.role === 'Admin') migrateHarnessData();
+
     if (!storedUserId) {
       setLoading(false);
       // Clear all state when user logs out
@@ -3368,3 +3385,4 @@ export const useAppContext = (): AppContextType => {
 };
 
     
+
