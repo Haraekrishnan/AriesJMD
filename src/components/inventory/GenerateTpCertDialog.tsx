@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -101,17 +100,28 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
 
   const handleSelect = (item: CertItem) => {
+    const materialName =
+      (item as any).name ||
+      (item as any).machineName ||
+      (item as any).equipmentName;
+
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
-      materialName: (item as any).name || (item as any).machineName || (item as any).equipmentName,
+      materialName,
       manufacturerSrNo: item.serialNumber,
-      chestCrollNo: item.itemType === 'Inventory' && (item as InventoryItem).name.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
+      chestCrollNo:
+        item.itemType === 'Inventory' &&
+        materialName?.toLowerCase() === 'harness'
+          ? (item as InventoryItem).chestCrollNo
+          : undefined,
       ariesId: item.ariesId,
     };
+  
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
       setSelectedItems(prev => [...prev, newItem]);
     }
+  
     setSearchTerm('');
   };
 
