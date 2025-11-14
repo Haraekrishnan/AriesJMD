@@ -1,5 +1,7 @@
+
 'use client';
 
+import { AuthProvider } from './auth-provider';
 import { AppProvider } from './app-provider';
 import { useState, useEffect } from 'react';
 
@@ -10,5 +12,13 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     setIsClient(true);
   }, []);
 
-  return <AppProvider>{isClient ? children : null}</AppProvider>;
+  if (!isClient) {
+    return null;
+  }
+
+  return (
+    <AuthProvider>
+      <AppProvider>{children}</AppProvider>
+    </AuthProvider>
+  );
 }
