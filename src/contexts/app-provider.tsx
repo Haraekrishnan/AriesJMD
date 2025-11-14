@@ -450,6 +450,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
+  // SECTION: PERMISSIONS
+  const can: PermissionsObject = useMemo(() => {
+    const userRole = roles.find(r => r.name === user?.role);
+    const permissions = userRole?.permissions || [];
+    const canObject: PermissionsObject = {} as PermissionsObject;
+    for (const permission of ALL_PERMISSIONS) {
+      canObject[permission] = permissions.includes(permission);
+    }
+    return canObject;
+  }, [user, roles]);
+
   // SECTION: ALL FUNCTION DEFINITIONS START HERE
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) {
@@ -805,6 +816,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...taskData,
       creatorId: user.id,
       assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
+      assigneeIds: taskData.assigneeIds,
       status: 'To Do',
       subtasks: subtasks,
       comments: [],
@@ -2959,6 +2971,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
   }, []);
   
+  const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'inspectionChecklists'));
+    
+    const dataToSave: Partial<InspectionChecklist> = {
+        ...checklist,
+        purchaseDate: checklist.purchaseDate || null,
+        firstUseDate: checklist.firstUseDate || null,
+    };
+    
+    const newChecklist = { ...dataToSave, id: newRef.key! };
+    set(newRef, newChecklist);
+
+    // Also update the inspection due date on the inventory item
+    update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
+      inspectionDueDate: checklist.nextDueDate,
+      lastUpdated: new Date().toISOString()
+    });
+
+    addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
+  }, [user, addActivityLog]);
+
+  const updateInspectionChecklist = useCallback((checklist: InspectionChecklist) => {
+    if (!user) return;
+    const { id, ...data } = checklist;
+    update(ref(rtdb, `inspectionChecklists/${id}`), data);
+  }, [user]);
+  
+  const deleteInspectionChecklist = useCallback((id: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `inspectionChecklists/${id}`));
+  }, [user]);
+
   // All other function definitions exist here...
   
   // SECTION: Computed Values (Memoized)
@@ -3286,3 +3331,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+    
