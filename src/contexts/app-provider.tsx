@@ -752,7 +752,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         }
     });
-  }, [user, tasksById, users, addActivityLog]);
+  }, [user, tasksById, users]);
   
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
@@ -1036,55 +1036,1071 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`tasks/${taskId}/approverId`] = task.creatorId;
 
     update(ref(rtdb), updates);
-  }, [user, addComment]);
-  
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequests.find(r => r.id === requestId);
-    if (!request) return;
+  }, [user, addComment, tasksById]);
 
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+  const getExpandedPlannerEvents = useCallback((month: Date, userId: string): (PlannerEvent & { eventDate: Date })[] => {
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    return plannerEvents.filter(event => event.userId === userId).flatMap(event => {
+        const eventStartDate = parseISO(event.date);
+        if (!isValid(eventStartDate)) return [];
+
+        switch (event.frequency) {
+            case 'once':
+                return isSameMonth(eventStartDate, month) ? [{ ...event, eventDate: eventStartDate }] : [];
+            case 'daily':
+                return daysInMonth.filter(day => day >= startOfDay(eventStartDate)).map(day => ({ ...event, eventDate: day }));
+            case 'daily-except-sundays':
+                return daysInMonth.filter(day => day >= startOfDay(eventStartDate) && !isSunday(day)).map(day => ({ ...event, eventDate: day }));
+            case 'weekly':
+                return daysInMonth.filter(day => day >= startOfDay(eventStartDate) && getDay(day) === getDay(eventStartDate)).map(day => ({ ...event, eventDate: day }));
+            case 'weekends':
+                return daysInMonth.filter(day => day >= startOfDay(eventStartDate) && (isSaturday(day) || isSunday(day))).map(day => ({ ...event, eventDate: day }));
+            case 'monthly':
+                const eventDayOfMonth = getDate(eventStartDate);
+                return daysInMonth.filter(day => day >= startOfDay(eventStartDate) && getDate(day) === eventDayOfMonth).map(day => ({ ...event, eventDate: day }));
+            default:
+                return [];
+        }
+    });
+  }, [plannerEvents]);
+
+  const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'plannerEvents'));
+    set(newRef, { ...eventData, id: newRef.key });
+    addActivityLog(user.id, "Planner Event Created", `Created event: ${eventData.title}`);
+
+    if (eventData.userId !== user.id) {
+        const targetUser = users.find(u => u.id === eventData.userId);
+        if (targetUser?.email) {
+            createAndSendNotification(
+                targetUser.email,
+                `New Delegated Event: ${eventData.title}`,
+                'A new event has been added to your planner',
+                {
+                    'Event': eventData.title,
+                    'Date': format(parseISO(eventData.date), 'PPP'),
+                    'Delegated by': user.name,
+                    'Description': eventData.description || 'N/A'
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/schedule?userId=${targetUser.id}&date=${eventData.date}`,
+                'View Planner'
+            );
+        }
+    }
+  }, [user, users, addActivityLog]);
+
+  const updatePlannerEvent = useCallback((event: PlannerEvent) => {
+    const { id, ...data } = event;
+    update(ref(rtdb, `plannerEvents/${id}`), data);
+    if (user) {
+        addActivityLog(user.id, "Planner Event Updated", `Updated event: ${event.title}`);
+    }
+  }, [user, addActivityLog]);
+
+  const deletePlannerEvent = useCallback((eventId: string) => {
+    remove(ref(rtdb, `plannerEvents/${eventId}`));
+    if (user) {
+        addActivityLog(user.id, "Planner Event Deleted", `Deleted event ID: ${eventId}`);
+    }
+  }, [user, addActivityLog]);
+  
+  const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
+    if (!user) return;
+    const dayCommentId = `${day}_${plannerUserId}`;
+    const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+    const newComment: Omit<Comment, 'id'> = {
+        userId: user.id,
+        text,
+        date: new Date().toISOString(),
+        eventId: eventId,
+    };
+    set(newCommentRef, { ...newComment, id: newCommentRef.key });
+    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
+      lastUpdated: new Date().toISOString(),
+      id: dayCommentId,
+      day: day,
+      plannerUserId: plannerUserId
+    });
+    
+    // Send Notification
+    const event = plannerEvents.find(e => e.id === eventId);
+    if (event) {
+        const participants = new Set([event.creatorId, event.userId]);
+        participants.forEach(participantId => {
+            if (participantId !== user.id) {
+                const participant = users.find(u => u.id === participantId);
+                if (participant && participant.email) {
+                    createAndSendNotification(
+                        participant.email,
+                        `New comment on delegated event: ${event.title}`,
+                        `New comment from ${user.name}`,
+                        {
+                            'Event': event.title,
+                            'Date': format(parseISO(day), 'PPP'),
+                            'Comment': text
+                        },
+                        `${process.env.NEXT_PUBLIC_APP_URL}/schedule?userId=${plannerUserId}&date=${day}`,
+                        'View Comment'
+                    );
+                }
+            }
+        });
+    }
+
+  }, [user, users, plannerEvents]);
+
+  const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
+    if (!user) return;
+    const path = `dailyPlannerComments/${day}_${plannerUserId}/comments/${commentId}/viewedBy/${user.id}`;
+    const updates: { [key: string]: any } = {};
+    updates[path] = true;
+    update(ref(rtdb), updates);
+  }, [user]);
+
+  const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
+    if (!user) return;
+    const path = `users/${user.id}/dismissedPendingUpdates/${eventId}_${day}`;
+    const updates: { [key: string]: any } = {};
+    updates[path] = true;
+    update(ref(rtdb), updates);
+  }, [user]);
+  
+  const awardManualAchievement = useCallback((achievementData: Omit<Achievement, 'id' | 'date' | 'type' | 'awardedById' | 'status'>) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'achievements'));
+    const newAchievement: Omit<Achievement, 'id'> = {
+      ...achievementData,
+      date: new Date().toISOString(),
+      type: 'manual',
+      status: 'approved',
+      awardedById: user.id
+    };
+    set(newRef, newAchievement);
+  }, [user]);
+
+  const updateManualAchievement = useCallback((achievement: Achievement) => {
+    const { id, ...data } = achievement;
+    update(ref(rtdb, `achievements/${id}`), data);
+  }, []);
+
+  const deleteManualAchievement = useCallback((achievementId: string) => {
+    remove(ref(rtdb, `achievements/${achievementId}`));
+  }, []);
+  
+  const addUser = useCallback((userData: Omit<User, 'id' | 'avatar'>) => {
+    const newRef = push(ref(rtdb, 'users'));
+    const newUser: Omit<User, 'id'> = {
+      ...userData,
+      avatar: `https://i.pravatar.cc/150?u=${newRef.key}`,
+      status: 'active',
+      planningScore: 0,
+    };
+    set(newRef, newUser);
+    if(user) addActivityLog(user.id, 'New User Added', `Added user: ${userData.name}`);
+  }, [user, addActivityLog]);
+  
+  const updateUserPlanningScore = useCallback((userId: string, score: number) => {
+      update(ref(rtdb, `users/${userId}`), { planningScore: score });
+  }, []);
+
+  const deleteUser = useCallback((userId: string) => {
+    remove(ref(rtdb, `users/${userId}`));
+    if(user) addActivityLog(user.id, 'User Deleted', `Deleted user ID: ${userId}`);
+  }, [user, addActivityLog]);
+  
+  const addRole = useCallback((role: Omit<RoleDefinition, 'id' | 'isEditable'>) => {
+    const newRef = push(ref(rtdb, 'roles'));
+    set(newRef, { ...role, isEditable: true });
+  }, []);
+
+  const updateRole = useCallback((role: RoleDefinition) => {
+    const { id, ...data } = role;
+    update(ref(rtdb, `roles/${id}`), data);
+  }, []);
+
+  const deleteRole = useCallback((roleId: string) => {
+    remove(ref(rtdb, `roles/${roleId}`));
+  }, []);
+  
+  const addProject = useCallback((projectName: string) => {
+    const newRef = push(ref(rtdb, 'projects'));
+    set(newRef, { name: projectName });
+  }, []);
+
+  const updateProject = useCallback((project: Project) => {
+    const { id, ...data } = project;
+    update(ref(rtdb, `projects/${id}`), data);
+  }, []);
+
+  const deleteProject = useCallback((projectId: string) => {
+    remove(ref(rtdb, `projects/${projectId}`));
+  }, []);
+  
+  const addVehicle = useCallback((vehicle: Omit<Vehicle, 'id'>) => {
+      const newRef = push(ref(rtdb, 'vehicles'));
+      set(newRef, vehicle);
+  }, []);
+
+  const updateVehicle = useCallback((vehicle: Vehicle) => {
+      const { id, ...data } = vehicle;
+      update(ref(rtdb, `vehicles/${id}`), data);
+  }, []);
+
+  const deleteVehicle = useCallback((vehicleId: string) => {
+      remove(ref(rtdb, `vehicles/${vehicleId}`));
+  }, []);
+  
+  const addDriver = useCallback((driver: Omit<Driver, 'id' | 'photo'>) => {
+    const newRef = push(ref(rtdb, 'drivers'));
+    set(newRef, { ...driver, photo: `https://i.pravatar.cc/150?u=${newRef.key}` });
+  }, []);
+
+  const updateDriver = useCallback((driver: Driver) => {
+    const { id, ...data } = driver;
+    update(ref(rtdb, `drivers/${id}`), data);
+  }, []);
+
+  const deleteDriver = useCallback((driverId: string) => {
+    remove(ref(rtdb, `drivers/${driverId}`));
+  }, []);
+
+  const addIncidentReport = useCallback((incident: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'incidentReports'));
+    
+    // Automatically report to reporter's supervisor and any user with role 'HSE' or 'Admin'
+    const supervisor = users.find(u => u.id === user.supervisorId);
+    const hseUsers = users.filter(u => u.role === 'Senior Safety Supervisor' || u.role === 'Admin');
+    const reportedToUserIds = new Set<string>();
+    if(supervisor) reportedToUserIds.add(supervisor.id);
+    hseUsers.forEach(u => reportedToUserIds.add(u.id));
+    
+    const newIncident: Omit<IncidentReport, 'id'> = {
+      ...incident,
+      reporterId: user.id,
+      reportTime: new Date().toISOString(),
+      status: 'New',
+      isPublished: false,
+      comments: [{ id: 'comment-initial', userId: user.id, text: 'Incident Reported', date: new Date().toISOString() }],
+      reportedToUserIds: Array.from(reportedToUserIds),
+      lastUpdated: new Date().toISOString(),
+      viewedBy: { [user.id]: true }
+    };
+    set(newRef, newIncident);
+  }, [user, users]);
+  
+  const updateIncident = useCallback((incident: IncidentReport, comment: string) => {
+      const { id, ...data } = incident;
+      const updates: { [key: string]: any } = {};
+      updates[`incidentReports/${id}`] = { ...data, lastUpdated: new Date().toISOString() };
+      
+      const newCommentRef = push(ref(rtdb, `incidentReports/${id}/comments`));
+      updates[`incidentReports/${id}/comments/${newCommentRef.key}`] = {
+        id: newCommentRef.key,
+        userId: user!.id,
+        text: comment,
+        date: new Date().toISOString()
+      };
+      
+      // Mark as unread for all participants
+      const participants = new Set(incident.reportedToUserIds);
+      participants.add(incident.reporterId);
+      participants.forEach(pId => {
+          if (pId !== user!.id) {
+              updates[`incidentReports/${id}/viewedBy/${pId}`] = false;
+          }
+      });
+      
+      update(ref(rtdb), updates);
+  }, [user]);
+
+  const addIncidentComment = useCallback((incidentId: string, text: string) => {
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!user || !incident) return;
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
     
     const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    updates[`incidentReports/${incidentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    
+    const participants = new Set(incident.reportedToUserIds);
+    participants.add(incident.reporterId);
+    participants.forEach(pId => {
+        if (pId !== user.id) {
+            updates[`incidentReports/${incidentId}/viewedBy/${pId}`] = false;
+        }
+    });
 
     update(ref(rtdb), updates);
-  }, [user, internalRequests]);
+  }, [user, incidentReports]);
+
+  const publishIncident = useCallback((incidentId: string, comment: string) => {
+      if(!user || user.role !== 'Admin') return;
+      const updates: { [key: string]: any } = {};
+      updates[`incidentReports/${incidentId}/isPublished`] = true;
+      updates[`incidentReports/${incidentId}/status`] = 'Closed';
+      update(ref(rtdb), updates);
+      addIncidentComment(incidentId, comment);
+  }, [user, addIncidentComment]);
+
+  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
+      if(!user) return;
+      const incident = incidentReports.find(i => i.id === incidentId);
+      if(!incident) return;
+      
+      const updatedUserIds = Array.from(new Set([...incident.reportedToUserIds, ...userIds]));
+      const updates: { [key: string]: any } = {};
+      updates[`incidentReports/${incidentId}/reportedToUserIds`] = updatedUserIds;
+      update(ref(rtdb), updates);
+      addIncidentComment(incidentId, comment);
+  }, [user, incidentReports, addIncidentComment]);
+
+  const markIncidentAsViewed = useCallback((incidentId: string) => {
+      if(!user) return;
+      update(ref(rtdb, `incidentReports/${incidentId}/viewedBy`), { [user.id]: true });
+  }, [user]);
   
-  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
+  const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id'| 'updatedBy' | 'date' | 'total'>> & { projectId: string }, logDate?: Date) => {
+    if (!user) return;
+
+    const dateToLog = logDate || new Date();
+    const dateStr = format(dateToLog, 'yyyy-MM-dd');
+
+    const previousLogs = manpowerLogs
+        .filter(l => l.projectId === logData.projectId && isBefore(parseISO(l.date), startOfDay(dateToLog)))
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+    const mostRecentPreviousLog = previousLogs[0];
+    const openingManpower = mostRecentPreviousLog?.total ?? 0;
+    
+    const total = openingManpower + (logData.countIn || 0) - (logData.countOut || 0);
+
+    const newLogRef = push(ref(rtdb, 'manpowerLogs'));
+    const newLog: Omit<ManpowerLog, 'id'> = {
+      projectId: logData.projectId,
+      date: dateStr,
+      openingManpower: openingManpower,
+      countIn: logData.countIn || 0,
+      personInName: logData.personInName || '',
+      countOut: logData.countOut || 0,
+      personOutName: logData.personOutName || '',
+      countOnLeave: logData.countOnLeave || 0,
+      personOnLeaveName: logData.personOnLeaveName || '',
+      total: total,
+      reason: logData.reason || 'Daily Log',
+      updatedBy: user.id,
+      updatedAt: new Date().toISOString(),
+    };
+    await set(newRef, newLog);
+  }, [user, manpowerLogs]);
+
+  const updateManpowerLog = useCallback(async (logId: string, data: Partial<ManpowerLog>) => {
+    const existingLog = manpowerLogs.find(l => l.id === logId);
+    if (!existingLog) return;
+    
+    const updatedData = { ...existingLog, ...data };
+    const newTotal = (updatedData.openingManpower || 0) + (updatedData.countIn || 0) - (updatedData.countOut || 0);
+
+    const updatePayload = {
+      ...data,
+      total: newTotal,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user!.id,
+    };
+    
+    await update(ref(rtdb, `manpowerLogs/${logId}`), updatePayload);
+  }, [manpowerLogs, user]);
+
+  const addManpowerProfile = useCallback(async (profileData: Omit<ManpowerProfile, 'id'>) => {
+    const newRef = push(ref(rtdb, 'manpowerProfiles'));
+    const profileWithId = { ...profileData, id: newRef.key };
+    await set(newRef, profileWithId);
+  }, []);
+  
+  const addMultipleManpowerProfiles = useCallback((profilesData: any[]): number => {
+    let importedCount = 0;
+    const updates: { [key: string]: any } = {};
+    
+    profilesData.forEach(row => {
+      try {
+        const [
+          name, mobileNumber, gender, workOrderNumber, labourLicenseNo, eic,
+          workOrderExpiryDate, labourLicenseExpiryDate, joiningDate, epNumber,
+          aadharNumber, dob, uanNumber, wcPolicyNumber, wcPolicyExpiryDate,
+          cardCategory, cardType
+        ] = row;
+        
+        if (!name || !eic) return;
+        
+        const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); // Assuming File No is in column U (index 20)
+
+        const parseDateExcel = (date: any): string | null => {
+            if (date instanceof Date && isValid(date)) {
+                return date.toISOString();
+            }
+            if (typeof date === 'string') {
+                const parsed = parse(date, 'yyyy-MM-dd', new Date());
+                if (isValid(parsed)) return parsed.toISOString();
+            }
+            if (typeof date === 'number') {
+                // Excel serial date number
+                const excelEpoch = new Date(1899, 11, 30);
+                const jsDate = new Date(excelEpoch.getTime() + date * 86400000);
+                if(isValid(jsDate)) return jsDate.toISOString();
+            }
+            return null;
+        }
+
+        const profileData = {
+          name: name?.trim(),
+          mobileNumber: String(mobileNumber || ''),
+          gender: gender,
+          workOrderNumber: String(workOrderNumber || ''),
+          labourLicenseNo: String(labourLicenseNo || ''),
+          eic: eic?.trim(),
+          workOrderExpiryDate: parseDateExcel(workOrderExpiryDate),
+          labourLicenseExpiryDate: parseDateExcel(labourLicenseExpiryDate),
+          joiningDate: parseDateExcel(joiningDate),
+          epNumber: String(epNumber || ''),
+          aadharNumber: String(aadharNumber || ''),
+          dob: parseDateExcel(dob),
+          uanNumber: String(uanNumber || ''),
+          wcPolicyNumber: String(wcPolicyNumber || ''),
+          wcPolicyExpiryDate: parseDateExcel(wcPolicyExpiryDate),
+          cardCategory: cardCategory,
+          cardType: cardType,
+          status: 'Working',
+          trade: 'RA Level 1',
+        };
+
+        if (existingProfile) {
+          updates[`/manpowerProfiles/${existingProfile.id}`] = { ...existingProfile, ...profileData };
+        } else {
+          const newRef = push(ref(rtdb, 'manpowerProfiles'));
+          updates[`/manpowerProfiles/${newRef.key}`] = { ...profileData, id: newRef.key };
+        }
+        importedCount++;
+      } catch (error) {
+        console.error("Error processing row:", row, error);
+      }
+    });
+
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+    return importedCount;
+  }, [manpowerProfiles]);
+
+  const updateManpowerProfile = useCallback(async (profile: ManpowerProfile) => {
+    const { id, ...data } = profile;
+    await update(ref(rtdb, `manpowerProfiles/${id}`), data);
+  }, []);
+
+  const deleteManpowerProfile = useCallback((profileId: string) => {
+    remove(ref(rtdb, `manpowerProfiles/${profileId}`));
+  }, []);
+  
+  const addLeaveForManpower = useCallback((manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date, remarks?: string) => {
+    const updates: { [key: string]: any } = {};
+    manpowerIds.forEach(id => {
+      const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${id}/leaveHistory`));
+      updates[`manpowerProfiles/${id}/leaveHistory/${newLeaveRef.key}`] = {
+        id: newLeaveRef.key,
+        leaveType,
+        leaveStartDate: startDate.toISOString(),
+        plannedEndDate: endDate.toISOString(),
+        remarks,
+      };
+    });
+    update(ref(rtdb), updates);
+  }, []);
+
+  const extendLeave = useCallback((manpowerId: string, leaveId: string, newEndDate: Date) => {
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), {
+          plannedEndDate: newEndDate.toISOString()
+      });
+  }, []);
+
+  const rejoinFromLeave = useCallback((manpowerId: string, leaveId: string, rejoinedDate: Date) => {
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}`), { status: 'Working' });
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), {
+        rejoinedDate: rejoinedDate.toISOString(),
+      });
+  }, []);
+
+  const confirmManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}`), { status: 'On Leave' });
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`), {
+          leaveEndDate: new Date().toISOString()
+      });
+  }, []);
+
+  const cancelManpowerLeave = useCallback((manpowerId: string, leaveId: string) => {
+      remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`));
+  }, []);
+
+  const updateLeaveRecord = useCallback((manpowerId: string, leaveRecord: LeaveRecord) => {
+    update(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveRecord.id}`), leaveRecord);
+  }, []);
+
+  const deleteLeaveRecord = useCallback((manpowerId: string, leaveId: string) => {
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/leaveHistory/${leaveId}`));
+  }, []);
+  
+  const addMemoOrWarning = useCallback((manpowerId: string, memo: Omit<MemoRecord, 'id'>) => {
+      const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory`));
+      set(newRef, { ...memo, id: newRef.key });
+  }, []);
+
+  const updateMemoRecord = useCallback((manpowerId: string, memo: MemoRecord) => {
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory/${memo.id}`), memo);
+  }, []);
+
+  const deleteMemoRecord = useCallback((manpowerId: string, memoId: string) => {
+      remove(ref(rtdb, `manpowerProfiles/${manpowerId}/memoHistory/${memoId}`));
+  }, []);
+  
+  const addPpeHistoryRecord = useCallback((manpowerId: string, record: Omit<PpeHistoryRecord, 'id'>) => {
+      const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
+      set(newRef, { ...record, id: newRef.key });
+  }, []);
+
+  const updatePpeHistoryRecord = useCallback((manpowerId: string, record: PpeHistoryRecord) => {
+      update(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${record.id}`), record);
+  }, []);
+
+  const deletePpeHistoryRecord = useCallback((manpowerId: string, recordId: string) => {
+      remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
+  }, []);
+  
+  const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number; notFoundCount: number; }> => {
+    let importedCount = 0;
+    let notFoundCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    for (const row of data) {
+        const employeeName = row['Employee Name'];
+        const size = String(row['Size']);
+        const date = row['Date'];
+
+        if (!employeeName || !size || !date) continue;
+
+        const profile = manpowerProfiles.find(p => p.name.trim().toLowerCase() === employeeName.trim().toLowerCase());
+        
+        if (profile) {
+            const historyRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+            const newRecord: PpeHistoryRecord = {
+                id: historyRef.key!,
+                ppeType: 'Coverall',
+                size: size,
+                quantity: 1,
+                issueDate: date instanceof Date ? date.toISOString() : new Date().toISOString(),
+                requestType: 'New',
+                issuedById: user?.id || 'admin-import',
+            };
+            updates[`/manpowerProfiles/${profile.id}/ppeHistory/${historyRef.key}`] = newRecord;
+            
+            // Deduct from stock
+            const stockPath = `/ppeStock/coveralls/sizes/${size}`;
+            const currentStockSnap = await get(ref(rtdb, stockPath));
+            const currentStock = currentStockSnap.val() || 0;
+            updates[stockPath] = currentStock - 1;
+            
+            importedCount++;
+        } else {
+            notFoundCount++;
+        }
+    }
+    
+    if(Object.keys(updates).length > 0) {
+        await update(ref(rtdb), updates);
+    }
+    return { importedCount, notFoundCount };
+  }, [manpowerProfiles, user]);
+
+  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'internalRequests'));
+    const newRequest: Omit<InternalRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      items: requestData.items.map(item => ({ ...item, status: 'Pending' })),
+      viewedByRequester: true,
+      acknowledgedByRequester: false
+    };
+    set(newRef, newRequest);
+    addActivityLog(user.id, "Internal Request Created");
+  }, [user, addActivityLog]);
+  
+  const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const updates: { [key: string]: any } = {};
+    const itemIndex = request.items.findIndex(i => i.id === item.id);
+    if (itemIndex > -1) {
+        updates[`internalRequests/${requestId}/items/${itemIndex}`] = item;
+        addInternalRequestComment(requestId, `Item "${originalItem.description}" updated to "${item.description}" (Qty: ${item.quantity}).`);
+    }
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById, addInternalRequestComment]);
+
+  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request || request.status !== 'Disputed') return;
+  
+    addInternalRequestComment(requestId, `Dispute resolved by ${user.name}: ${resolution}. Comment: ${comment}`);
+  
+    const updates: { [key: string]: any } = {};
+  
+    if (resolution === 'reissue') {
+      // Set all items back to approved to be re-issued
+      const newItems = request.items.map(item => ({ ...item, status: 'Approved' as InternalRequestItemStatus }));
+      updates[`internalRequests/${requestId}/items`] = newItems;
+      updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+    } else { // reverse
+      // Confirm all items as issued
+      const newItems = request.items.map(item => ({ ...item, status: 'Issued' as InternalRequestItemStatus }));
+      updates[`internalRequests/${requestId}/items`] = newItems;
+      updates[`internalRequests/${requestId}/status`] = 'Issued';
+    }
+    
+    update(ref(rtdb), updates);
+  
+  }, [user, internalRequestsById, addInternalRequestComment]);
+
+  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+    
+    const updates: { [key: string]: any } = {};
+    
+    updates[`internalRequests/${requestId}/status`] = status;
+    updates[`internalRequests/${requestId}/approverId`] = user.id;
+
+    if (comment) addInternalRequestComment(requestId, comment);
+
+    const allItemsArePending = request.items.every(item => item.status === 'Pending');
+    if (allItemsArePending) {
+        const newItems = request.items.map(item => ({ ...item, status: status as InternalRequestItemStatus }));
+        updates[`internalRequests/${requestId}/items`] = newItems;
+    }
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById, addInternalRequestComment]);
+  
+  const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+    
+    addInternalRequestComment(requestId, comment);
+
+    const updates: { [key: string]: any } = {};
+    const itemIndex = request.items.findIndex(i => i.id === itemId);
+    if(itemIndex > -1) {
+        updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
+    }
+
+    // Determine the overall status
+    const newItems = [...request.items];
+    if (itemIndex > -1) newItems[itemIndex].status = status;
+
+    const allApproved = newItems.every(i => i.status === 'Approved');
+    const allIssued = newItems.every(i => i.status === 'Issued');
+    const allRejected = newItems.every(i => i.status === 'Rejected');
+    
+    if (allIssued) updates[`internalRequests/${requestId}/status`] = 'Issued';
+    else if (allApproved) updates[`internalRequests/${requestId}/status`] = 'Approved';
+    else if (allRejected) updates[`internalRequests/${requestId}/status`] = 'Rejected';
+    else updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
+
+    update(ref(rtdb), updates);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
+
+  const deleteInternalRequest = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+    if (request.status !== 'Pending' && request.status !== 'Rejected') {
+        toast({
+            title: 'Cannot Delete',
+            description: 'This request has been processed and cannot be deleted.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    remove(ref(rtdb, `internalRequests/${requestId}`));
+    toast({ title: 'Request Deleted', variant: 'destructive' });
+  }, [user, internalRequestsById, toast]);
+  
+  const forceDeleteInternalRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `internalRequests/${requestId}`));
+    toast({ title: 'Request Force Deleted', variant: 'destructive' });
+  }, [user, toast]);
+
+  const markInternalRequestAsViewed = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request || request.requesterId !== user.id) return;
+    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
+  }, [user, internalRequestsById]);
+
+  const acknowledgeInternalRequest = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request || request.requesterId !== user.id) return;
+    update(ref(rtdb, `internalRequests/${requestId}`), { acknowledgedByRequester: true });
+  }, [user, internalRequestsById]);
+
+  const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'managementRequests'));
+    const newRequest: Omit<ManagementRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      comments: [{ id: 'comment-initial', text: 'Request created', userId: user.id, date: new Date().toISOString() }],
+      viewedByRequester: true,
+    };
+    set(newRef, newRequest);
+  }, [user]);
+
+  const updateManagementRequest = useCallback((request: ManagementRequest) => {
+    const { id, ...data } = request;
+    update(ref(rtdb, `managementRequests/${id}`), data);
+  }, []);
+
+  const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
+    if (!user) return;
+    const request = managementRequestsById[requestId];
+    if(!request) return;
+
+    const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`managementRequests/${requestId}/status`] = status;
+    updates[`managementRequests/${requestId}/approverId`] = user.id;
+    updates[`managementRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, managementRequestsById]);
+
+  const deleteManagementRequest = useCallback((requestId: string) => {
+    if (user?.role !== 'Admin') return;
+    remove(ref(rtdb, `managementRequests/${requestId}`));
+  }, [user]);
+
+  const markManagementRequestAsViewed = useCallback((requestId: string) => {
+    if(!user) return;
+    const request = managementRequestsById[requestId];
+    if(request?.requesterId === user.id) {
+        update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, managementRequestsById]);
+  
+  const addPpeRequest = useCallback((requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'ppeRequests'));
+    const newRequest: Omit<PpeRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString() }],
+      viewedByRequester: true,
+    };
+    set(newRef, newRequest);
+    const manpower = manpowerProfiles.find(p => p.id === requestData.manpowerId);
+    
+    sendPpeRequestEmail({
+      requesterName: user.name,
+      employeeName: manpower?.name,
+      ppeType: requestData.ppeType,
+      size: requestData.size,
+      quantity: requestData.quantity,
+      requestType: requestData.requestType,
+      remarks: requestData.remarks,
+      attachmentUrl: requestData.attachmentUrl,
+      joiningDate: manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A',
+      rejoiningDate: 'N/A', // This needs logic to find last rejoin date
+      lastIssueDate: 'N/A', // This needs logic to find last issue date for this ppeType
+      stockInfo: 'TBD',
+      eligibility: requestData.eligibility,
+      newRequestJustification: requestData.newRequestJustification
+    });
+    
+  }, [user, manpowerProfiles]);
+
+  const updatePpeRequest = useCallback((request: PpeRequest) => {
+    const { id, ...data } = request;
+    update(ref(rtdb, `ppeRequests/${id}`), data);
+  }, []);
+
+  const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request) return;
 
-    const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
     const updates: { [key: string]: any } = {};
-    updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`ppeRequests/${requestId}/status`] = status;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
-    update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        createAndSendNotification(
-            requester.email,
-            `New Query on your PPE Request for ${employee?.name || '...'}`,
-            `Query from ${user.name}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Question': commentText,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'Reply to Query'
-        );
+    if (status === 'Approved') {
+        updates[`ppeRequests/${requestId}/approverId`] = user.id;
+    } else if (status === 'Issued') {
+        updates[`ppeRequests/${requestId}/issuedById`] = user.id;
+        const newHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
+        const historyRecord: PpeHistoryRecord = {
+          id: newHistoryRef.key!,
+          ppeType: request.ppeType,
+          size: request.size,
+          quantity: request.quantity,
+          issueDate: new Date().toISOString(),
+          requestType: request.requestType,
+          remarks: `Issued based on request ID: ${requestId.slice(-6)}. ${request.remarks || ''}`,
+          issuedById: user.id,
+          approverId: request.approverId
+        };
+        updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${newHistoryRef.key}`] = historyRecord;
+        
+        // Update stock
+        const stockPath = `/ppeStock/${request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+        get(ref(rtdb, stockPath)).then(snapshot => {
+            const stockData = snapshot.val();
+            if (request.ppeType === 'Coverall') {
+                const currentSizeStock = stockData.sizes[request.size] || 0;
+                update(ref(rtdb, `${stockPath}/sizes`), { [request.size]: currentSizeStock - request.quantity });
+            } else {
+                update(ref(rtdb, stockPath), { quantity: (stockData.quantity || 0) - request.quantity });
+            }
+        });
     }
-  }, [user, ppeRequests, users, manpowerProfiles]);
 
+    update(ref(rtdb), updates);
+    addPpeRequestComment(requestId, comment || `Status changed to ${status}`);
+  }, [user, ppeRequests, addPpeRequestComment]);
+  
+  const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+    if (!user) return;
+    addPpeRequestComment(requestId, comment);
+    if (resolution === 'reissue') {
+        update(ref(rtdb, `ppeRequests/${requestId}`), { status: 'Approved' });
+    } else { // reverse
+        update(ref(rtdb, `ppeRequests/${requestId}`), { status: 'Issued' });
+    }
+  }, [user, addPpeRequestComment]);
+
+  const deletePpeRequest = useCallback((requestId: string) => {
+    remove(ref(rtdb, `ppeRequests/${requestId}`));
+  }, []);
+
+  const deletePpeAttachment = useCallback((requestId: string) => {
+    update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
+  }, []);
+
+  const markPpeRequestAsViewed = useCallback((requestId: string) => {
+    if(!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if(request?.requesterId === user.id) {
+        update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, ppeRequests]);
+  
+  const updatePpeStock = useCallback((stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => {
+      const path = stockId === 'coveralls' ? 'sizes' : 'quantity';
+      const updates = { [path]: data, lastUpdated: new Date().toISOString() };
+      update(ref(rtdb, `ppeStock/${stockId}`), updates);
+  }, []);
+  
+  const addPpeInwardRecord = useCallback((recordData: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => {
+      if(!user) return;
+      const newRef = push(ref(rtdb, 'ppeInwardHistory'));
+      set(newRef, { ...recordData, addedByUserId: user.id });
+
+      const { ppeType, sizes, quantity } = recordData;
+      const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+      
+      get(ref(rtdb, stockPath)).then(snapshot => {
+          const stockData = snapshot.val();
+          if (ppeType === 'Coverall' && sizes) {
+              const currentSizes = stockData?.sizes || {};
+              Object.keys(sizes).forEach(size => {
+                  currentSizes[size] = (currentSizes[size] || 0) + (sizes[size] || 0);
+              });
+              update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
+          } else if (ppeType === 'Safety Shoes' && quantity) {
+              update(ref(rtdb, stockPath), { quantity: (stockData?.quantity || 0) + quantity });
+          }
+      });
+  }, [user]);
+
+  const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+      const { id, ...data } = record;
+      update(ref(rtdb, `ppeInwardHistory/${id}`), data);
+      
+      // Note: This function would require logic to revert old stock change and apply new one.
+      // For simplicity, we are assuming direct edit is for minor corrections and doesn't auto-update stock.
+      // A more robust system would calculate the diff and apply it.
+      
+  }, []);
+  
+  const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+      remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
+      
+      // Reverse the stock update
+      const { ppeType, sizes, quantity } = record;
+      const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+      
+      get(ref(rtdb, stockPath)).then(snapshot => {
+          const stockData = snapshot.val();
+          if (ppeType === 'Coverall' && sizes) {
+              const currentSizes = stockData?.sizes || {};
+              Object.keys(sizes).forEach(size => {
+                  currentSizes[size] = Math.max(0, (currentSizes[size] || 0) - (sizes[size] || 0));
+              });
+              update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
+          } else if (ppeType === 'Safety Shoes' && quantity) {
+              update(ref(rtdb, stockPath), { quantity: Math.max(0, (stockData?.quantity || 0) - quantity) });
+          }
+      });
+
+  }, []);
+  
+  const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'inventoryItems'));
+    const dataToSave = { 
+      ...itemData, 
+      lastUpdated: new Date().toISOString(),
+      movedToProjectId: itemData.movedToProjectId || null,
+    };
+    set(newRef, dataToSave);
+    addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
+  }, [user, addActivityLog]);
+  
+  const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+    if (!user) return 0;
+    
+    let importedCount = 0;
+    const updates: { [key: string]: any } = {};
+    const existingSerialNumbers = new Set(inventoryItems.map(i => i.serialNumber));
+
+    itemsData.forEach(row => {
+      const serialNumber = String(row['SERIAL NUMBER'] || '').trim();
+      if (!serialNumber) return;
+
+      const projectName = String(row['PROJECT'] || '').trim();
+      const project = projects.find(p => p.name.toLowerCase() === projectName.toLowerCase());
+
+      const parseDateExcel = (date: any): string | null => {
+        if (!date) return null;
+        if (date instanceof Date && isValid(date)) {
+          return date.toISOString();
+        }
+        if (typeof date === 'string' || typeof date === 'number') {
+           const d = new Date(date);
+           if (isValid(d)) return d.toISOString();
+        }
+        return null;
+      };
+
+      const itemData: Partial<InventoryItem> = {
+        name: String(row['ITEM NAME'] || '').trim(),
+        serialNumber: serialNumber,
+        chestCrollNo: String(row['CHEST CROLL NO'] || '').trim() || undefined,
+        ariesId: String(row['ARIES ID'] || '').trim() || undefined,
+        inspectionDate: parseDateExcel(row['INSPECTION DATE']),
+        inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
+        tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']),
+        status: (String(row['STATUS'] || 'In Store').trim() as InventoryItemStatus) || 'In Store',
+        projectId: project ? project.id : projects.find(p => p.name === 'Unassigned')?.id || '',
+        lastUpdated: new Date().toISOString(),
+      };
+      
+      const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+
+      if (existingItem) {
+        updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...itemData };
+      } else {
+        const newRef = push(ref(rtdb, 'inventoryItems'));
+        updates[`/inventoryItems/${newRef.key}`] = { ...itemData, id: newRef.key };
+      }
+      importedCount++;
+    });
+
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+    return importedCount;
+  }, [inventoryItems, projects, user]);
+  
+  const updateInventoryItem = useCallback((item: InventoryItem) => {
+    const { id, ...data } = item;
+    const updates = { ...data, lastUpdated: new Date().toISOString() };
+    update(ref(rtdb, `inventoryItems/${id}`), updates);
+  }, []);
+  
+  const updateInventoryItemGroup = useCallback((itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
+    const itemsToUpdate = inventoryItems.filter(item => item.name === itemName);
+    if(itemsToUpdate.length === 0) return;
+    const dbUpdates: { [key: string]: any } = {};
+    itemsToUpdate.forEach(item => {
+        dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate || item.tpInspectionDueDate;
+        dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl || item.certificateUrl;
+    });
+    update(ref(rtdb), dbUpdates);
+  }, [inventoryItems]);
+
+  const updateInventoryItemGroupByProject = useCallback((itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
+    const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.projectId === projectId);
+    if(itemsToUpdate.length === 0) return;
+    const dbUpdates: { [key: string]: any } = {};
+    itemsToUpdate.forEach(item => {
+        dbUpdates[`/inventoryItems/${item.id}/inspectionDate`] = updates.inspectionDate || item.inspectionDate;
+        dbUpdates[`/inventoryItems/${item.id}/inspectionDueDate`] = updates.inspectionDueDate || item.inspectionDueDate;
+        dbUpdates[`/inventoryItems/${item.id}/inspectionCertificateUrl`] = updates.inspectionCertificateUrl || item.inspectionCertificateUrl;
+        dbUpdates[`/inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
+    });
+    update(ref(rtdb), dbUpdates);
+  }, [inventoryItems]);
+
+  const deleteInventoryItem = useCallback((itemId: string) => {
+    remove(ref(rtdb, `inventoryItems/${itemId}`));
+  }, []);
+
+  const deleteInventoryItemGroup = useCallback((itemName: string) => {
+    const itemsToDelete = inventoryItems.filter(item => item.name === itemName);
+    const updates: { [key: string]: null } = {};
+    itemsToDelete.forEach(item => {
+        updates[`/inventoryItems/${item.id}`] = null;
+    });
+    update(ref(rtdb), updates);
+  }, [inventoryItems]);
+  
+  const renameInventoryItemGroup = useCallback((oldName: string, newName: string) => {
+    const itemsToRename = inventoryItems.filter(item => item.name === oldName);
+    const updates: { [key: string]: any } = {};
+    itemsToRename.forEach(item => {
+      updates[`/inventoryItems/${item.id}/name`] = newName;
+    });
+    update(ref(rtdb), updates);
+  }, [inventoryItems]);
+  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -1102,6 +2118,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newList);
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
   }, [user, addActivityLog]);
+
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    const { id, ...data } = listData;
+    const sanitizedItems = data.items.map(item => ({
+      ...item,
+      ariesId: item.ariesId || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
+    }));
+    const sanitizedData = { ...data, items: sanitizedItems };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+  }, []);
+
+  const deleteTpCertList = useCallback((listId: string) => {
+    remove(ref(rtdb, `tpCertLists/${listId}`));
+  }, []);
+  
+  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    
+    const sanitizedItems = requestData.items.map(item => ({
+      ...item,
+      ariesId: item.ariesId || null,
+    }));
+  
+    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+        ...requestData,
+        items: sanitizedItems,
+        requesterId: user.id,
+        requestDate: new Date().toISOString(),
+        status: 'Pending',
+    };
+    set(newRequestRef, newRequest);
+    addActivityLog(user.id, 'Inventory Transfer Request Created');
+  
+    const approvers = users.filter(u => can.approve_store_requests);
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+  
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
+  }, [user, addActivityLog, users, can.approve_store_requests, projects]);
   
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
@@ -1161,49 +2235,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   }, [user, addActivityLog, addTpCertList, users, projects]);
   
-  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
-    if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
-    
-    const sanitizedItems = requestData.items.map(item => ({
-      ...item,
-      ariesId: item.ariesId || null,
-    }));
-  
-    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-        ...requestData,
-        items: sanitizedItems,
-        requesterId: user.id,
-        requestDate: new Date().toISOString(),
-        status: 'Pending',
-    };
-    set(newRequestRef, newRequest);
-    addActivityLog(user.id, 'Inventory Transfer Request Created');
-  
-    const approvers = users.filter(u => can.approve_store_requests);
-    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-  
-    approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Request from ${user.name}`,
-          'New Inventory Transfer Request',
-          {
-            'Requester': user.name,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': requestData.reason,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Request'
-        );
-      }
-    });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects]);
-
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
     if (!user || !can.approve_store_requests) return;
 
@@ -1274,6 +2305,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
   }, [user, toast, addActivityLog]);
+  
+  const clearInventoryTransferHistory = useCallback(() => {
+    const allRequests = inventoryTransferRequests;
+    const updates: { [key: string]: null } = {};
+    allRequests.forEach(req => {
+        if (req.status === 'Completed' || req.status === 'Rejected') {
+            updates[`/inventoryTransferRequests/${req.id}`] = null;
+        }
+    });
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
+  }, [inventoryTransferRequests]);
 
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
@@ -1511,6 +2555,419 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
   }, [user, addActivityLog, toast]);
 
+  const addAnnouncement = useCallback((data: Partial<Omit<Announcement, 'id' | 'creatorId' | 'status' | 'createdAt' | 'comments' | 'approverId' | 'dismissedBy'>>) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'announcements'));
+    const approverId = user.supervisorId || Object.values(usersById).find(u => u.role === 'Admin')?.id;
+    if (!approverId) {
+        toast({ title: 'No approver found', description: 'Cannot submit announcement.', variant: 'destructive'});
+        return;
+    }
+    const newAnnouncement: Omit<Announcement, 'id'> = {
+        title: data.title!,
+        content: data.content!,
+        creatorId: user.id,
+        approverId,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        comments: [{ userId: user.id, text: 'Announcement created', date: new Date().toISOString() }],
+        notifyAll: data.notifyAll || false,
+    };
+    set(newRef, newAnnouncement);
+
+    const approver = usersById[approverId];
+    if (approver?.email) {
+        createAndSendNotification(
+            approver.email,
+            `New Announcement for Approval: ${data.title}`,
+            'New Announcement for Approval',
+            {
+                'From': user.name,
+                'Title': data.title!,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+            'Review Announcement'
+        );
+    }
+  }, [user, usersById, toast]);
+
+  const updateAnnouncement = useCallback((announcement: Announcement) => {
+    const { id, ...data } = announcement;
+    update(ref(rtdb, `announcements/${id}`), data);
+  }, []);
+
+  const approveAnnouncement = useCallback((announcementId: string) => {
+    if(!user) return;
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'approved' });
+    const announcement = announcementsById[announcementId];
+    if (announcement?.notifyAll) {
+        const recipients = Object.values(usersById).filter(u => u.email && u.role !== 'Manager');
+        recipients.forEach(recipient => {
+            createAndSendNotification(
+                recipient.email,
+                `New Announcement: ${announcement.title}`,
+                announcement.title,
+                { 'Announcement': announcement.content },
+                `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
+            );
+        });
+    }
+  }, [user, announcementsById, usersById]);
+
+  const rejectAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'rejected' });
+  }, []);
+
+  const deleteAnnouncement = useCallback((announcementId: string) => {
+    remove(ref(rtdb, `announcements/${announcementId}`));
+  }, []);
+
+  const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
+    if(!user) return;
+    const newCommentRef = push(ref(rtdb, `announcements/${announcementId}/comments`));
+    set(newCommentRef, { userId: user.id, text: comment, date: new Date().toISOString() });
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'returned' });
+  }, [user]);
+
+  const dismissAnnouncement = useCallback((announcementId: string) => {
+    if (!user) return;
+    set(ref(rtdb, `announcements/${announcementId}/dismissedBy/${user.id}`), true);
+  }, [user]);
+  
+  const dismissBroadcast = useCallback((broadcastId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `broadcasts/${broadcastId}/dismissedBy`), { [user.id]: true });
+  }, [user]);
+
+  const addBroadcast = useCallback((broadcastData: Omit<Broadcast, 'id'|'creatorId'|'createdAt'|'dismissedBy'>) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'broadcasts'));
+    const newBroadcast: Omit<Broadcast, 'id'> = {
+        ...broadcastData,
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
+        dismissedBy: {},
+    };
+    set(newRef, newBroadcast);
+  }, [user]);
+
+  const addBuilding = useCallback((buildingNumber: string) => {
+    const newRef = push(ref(rtdb, 'buildings'));
+    set(newRef, { buildingNumber: buildingNumber, rooms: [] });
+  }, []);
+
+  const updateBuilding = useCallback((building: Building) => {
+    const { id, ...data } = building;
+    update(ref(rtdb, `buildings/${id}`), data);
+  }, []);
+
+  const deleteBuilding = useCallback((buildingId: string) => {
+    remove(ref(rtdb, `buildings/${buildingId}`));
+  }, []);
+
+  const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
+    const roomRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
+    const beds = Array.from({ length: roomData.numberOfBeds }, (_, i) => ({
+      id: `bed-${i + 1}`, bedNumber: `${i + 1}`, bedType: 'Bunk'
+    }));
+    set(roomRef, { id: roomRef.key, roomNumber: roomData.roomNumber, beds });
+  }, []);
+
+  const deleteRoom = useCallback((buildingId: string, roomId: string) => {
+    remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}`));
+  }, []);
+
+  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
+    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
+  }, []);
+
+  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
+    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId: null });
+  }, []);
+  
+  const saveJobSchedule = useCallback((schedule: JobSchedule) => {
+      update(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
+  }, []);
+
+  const lockJobSchedule = useCallback((date: string) => {
+      const schedulesForDate = jobSchedules.filter(s => s.date === date);
+      const updates: {[key: string]: any} = {};
+      schedulesForDate.forEach(s => {
+          updates[`jobSchedules/${s.id}/isLocked`] = true;
+      });
+      update(ref(rtdb), updates);
+  }, [jobSchedules]);
+
+  const unlockJobSchedule = useCallback((date: string, projectId: string) => {
+      const scheduleId = `${projectId}_${date}`;
+      update(ref(rtdb, `jobSchedules/${scheduleId}`), { isLocked: null });
+  }, []);
+  
+  const lockJobRecordSheet = useCallback((monthKey: string) => {
+      update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: true });
+  }, []);
+
+  const unlockJobRecordSheet = useCallback((monthKey: string) => {
+      update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: null });
+  }, []);
+
+  const addJobRecordPlant = useCallback((plantName: string) => {
+      const newRef = push(ref(rtdb, 'jobRecordPlants'));
+      set(newRef, { name: plantName, id: newRef.key });
+  }, []);
+
+  const deleteJobRecordPlant = useCallback((plantId: string) => {
+      remove(ref(rtdb, `jobRecordPlants/${plantId}`));
+  }, []);
+
+  const addJobCode = useCallback((jobCode: Omit<JobCode, 'id'>) => {
+      const newRef = push(ref(rtdb, 'jobCodes'));
+      set(newRef, { ...jobCode, id: newRef.key });
+  }, []);
+
+  const updateJobCode = useCallback((jobCode: JobCode) => {
+      const { id, ...data } = jobCode;
+      update(ref(rtdb, `jobCodes/${id}`), data);
+  }, []);
+
+  const deleteJobCode = useCallback((jobCodeId: string) => {
+      remove(ref(rtdb, `jobCodes/${jobCodeId}`));
+  }, []);
+
+  const saveJobRecord = useCallback((monthKey: string, employeeId: string, day: number | null, codeOrValue: string | number | null, type: 'status' | 'plant' | 'dailyOvertime' | 'dailyComments' | 'sundayDuty') => {
+      let path;
+      if (type === 'status') {
+          path = `jobRecords/${monthKey}/records/${employeeId}/days/${day}`;
+      } else if (type === 'plant') {
+          path = `jobRecords/${monthKey}/records/${employeeId}/plant`;
+      } else if (type === 'dailyOvertime') {
+          path = `jobRecords/${monthKey}/records/${employeeId}/dailyOvertime/${day}`;
+      } else if (type === 'dailyComments') {
+          path = `jobRecords/${monthKey}/records/${employeeId}/dailyComments/${day}`;
+      } else if (type === 'sundayDuty') {
+          path = `jobRecords/${monthKey}/records/${employeeId}/additionalSundayDuty`;
+      } else {
+          return;
+      }
+      
+      const valueToSet = (typeof codeOrValue === 'string' && codeOrValue.trim() === '') ? null : codeOrValue;
+      update(ref(rtdb), { [path]: valueToSet });
+  }, []);
+
+  const savePlantOrder = useCallback((monthKey: string, plantName: string, orderedIds: string[]) => {
+      const path = `jobRecords/${monthKey}/plantsOrder/${plantName}`;
+      set(ref(rtdb, path), orderedIds);
+  }, []);
+  
+  const addVendor = useCallback((vendor: Omit<Vendor, 'id'>) => {
+    const newRef = push(ref(rtdb, 'vendors'));
+    set(newRef, vendor);
+  }, []);
+  
+  const updateVendor = useCallback((vendor: Vendor) => {
+    const { id, ...data } = vendor;
+    update(ref(rtdb, `vendors/${id}`), data);
+  }, []);
+
+  const deleteVendor = useCallback((vendorId: string) => {
+    remove(ref(rtdb, `vendors/${vendorId}`));
+  }, []);
+
+  const addPayment = useCallback((paymentData: Omit<Payment, 'id'|'requesterId'|'status'|'approverId'|'date'|'comments'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'payments'));
+    const newPayment: Omit<Payment, 'id'> = {
+      ...paymentData,
+      requesterId: user.id,
+      status: 'Pending',
+      date: new Date().toISOString(),
+      comments: [{ id: 'comment-initial', text: 'Payment logged', userId: user.id, date: new Date().toISOString() }],
+    };
+    set(newRef, newPayment);
+  }, [user]);
+
+  const updatePayment = useCallback((payment: Payment) => {
+    const { id, ...data } = payment;
+    update(ref(rtdb, `payments/${id}`), data);
+  }, []);
+
+  const updatePaymentStatus = useCallback((paymentId: string, status: PaymentStatus, comment: string) => {
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `payments/${paymentId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`payments/${paymentId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`payments/${paymentId}/status`] = status;
+    updates[`payments/${paymentId}/approverId`] = user.id;
+
+    update(ref(rtdb), updates);
+  }, [user]);
+
+  const deletePayment = useCallback((paymentId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `payments/${paymentId}`));
+  }, [user]);
+  
+  const addPurchaseRegister = useCallback((purchase: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'purchaseRegisters'));
+    const newPurchase: Omit<PurchaseRegister, 'id'> = {
+        ...purchase,
+        creatorId: user.id,
+        date: new Date().toISOString(),
+    };
+    set(newRef, newPurchase);
+  }, [user]);
+
+  const updatePurchaseRegister = useCallback((purchase: PurchaseRegister) => {
+    const { id, ...data } = purchase;
+    update(ref(rtdb, `purchaseRegisters/${id}`), data);
+  }, []);
+
+  const updatePurchaseRegisterPoNumber = useCallback((purchaseRegisterId: string, poNumber: string) => {
+    update(ref(rtdb, `purchaseRegisters/${purchaseRegisterId}`), { poNumber });
+  }, []);
+
+  const deletePurchaseRegister = useCallback((id: string) => {
+    if (user?.role !== 'Admin') return;
+    remove(ref(rtdb, `purchaseRegisters/${id}`));
+  }, [user]);
+  
+  const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'igpOgpRecords'));
+    const newRecord: Omit<IgpOgpRecord, 'id'> = { ...record, creatorId: user.id };
+    set(newRef, newRecord);
+  }, [user]);
+  
+  const addFeedback = useCallback((subject: string, message: string) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'feedback'));
+    const newFeedback: Omit<Feedback, 'id'> = {
+        userId: user.id,
+        subject,
+        message,
+        date: new Date().toISOString(),
+        status: 'New',
+        viewedBy: { [user.id]: true }
+    };
+    set(newRef, newFeedback);
+  }, [user]);
+
+  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
+    update(ref(rtdb, `feedback/${feedbackId}`), { status });
+  }, []);
+
+  const markFeedbackAsViewed = useCallback(() => {
+    if (!user) return;
+    feedback.forEach(f => {
+        if (!f.viewedBy?.[user.id]) {
+            update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
+        }
+    });
+  }, [user, feedback]);
+  
+  const addDocument = useCallback((doc: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'downloadableDocuments'));
+    const newDoc = {
+        ...doc,
+        uploadedBy: user.id,
+        createdAt: new Date().toISOString(),
+    };
+    set(newRef, newDoc);
+  }, [user]);
+
+  const updateDocument = useCallback((doc: DownloadableDocument) => {
+    const { id, ...data } = doc;
+    update(ref(rtdb, `downloadableDocuments/${id}`), data);
+  }, []);
+
+  const deleteDocument = useCallback((docId: string) => {
+    remove(ref(rtdb, `downloadableDocuments/${docId}`));
+  }, []);
+
+  const addLogbookRequest = useCallback((manpowerId: string, remarks?: string) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'logbookRequests'));
+    const newRequest: Omit<LogbookRequest, 'id'> = {
+        manpowerId,
+        requesterId: user.id,
+        requestDate: new Date().toISOString(),
+        status: 'Pending',
+        remarks: remarks || '',
+        viewedBy: { [user.id]: true }
+    };
+    set(newRef, newRequest);
+  }, [user]);
+
+  const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
+    if (!user) return;
+    const request = logbookRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
+    addLogbookRequestComment(requestId, comment || `Status changed to ${status}`);
+    
+    if (status === 'Completed') {
+        update(ref(rtdb, `manpowerProfiles/${request.manpowerId}/logbook`), {
+            status: 'Sent back as requested',
+            outDate: new Date().toISOString(),
+            remarks: comment,
+        });
+    }
+    remove(ref(rtdb, `logbookRequests/${requestId}`));
+  }, [user, logbookRequests, addLogbookRequestComment]);
+
+  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
+    
+    update(ref(rtdb, `logbookRequests/${requestId}/comments/${newCommentRef.key}`), { ...newComment, id: newCommentRef.key });
+  }, [user]);
+
+  const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
+      const path = `manpowerProfiles/${manpowerId}/logbook`;
+      remove(ref(rtdb, path)).then(() => {
+          onComplete();
+      });
+  }, []);
+  
+  const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'inspectionChecklists'));
+    
+    const dataToSave: Partial<InspectionChecklist> = {
+        ...checklist,
+        purchaseDate: checklist.purchaseDate || null,
+        firstUseDate: checklist.firstUseDate || null,
+    };
+    
+    const newChecklist = { ...dataToSave, id: newRef.key! };
+    set(newRef, newChecklist);
+
+    // Also update the inspection due date on the inventory item
+    update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
+      inspectionDueDate: checklist.nextDueDate,
+      lastUpdated: new Date().toISOString()
+    });
+
+    addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
+  }, [user, addActivityLog]);
+
+  const updateInspectionChecklist = useCallback((checklist: InspectionChecklist) => {
+    if (!user) return;
+    const { id, ...data } = checklist;
+    update(ref(rtdb, `inspectionChecklists/${id}`), data);
+  }, [user]);
+  
+  const deleteInspectionChecklist = useCallback((id: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `inspectionChecklists/${id}`));
+  }, [user]);
+
+
   // All other function definitions exist here...
   // ... including login, logout, etc.
 
@@ -1643,10 +3100,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs, projects]);
   
-  // All other function definitions exist here...
-  // ... including login, logout, etc.
-
-  // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can,
@@ -1839,4 +3292,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
