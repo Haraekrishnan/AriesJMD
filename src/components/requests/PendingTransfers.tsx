@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -11,52 +10,48 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
-import type { InventoryTransferRequest } from '@/lib/types';
+import type { InventoryTransferRequest, TpCertList } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer, allCompletedTransferRequests, deleteInventoryTransferRequest, addTpCertList } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
-  const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [rejectionComment, setRejectionComment] = useState('');
   const [editingTpList, setEditingTpList] = useState<Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> | null>(null);
 
-  const { forApproval, forAcknowledgement, myActiveRequests } = useMemo(() => {
-    if (!user) return { forApproval: [], forAcknowledgement: [], myActiveRequests: [] };
+  const { forApproval, myActiveRequests, allCompletedRequests } = useMemo(() => {
+    if (!user) return { forApproval: [], myActiveRequests: [], allCompletedRequests: [] };
     
     const forApproval: InventoryTransferRequest[] = [];
-    const forAcknowledgement: InventoryTransferRequest[] = [];
     const myActiveRequests: InventoryTransferRequest[] = [];
+    const completed: InventoryTransferRequest[] = [];
 
     inventoryTransferRequests.forEach(req => {
-      if (can.approve_store_requests && (req.status === 'Pending' || req.status === 'Disputed')) {
+      if (can.approve_store_requests && req.status === 'Pending') {
         forApproval.push(req);
       }
       
-      const isDestinationSupervisor = user.role === 'Supervisor' && user.projectId === req.toProjectId;
-      const wasRequestedByMe = req.requesterId === user.id;
-
-      if (req.status === 'Approved' && (isDestinationSupervisor || wasRequestedByMe)) {
-        forAcknowledgement.push(req);
+      if (req.requesterId === user.id && (req.status === 'Pending' || req.status === 'Rejected')) {
+          myActiveRequests.push(req);
       }
 
-      if (req.requesterId === user.id && ['Pending', 'Approved', 'Disputed', 'Rejected'].includes(req.status) && !req.acknowledgedByRequester) {
-          myActiveRequests.push(req);
+      if (req.status === 'Completed' || req.status === 'Rejected') {
+          completed.push(req);
       }
     });
 
     return { 
         forApproval, 
-        forAcknowledgement, 
         myActiveRequests,
+        allCompletedRequests: completed.sort((a,b) => parseISO(b.approvalDate || b.requestDate).getTime() - parseISO(a.approvalDate || a.requestDate).getTime()),
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests]);
 
-  if (forApproval.length === 0 && forAcknowledgement.length === 0 && myActiveRequests.length === 0 && allCompletedTransferRequests.length === 0) {
+  if (forApproval.length === 0 && myActiveRequests.length === 0 && allCompletedRequests.length === 0) {
     return (
         <Card>
             <CardHeader>
@@ -70,14 +65,6 @@ export default function PendingTransfers() {
     if (rejectionRequestId && rejectionComment) {
         rejectInventoryTransferRequest(rejectionRequestId, rejectionComment);
         setRejectionRequestId(null);
-        setRejectionComment('');
-    }
-  };
-
-  const handleDispute = () => {
-    if (disputeRequestId && rejectionComment) {
-        disputeInventoryTransfer(disputeRequestId, rejectionComment);
-        setDisputeRequestId(null);
         setRejectionComment('');
     }
   };
@@ -100,7 +87,8 @@ export default function PendingTransfers() {
         chestCrollNo: (item as any).chestCrollNo,
       })),
     };
-    setEditingTpList(listData);
+    addTpCertList(listData);
+    toast({ title: 'TP List Created', description: `A new TP certification list has been created from transfer #${request.id.slice(-6)}.`});
   };
 
 
@@ -115,13 +103,11 @@ export default function PendingTransfers() {
               const fromProject = projects.find(p => p.id === req.fromProjectId);
               const toProject = projects.find(p => p.id === req.toProjectId);
               const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
-              const isDisputed = req.status === 'Disputed';
               const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
               const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
 
               return (
-                <div key={req.id} className={`p-4 border rounded-lg ${isDisputed ? 'bg-destructive/10' : 'bg-muted/50'}`}>
-                  {isDisputed && <Badge variant="destructive" className="mb-2">DISPUTED</Badge>}
+                <div key={req.id} className="p-4 border rounded-lg bg-muted/50">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm">
@@ -164,13 +150,13 @@ export default function PendingTransfers() {
                             <DropdownMenuContent>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem onSelect={e => e.preventDefault()}>Approve Transfer</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={e => e.preventDefault()}>Approve &amp; Complete Transfer</DropdownMenuItem>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Approve Transfer?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                This will move {req.items.length} item(s) to {toProject?.name} pending supervisor acknowledgement. This action is final.
+                                                This will immediately move {req.items.length} item(s) to {toProject?.name}. This action is final.
                                                 {req.remarks && <p className="mt-2 italic">Remarks: &quot;{req.remarks}&quot;</p>}
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
@@ -189,7 +175,7 @@ export default function PendingTransfers() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Approve &amp; Create TP List?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                This will move the items and automatically create a new, one-time editable TP Certification list.
+                                                This will move the items and automatically create a new, editable TP Certification list.
                                                 {req.remarks && <p className="mt-2 italic">Remarks: &quot;{req.remarks}&quot;</p>}
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
@@ -242,70 +228,6 @@ export default function PendingTransfers() {
           </div>
         )}
         
-        {forAcknowledgement.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="font-semibold text-sm">Awaiting Your Acknowledgement</h4>
-            {forAcknowledgement.map(req => {
-              const requester = users.find(u => u.id === req.requesterId);
-              const fromProject = projects.find(p => p.id === req.fromProjectId);
-              const toProject = projects.find(p => p.id === req.toProjectId);
-               const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
-              
-              return (
-                <div key={req.id} className="p-4 border rounded-lg bg-muted/50">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-semibold">{requester?.name || 'Unknown User'}</span> transferred {req.items.length} item(s)
-                        from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Approved {req.approvalDate ? formatDistanceToNow(parseISO(req.approvalDate), { addSuffix: true }) : ''}
-                      </p>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="destructive" onClick={() => setDisputeRequestId(req.id)}>
-                                    <AlertTriangle className="mr-2 h-4 w-4" /> Dispute
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Dispute Transfer?</AlertDialogTitle>
-                                    <AlertDialogDescription>Please provide a reason for disputing this transfer (e.g., items not received).</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <div className="py-2">
-                                    <Label htmlFor="dispute-comment">Comment</Label>
-                                    <Textarea id="dispute-comment" value={rejectionComment} onChange={e => setRejectionComment(e.target.value)} />
-                                </div>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setDisputeRequestId(null)}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDispute}>Submit Dispute</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        <Button size="sm" onClick={() => acknowledgeTransfer(req.id)}>
-                            <CheckCircle className="mr-2 h-4 w-4" /> Acknowledge Receipt
-                        </Button>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-sm">
-                    <p><strong>Reason:</strong> {req.reason} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
-                    {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
-                    <p className="font-medium mt-2">Items:</p>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground">
-                      {req.items.map(item => (
-                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        
         {myActiveRequests.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">My Active Requests</h4>
@@ -341,18 +263,19 @@ export default function PendingTransfers() {
           </div>
         )}
 
-        {allCompletedTransferRequests.length > 0 && (
+        {allCompletedRequests.length > 0 && (
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="completed-transfers" className="border rounded-md">
               <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-sm">
-                Transfer History ({allCompletedTransferRequests.length})
+                Transfer History ({allCompletedRequests.length})
               </AccordionTrigger>
               <AccordionContent className="p-4">
                 <div className="space-y-2">
-                  {allCompletedTransferRequests.map(req => {
+                  {allCompletedRequests.map(req => {
                     const fromProject = projects.find(p => p.id === req.fromProjectId);
                     const toProject = projects.find(p => p.id === req.toProjectId);
                     const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
+                    const showTpOption = (req.reason === 'For TP certification' || req.reason === 'Expired materials') && req.status === 'Completed';
                     return (
                         <Accordion key={req.id} type="single" collapsible className="w-full border rounded-sm">
                             <AccordionItem value={req.id} className="border-none">
@@ -366,7 +289,7 @@ export default function PendingTransfers() {
                                   </AccordionTrigger>
                                   <div className="flex items-center gap-2 pl-4">
                                     <Badge variant={statusVariant}>{req.status}</Badge>
-                                    {(req.status === 'Approved' || req.status === 'Completed') && (
+                                    {showTpOption && (
                                         <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
                                             <FilePlus className="mr-2 h-3 w-3" /> Create TP List
                                         </Button>
