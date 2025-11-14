@@ -1395,7 +1395,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
     };
-    await set(newRef, newLog);
+    await set(newLogRef, newLog);
   }, [user, manpowerLogs]);
 
   const updateManpowerLog = useCallback(async (logId: string, data: Partial<ManpowerLog>) => {
@@ -1422,6 +1422,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const addMultipleManpowerProfiles = useCallback((profilesData: any[]): number => {
+    if (!user) return 0;
+    
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
     
@@ -1493,7 +1495,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
     }
     return importedCount;
-  }, [manpowerProfiles]);
+  }, [manpowerProfiles, user]);
 
   const updateManpowerProfile = useCallback(async (profile: ManpowerProfile) => {
     const { id, ...data } = profile;
@@ -1622,6 +1624,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { importedCount, notFoundCount };
   }, [manpowerProfiles, user]);
 
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
+
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'internalRequests'));
@@ -1679,7 +1696,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, internalRequestsById, addInternalRequestComment]);
 
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user) return;
+    if (!user || !can.approve_store_requests) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
     
@@ -1697,7 +1714,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb), updates);
-  }, [user, internalRequestsById, addInternalRequestComment]);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -1851,6 +1868,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `ppeRequests/${id}`), data);
   }, []);
 
+  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester?.email && request.requesterId !== user.id) {
+        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+        createAndSendNotification(
+            requester.email,
+            `New Query on your PPE Request for ${employee?.name || '...'}`,
+            `Query from ${user.name}`,
+            {
+                'Request For': employee?.name || 'N/A',
+                'Item': `${request.ppeType} (Size: ${request.size})`,
+                'Question': commentText,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'Reply to Query'
+        );
+    }
+  }, [user, ppeRequests, users, manpowerProfiles]);
+
   const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
@@ -1955,7 +2004,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       // Note: This function would require logic to revert old stock change and apply new one.
       // For simplicity, we are assuming direct edit is for minor corrections and doesn't auto-update stock.
-      // A more robust system would calculate the diff and apply it.
       
   }, []);
   
@@ -2176,7 +2224,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
   }, [user, addActivityLog, users, can.approve_store_requests, projects]);
-  
+
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
   
@@ -2258,6 +2306,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
   }, [user, inventoryTransferRequests, addActivityLog]);
 
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only an administrator can delete transfer requests.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+    toast({
+      title: 'Transfer Request Deleted',
+      description: 'The request has been permanently removed.',
+      variant: 'destructive',
+    });
+    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
+  
   const acknowledgeTransfer = useCallback((requestId: string) => {
     if (!user) return;
     const request = inventoryTransferRequests.find(r => r.id === requestId);
@@ -2288,24 +2354,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
   }, [user, inventoryTransferRequests, toast, addActivityLog]);
 
-  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
-    if (!user || user.role !== 'Admin') {
-      toast({
-        variant: 'destructive',
-        title: 'Permission Denied',
-        description: 'Only an administrator can delete transfer requests.',
-      });
-      return;
-    }
-    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
-    toast({
-      title: 'Transfer Request Deleted',
-      description: 'The request has been permanently removed.',
-      variant: 'destructive',
-    });
-    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
-  }, [user, toast, addActivityLog]);
-  
   const clearInventoryTransferHistory = useCallback(() => {
     const allRequests = inventoryTransferRequests;
     const updates: { [key: string]: null } = {};
@@ -2902,6 +2950,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newRequest);
   }, [user]);
 
+  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
+    
+    update(ref(rtdb, `logbookRequests/${requestId}/comments/${newCommentRef.key}`), { ...newComment, id: newCommentRef.key });
+  }, [user]);
+
   const updateLogbookRequestStatus = useCallback((requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
     if (!user) return;
     const request = logbookRequests.find(r => r.id === requestId);
@@ -2918,14 +2974,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     remove(ref(rtdb, `logbookRequests/${requestId}`));
   }, [user, logbookRequests, addLogbookRequestComment]);
-
-  const addLogbookRequestComment = useCallback((requestId: string, text: string) => {
-    if (!user) return;
-    const newCommentRef = push(ref(rtdb, `logbookRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString() };
-    
-    update(ref(rtdb, `logbookRequests/${requestId}/comments/${newCommentRef.key}`), { ...newComment, id: newCommentRef.key });
-  }, [user]);
 
   const deleteLogbookRecord = useCallback((manpowerId: string, onComplete: () => void) => {
       const path = `manpowerProfiles/${manpowerId}/logbook`;
@@ -2967,6 +3015,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
 
+  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    certificateRequests.forEach(req => {
+      const isStoreReq = requestType === 'store' && req.itemId;
+      const isEquipmentReq = requestType === 'equipment' && (req.utMachineId || req.dftMachineId);
+      
+      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester && (isStoreReq || isEquipmentReq)) {
+        updates[`certificateRequests/${req.id}/viewedByRequester`] = true;
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, certificateRequests]);
+  
+  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+    toast({ title: 'Request Acknowledged', description: 'The completed request has been cleared from your view.' });
+    addActivityLog(user.id, "Acknowledged Certificate Request", `ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
+  
 
   // All other function definitions exist here...
   // ... including login, logout, etc.
@@ -2999,7 +3070,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const event = plannerEvents.find(e => e.id === eventId);
           if (!event) continue;
   
-          const isParticipant = event.userId === user.id || event.creatorId === user.id;
+          const isParticipant = event.userId === user.id || event.creatorId === event.id;
           if (!isParticipant) continue;
   
           // Now check if there's any unread comment from another user for this event on this day
@@ -3292,3 +3363,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+    
