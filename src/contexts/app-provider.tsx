@@ -711,6 +711,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return assignable;
   }, [user, users, getVisibleUsers]);
   
+  const addComment = useCallback((taskId: string, commentText: string) => {
+    if(!user) return;
+    const task = tasksById[taskId];
+    if(!task) return;
+
+    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+
+    const allParticipants = new Set(task.participants || []);
+    if (task.creatorId) allParticipants.add(task.creatorId);
+    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
+        }
+    });
+
+    update(ref(rtdb), updates);
+
+    allParticipants.forEach(participantId => {
+        if (participantId !== user.id) {
+            const participant = users.find(u => u.id === participantId);
+            if (participant && participant.email) {
+                createAndSendNotification(
+                    participant.email,
+                    `New comment on task: ${task.title}`,
+                    `New comment from ${user.name}`,
+                    {
+                        'Task': task.title,
+                        'Comment': commentText
+                    },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                    'View Task'
+                );
+            }
+        }
+    });
+  }, [user, tasksById, users, addActivityLog]);
+  
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -758,50 +801,290 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, users, addActivityLog]);
+  
+  const updateTask = useCallback((task: Task) => {
+      if(!user) return;
+      const { id, ...data } = task;
+      const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
+        return value === undefined ? null : value;
+      }));
+      update(ref(rtdb, `tasks/${id}`), { ...sanitizedData, lastUpdated: new Date().toISOString() });
+      addActivityLog(user.id, 'Task Updated', `Updated task: "${task.title}"`);
+  }, [user, addActivityLog]);
 
-  const addComment = useCallback((taskId: string, commentText: string) => {
+  const deleteTask = useCallback((taskId: string) => {
+      if(!user || user.role !== 'Admin') return;
+      const task = tasksById[taskId];
+      remove(ref(rtdb, `tasks/${taskId}`));
+      addActivityLog(user.id, 'Task Deleted', `Deleted task: "${task.title}"`);
+      toast({ title: 'Task Deleted', variant: 'destructive'});
+  }, [user, tasksById, addActivityLog, toast]);
+
+  const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
+    if (!user) return;
+    update(ref(rtdb, `tasks/${taskId}`), { status: newStatus, lastUpdated: new Date().toISOString() });
+    addActivityLog(user.id, 'Task Status Changed', `Task ID: ${taskId}, New Status: ${newStatus}`);
+  }, [user, addActivityLog]);
+
+  const submitTaskForApproval = useCallback((taskId: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if(!task) return;
+    
+    const updates: {[key: string]: any} = {};
+    updates[`/tasks/${taskId}/status`] = 'Pending Approval';
+    updates[`/tasks/${taskId}/approvalState`] = 'pending';
+    updates[`/tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+    update(ref(rtdb), updates);
+
+    addActivityLog(user.id, 'Task Submitted for Approval', `Task: ${task.title}`);
+  }, [user, tasksById, addActivityLog]);
+
+  const approveTask = useCallback((taskId: string, comment?: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task) return;
+    
+    if (comment) addComment(taskId, comment);
+    
+    const updates: {[key: string]: any} = {};
+    updates[`/tasks/${taskId}/status`] = 'Done';
+    updates[`/tasks/${taskId}/approvalState`] = 'approved';
+    updates[`/tasks/${taskId}/completionDate`] = new Date().toISOString();
+    updates[`/tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+    update(ref(rtdb), updates);
+
+    addActivityLog(user.id, 'Task Approved', `Task: ${task.title}`);
+
+    const assignee = users.find(u => u.id === task.assigneeId);
+    if(assignee?.email) {
+      createAndSendNotification(
+        assignee.email,
+        `Task Approved: ${task.title}`,
+        'Your task has been approved!',
+        {
+            'Task': task.title,
+            'Approved by': user.name,
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+        'View Task'
+      );
+    }
+
+    toast({ title: 'Task Approved', description: `You have approved the task: "${task.title}".`});
+  }, [user, tasksById, users, addActivityLog, addComment, toast]);
+
+  const returnTask = useCallback((taskId: string, comment: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task) return;
+    
+    addComment(taskId, comment);
+    
+    const updates: {[key: string]: any} = {};
+    updates[`/tasks/${taskId}/status`] = task.previousStatus || 'In Progress';
+    updates[`/tasks/${taskId}/approvalState`] = 'returned';
+    updates[`/tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+    updates[`/tasks/${taskId}/viewedBy/${task.assigneeId}`] = false;
+    update(ref(rtdb), updates);
+
+    addActivityLog(user.id, 'Task Returned', `Task: ${task.title}`);
+
+    const assignee = users.find(u => u.id === task.assigneeId);
+    if (assignee && assignee.email) {
+        createAndSendNotification(
+            assignee.email,
+            `Task Returned: ${task.title}`,
+            `Task Returned by ${user.name}`,
+            {
+                'Task': task.title,
+                'Comment': comment
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+            'View Task'
+        );
+    }
+
+  }, [user, tasksById, users, addComment, addActivityLog]);
+
+  const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task) return;
+
+    const updates: {[key: string]: any} = {};
+    updates[`/tasks/${taskId}/subtasks/${user.id}/status`] = newStatus;
+    updates[`/tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
+    
+    const allSubtasksDone = Object.values(task.subtasks || {}).every(sub => (sub.userId === user.id ? newStatus === 'Done' : sub.status === 'Done'));
+
+    if (newStatus === 'Done' && allSubtasksDone) {
+        updates[`/tasks/${taskId}/statusRequest`] = {
+            requestedBy: user.id,
+            newStatus,
+            comment,
+            attachment: attachment || null,
+            date: new Date().toISOString(),
+            status: 'Pending'
+        };
+        updates[`/tasks/${taskId}/approvalState`] = 'status_pending';
+        addComment(taskId, comment);
+
+        const creator = users.find(u => u.id === task.creatorId);
+        if (creator && creator.email) {
+            createAndSendNotification(
+                creator.email,
+                `Task Ready for Approval: ${task.title}`,
+                `Task Completed by ${user.name}`,
+                {
+                    'Task': task.title,
+                    'Comment': comment,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+                'Review Task'
+            );
+        }
+    } else {
+        if(comment) addComment(taskId, comment);
+    }
+    
+    await update(ref(rtdb), updates);
+
+  }, [user, tasksById, users, addComment]);
+  
+  const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task || !task.statusRequest) return;
+    
+    addComment(taskId, comment);
+    
+    const updates: {[key: string]: any} = {};
+    const newStatus = task.statusRequest.newStatus;
+    
+    updates[`/tasks/${taskId}/status`] = newStatus;
+    updates[`/tasks/${taskId}/subtasks`] = Object.entries(task.subtasks || {}).reduce((acc, [userId, subtask]) => {
+      acc[userId] = { ...subtask, status: newStatus };
+      return acc;
+    }, {} as {[key:string]: Subtask});
+    
+    if (newStatus === 'Done') {
+        updates[`/tasks/${taskId}/completionDate`] = new Date().toISOString();
+    }
+    
+    updates[`/tasks/${taskId}/statusRequest`] = null;
+    updates[`/tasks/${taskId}/approvalState`] = 'none';
+    updates[`/tasks/${taskId}/viewedBy/${task.statusRequest.requestedBy}`] = false;
+
+    update(ref(rtdb), updates);
+    toast({ title: 'Task Approved' });
+  }, [user, tasksById, addComment, toast]);
+
+  const returnTaskStatusChange = useCallback((taskId: string, comment: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task || !task.statusRequest) return;
+
+    addComment(taskId, comment);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`/tasks/${taskId}/statusRequest`] = null; // Clear the request
+    updates[`/tasks/${taskId}/approvalState`] = 'returned'; // Set special returned state
+    updates[`/tasks/${taskId}/viewedBy/${task.statusRequest.requestedBy}`] = false; // Notify assignee
+
+    update(ref(rtdb), updates);
+  }, [user, tasksById, addComment]);
+
+  const markTaskAsViewed = useCallback((taskId: string) => {
+    if (!user) return;
+    const task = tasksById[taskId];
+    if (!task) return;
+
+    const updates: {[key: string]: any} = {};
+    
+    if (user.id === task.creatorId) {
+        updates[`/tasks/${taskId}/viewedByApprover`] = true;
+    }
+    if (task.assigneeIds.includes(user.id)) {
+        updates[`/tasks/${taskId}/viewedByRequester`] = true;
+        if(task.approvalState === 'returned') {
+          updates[`/tasks/${taskId}/approvalState`] = 'none'; // Clear returned state on view
+        }
+    }
+    updates[`/tasks/${taskId}/viewedBy/${user.id}`] = true;
+    
+    update(ref(rtdb), updates);
+  }, [user, tasksById]);
+
+  const acknowledgeReturnedTask = useCallback((taskId: string) => {
+    if(!user) return;
+    const task = tasksById[taskId];
+    if(!task || task.approvalState !== 'returned' || !task.assigneeIds.includes(user.id)) return;
+    update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none' });
+  }, [user, tasksById]);
+  
+  const requestTaskReassignment = useCallback((taskId: string, newAssigneeId: string, comment: string) => {
     if(!user) return;
     const task = tasksById[taskId];
     if(!task) return;
 
-    const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
+    addComment(taskId, comment);
+    
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/pendingAssigneeId`] = newAssigneeId;
+    updates[`tasks/${taskId}/status`] = 'Pending Approval';
+    updates[`tasks/${taskId}/approverId`] = task.creatorId;
+
+    update(ref(rtdb), updates);
+  }, [user, addComment]);
+  
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
     
     const updates: { [key: string]: any } = {};
-    updates[`tasks/${taskId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
-    const allParticipants = new Set(task.participants || []);
-    if (task.creatorId) allParticipants.add(task.creatorId);
-    if (task.assigneeIds) task.assigneeIds.forEach(id => allParticipants.add(id));
+    update(ref(rtdb), updates);
+  }, [user, internalRequests]);
+  
+  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request) return;
 
-    allParticipants.forEach(participantId => {
-        if (participantId !== user.id) {
-            updates[`tasks/${taskId}/viewedBy/${participantId}`] = false;
-        }
-    });
+    const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
 
-    allParticipants.forEach(participantId => {
-        if (participantId !== user.id) {
-            const participant = users.find(u => u.id === participantId);
-            if (participant && participant.email) {
-                createAndSendNotification(
-                    participant.email,
-                    `New comment on task: ${task.title}`,
-                    `New comment from ${user.name}`,
-                    {
-                        'Task': task.title,
-                        'Comment': commentText
-                    },
-                    `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-                    'View Task'
-                );
-            }
-        }
-    });
-  }, [user, tasksById, users]);
-  
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester?.email && request.requesterId !== user.id) {
+        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+        createAndSendNotification(
+            requester.email,
+            `New Query on your PPE Request for ${employee?.name || '...'}`,
+            `Query from ${user.name}`,
+            {
+                'Request For': employee?.name || 'N/A',
+                'Item': `${request.ppeType} (Size: ${request.size})`,
+                'Question': commentText,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'Reply to Query'
+        );
+    }
+  }, [user, ppeRequests, users, manpowerProfiles]);
+
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -1556,9 +1839,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
-
-    
 
