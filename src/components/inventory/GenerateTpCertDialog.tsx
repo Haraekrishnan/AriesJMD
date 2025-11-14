@@ -104,7 +104,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       (item as any).name ||
       (item as any).machineName ||
       (item as any).equipmentName;
-
+  
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
