@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -752,7 +753,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     });
   }, [user, tasksById, users]);
+  
+  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = ppeRequests.find(r => r.id === requestId);
+    if (!request) return;
 
+    const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester?.email && request.requesterId !== user.id) {
+        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+        createAndSendNotification(
+            requester.email,
+            `New Query on your PPE Request for ${employee?.name || '...'}`,
+            `Query from ${user.name}`,
+            {
+                'Request For': employee?.name || 'N/A',
+                'Item': `${request.ppeType} (Size: ${request.size})`,
+                'Question': commentText,
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'Reply to Query'
+        );
+    }
+  }, [user, ppeRequests, users, manpowerProfiles]);
+
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, internalRequestsById]);
+  
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -1036,7 +1084,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
   }, [user, addComment, tasksById]);
-
+  
   const getExpandedPlannerEvents = useCallback((month: Date, userId: string): (PlannerEvent & { eventDate: Date })[] => {
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
@@ -1625,22 +1673,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return { importedCount, notFoundCount };
   }, [manpowerProfiles, user]);
-
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
-
+  
   const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'internalRequests'));
@@ -1880,38 +1913,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `ppeRequests/${id}`), data);
   }, []);
 
-  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = ppeRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        createAndSendNotification(
-            requester.email,
-            `New Query on your PPE Request for ${employee?.name || '...'}`,
-            `Query from ${user.name}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Question': commentText,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'Reply to Query'
-        );
-    }
-  }, [user, ppeRequests, users, manpowerProfiles]);
-
   const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
@@ -2052,66 +2053,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, dataToSave);
     addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
   }, [user, addActivityLog]);
-  
+
   const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
-    if (!user) return 0;
-    
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
-    const existingSerialNumbers = new Set(inventoryItems.map(i => i.serialNumber));
 
     itemsData.forEach(row => {
-      const serialNumber = String(row['SERIAL NUMBER'] || '').trim();
-      if (!serialNumber) return;
+        const serialNumber = row['SERIAL NUMBER'];
+        if (!serialNumber) return;
 
-      const projectName = String(row['PROJECT'] || '').trim();
-      const project = projects.find(p => p.name.toLowerCase() === projectName.toLowerCase());
-
-      const parseDateExcel = (date: any): string | null => {
-        if (!date) return null;
-        if (date instanceof Date && isValid(date)) {
-          return date.toISOString();
+        const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+        
+        const parseDateExcel = (date: any): string | null => {
+            if (date instanceof Date && isValid(date)) {
+                return date.toISOString();
+            }
+            return null;
         }
-        if (typeof date === 'string' || typeof date === 'number') {
-           const d = new Date(date);
-           if (isValid(d)) return d.toISOString();
+
+        const dataToSave = {
+            name: row['ITEM NAME'] || '',
+            serialNumber: serialNumber,
+            chestCrollNo: row['CHEST CROLL NO'] || '',
+            ariesId: row['ARIES ID'] || '',
+            inspectionDate: parseDateExcel(row['INSPECTION DATE']),
+            inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
+            tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']),
+            status: row['STATUS'] || 'In Store',
+            projectId: projects.find(p => p.name === row['PROJECT'])?.id || projects[0].id,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        if (existingItem) {
+            updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
+        } else {
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            updates[`/inventoryItems/${newRef.key}`] = dataToSave;
         }
-        return null;
-      };
-
-      const itemData: Partial<InventoryItem> = {
-        name: String(row['ITEM NAME'] || '').trim(),
-        serialNumber: serialNumber,
-        chestCrollNo: String(row['CHEST CROLL NO'] || '').trim() || undefined,
-        ariesId: String(row['ARIES ID'] || '').trim() || undefined,
-        inspectionDate: parseDateExcel(row['INSPECTION DATE']),
-        inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
-        tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']),
-        status: (String(row['STATUS'] || 'In Store').trim() as InventoryItemStatus) || 'In Store',
-        projectId: project ? project.id : projects.find(p => p.name === 'Unassigned')?.id || '',
-        lastUpdated: new Date().toISOString(),
-      };
-      
-      const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
-
-      if (existingItem) {
-        updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...itemData };
-      } else {
-        const newRef = push(ref(rtdb, 'inventoryItems'));
-        updates[`/inventoryItems/${newRef.key}`] = { ...itemData, id: newRef.key };
-      }
-      importedCount++;
+        importedCount++;
     });
 
-    if (Object.keys(updates).length > 0) {
-      update(ref(rtdb), updates);
+    if(Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
     }
     return importedCount;
-  }, [inventoryItems, projects, user]);
+  }, [inventoryItems, projects]);
   
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
-    const updates = { ...data, lastUpdated: new Date().toISOString() };
+    const updates = { ...data, lastUpdated: new Date().toISOString(), movedToProjectId: data.movedToProjectId || null };
     update(ref(rtdb, `inventoryItems/${id}`), updates);
   }, []);
   
@@ -3012,6 +3002,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
 
+  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    certificateRequests.forEach(req => {
+      const isStoreReq = requestType === 'store' && req.itemId;
+      const isEquipmentReq = requestType === 'equipment' && (req.utMachineId || req.dftMachineId);
+      
+      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester && (isStoreReq || isEquipmentReq)) {
+        updates[`certificateRequests/${req.id}/viewedByRequester`] = true;
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, certificateRequests]);
+  
+  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+    toast({ title: 'Request Acknowledged', description: 'The completed request has been cleared from your view.' });
+    addActivityLog(user.id, "Acknowledged Certificate Request", `ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
+  
   // SECTION: Computed Values (Memoized)
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
     if (!user) return {
@@ -3141,6 +3154,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs, projects]);
   
+  // All other function definitions exist here...
+  // ... including login, logout, etc.
+
+  // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can,
