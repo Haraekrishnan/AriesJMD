@@ -449,28 +449,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
-  
-  // SECTION: PERMISSIONS
-  const can = useMemo(() => {
-    const permissions: Partial<PermissionsObject> = {};
-    ALL_PERMISSIONS.forEach(p => permissions[p] = false);
-
-    if (!user) return permissions as PermissionsObject;
-
-    if (user.role === 'Admin') {
-        ALL_PERMISSIONS.forEach(p => permissions[p] = true);
-        return permissions as PermissionsObject;
-    }
-
-    const userRole = roles.find(r => r.name === user.role);
-    if (userRole && userRole.permissions) {
-        userRole.permissions.forEach(p => {
-            permissions[p] = true;
-        });
-    }
-
-    return permissions as PermissionsObject;
-  }, [user, roles]);
 
   // SECTION: ALL FUNCTION DEFINITIONS START HERE
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
@@ -2765,13 +2743,13 @@ const updateInventoryItemGroupByProject = useCallback((
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
-    const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     
     const sanitizedItems = requestData.items.map(item => ({
-        ...item,
-        ariesId: item.ariesId || null,
+      ...item,
+      ariesId: item.ariesId || null,
     }));
-
+  
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
         ...requestData,
         items: sanitizedItems,
@@ -2779,10 +2757,10 @@ const updateInventoryItemGroupByProject = useCallback((
         requestDate: new Date().toISOString(),
         status: 'Pending',
     };
-    set(newRef, newRequest);
+    set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
   
-    const approvers = users.filter(u => roles.find(r => r.name === u.role)?.permissions.includes('approve_store_requests'));
+    const approvers = users.filter(u => can.approve_store_requests);
     const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
     const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
   
@@ -2804,8 +2782,8 @@ const updateInventoryItemGroupByProject = useCallback((
         );
       }
     });
-  }, [user, addActivityLog, users, roles, projects]);
-  
+  }, [user, addActivityLog, users, projects, can.approve_store_requests]);
+
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
       toast({
@@ -2828,9 +2806,9 @@ const updateInventoryItemGroupByProject = useCallback((
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
     const sanitizedItems = listData.items.map(item => ({
-        ...item,
-        ariesId: item.ariesId || null,
-        chestCrollNo: item.chestCrollNo || null,
+      ...item,
+      ariesId: item.ariesId || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
     }));
     const newList: Omit<TpCertList, 'id'> = {
         ...listData,
@@ -2924,6 +2902,20 @@ const updateInventoryItemGroupByProject = useCallback((
     addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
   }, [user, can.approve_store_requests, addActivityLog]);
   
+    const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
+    
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
+    // A comment should also be added, but this depends on a unified comment system for transfers.
+    // For now, the status change and log are the key actions.
+  }, [user, inventoryTransferRequests, addActivityLog]);
+
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -2980,11 +2972,10 @@ const updateInventoryItemGroupByProject = useCallback((
 
     addCertificateRequestComment(requestId, `Request fulfilled by ${user.name}. Comment: ${comment}`);
 
-    const updates: { [key: string]: any } = {
-        [`certificateRequests/${requestId}/status`]: 'Completed',
-        [`certificateRequests/${requestId}/completionDate`]: new Date().toISOString(),
-        [`certificateRequests/${requestId}/viewedByRequester`]: false,
-    };
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/status`] = 'Completed';
+    updates[`certificateRequests/${requestId}/completionDate`] = new Date().toISOString();
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     
     const urlRegex = /(https?:\/\/[^\s]+)/;
     const match = comment.match(urlRegex);
@@ -3338,3 +3329,6 @@ export const useAppContext = (): AppContextType => {
 
     
 
+
+
+    
