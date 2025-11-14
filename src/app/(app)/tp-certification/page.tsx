@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -32,7 +33,9 @@ export default function TpCertificationPage() {
     const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
 
     const filteredLists = useMemo(() => {
-        const allLists = (tpCertLists || []).sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
+        const allLists = (tpCertLists || [])
+            .filter(list => !!list.createdAt) // Ensure createdAt exists
+            .sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
         if (!searchTerm.trim()) {
             return allLists;
         }
@@ -125,7 +128,7 @@ export default function TpCertificationPage() {
                                                 <div>
                                                     <p className="font-semibold text-lg">{list.name}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        Created by {creator?.name || 'Unknown'} on {format(parseISO(list.date), 'dd MMM, yyyy')} at {format(parseISO(list.createdAt), 'p')}
+                                                        Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
                                                     </p>
                                                 </div>
                                             </AccordionTrigger>
