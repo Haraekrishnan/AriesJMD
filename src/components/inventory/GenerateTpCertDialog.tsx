@@ -23,7 +23,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2 } from 'lucide-react';
-import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
@@ -37,10 +37,10 @@ interface GenerateTpCertDialogProps {
   existingList?: TpCertList | null;
 }
 
-type CertItem = (InventoryItem | UTMachine | DftMachine) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine'; };
+type CertItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
-  const { inventoryItems, utMachines, dftMachines, addTpCertList, updateTpCertList } = useAppContext();
+  const { inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, addTpCertList, updateTpCertList } = useAppContext();
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
@@ -54,8 +54,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
     utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
     dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
+    digitalCameras?.forEach(item => items.push({ ...item, itemType: 'DigitalCamera' }));
+    anemometers?.forEach(item => items.push({ ...item, itemType: 'Anemometer' }));
+    otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
     return items;
-  }, [inventoryItems, utMachines, dftMachines]);
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments]);
 
   useEffect(() => {
     if (existingList) {
@@ -71,7 +74,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
   const uniqueItemNames = useMemo(() => {
     const names = new Set<string>();
     allSearchableItems.forEach(item => {
-        const name = 'name' in item ? item.name : ('machineName' in item ? item.machineName : null);
+        const name = (item as any).name || (item as any).machineName || (item as any).equipmentName;
         if (name) names.add(name);
     });
     return Array.from(names).sort();
@@ -80,7 +83,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
   const itemsOfSelectedName = useMemo(() => {
     if (!selectedItemName) return [];
     return allSearchableItems.filter(item => {
-        const name = 'name' in item ? item.name : ('machineName' in item ? item.machineName : '');
+        const name = 'name' in item ? item.name : ('machineName' in item ? item.machineName : ('equipmentName' in item ? item.equipmentName : ''));
         return name === selectedItemName;
     });
   }, [selectedItemName, allSearchableItems]);
@@ -101,7 +104,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
-      materialName: (item as any).name || (item as any).machineName,
+      materialName: (item as any).name || (item as any).machineName || (item as any).equipmentName,
       manufacturerSrNo: item.serialNumber,
       chestCrollNo: item.itemType === 'Inventory' && (item as InventoryItem).name.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
       ariesId: item.ariesId,
@@ -203,7 +206,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                 onSelect={() => handleSelect(item)}
                                 className="cursor-pointer"
                             >
-                                {(item as any).name || (item as any).machineName} — (SN: {item.serialNumber || 'N/A'})
+                                {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {item.serialNumber || 'N/A'})
                             </CommandItem>
                             ))}
                         </CommandGroup>
