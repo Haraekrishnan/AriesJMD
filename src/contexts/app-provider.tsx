@@ -450,6 +450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
 
+  // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
     const permissions = new Set<Permission>(user && user.role && roles.find(r => r.name === user.role)?.permissions || []);
     const permissionsObject: PermissionsObject = {} as PermissionsObject;
@@ -1929,7 +1930,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, internalRequestsById, addInternalRequestComment, toast]);
   
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
+    if (!user) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
   
@@ -2038,7 +2039,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can.approve_store_requests, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
+  }, [user, can, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
 
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if(!user) return;
@@ -2147,7 +2148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can.approve_store_requests, internalRequestsById, users, updateInternalRequestStatus]);
+  }, [user, can, internalRequestsById, users, updateInternalRequestStatus]);
   
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -3006,11 +3007,10 @@ const updateInventoryItemGroupByProject = useCallback((
 
     addCertificateRequestComment(requestId, `Request fulfilled by ${user.name}. Comment: ${comment}`);
 
-    const updates: { [key: string]: any } = {
-        [`certificateRequests/${requestId}/status`]: 'Completed',
-        [`certificateRequests/${requestId}/completionDate`]: new Date().toISOString(),
-        [`certificateRequests/${requestId}/viewedByRequester`]: false,
-    };
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/status`] = 'Completed';
+    updates[`certificateRequests/${requestId}/completionDate`] = new Date().toISOString();
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     
     const urlRegex = /(https?:\/\/[^\s]+)/;
     const match = comment.match(urlRegex);
@@ -3048,6 +3048,13 @@ const updateInventoryItemGroupByProject = useCallback((
       update(ref(rtdb), updates);
     }
   }, [user, certificateRequests]);
+  
+  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
+    if (!user) return;
+    remove(ref(rtdb, `certificateRequests/${requestId}`));
+    toast({ title: 'Request Acknowledged', description: 'The completed request has been cleared from your view.' });
+    addActivityLog(user.id, "Acknowledged Certificate Request", `ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
   
   // All other function definitions exist here...
   // ... including login, logout, etc.
@@ -3379,3 +3386,6 @@ export const useAppContext = (): AppContextType => {
 };
 
 
+
+
+    
