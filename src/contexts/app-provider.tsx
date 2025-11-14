@@ -117,7 +117,7 @@ type AppContextType = {
   // Functions
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
-  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => void;
+  createTask: (task: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester' | 'previousStatus'> & { assigneeIds: string[] }) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, newStatus: TaskStatus) => void;
@@ -802,7 +802,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
   
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
+  const addManagementRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = managementRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`managementRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, managementRequestsById]);
+  
+  const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = certificateRequestsById[requestId];
+    if (!request) return;
+  
+    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+  
+    update(ref(rtdb), updates);
+  }, [user, certificateRequestsById]);
+  
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester' | 'previousStatus'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
     const newRef = push(ref(rtdb, 'tasks'));
@@ -871,9 +901,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
     if (!user) return;
-    update(ref(rtdb, `tasks/${taskId}`), { status: newStatus, lastUpdated: new Date().toISOString() });
+    const task = tasksById[taskId];
+    if (!task) return;
+    const updates: { [key: string]: any } = {};
+    updates[`tasks/${taskId}/status`] = newStatus;
+    updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
+
+    if (newStatus === 'Done') {
+        updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
+    } else {
+        updates[`tasks/${taskId}/completionDate`] = null;
+    }
+    
+    update(ref(rtdb), updates);
+
     addActivityLog(user.id, 'Task Status Changed', `Task ID: ${taskId}, New Status: ${newStatus}`);
-  }, [user, addActivityLog]);
+  }, [user, addActivityLog, tasksById]);
 
   const submitTaskForApproval = useCallback((taskId: string) => {
     if (!user) return;
@@ -1450,7 +1493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateManpowerLog = useCallback(async (logId: string, data: Partial<ManpowerLog>) => {
     const existingLog = manpowerLogs.find(l => l.id === logId);
     if (!existingLog || !user) return;
-    
+
     const openingManpower = data.openingManpower ?? existingLog.openingManpower;
     const countIn = data.countIn ?? existingLog.countIn;
     const countOut = data.countOut ?? existingLog.countOut;
@@ -1458,6 +1501,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newTotal = openingManpower + countIn - countOut;
 
     const updatePayload = {
+      ...existingLog,
       ...data,
       total: newTotal,
       updatedAt: new Date().toISOString(),
@@ -1751,7 +1795,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb), updates);
-  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
+  }, [user, internalRequestsById, addInternalRequestComment, can.approve_store_requests]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -2045,12 +2089,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    if(!user) return;
+    if (!user) return;
     const newRef = push(ref(rtdb, 'inventoryItems'));
-    const dataToSave = { 
-      ...itemData, 
+    const dataToSave = {
+      ...itemData,
       lastUpdated: new Date().toISOString(),
       movedToProjectId: itemData.movedToProjectId || null,
+      chestCrollNo: itemData.chestCrollNo || null,
     };
     set(newRef, dataToSave);
     addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
@@ -2076,7 +2121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const dataToSave = {
             name: row['ITEM NAME'] || '',
             serialNumber: serialNumber,
-            chestCrollNo: row['CHEST CROLL NO'] || '',
+            chestCrollNo: row['CHEST CROLL NO'] || null,
             ariesId: row['ARIES ID'] || '',
             inspectionDate: parseDateExcel(row['INSPECTION DATE']),
             inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
@@ -2103,7 +2148,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
-    const updates = { ...data, lastUpdated: new Date().toISOString(), movedToProjectId: data.movedToProjectId || null };
+    const updates = {
+      ...data,
+      lastUpdated: new Date().toISOString(),
+      movedToProjectId: data.movedToProjectId || null,
+      chestCrollNo: data.chestCrollNo || null,
+    };
     update(ref(rtdb, `inventoryItems/${id}`), updates);
   }, []);
   
@@ -2390,21 +2440,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, users, addActivityLog]);
   
-  const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    const request = certificateRequestsById[requestId];
-    if (!request) return;
-  
-    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString() };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
-  
-    update(ref(rtdb), updates);
-  }, [user, certificateRequestsById]);
-
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const request = certificateRequestsById[requestId];

@@ -208,6 +208,7 @@ export type Task = {
   viewedByApprover?: boolean;
   isViewedByAssignee?: boolean;
   viewedByRequester?: boolean;
+  previousStatus?: TaskStatus;
 };
 
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
@@ -285,6 +286,7 @@ export const ALL_PERMISSIONS = [
   'manage_job_record',
   'manage_downloads',
   'manage_logbook',
+  'perform_inventory_inspection'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -467,6 +469,7 @@ export type ManpowerProfile = {
   safetyExpiryDate?: string | null; // ISO
   irataValidity?: string | null; // ISO
   firstAidExpiryDate?: string | null; // ISO
+  contractValidity?: string | null;
   
   // Leave and Termination
   leaveHistory?: { [key: string]: LeaveRecord };
@@ -839,10 +842,11 @@ export type JobRecordPlant = {
 
 export type TpCertListItem = {
   itemId: string;
-  itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
+  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim';
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
+  ariesId?: string;
 };
 
 export type TpCertList = {

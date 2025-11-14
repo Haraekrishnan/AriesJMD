@@ -99,7 +99,8 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
         inspectionDate: data.inspectionDate ? data.inspectionDate.toISOString() : '',
         inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
         tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
-        movedToProjectId: data.movedToProjectId
+        movedToProjectId: data.movedToProjectId,
+        chestCrollNo: data.chestCrollNo,
     });
     toast({ title: 'Item Added', description: `${data.name} has been added to the inventory.` });
     setIsOpen(false);

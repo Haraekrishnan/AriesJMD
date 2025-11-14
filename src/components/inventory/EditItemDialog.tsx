@@ -116,7 +116,8 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
         inspectionDate: data.inspectionDate ? data.inspectionDate.toISOString() : '',
         inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
         tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
-        movedToProjectId: data.movedToProjectId
+        movedToProjectId: data.movedToProjectId,
+        chestCrollNo: data.chestCrollNo,
     });
     toast({
       title: 'Item Updated',
