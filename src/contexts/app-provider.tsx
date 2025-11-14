@@ -2690,7 +2690,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), dbUpdates);
     addActivityLog(user.id, 'Bulk TP Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
     toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
-}, [user, can, inventoryItems, addActivityLog, toast]);
+}, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
 
 const updateInventoryItemGroupByProject = useCallback((
     itemName: string,
@@ -2719,7 +2719,7 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), dbUpdates);
     addActivityLog(user.id, 'Bulk Inspection Cert Update', `Updated ${itemsToUpdate.length} items for ${itemName}`);
     toast({ title: 'Update Successful', description: `${itemsToUpdate.length} items have been updated.` });
-}, [user, can, inventoryItems, addActivityLog, toast]);
+}, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
 
   const deleteInventoryItem = useCallback(async (itemId: string): Promise<void> => {
     const item = inventoryItems.find(i => i.id === itemId);
@@ -2866,7 +2866,7 @@ const updateInventoryItemGroupByProject = useCallback((
         );
       }
     });
-  }, [user, addActivityLog, users, can, projects]);
+  }, [user, addActivityLog, users, can.approve_store_requests, projects]);
   
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -2877,7 +2877,7 @@ const updateInventoryItemGroupByProject = useCallback((
 
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-  }, [user, can, addActivityLog]);
+  }, [user, can.approve_store_requests, addActivityLog]);
   
   const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
     if (!user) return;
@@ -2920,7 +2920,7 @@ const updateInventoryItemGroupByProject = useCallback((
     toast({ title: 'Transfer Completed', description: 'The items have been received and their location updated.' });
     addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
   }, [user, inventoryTransferRequests, toast, addActivityLog]);
-  
+
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
       toast({
@@ -3032,6 +3032,22 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), updates);
 
   }, [user, certificateRequestsById, addCertificateRequestComment]);
+  
+  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    certificateRequests.forEach(req => {
+      const isStoreReq = requestType === 'store' && req.itemId;
+      const isEquipmentReq = requestType === 'equipment' && (req.utMachineId || req.dftMachineId);
+      
+      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester && (isStoreReq || isEquipmentReq)) {
+        updates[`certificateRequests/${req.id}/viewedByRequester`] = true;
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      update(ref(rtdb), updates);
+    }
+  }, [user, certificateRequests]);
   
   // All other function definitions exist here...
   // ... including login, logout, etc.
@@ -3361,4 +3377,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
