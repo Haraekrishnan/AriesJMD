@@ -2768,10 +2768,14 @@ const updateInventoryItemGroupByProject = useCallback((
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-      ...requestData,
-      requesterId: user.id,
-      requestDate: new Date().toISOString(),
-      status: 'Pending',
+        ...requestData,
+        requesterId: user.id,
+        requestDate: new Date().toISOString(),
+        status: 'Pending',
+        items: requestData.items.map(item => ({
+            ...item,
+            ariesId: item.ariesId || null
+        }))
     };
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
@@ -2802,7 +2806,7 @@ const updateInventoryItemGroupByProject = useCallback((
   }, [user, addActivityLog, users, roles, projects]);
 
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
-    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+      remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
   }, []);
 
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
@@ -2929,8 +2933,8 @@ const updateInventoryItemGroupByProject = useCallback((
           manufacturerSrNo: item.serialNumber,
           itemId: item.itemId,
           itemType: item.itemType,
+          ariesId: item.ariesId || null,
           chestCrollNo: 'chestCrollNo' in item ? item.chestCrollNo : undefined,
-          ariesId: item.ariesId,
         })),
       };
       addTpCertList(newListData);
@@ -3003,7 +3007,7 @@ const updateInventoryItemGroupByProject = useCallback((
         }
     });
   }, [user, users, addActivityLog]);
-
+  
   const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
     if (!user) return;
     const request = certificateRequestsById[requestId];
@@ -3026,10 +3030,11 @@ const updateInventoryItemGroupByProject = useCallback((
 
     addCertificateRequestComment(requestId, `Request fulfilled by ${user.name}. Comment: ${comment}`);
 
-    const updates: { [key: string]: any } = {};
-    updates[`certificateRequests/${requestId}/status`] = 'Completed';
-    updates[`certificateRequests/${requestId}/completionDate`] = new Date().toISOString();
-    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+    const updates: { [key: string]: any } = {
+        [`certificateRequests/${requestId}/status`]: 'Completed',
+        [`certificateRequests/${requestId}/completionDate`]: new Date().toISOString(),
+        [`certificateRequests/${requestId}/viewedByRequester`]: false,
+    };
     
     const urlRegex = /(https?:\/\/[^\s]+)/;
     const match = comment.match(urlRegex);
@@ -3060,9 +3065,26 @@ const updateInventoryItemGroupByProject = useCallback((
     updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
     updates[`inventoryTransferRequests/${requestId}/acknowledgedDate`] = new Date().toISOString();
     updates[`inventoryTransferRequests/${requestId}/receiverId`] = user.id;
+
+    // Move items to new project
+    request.items.forEach(item => {
+        let itemPath: string | null = null;
+        switch (item.itemType) {
+            case 'Inventory': itemPath = `inventoryItems/${item.itemId}`; break;
+            case 'UTMachine': itemPath = `utMachines/${item.itemId}`; break;
+            case 'DftMachine': itemPath = `dftMachines/${item.itemId}`; break;
+            case 'DigitalCamera': itemPath = `digitalCameras/${item.itemId}`; break;
+            case 'Anemometer': itemPath = `anemometers/${item.itemId}`; break;
+            case 'OtherEquipment': itemPath = `otherEquipments/${item.itemId}`; break;
+        }
+        if (itemPath) {
+            updates[`${itemPath}/projectId`] = request.toProjectId;
+        }
+    });
+
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
-  }, [user, addActivityLog]);
+  }, [user, addActivityLog, inventoryTransferRequests]);
 
   const clearInventoryTransferHistory = useCallback(() => {
     if (!user || user.role !== 'Admin') return;
@@ -3691,7 +3713,7 @@ const updateInventoryItemGroupByProject = useCallback((
     
     const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
 
-    const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
+    const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => ['Completed', 'Rejected', 'Approved'].includes(r.status)) : [];
 
     let totalWorking = 0;
     let totalOnLeave = 0;
@@ -3919,5 +3941,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
