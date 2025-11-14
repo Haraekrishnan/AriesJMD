@@ -1937,8 +1937,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // Pre-flight check for "Issue All"
     if (status === 'Issued') {
-        const itemsToIssue = requestItems.filter(item => item.status === 'Approved');
-        for (const item of itemsToIssue) {
+        for (const item of requestItems) {
             const inventoryItem = inventoryItems.find(i => i.id === item.inventoryItemId || (i.category !== 'General' && i.name.toLowerCase() === item.description.toLowerCase()));
             if (inventoryItem && (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable')) {
                 const currentStock = inventoryItem.quantity || 0;
@@ -2039,7 +2038,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
+  }, [user, can, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
 
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if(!user) return;
@@ -2148,7 +2147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can, internalRequestsById, users, updateInternalRequestStatus]);
+  }, [user, can.approve_store_requests, internalRequestsById, users, updateInternalRequestStatus]);
   
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -2791,56 +2790,7 @@ const updateInventoryItemGroupByProject = useCallback((
         );
       }
     });
-  }, [user, addActivityLog, users, projects, can]);
-
-  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
-    if (!user || user.role !== 'Admin') {
-      toast({
-        variant: 'destructive',
-        title: 'Permission Denied',
-        description: 'Only an administrator can delete transfer requests.',
-      });
-      return;
-    }
-    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
-    toast({
-      title: 'Transfer Request Deleted',
-      description: 'The request has been permanently removed.',
-      variant: 'destructive',
-    });
-    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
-  }, [user, toast, addActivityLog]);
-  
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      ...item,
-      ariesId: item.ariesId || null,
-      chestCrollNo: (item as any).chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
-  
-  const updateTpCertList = useCallback((listData: TpCertList) => {
-    const { id, ...data } = listData;
-    const sanitizedData = {
-      ...data,
-      items: data.items.map(item => ({
-        ...item,
-        ariesId: item.ariesId === undefined ? null : item.ariesId,
-        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
-      })),
-    };
-    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-  }, []);
+  }, [user, addActivityLog, users, can.approve_store_requests, projects]);
 
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
@@ -2924,6 +2874,85 @@ const updateInventoryItemGroupByProject = useCallback((
     // A comment should also be added, but this depends on a unified comment system for transfers.
     // For now, the status change and log are the key actions.
   }, [user, inventoryTransferRequests, addActivityLog]);
+  
+  const acknowledgeTransfer = useCallback((requestId: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequests.find(r => r.id === requestId);
+    if (!request) return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
+    updates[`inventoryTransferRequests/${requestId}/acknowledgedBy`] = user.id;
+    updates[`inventoryTransferRequests/${requestId}/acknowledgedDate`] = new Date().toISOString();
+  
+    // Update the project ID of all transferred items
+    request.items.forEach(item => {
+      let itemPath: string;
+      switch (item.itemType) {
+        case 'Inventory': itemPath = 'inventoryItems'; break;
+        case 'UTMachine': itemPath = 'utMachines'; break;
+        case 'DftMachine': itemPath = 'dftMachines'; break;
+        case 'DigitalCamera': itemPath = 'digitalCameras'; break;
+        case 'Anemometer': itemPath = 'anemometers'; break;
+        case 'OtherEquipment': itemPath = 'otherEquipments'; break;
+        default: return; // Should not happen
+      }
+      updates[`${itemPath}/${item.itemId}/projectId`] = request.toProjectId;
+    });
+  
+    update(ref(rtdb), updates);
+    toast({ title: 'Transfer Completed', description: 'The items have been received and their location updated.' });
+    addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
+  }, [user, inventoryTransferRequests, toast, addActivityLog]);
+
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only an administrator can delete transfer requests.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+    toast({
+      title: 'Transfer Request Deleted',
+      description: 'The request has been permanently removed.',
+      variant: 'destructive',
+    });
+    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
+  
+  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
+      ...item,
+      ariesId: item.ariesId || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
+    }));
+    const newList: Omit<TpCertList, 'id'> = {
+        ...listData,
+        items: sanitizedItems,
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
+    };
+    set(newRef, newList);
+    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
+  
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    const { id, ...data } = listData;
+    const sanitizedData = {
+      ...data,
+      items: data.items.map(item => ({
+        ...item,
+        ariesId: item.ariesId === undefined ? null : item.ariesId,
+        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+      })),
+    };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+  }, []);
 
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
@@ -3108,7 +3137,7 @@ const updateInventoryItemGroupByProject = useCallback((
     
     const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
 
-    const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => ['Completed', 'Rejected', 'Approved'].includes(r.status)) : [];
+    const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
     
     let totalWorking = 0;
     let totalOnLeave = 0;
@@ -3337,8 +3366,3 @@ export const useAppContext = (): AppContextType => {
   return context;
 };
 
-    
-
-
-
-    
