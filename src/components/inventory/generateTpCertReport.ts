@@ -188,6 +188,9 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 
     if (groupSize > 1) {
         const mergeCols = [1, 2, 5, 6, 7, 8, 9]; 
+        if(isHarness) {
+            mergeCols.push(4); // also merge chest croll no. if not harness
+        }
         mergeCols.forEach(col => {
             worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
         });
@@ -297,8 +300,10 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     srNo++;
   });
   
+  const finalTableColumns = tableColumn.filter(header => header !== "Chest Scroll No." || items.some(i => i.materialName.toLowerCase() === 'harness'));
+
   (doc as any).autoTable({
-      head: [tableColumn],
+      head: [finalTableColumns],
       body: tableRows,
       startY: 170,
       theme: "grid",
