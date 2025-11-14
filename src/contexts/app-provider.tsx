@@ -1,11 +1,9 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem, TpCertList, InventoryTransferRequest, TRANSFER_REASONS, DownloadableDocument, LogbookRequest, InspectionChecklist } from '../lib/types';
 import { useRouter } from 'next/navigation';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore, isToday, isFuture, endOfWeek, startOfWeek } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore, isToday, isFuture, endOfWeek, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo, onChildAdded, onChildChanged, onChildRemoved } from 'firebase/database';
@@ -513,8 +511,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { id, ...data } = updatedUser;
     const dataToSave: any = { ...data };
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
-      dataToSave.supervisorId = null;
-    }
+  dataToSave.supervisorId = null;
+  // To do
+}
+
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
@@ -1395,7 +1395,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
     };
-    await set(newLogRef, newLog);
+    await set(newRef, newLog);
   }, [user, manpowerLogs]);
 
   const updateManpowerLog = useCallback(async (logId: string, data: Partial<ManpowerLog>) => {
@@ -2225,6 +2225,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, addActivityLog, users, can.approve_store_requests, projects]);
 
+  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
+    if (!user || !can.approve_store_requests) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
+    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
+  }, [user, can.approve_store_requests, addActivityLog]);
+  
+  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = inventoryTransferRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
+    
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
+  }, [user, inventoryTransferRequests, addActivityLog]);
+
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only an administrator can delete transfer requests.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+    toast({
+      title: 'Transfer Request Deleted',
+      description: 'The request has been permanently removed.',
+      variant: 'destructive',
+    });
+    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
+  
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
   
@@ -2282,47 +2323,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
   }, [user, addActivityLog, addTpCertList, users, projects]);
-  
-  const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
-    updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
-
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-  }, [user, can.approve_store_requests, addActivityLog]);
-  
-  const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    const request = inventoryTransferRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
-    
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
-  }, [user, inventoryTransferRequests, addActivityLog]);
-
-  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
-    if (!user || user.role !== 'Admin') {
-      toast({
-        variant: 'destructive',
-        title: 'Permission Denied',
-        description: 'Only an administrator can delete transfer requests.',
-      });
-      return;
-    }
-    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
-    toast({
-      title: 'Transfer Request Deleted',
-      description: 'The request has been permanently removed.',
-      variant: 'destructive',
-    });
-    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
-  }, [user, toast, addActivityLog]);
   
   const acknowledgeTransfer = useCallback((requestId: string) => {
     if (!user) return;
@@ -3015,32 +3015,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
 
-  const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
-    if (!user) return;
-    const updates: { [key: string]: any } = {};
-    certificateRequests.forEach(req => {
-      const isStoreReq = requestType === 'store' && req.itemId;
-      const isEquipmentReq = requestType === 'equipment' && (req.utMachineId || req.dftMachineId);
-      
-      if (req.requesterId === user.id && req.status === 'Completed' && !req.viewedByRequester && (isStoreReq || isEquipmentReq)) {
-        updates[`certificateRequests/${req.id}/viewedByRequester`] = true;
-      }
-    });
-    if (Object.keys(updates).length > 0) {
-      update(ref(rtdb), updates);
-    }
-  }, [user, certificateRequests]);
-  
-  const acknowledgeFulfilledRequest = useCallback((requestId: string) => {
-    if (!user) return;
-    remove(ref(rtdb, `certificateRequests/${requestId}`));
-    toast({ title: 'Request Acknowledged', description: 'The completed request has been cleared from your view.' });
-    addActivityLog(user.id, "Acknowledged Certificate Request", `ID: ${requestId}`);
-  }, [user, toast, addActivityLog]);
-  
-
-  // All other function definitions exist here...
-  // ... including login, logout, etc.
 
   // SECTION: Computed Values (Memoized)
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
@@ -3070,7 +3044,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const event = plannerEvents.find(e => e.id === eventId);
           if (!event) continue;
   
-          const isParticipant = event.userId === user.id || event.creatorId === event.id;
+          const isParticipant = event.userId === user.id || event.creatorId === user.id;
           if (!isParticipant) continue;
   
           // Now check if there's any unread comment from another user for this event on this day
@@ -3363,6 +3337,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-    

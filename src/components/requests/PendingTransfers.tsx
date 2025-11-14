@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -7,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
@@ -16,13 +15,15 @@ import type { InventoryTransferRequest } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer, allCompletedTransferRequests, deleteInventoryTransferRequest } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, acknowledgeTransfer, disputeInventoryTransfer, allCompletedTransferRequests, deleteInventoryTransferRequest, addTpCertList } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [rejectionComment, setRejectionComment] = useState('');
+  const [editingTpList, setEditingTpList] = useState<Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> | null>(null);
 
   const { forApproval, forAcknowledgement, myActiveRequests } = useMemo(() => {
     if (!user) return { forApproval: [], forAcknowledgement: [], myActiveRequests: [] };
@@ -85,8 +86,26 @@ export default function PendingTransfers() {
     deleteInventoryTransferRequest(id);
     toast({ title: 'Transfer Deleted', description: 'The transfer record has been removed.', variant: 'destructive' });
   };
+  
+  const handleCreateTpList = (request: InventoryTransferRequest) => {
+    const listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> = {
+      name: `From Transfer ${request.id.slice(-6)}`,
+      date: new Date().toISOString().split('T')[0],
+      items: request.items.map(item => ({
+        itemId: item.itemId,
+        itemType: item.itemType,
+        materialName: item.name,
+        manufacturerSrNo: item.serialNumber,
+        ariesId: item.ariesId,
+        chestCrollNo: (item as any).chestCrollNo,
+      })),
+    };
+    setEditingTpList(listData);
+  };
+
 
   return (
+    <>
     <CardContent className="space-y-4 p-0">
         {forApproval.length > 0 && (
           <div className="space-y-2">
@@ -273,6 +292,7 @@ export default function PendingTransfers() {
                   </div>
                   <div className="mt-2 text-sm">
                     <p><strong>Reason:</strong> {req.reason} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
+                    {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
                     <p className="font-medium mt-2">Items:</p>
                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                       {req.items.map(item => (
@@ -346,6 +366,11 @@ export default function PendingTransfers() {
                                   </AccordionTrigger>
                                   <div className="flex items-center gap-2 pl-4">
                                     <Badge variant={statusVariant}>{req.status}</Badge>
+                                    {(req.status === 'Approved' || req.status === 'Completed') && (
+                                        <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
+                                            <FilePlus className="mr-2 h-3 w-3" /> Create TP List
+                                        </Button>
+                                    )}
                                     {user?.role === 'Admin' && (
                                       <AlertDialog>
                                         <AlertDialogTrigger asChild>
@@ -365,6 +390,7 @@ export default function PendingTransfers() {
                                   </div>
                                 </div>
                                 <AccordionContent className="p-2 border-t">
+                                    {req.remarks && <p className="text-xs italic text-muted-foreground mb-2">Remarks: {req.remarks}</p>}
                                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                                     {req.items.map(item => (
                                         <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
@@ -381,5 +407,15 @@ export default function PendingTransfers() {
           </Accordion>
         )}
     </CardContent>
+    {editingTpList && (
+      <GenerateTpCertDialog 
+        isOpen={!!editingTpList}
+        setIsOpen={() => setEditingTpList(null)}
+        existingList={editingTpList}
+      />
+    )}
+    </>
   );
 }
+
+    
