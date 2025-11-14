@@ -1930,7 +1930,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, internalRequestsById, addInternalRequestComment, toast]);
   
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user) return;
+    if (!user || !can.approve_store_requests) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
   
@@ -2039,7 +2039,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'View Request'
       );
     }
-  }, [user, can, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
+  }, [user, can.approve_store_requests, internalRequestsById, users, inventoryItems, addActivityLog, addInternalRequestComment, toast]);
 
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if(!user) return;
@@ -2749,7 +2749,7 @@ const updateInventoryItemGroupByProject = useCallback((
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
-
+  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -2768,6 +2768,18 @@ const updateInventoryItemGroupByProject = useCallback((
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
   }, [user, addActivityLog]);
 
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    const { id, ...data } = listData;
+    const sanitizedData = {
+      ...data,
+      items: data.items.map(item => ({
+        ...item,
+        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+      })),
+    };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+  }, []);
+  
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
   
@@ -3056,6 +3068,119 @@ const updateInventoryItemGroupByProject = useCallback((
     addActivityLog(user.id, "Acknowledged Certificate Request", `ID: ${requestId}`);
   }, [user, toast, addActivityLog]);
   
+  const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
+    const newRef = push(ref(rtdb, 'utMachines'));
+    set(newRef, machine);
+  }, []);
+
+  const updateUTMachine = useCallback((machine: UTMachine) => {
+    const { id, ...data } = machine;
+    update(ref(rtdb, `utMachines/${id}`), data);
+  }, []);
+
+  const deleteUTMachine = useCallback((machineId: string) => {
+    remove(ref(rtdb, `utMachines/${machineId}`));
+  }, []);
+  
+  const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
+    const newRef = push(ref(rtdb, 'dftMachines'));
+    set(newRef, machine);
+  }, []);
+
+  const updateDftMachine = useCallback((machine: DftMachine) => {
+    const { id, ...data } = machine;
+    update(ref(rtdb, `dftMachines/${id}`), data);
+  }, []);
+
+  const deleteDftMachine = useCallback((machineId: string) => {
+    remove(ref(rtdb, `dftMachines/${machineId}`));
+  }, []);
+
+  const addMobileSim = useCallback((item: Omit<MobileSim, 'id'>) => {
+    const newRef = push(ref(rtdb, 'mobileSims'));
+    set(newRef, item);
+  }, []);
+
+  const updateMobileSim = useCallback((item: MobileSim) => {
+    const { id, ...data } = item;
+    update(ref(rtdb, `mobileSims/${id}`), data);
+  }, []);
+
+  const deleteMobileSim = useCallback((itemId: string) => {
+    remove(ref(rtdb, `mobileSims/${itemId}`));
+  }, []);
+
+  const addLaptopDesktop = useCallback((item: Omit<LaptopDesktop, 'id'>) => {
+    const newRef = push(ref(rtdb, 'laptopsDesktops'));
+    set(newRef, item);
+  }, []);
+
+  const updateLaptopDesktop = useCallback((item: LaptopDesktop) => {
+    const { id, ...data } = item;
+    update(ref(rtdb, `laptopsDesktops/${id}`), data);
+  }, []);
+
+  const deleteLaptopDesktop = useCallback((itemId: string) => {
+    remove(ref(rtdb, `laptopsDesktops/${itemId}`));
+  }, []);
+
+  const addDigitalCamera = useCallback((camera: Omit<DigitalCamera, 'id'>) => {
+    const newRef = push(ref(rtdb, 'digitalCameras'));
+    set(newRef, camera);
+  }, []);
+
+  const updateDigitalCamera = useCallback((camera: DigitalCamera) => {
+    const { id, ...data } = camera;
+    update(ref(rtdb, `digitalCameras/${id}`), data);
+  }, []);
+
+  const deleteDigitalCamera = useCallback((cameraId: string) => {
+    remove(ref(rtdb, `digitalCameras/${cameraId}`));
+  }, []);
+
+  const addAnemometer = useCallback((anemometer: Omit<Anemometer, 'id'>) => {
+    const newRef = push(ref(rtdb, 'anemometers'));
+    set(newRef, anemometer);
+  }, []);
+
+  const updateAnemometer = useCallback((anemometer: Anemometer) => {
+    const { id, ...data } = anemometer;
+    update(ref(rtdb, `anemometers/${id}`), data);
+  }, []);
+
+  const deleteAnemometer = useCallback((anemometerId: string) => {
+    remove(ref(rtdb, `anemometers/${anemometerId}`));
+  }, []);
+
+  const addOtherEquipment = useCallback((equipment: Omit<OtherEquipment, 'id'>) => {
+    const newRef = push(ref(rtdb, 'otherEquipments'));
+    set(newRef, equipment);
+  }, []);
+
+  const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
+    const { id, ...data } = equipment;
+    update(ref(rtdb, `otherEquipments/${id}`), data);
+  }, []);
+
+  const deleteOtherEquipment = useCallback((equipmentId: string) => {
+    remove(ref(rtdb, `otherEquipments/${equipmentId}`));
+  }, []);
+
+  const addMachineLog = useCallback((log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
+    if(!user) return;
+    const newRef = push(ref(rtdb, 'machineLogs'));
+    const newLog: Omit<MachineLog, 'id'> = { ...log, machineId, loggedByUserId: user.id };
+    set(newRef, newLog);
+  }, [user]);
+
+  const deleteMachineLog = useCallback((logId: string) => {
+    remove(ref(rtdb, `machineLogs/${logId}`));
+  }, []);
+
+  const getMachineLogs = useCallback((machineId: string) => {
+    return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [machineLogs]);
+
   // All other function definitions exist here...
   // ... including login, logout, etc.
 
