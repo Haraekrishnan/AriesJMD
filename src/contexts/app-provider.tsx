@@ -711,6 +711,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return assignable;
   }, [user, users, getVisibleUsers]);
   
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
+    if (!user) return;
+
+    const newRef = push(ref(rtdb, 'tasks'));
+
+    const subtasks: { [userId: string]: Subtask } = {};
+    taskData.assigneeIds.forEach(id => {
+      subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
+    });
+
+    const newTask: Omit<Task, 'id'> = {
+      ...taskData,
+      creatorId: user.id,
+      assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
+      status: 'To Do',
+      subtasks: subtasks,
+      comments: [],
+      participants: [user.id, ...taskData.assigneeIds],
+      lastUpdated: new Date().toISOString(),
+      approvalState: 'none',
+      isViewedByAssignee: false,
+      viewedBy: { [user.id]: true }
+    };
+    
+    set(newRef, newTask);
+    addActivityLog(user.id, 'Task Created', taskData.title);
+
+    taskData.assigneeIds.forEach(assigneeId => {
+      const assignee = users.find(u => u.id === assigneeId);
+      if (assignee && assignee.email) {
+        createAndSendNotification(
+          assignee.email,
+          `New Task Assigned: ${taskData.title}`,
+          'You have a new task!',
+          {
+            'Task': taskData.title,
+            'Assigned by': user.name,
+            'Due Date': format(new Date(taskData.dueDate), 'PPP'),
+            'Priority': taskData.priority,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+          'View Task'
+        );
+      }
+    });
+
+  }, [user, users, addActivityLog]);
+
   const addComment = useCallback((taskId: string, commentText: string) => {
     if(!user) return;
     const task = tasksById[taskId];
@@ -943,7 +991,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
   }, [user, toast, addActivityLog]);
-  
+
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -1513,3 +1561,4 @@ export const useAppContext = (): AppContextType => {
 
 
     
+
