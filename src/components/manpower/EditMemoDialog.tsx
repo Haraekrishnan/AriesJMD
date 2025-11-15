@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,6 +16,7 @@ import { Input } from '../ui/input';
 import type { MemoRecord, ManpowerProfile } from '@/lib/types';
 import { Paperclip, Upload, X, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseISO } from 'date-fns';
 
 const memoSchema = z.object({
   type: z.enum(['Memo', 'Warning Letter']),
@@ -54,7 +56,7 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
     if (memo && isOpen) {
       form.reset({
         type: memo.type,
-        date: new Date(memo.date),
+        date: parseISO(memo.date),
         reason: memo.reason,
         issuedBy: memo.issuedBy,
         attachmentUrl: memo.attachmentUrl,
