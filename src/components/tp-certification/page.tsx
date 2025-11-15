@@ -134,7 +134,7 @@ export default function TpCertificationPage() {
                     return acc;
                   }, {} as Record<string, number>);
                   
-                  const totalQuantity = Object.values(itemSummary).reduce((a, b) => a + b, 0);
+                  const totalQuantity = list.items.length;
 
                   return (
                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
