@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -549,32 +550,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const userData = snapshot.val();
     const userId = Object.keys(userData)[0];
     const targetUser = { id: userId, ...userData[userId] };
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
     const newRequest: Omit<PasswordResetRequest, 'id'> = {
       userId: targetUser.id,
       email: targetUser.email,
       date: new Date().toISOString(),
       status: 'pending',
+      resetCode: code,
     };
     const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
     await set(newRequestRef, newRequest);
 
-    const admins = users.filter(u => u.role === 'Admin');
-    admins.forEach(admin => {
-        if (admin.email) {
-            createAndSendNotification(
-                admin.email,
-                `Password Reset Request from ${targetUser.email}`,
-                'Password Reset Request',
-                { 'User Email': targetUser.email },
-                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-                'View Requests'
-            );
-        }
-    });
+    await createAndSendNotification(
+        targetUser.email,
+        `Your Password Reset Code`,
+        'Your Password Reset Code',
+        {
+          'Code': code,
+          'Instructions': 'Please use this code to reset your password. If you did not request this, please ignore this email.'
+        },
+        `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+        'Reset Password'
+    );
 
     return true;
-  }, [users]);
+  }, []);
   
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -3398,4 +3399,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-

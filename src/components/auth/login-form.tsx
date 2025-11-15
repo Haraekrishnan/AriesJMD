@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -83,15 +84,15 @@ export function LoginForm() {
     const success = await requestPasswordReset(data.email);
     if(success) {
       toast({
-        title: 'Request Sent',
-        description: 'Your password reset request has been sent to the administrator.',
+        title: 'Reset Code Sent',
+        description: 'If an account exists for that email, a reset code has been sent.',
       });
       setActiveTab('reset');
     } else {
       toast({
         variant: 'destructive',
         title: 'Request Failed',
-        description: 'No user was found with that email address.',
+        description: 'Could not process your request. Please check the email address.',
       });
     }
   };
@@ -186,7 +187,7 @@ export function LoginForm() {
                      <div className="space-y-2">
                         <Label htmlFor="new-password">New Password</Label>
                         <Input id="new-password" type="password" {...resetPasswordForm.register('newPassword')} />
-                         {resetPasswordForm.formState.errors.newPassword && <p className="text-xs text-destructive">{resetPasswordForm.formState.errors.newPassword.message}</p>}
+                         {resetPasswordForm.formState.errors.newPassword && <p className="text-xs text-destructive">{form.formState.errors.newPassword.message}</p>}
                     </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
