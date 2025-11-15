@@ -1,13 +1,13 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, Workbook } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/inventory/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
@@ -21,45 +21,61 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
+import UpdateCertValidityDialog from '@/components/tp-certification/UpdateCertValidityDialog';
+import { Input } from '@/components/ui/input';
+import { Badge } from '../ui/badge';
 
 export default function TpCertificationPage() {
     const { user, users, tpCertLists, deleteTpCertList } = useAppContext();
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+    const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
+    const [editingList, setEditingList] = useState<TpCertList | null>(null);
+    const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
 
-    const groupedLists = useMemo(() => {
-        if (!selectedDate || !tpCertLists) return [];
-        const dateKey = format(selectedDate, 'yyyy-MM-dd');
-        return (tpCertLists || []).filter(list => list.date === dateKey)
+    const filteredLists = useMemo(() => {
+        const allLists = (tpCertLists || [])
+            .filter(list => !!list.createdAt) // Ensure createdAt exists
             .sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
-    }, [selectedDate, tpCertLists]);
+        if (!searchTerm.trim()) {
+            return allLists;
+        }
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+        return allLists.filter(list => 
+            list.items.some(item => 
+                item.manufacturerSrNo?.toLowerCase().includes(lowercasedSearchTerm) ||
+                item.chestCrollNo?.toLowerCase().includes(lowercasedSearchTerm)
+            )
+        );
+    }, [searchTerm, tpCertLists]);
 
     const handleGenerateWorkbook = async () => {
-        if (groupedLists.length === 0) {
-            toast({ title: "No lists found for this date.", variant: 'destructive' });
+        if (filteredLists.length === 0) {
+            toast({ title: "No lists to export.", variant: 'destructive' });
             return;
         }
 
         const workbook = new ExcelJS.Workbook();
         
-        for (const list of groupedLists) {
-            await generateTpCertExcel(list.items, workbook, list.name);
+        for (const list of filteredLists) {
+            await generateTpCertExcel(list.items, workbook, list.name, list.date);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `TP_Cert_Workbook_${format(selectedDate!, 'yyyy-MM-dd')}.xlsx`);
+        saveAs(new Blob([buffer]), `TP_Cert_Master_Workbook.xlsx`);
     };
 
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
         try {
             if (type === 'excel') {
-                await generateTpCertExcel(list.items);
+                await generateTpCertExcel(list.items, undefined, list.name, list.date);
             } else {
-                await generateTpCertPdf(list.items);
+                await generateTpCertPdf(list.items, list.date);
             }
             toast({ title: `${type.toUpperCase()} Generated` });
         } catch (error) {
-            toast({ title: 'Export Failed', variant: 'destructive' });
+            console.error(error);
+            toast({ title: 'Export Failed', variant: 'destructive', description: (error as Error).message });
         }
     };
 
@@ -69,11 +85,12 @@ export default function TpCertificationPage() {
     };
 
     return (
+        <>
         <div className="space-y-8">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">TP Certification Lists</h1>
-                    <p className="text-muted-foreground">Review and manage saved certification lists.</p>
+                    <p className="text-muted-foreground">Review, manage, and update certification lists.</p>
                 </div>
             </div>
 
@@ -81,65 +98,81 @@ export default function TpCertificationPage() {
                 <CardHeader>
                     <CardTitle>View Saved Lists</CardTitle>
                     <div className="flex flex-wrap items-center gap-4 pt-2">
-                        <DatePickerInput value={selectedDate} onChange={setSelectedDate} />
-                        <Button onClick={handleGenerateWorkbook} disabled={groupedLists.length === 0}>
-                            <Workbook className="mr-2 h-4 w-4" /> Generate Day's Workbook
+                         <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by Serial No or Chest Croll No..."
+                                className="pl-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <Button onClick={handleGenerateWorkbook} disabled={filteredLists.length === 0}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" /> Generate Workbook
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {groupedLists.length > 0 ? (
+                    {filteredLists.length > 0 ? (
                         <Accordion type="multiple" className="w-full space-y-4">
-                            {groupedLists.map(list => {
+                            {filteredLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
+                                const itemSummary = list.items.reduce((acc, item) => {
+                                    acc[item.materialName] = (acc[item.materialName] || 0) + 1;
+                                    return acc;
+                                }, {} as Record<string, number>);
+
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
-                                        <AccordionTrigger className="p-4 hover:no-underline">
-                                            <div className="flex justify-between w-full items-center">
-                                                <div>
-                                                    <p className="font-semibold text-lg">{list.name}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Created by {creator?.name || 'Unknown'} at {format(parseISO(list.createdAt), 'p')}
-                                                    </p>
+                                        <div className="flex justify-between items-center p-4">
+                                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                                <div className="flex items-center gap-4">
+                                                    <div>
+                                                        <p className="font-semibold text-lg">{list.name}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
+                                                        </p>
+                                                    </div>
+                                                    <Badge variant="secondary">Total Items: {list.items.length}</Badge>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
-                                                    <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
-                                                    {user?.role === 'Admin' && (
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Delete this list?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDeleteList(list.id)}>Delete</AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    )}
-                                                </div>
+                                            </AccordionTrigger>
+                                            <div className="flex items-center gap-2 pl-4">
+                                                <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
+                                                <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
+                                                <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
+                                                {user?.role === 'Admin' && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete this list?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteList(list.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
                                             </div>
-                                        </AccordionTrigger>
+                                        </div>
                                         <AccordionContent className="p-4 pt-0">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead>Sr. No</TableHead>
                                                         <TableHead>Material Name</TableHead>
-                                                        <TableHead>Manufacturer Sr. No</TableHead>
+                                                        <TableHead className="text-right">Quantity</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {list.items.map((item, index) => (
-                                                        <TableRow key={index}>
-                                                            <TableCell>{index + 1}</TableCell>
-                                                            <TableCell>{item.materialName}</TableCell>
-                                                            <TableCell>{item.manufacturerSrNo}</TableCell>
+                                                    {Object.entries(itemSummary).map(([name, count]) => (
+                                                        <TableRow key={name}>
+                                                            <TableCell>{name}</TableCell>
+                                                            <TableCell className="text-right">{count}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -150,10 +183,26 @@ export default function TpCertificationPage() {
                             })}
                         </Accordion>
                     ) : (
-                        <p className="text-center text-muted-foreground py-8">No certification lists found for this date.</p>
+                        <p className="text-center text-muted-foreground py-8">No certification lists found for the current filter.</p>
                     )}
                 </CardContent>
             </Card>
         </div>
+        {editingList && (
+            <GenerateTpCertDialog 
+                isOpen={!!editingList} 
+                setIsOpen={() => setEditingList(null)}
+                existingList={editingList}
+            />
+        )}
+        {updatingValidityList && (
+            <UpdateCertValidityDialog
+                isOpen={!!updatingValidityList}
+                setIsOpen={() => setUpdatingValidityList(null)}
+                certList={updatingValidityList}
+            />
+        )}
+        </>
     );
 }
+
