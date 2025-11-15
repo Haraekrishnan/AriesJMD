@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -116,10 +117,12 @@ export default function TpCertificationPage() {
                         <Accordion type="multiple" className="w-full space-y-4">
                             {filteredLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
+                                
                                 const itemSummary = list.items.reduce((acc, item) => {
                                     acc[item.materialName] = (acc[item.materialName] || 0) + 1;
                                     return acc;
                                 }, {} as Record<string, number>);
+                                
                                 const totalQuantity = list.items.length;
 
                                 return (
@@ -133,9 +136,9 @@ export default function TpCertificationPage() {
                                                     </p>
                                                 </div>
                                             </AccordionTrigger>
-
+                                            
                                             <Badge variant="secondary" className="mx-4">Total Qty: {totalQuantity}</Badge>
-
+                                            
                                             <div className="flex items-center gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
@@ -175,6 +178,10 @@ export default function TpCertificationPage() {
                                                             <TableCell className="text-right">{count}</TableCell>
                                                         </TableRow>
                                                     ))}
+                                                    <TableRow className="bg-muted font-bold">
+                                                        <TableCell>Total</TableCell>
+                                                        <TableCell className="text-right">{totalQuantity}</TableCell>
+                                                    </TableRow>
                                                 </TableBody>
                                             </Table>
                                         </AccordionContent>
