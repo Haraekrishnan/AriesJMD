@@ -126,17 +126,17 @@ export default function TpCertificationPage() {
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
                                         <div className="flex justify-between items-center p-4">
                                             <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                                                <div className="flex items-center gap-4">
-                                                    <div>
-                                                        <p className="font-semibold text-lg">{list.name}</p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
-                                                        </p>
-                                                    </div>
-                                                    <Badge variant="secondary">Total Qty: {totalQuantity}</Badge>
+                                                <div>
+                                                    <p className="font-semibold text-lg">{list.name}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
+                                                    </p>
                                                 </div>
                                             </AccordionTrigger>
-                                            <div className="flex items-center gap-2 pl-4">
+
+                                            <Badge variant="secondary" className="mx-4">Total Qty: {totalQuantity}</Badge>
+
+                                            <div className="flex items-center gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
