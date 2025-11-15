@@ -1,6 +1,5 @@
 
 'use client';
-import { useAuthContext } from '@/contexts/auth-provider';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -8,14 +7,11 @@ import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function StatusPage() {
-  const { user, logout } = useAuthContext();
-  const { requestUnlock } = useAppContext();
+  const { user, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
 
-  // The main app layout now controls access to this page.
-  // No need for redundant redirection logic here.
   if (!user) {
-    return null; 
+    return null; // Let layout handle redirect
   }
 
   const handleUnlockRequest = () => {
