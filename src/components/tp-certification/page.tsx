@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -121,6 +120,7 @@ export default function TpCertificationPage() {
                                     acc[item.materialName] = (acc[item.materialName] || 0) + 1;
                                     return acc;
                                 }, {} as Record<string, number>);
+                                const totalQuantity = list.items.length;
 
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
@@ -133,7 +133,7 @@ export default function TpCertificationPage() {
                                                             Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
                                                         </p>
                                                     </div>
-                                                    <Badge variant="secondary">Total Items: {list.items.length}</Badge>
+                                                    <Badge variant="secondary">Total Qty: {totalQuantity}</Badge>
                                                 </div>
                                             </AccordionTrigger>
                                             <div className="flex items-center gap-2 pl-4">
