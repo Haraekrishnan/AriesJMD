@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -19,7 +20,7 @@ import { Input } from '../ui/input';
 const memoSchema = z.object({
   manpowerId: z.string().min(1, 'Please select an employee.'),
   type: z.enum(['Memo', 'Warning Letter']),
-  date: z.date({ required_error: 'Please select a date.' }),
+  date: z.date().optional(),
   reason: z.string().min(10, 'A detailed reason is required.'),
   issuedBy: z.string().min(1, 'Issuer name is required.'),
   attachmentUrl: z.string().optional(),
@@ -45,7 +46,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
   const onSubmit = (data: MemoFormValues) => {
     addMemoOrWarning(data.manpowerId, {
       type: data.type,
-      date: data.date.toISOString(),
+      date: data.date ? data.date.toISOString() : new Date().toISOString(),
       reason: data.reason,
       issuedBy: data.issuedBy,
       attachmentUrl: data.attachmentUrl,
@@ -64,7 +65,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "my_unsigned_upload");
+    formData.append("upload_preset", "my_unsigned_upload"); 
 
     try {
         const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
