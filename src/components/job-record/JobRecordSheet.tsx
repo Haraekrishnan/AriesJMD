@@ -455,7 +455,7 @@ export default function JobRecordSheet() {
 
                 sheet.addImage(logoId, {
                     tl: { col: 0.2, row: 0.2 },
-                    ext: { width: 160, height: 60 },
+                    ext: { width: 160, height: 40 },
                 });
 
                 // ---- Add Merged Header Section ----
