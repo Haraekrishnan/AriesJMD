@@ -7,7 +7,12 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
-import BroadcastFeed from '@/components/announcements/BroadcastFeed';
+
+const Redirecting = () => (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p>Redirecting...</p>
+    </div>
+);
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
@@ -19,10 +24,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     if (!user && pathname !== '/login') {
       router.replace('/login');
-    } else if (user && (user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-      router.replace('/status');
-    } else if (user && user.status === 'active' && pathname === '/status') {
-      router.replace('/dashboard');
+    } else if (user) {
+      if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+        router.replace('/status');
+      } else if (user.status === 'active' && pathname === '/status') {
+        router.replace('/dashboard');
+      }
     }
   }, [user, loading, router, pathname]);
 
@@ -39,20 +46,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  if (!user || ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status')) {
-    // If not logged in, or if locked and not on the status page, don't render the layout.
-    // The useEffect above will handle the redirect.
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <p>Redirecting...</p>
-        </div>
-    );
+
+  // Handle redirection states explicitly
+  if (!user && pathname !== '/login') {
+    return <Redirecting />;
   }
-  
-  // If user is authenticated but opens /login manually, don’t show layout
+  if (user?.status === 'locked' && pathname !== '/status') {
+    return <Redirecting />;
+  }
+  if (user?.status === 'deactivated' && pathname !== '/status') {
+    return <Redirecting />;
+  }
+
+  // If user is authenticated but on a page they shouldn't be, the useEffect handles it.
+  // Don't render the layout for the login page if the user is somehow still there.
   if (user && pathname === '/login') {
-    return null; 
+    return null;
+  }
+
+  // The status page has its own layout, so we don't render the AppLayout there.
+  if (pathname === '/status') {
+    return <>{children}</>;
   }
 
   return (
@@ -61,7 +75,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex h-screen w-full flex-col md:pl-64">
             <Header />
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-                
                 <div className="mt-4">
                     {children}
                 </div>

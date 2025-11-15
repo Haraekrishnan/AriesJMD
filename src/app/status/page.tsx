@@ -1,27 +1,23 @@
 
 'use client';
-import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/contexts/auth-provider';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
 
 export default function StatusPage() {
   const { user, logout } = useAuthContext();
   const { requestUnlock } = useAppContext();
   const { toast } = useToast();
-  const router = useRouter();
 
-  useEffect(() => {
-    // If there's no user, or user is active, redirect away from this page
-    if (!user || user.status === 'active') {
-      router.replace('/dashboard');
-    }
-  }, [user, router]);
-  
+  // The main app layout now controls access to this page.
+  // No need for redundant redirection logic here.
+  if (!user) {
+    return null; 
+  }
+
   const handleUnlockRequest = () => {
     if (user) {
         requestUnlock(user.id, user.name);
@@ -31,11 +27,6 @@ export default function StatusPage() {
         });
     }
   };
-
-  if (!user || user.status === 'active') {
-    // Render a loader or null while redirecting
-    return null;
-  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
