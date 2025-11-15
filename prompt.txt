@@ -1,0 +1,14 @@
+
+Hello! I'm working on a Next.js application and I'm facing a persistent redirection issue for users with a "locked" status.
+
+**The Problem:**
+
+When a user with `status: 'locked'` logs in, they are supposed to be redirected to and remain on the `/status` page, which displays an "Account Locked" message. However, the application gets stuck in a "Redirecting..." loop and never shows the correct page.
+
+The main redirection logic seems to be located in `src/app/(app)/layout.tsx`, but there might be conflicting logic in `src/app/status/page.tsx` or how the user state is managed in `src/contexts/app-provider.tsx`.
+
+Could you please review the following files and provide a fix to ensure that a locked user is correctly and stably redirected to the `/status` page?
+
+-   `src/app/(app)/layout.tsx`
+-   `src/app/status/page.tsx`
+-   `src/contexts/app-provider.tsx`

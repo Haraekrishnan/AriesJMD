@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -906,15 +905,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`tasks/${taskId}/status`] = newStatus;
     updates[`tasks/${taskId}/lastUpdated`] = new Date().toISOString();
-
-    if (newStatus === 'Done') {
-        updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
-    } else {
+    
+    if(newStatus !== 'Done') {
         updates[`tasks/${taskId}/completionDate`] = null;
     }
-    
-    update(ref(rtdb), updates);
 
+    if (task.subtasks) {
+      Object.keys(task.subtasks).forEach(userId => {
+        updates[`tasks/${taskId}/subtasks/${userId}/status`] = newStatus;
+        updates[`tasks/${taskId}/subtasks/${userId}/updatedAt`] = new Date().toISOString();
+      });
+    }
+
+    update(ref(rtdb), updates);
     addActivityLog(user.id, 'Task Status Changed', `Task ID: ${taskId}, New Status: ${newStatus}`);
   }, [user, addActivityLog, tasksById]);
 
@@ -1051,7 +1054,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, comment);
     
-    const updates: {[key: string]: any} = {};
+    const updates: { [key: string]: any } = {};
     const newStatus = task.statusRequest.newStatus;
     
     updates[`/tasks/${taskId}/status`] = newStatus;
@@ -2301,16 +2304,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
-      const newListData = {
+      const fullItems = request.items.map(item => {
+        let fullItem;
+        if (item.itemType === 'Inventory') {
+            fullItem = inventoryItems.find(i => i.id === item.itemId);
+        } else if (item.itemType === 'UTMachine') {
+            fullItem = utMachines.find(i => i.id === item.itemId);
+        } else if (item.itemType === 'DftMachine') {
+            fullItem = dftMachines.find(i => i.id === item.itemId);
+        }
+        return fullItem ? { ...item, ...fullItem } : item;
+    });
+
+    const listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> = {
         name: `From Transfer ${request.id.slice(-6)}`,
         date: new Date().toISOString().split('T')[0],
-        items: request.items.map(item => ({
-          materialName: item.name,
-          manufacturerSrNo: item.serialNumber,
+        items: fullItems.map(item => ({
           itemId: item.itemId,
           itemType: item.itemType,
-          ariesId: item.ariesId || null,
-          chestCrollNo: (item as any).chestCrollNo || null,
+          materialName: (item as any).name || (item as any).machineName || (item as any).equipmentName,
+          manufacturerSrNo: (item as any).serialNumber,
+          ariesId: (item as any).ariesId,
+          chestCrollNo: (item as InventoryItem).chestCrollNo,
         })),
       };
       addTpCertList(newListData);
@@ -2339,7 +2354,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             'View Transfers'
         );
     }
-  }, [user, addActivityLog, addTpCertList, users, projects]);
+  }, [user, addActivityLog, addTpCertList, users, projects, inventoryItems, utMachines, dftMachines]);
   
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -3383,6 +3398,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-    
 
