@@ -138,14 +138,14 @@ export default function TpCertificationPage() {
 
                   return (
                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
-                      <div className="flex justify-between items-center p-4">
+                       <div className="flex justify-between items-center p-4">
                         <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                           <div>
-                              <p className="font-semibold text-lg">{list.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                  Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
-                              </p>
-                          </div>
+                            <div>
+                                <p className="font-semibold text-lg">{list.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
+                                </p>
+                            </div>
                         </AccordionTrigger>
 
                         <Badge variant="secondary" className="mx-4">Total Qty: {totalQuantity}</Badge>
