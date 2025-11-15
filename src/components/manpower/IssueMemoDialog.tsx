@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -121,7 +120,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                       <CommandInput placeholder="Search employee..." />
                       <CommandList>
@@ -207,7 +206,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
                 <Button asChild variant="outline" size="sm">
                   <Label htmlFor="memo-file-upload"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
                 </Button>
-                <Input id="memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".jpg, .jpeg, .png" />
+                <Input id="memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".jpg, .jpeg, .png, .pdf" />
               </div>
             )}
           </div>

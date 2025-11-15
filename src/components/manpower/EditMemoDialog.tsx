@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -35,7 +34,7 @@ interface EditMemoDialogProps {
 }
 
 export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: EditMemoDialogProps) {
-  const { updateMemoRecord } = useAppContext();
+  const { user, updateMemoRecord } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
@@ -44,6 +43,8 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
   const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = user?.role === 'Admin';
 
   const form = useForm<MemoFormValues>({
     resolver: zodResolver(memoSchema),
@@ -165,7 +166,7 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
                 name="date"
                 control={form.control}
                 render={({ field }) => (
-                  <DatePickerInput value={field.value} onChange={field.onChange} />
+                  <DatePickerInput value={field.value} onChange={field.onChange} disabled={!isAdmin} />
                 )}
               />
                {form.formState.errors.date && <p className="text-xs text-destructive">{form.formState.errors.date.message}</p>}
@@ -201,7 +202,7 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
                 <Button asChild variant="outline" size="sm">
                   <Label htmlFor="edit-memo-file-upload"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
                 </Button>
-                <Input id="edit-memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".jpg, .jpeg, .png" />
+                <Input id="edit-memo-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".jpg, .jpeg, .png, .pdf" />
               </div>
             )}
           </div>
@@ -263,5 +264,3 @@ export default function EditMemoDialog({ isOpen, setIsOpen, memo, profile }: Edi
     </>
   );
 }
-
-    
