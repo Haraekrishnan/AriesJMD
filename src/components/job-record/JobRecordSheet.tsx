@@ -450,36 +450,50 @@ export default function JobRecordSheet() {
     
                 const sheet = workbook.addWorksheet(plant);
                 const totalDays = getDaysInMonth(currentMonth);
-                
-                const logoId = workbook.addImage({ buffer: logoBuffer, extension: "png" });
 
-                sheet.addImage(logoId, {
-                    tl: { col: 0.2, row: 0.2 },
-                    ext: { width: 160, height: 40 },
-                });
-
-                // ---- Add Merged Header Section ----
-                const totalCols = 2 + totalDays + 9; // S.No + Name + Dates + Totals
+                // ---- Add Merged Header Section First ----
+                const totalCols = 2 + totalDays + 9;
                 const endCol = totalCols;
-    
-                // Row 1: Main Project Title
+
+                // Row 1 – Title
                 const row1 = sheet.addRow([]);
-                sheet.mergeCells(row1.number, 1, row1.number, endCol);
-                const cell1 = sheet.getCell(row1.number, 1);
+                sheet.mergeCells(1, 1, 1, endCol);
+                const cell1 = sheet.getCell(1, 1);
                 cell1.value = "RIL JMD PROJECT";
                 cell1.font = { bold: true, size: 16 };
                 cell1.alignment = { horizontal: "center", vertical: "middle" };
                 cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
-    
-                // Row 2: Month + Plant
+
+                // Row 2 – Month / Plant
                 const row2 = sheet.addRow([]);
-                sheet.mergeCells(row2.number, 1, row2.number, endCol);
-                const cell2 = sheet.getCell(row2.number, 1);
+                sheet.mergeCells(2, 1, 2, endCol);
+                const cell2 = sheet.getCell(2, 1);
                 cell2.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plant}`;
                 cell2.font = { bold: true, size: 13 };
                 cell2.alignment = { horizontal: "center", vertical: "middle" };
                 cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
-    
+                
+                // 🔥 Set row height to match logo
+                sheet.getRow(1).height = 35;
+                sheet.getRow(2).height = 25;
+
+                // 🔥 STEP 2 — Insert the logo AFTER the rows exist
+                const logoId = workbook.addImage({
+                    buffer: logoBuffer,
+                    extension: "png",
+                });
+                
+                // Pixel size → perfect match (4.23 cm × 1.05 cm)
+                const logoWidth = 160;
+                const logoHeight = 40;
+                
+                // 🔥 Now place logo EXACTLY spanning rows 1–2 vertically centered
+                sheet.addImage(logoId, {
+                    tl: { col: 0.2, row: 0.3 },
+                    ext: { width: logoWidth, height: logoHeight },
+                    editAs: "absolute",
+                });
+                
                 // Optional: blank spacer row
                 sheet.addRow([]);
     
@@ -717,10 +731,10 @@ export default function JobRecordSheet() {
                         jobNoCell.value = jc.jobNo || "";
                         manDaysCell.value = count;
 
-                        const jobColor = jobCodeColors[jc.code as keyof typeof jobCodeColors];
+                        const jobColor = JOB_CODE_COLORS[jc.code as keyof typeof JOB_CODE_COLORS];
                         if (jobColor) {
-                            codeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: jobColor.bg } };
-                            codeCell.font = { bold: true, color: { argb: jobColor.text || "FF000000" } };
+                            codeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: (jobColor.excelFill?.fgColor.rgb || 'FFFFFFFF') } };
+                            codeCell.font = { bold: true, color: { argb: (jobColor.excelFill?.font?.color.rgb || "FF000000") } };
                         } else {
                           codeCell.font = { bold: true };
                         }
@@ -1172,4 +1186,3 @@ export default function JobRecordSheet() {
     );
 }
 
-    
