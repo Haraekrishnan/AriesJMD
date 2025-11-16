@@ -45,12 +45,13 @@ export async function generateSchedulePdf(
 
   // === LOAD IMAGES (logo + signature) ==================================
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
+  // NOTE: because file name has a space, encode it as %20:
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
   // === HEADER BLOCK =======================================================
   // Outer box for the entire header
   doc.setLineWidth(0.5);
-  doc.rect(margin, lastY, pageWidth - margin * 2, 28); // Main header box
+  doc.rect(margin, lastY, pageWidth - margin * 2, 40); // Main header box
   doc.line(margin, lastY + 15, pageWidth - margin, lastY + 15); // Line separating top and bottom of header
 
   // Top part of the header (Logo and Title)
@@ -59,7 +60,7 @@ export async function generateSchedulePdf(
   }
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('Job Schedule', pageWidth - margin - 2, lastY + 9, { align: 'right' });
+  doc.text('Job Schedule', pageWidth / 2, lastY + 9, { align: 'center' });
 
   // Bottom part of the header (Division, Sub-Div, Date)
   doc.setFontSize(10);
@@ -67,8 +68,10 @@ export async function generateSchedulePdf(
   doc.text('Sub-Div.: R A', pageWidth / 2, lastY + 22, { align: 'center' });
   doc.text(formattedDate, pageWidth - margin - 2, lastY + 22, { align: 'right' });
 
-  // Update lastY to be after the header box
-  lastY += 28 + 4; // Header height + a small gap
+
+  const headerVisualHeight = 42;
+  const gap = 5;
+  lastY += headerVisualHeight + gap;
 
   // === TABLE ============================================================
   const headRow = [
@@ -106,15 +109,15 @@ export async function generateSchedulePdf(
     headStyles: { fillColor: [230, 230, 230], fontStyle: 'bold', textColor: [0,0,0] },
     columnStyles: {
         0: { cellWidth: 15 },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 50 },
-        5: { cellWidth: 30 },
-        6: { cellWidth: 30 },
-        7: { cellWidth: 60 },
-        8: { cellWidth: 30 },
-        9: { cellWidth: 50 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 'auto' },
+        3: { cellWidth: 'auto' },
+        4: { cellWidth: 'auto' },
+        5: { cellWidth: 'auto' },
+        6: { cellWidth: 'auto' },
+        7: { cellWidth: 'auto' },
+        8: { cellWidth: 'auto' },
+        9: { cellWidth: 'auto' },
     },
     didDrawPage: (data) => {
         // === FOOTER BLOCK (matches your attached format) ==================
@@ -150,10 +153,9 @@ export async function generateSchedulePdf(
             margin,
             bottomRowY
         );
-
-        const totalPages = doc.getNumberOfPages ? doc.getNumberOfPages() : (doc as any).internal.getNumberOfPages();
+        const pageNumber = doc.internal.getNumberOfPages ? doc.internal.getNumberOfPages() : (data as any).pageNumber;
         doc.text(
-            `Page ${data.pageNumber} of ${totalPages}`,
+            `Page ${pageNumber}`,
             pageWidth - margin,
             bottomRowY,
             { align: 'right' }
