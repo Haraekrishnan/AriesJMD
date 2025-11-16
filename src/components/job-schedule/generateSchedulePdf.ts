@@ -37,7 +37,7 @@ export async function generateSchedulePdf(
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 28; 
+  const margin = 28;
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -64,7 +64,7 @@ export async function generateSchedulePdf(
     head: [headRow],
     body: bodyRows,
     theme: 'grid',
-    margin: { top: 70 }, // Set a fixed top margin for the table
+    margin: { top: 75 }, // Increased top margin to create space for the header
     styles: {
         fontSize: 7,
         lineWidth: 0.2,
@@ -94,7 +94,9 @@ export async function generateSchedulePdf(
     didDrawPage: (data) => {
       // Draw Header
       const headerBoxHeight = 42;
-      const headerStartY = 20; 
+      // Position the bottom of the header box EXACTLY where the table's top border is
+      const tableStartY = data.table.startY;
+      const headerStartY = tableStartY - headerBoxHeight;
       const contentStartY = headerStartY + 2;
       
       doc.setLineWidth(0.2);

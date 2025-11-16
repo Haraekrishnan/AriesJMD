@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -270,7 +271,7 @@ type AppContextType = {
   deleteRoom: (buildingId: string, roomId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
-  saveJobSchedule: (schedule: Omit<JobSchedule, 'projectId'> & { projectId?: string }) => void;
+  saveJobSchedule: (schedule: JobSchedule) => void;
   addJobRecordPlant: (plantName: string) => void;
   deleteJobRecordPlant: (plantId: string) => void;
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
@@ -2770,19 +2771,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId: null });
   }, []);
   
-  const saveJobSchedule = useCallback((schedule: Omit<JobSchedule, 'projectId'> & { projectId?: string }) => {
-      const scheduleId = `schedule_${schedule.date}`;
-      const scheduleToSave: Omit<JobSchedule, 'projectId'> & { projectId?: string } = { ...schedule, id: scheduleId };
-      update(ref(rtdb, `jobSchedules/${scheduleId}`), scheduleToSave);
+  const saveJobSchedule = useCallback((schedule: JobSchedule) => {
+      update(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
   }, []);
 
   const lockJobSchedule = useCallback((date: string) => {
-      const scheduleId = `schedule_${date}`;
-      update(ref(rtdb, `jobSchedules/${scheduleId}`), { isLocked: true });
-  }, []);
+      const schedulesForDate = jobSchedules.filter(s => s.date === date);
+      const updates: {[key: string]: any} = {};
+      schedulesForDate.forEach(s => {
+          updates[`jobSchedules/${s.id}/isLocked`] = true;
+      });
+      update(ref(rtdb), updates);
+  }, [jobSchedules]);
 
-  const unlockJobSchedule = useCallback((date: string) => {
-      const scheduleId = `schedule_${date}`;
+  const unlockJobSchedule = useCallback((date: string, projectId: string) => {
+      const scheduleId = `${projectId}_${date}`;
       update(ref(rtdb, `jobSchedules/${scheduleId}`), { isLocked: null });
   }, []);
   
