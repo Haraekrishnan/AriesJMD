@@ -45,7 +45,7 @@ export async function generateSchedulePdf(
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
   // === HEADER SECTION ======================================================
-  const headerBoxHeight = 28;
+  const headerBoxHeight = 42;
   const contentStartY = lastY + 2;
 
   // Outer box
