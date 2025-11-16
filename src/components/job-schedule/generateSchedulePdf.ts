@@ -36,7 +36,6 @@ export async function generateSchedulePdf(
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 10;
   let lastY = margin;
 
@@ -47,48 +46,44 @@ export async function generateSchedulePdf(
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
   // === HEADER =========================================================
-  const headerBoxHeight = 22; // Total height for the two-row header box
-  doc.setLineWidth(0.5);
-  doc.rect(margin, lastY, pageWidth - margin * 2, headerBoxHeight); // Main header box
-
-  // --- Top Row of Header ---
-  const topRowY = lastY + 10;
+  const headerBoxY = lastY;
+  const headerBoxHeight = 22; 
+  
+  // --- Logo ---
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', margin + 2, lastY + 2, 35, 12);
+    doc.addImage(logoBase64, 'PNG', margin, headerBoxY + 2, 35, 12);
   }
+  
+  // --- Title ---
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('Job Schedule', pageWidth / 2 + 30, topRowY, { align: 'center' });
+  doc.text('Job Schedule', pageWidth / 2, headerBoxY + 10, { align: 'center' });
   
-  // --- Divider Line ---
-  const dividerY = lastY + 14;
-  doc.line(margin, dividerY, pageWidth - margin, dividerY);
+  doc.setLineWidth(0.5);
+  doc.line(margin, headerBoxY + 16, pageWidth - margin, headerBoxY + 16);
 
-  // --- Bottom Row of Header ---
-  const bottomRowY = dividerY + 5;
+  // --- Sub-Header ---
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
+  doc.text('Division/Branch: I & M / Jamnagar', margin, headerBoxY + 22);
+  doc.text('Sub-Div.: R A', pageWidth / 2, headerBoxY + 22, { align: 'center' });
+  doc.text(formattedDate, pageWidth - margin, headerBoxY + 22, { align: 'right' });
 
-  // Division/Branch
-  doc.text('Division/Branch:', margin + 2, bottomRowY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('I & M / Jamnagar', margin + 30, bottomRowY);
-
-  // Sub-Div.
-  doc.setFont('helvetica', 'bold');
-  doc.text('Sub-Div.:', pageWidth / 2 - 10, bottomRowY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('R A', pageWidth / 2 + 5, bottomRowY);
-
-  // Date
-  doc.text(formattedDate, pageWidth - margin - 2, bottomRowY, { align: 'right' });
+  doc.line(margin, headerBoxY + 25, pageWidth - margin, headerBoxY + 25);
   
-  lastY += headerBoxHeight + 2; // Set Y for table start
+  lastY = headerBoxY + 25 + 4; // Set Y for table start, includes gap
 
   // === TABLE ============================================================
   const headRow = [
-    'Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name",
-    'Location', 'Reporting Time', 'Client / Contact Person Number', 'vehicle', 'Special instruction/Remarks'
+    'Sr. No',
+    'Name',
+    'Job Type',
+    'Job No.',
+    "Project/Vessel's name",
+    'Location',
+    'Reporting Time',
+    'Client / Contact Person Number',
+    'Vehicle',
+    'Special instruction/Remarks',
   ];
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
@@ -114,27 +109,43 @@ export async function generateSchedulePdf(
         lineWidth: 0.2,
         textColor: [0, 0, 0],
         valign: 'middle',
-        cellPadding: 1.5,
+        cellPadding: 2,
     },
     headStyles: {
-        fillColor: [230, 230, 230],
+        fillColor: [255, 255, 255], // White background
+        textColor: [0, 0, 0], // Black text
         fontStyle: 'bold',
         halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 35 },
-      2: { cellWidth: 15, halign: 'center' },
-      3: { cellWidth: 15, halign: 'center' },
-      4: { cellWidth: 28 },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 15, halign: 'center' },
-      7: { cellWidth: 22 },
-      8: { cellWidth: 15, halign: 'center' },
-      9: { cellWidth: 'auto' },
+      0: { cellWidth: 10, halign: 'center' }, // Sr. No
+      1: { cellWidth: 35 }, // Name
+      2: { cellWidth: 15, halign: 'center' }, // Job Type
+      3: { cellWidth: 15, halign: 'center' }, // Job No.
+      4: { cellWidth: 28 }, // Project/Vessel
+      5: { cellWidth: 20, halign: 'center' }, // Location
+      6: { cellWidth: 15, halign: 'center' }, // Reporting Time
+      7: { cellWidth: 22, halign: 'center' }, // Client/Contact
+      8: { cellWidth: 15, halign: 'center' }, // Vehicle
+      9: { cellWidth: 'auto' }, // Remarks
     },
     didDrawPage: (data) => {
+      // Redraw header on new pages
+      if (data.pageNumber > 1) {
+          doc.addImage(logoBase64, 'PNG', margin, headerBoxY + 2, 35, 12);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(16);
+          doc.text('Job Schedule', pageWidth / 2, headerBoxY + 10, { align: 'center' });
+          doc.line(margin, headerBoxY + 16, pageWidth - margin, headerBoxY + 16);
+          doc.setFontSize(9);
+          doc.text('Division/Branch: I & M / Jamnagar', margin, headerBoxY + 22);
+          doc.text('Sub-Div.: R A', pageWidth / 2, headerBoxY + 22, { align: 'center' });
+          doc.text(formattedDate, pageWidth - margin, headerBoxY + 22, { align: 'right' });
+          doc.line(margin, headerBoxY + 25, pageWidth - margin, headerBoxY + 25);
+      }
+      
       // === FOOTER BLOCK ==============================================
+      const pageHeight = doc.internal.pageSize.getHeight();
       const footerTop = pageHeight - 35; 
       const bottomRowY = pageHeight - 12;
 
@@ -156,7 +167,7 @@ export async function generateSchedulePdf(
       // Row 2: bottom reference + page number
       doc.setFontSize(8);
       doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, bottomRowY);
-      const totalPages = doc.internal.getNumberOfPages();
+      const totalPages = (doc as any).internal.getNumberOfPages();
       doc.text(`Page ${data.pageNumber} of ${totalPages}`, pageWidth - margin, bottomRowY, { align: 'right' });
     }
   });
