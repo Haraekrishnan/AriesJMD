@@ -39,6 +39,8 @@ export async function generateSchedulePdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 28; // approx 10mm in points
+  const headerBoxHeight = 42;
+  const initialY = 20; // Fixed starting position
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -65,14 +67,14 @@ export async function generateSchedulePdf(
     head: [headRow],
     body: bodyRows,
     theme: 'grid',
-    startY: 85, // Initial startY, header will be drawn above this
+    margin: { top: initialY + headerBoxHeight }, // Use margin to position the table reliably
     styles: {
         fontSize: 7,
-        lineWidth: 0.5,
+        lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
         valign: 'middle',
-        cellPadding: 3,
+        cellPadding: 2,
     },
     headStyles: {
         fillColor: [255, 255, 255],
@@ -81,24 +83,23 @@ export async function generateSchedulePdf(
         halign: 'center',
     },
     columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 65 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 65 },
-        5: { cellWidth: 50 },
-        6: { cellWidth: 40, halign: 'center' },
-        7: { cellWidth: 60 },
-        8: { cellWidth: 40, halign: 'center' },
+        0: { cellWidth: 15 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 40 },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 20, halign: 'center' },
+        7: { cellWidth: 35 },
+        8: { cellWidth: 20, halign: 'center' },
         9: { cellWidth: 'auto' },
     },
     didDrawPage: (data) => {
-      const tableStartY = data.table.startY;
-      const headerBoxHeight = 42;
-      const headerStartY = tableStartY - headerBoxHeight - 0.5; // Position header box to touch the table
+      // Use the fixed initialY for header drawing on every page
+      const headerStartY = initialY;
       const contentStartY = headerStartY + 2;
       
-      doc.setLineWidth(0.5);
+      doc.setLineWidth(0.2);
       doc.setDrawColor(0);
 
       // Outer box
@@ -128,7 +129,7 @@ export async function generateSchedulePdf(
       // === FOOTER SECTION ======================================================
       const footerTop = pageHeight - 40;
       const bottomRowY = pageHeight - 20;
-      doc.setLineWidth(0.5);
+      doc.setLineWidth(0.2);
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
