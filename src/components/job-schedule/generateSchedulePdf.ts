@@ -15,8 +15,10 @@ declare module 'jspdf' {
 // Helper to fetch image as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Logo not found at ' + url);
+    // Ensure we're fetching from the root of the domain
+    const fetchUrl = new URL(url, window.location.origin).href;
+    const response = await fetch(fetchUrl);
+    if (!response.ok) throw new Error(`Logo not found at ${url}. Status: ${response.status}`);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -41,42 +43,37 @@ export async function generateSchedulePdf(
   let lastY = margin;
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
-
-  // === LOAD IMAGES (logo + signature) ==================================
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
-  // === HEADER BOX ======================================================
-  const headerHeight = 28; 
+  // === HEADER SECTION ======================================================
+  const headerBoxHeight = 28;
   doc.setLineWidth(0.2);
-  doc.setDrawColor(0, 0, 0); 
-  doc.rect(margin, lastY, pageWidth - margin * 2, headerHeight); 
-  doc.line(margin, lastY + 14, pageWidth - margin, lastY + 14); 
+  doc.setDrawColor(0);
+  doc.rect(margin, lastY, pageWidth - margin * 2, headerBoxHeight); // Outer box
 
-  // === HEADER CONTENT =================================================
+  // Logo
   if (logoBase64) {
     doc.addImage(logoBase64, 'PNG', margin + 2, lastY + 1, 35, 12);
   }
 
+  // "Job Schedule" Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.text('Job Schedule', pageWidth / 2, lastY + 10, { align: 'center' });
+  doc.setLineWidth(0.2);
+  doc.line(margin, lastY + 14, pageWidth - margin, lastY + 14); // Divider line
 
-  lastY += 16; 
-
+  // Sub-header text
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Division/Branch: I & M / Jamnagar', margin + 2, lastY + 5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Sub-Div.: R A', pageWidth / 2, lastY + 5, { align: 'center' });
+  doc.text('Division/Branch: I & M / Jamnagar', margin + 2, lastY + 21);
+  doc.text('Sub-Div.: R A', pageWidth / 2, lastY + 21, { align: 'center' });
+  doc.text(formattedDate, pageWidth - margin - 2, lastY + 21, { align: 'right' });
   
-  doc.setFont('helvetica', 'normal');
-  doc.text(formattedDate, pageWidth - margin - 2, lastY + 5, { align: 'right' });
+  // Set the start position for the table right after the header box
+  const tableStartY = lastY + headerBoxHeight;
 
-  lastY += 12; // Position Y at the exact bottom of the header box
-
-  // === TABLE ============================================================
+  // === TABLE SECTION ============================================================
   const headRow = [
     'Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name",
     'Location', 'Reporting Time', 'Client / Contact Person Number', 'Vehicle', 'Special instruction/Remarks',
@@ -98,7 +95,7 @@ export async function generateSchedulePdf(
   doc.autoTable({
     head: [headRow],
     body: bodyRows,
-    startY: lastY, // Start table exactly where the header ends
+    startY: tableStartY,
     theme: 'grid',
     styles: {
         fontSize: 7,
@@ -109,10 +106,10 @@ export async function generateSchedulePdf(
         cellPadding: 2,
     },
     headStyles: {
-        fillColor: [255, 255, 255], // White background for header
-        textColor: [0, 0, 0], // Black text
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
         fontStyle: 'bold',
-        halign: 'center'
+        halign: 'center',
     },
     columnStyles: {
       0: { cellWidth: 15 },
@@ -124,7 +121,7 @@ export async function generateSchedulePdf(
       6: { cellWidth: 20, halign: 'center' },
       7: { cellWidth: 35 },
       8: { cellWidth: 20, halign: 'center' },
-      9: { cellWidth: 'auto' }, // Remarks column takes remaining space
+      9: { cellWidth: 'auto' },
     },
     didDrawPage: (data) => {
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -137,7 +134,6 @@ export async function generateSchedulePdf(
 
       const sigLabelX = pageWidth / 2 - 20;
       doc.text('Signature:', sigLabelX, footerTop);
-
       if (signatureBase64) {
         doc.addImage(signatureBase64, 'JPEG', sigLabelX + 20, footerTop - 10, 30, 12);
       }
