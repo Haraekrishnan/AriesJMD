@@ -50,7 +50,7 @@ export async function generateSchedulePdf(
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
     i + 1,
-    Array.isArray(item.manpowerIds) ? item.manpowerIds.join(', ') : '',
+    Array.isArray(item.manpowerIds) ? item.manpowerIds.join(',\n') : '',
     item.jobType || '',
     item.jobNo || '',
     item.projectVesselName || '',
@@ -81,28 +81,32 @@ export async function generateSchedulePdf(
         halign: 'center',
     },
     columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 80 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 40 },
-        4: { cellWidth: 80 },
+        0: { cellWidth: 25 },
+        1: { cellWidth: 65 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 65 },
         5: { cellWidth: 50 },
-        6: { cellWidth: 45, halign: 'center' },
+        6: { cellWidth: 40, halign: 'center' },
         7: { cellWidth: 60 },
         8: { cellWidth: 40, halign: 'center' },
         9: { cellWidth: 'auto' },
     },
     didDrawPage: (data) => {
-      // === HEADER SECTION ======================================================
-      // This hook runs on every page, allowing us to draw the header consistently.
+      const tableStartY = data.table.startY;
       const headerBoxHeight = 42;
-      const headerStartY = margin;
-      const contentStartY = headerStartY + 5;
+      const headerStartY = tableStartY - headerBoxHeight - 0.5; // Position header box to touch the table
+      const contentStartY = headerStartY + 2;
       
-      // Outer box
       doc.setLineWidth(0.5);
       doc.setDrawColor(0);
+
+      // Outer box
       doc.rect(margin, headerStartY, pageWidth - margin * 2, headerBoxHeight); 
+      
+      // Divider line
+      const lineY = contentStartY + 20;
+      doc.line(margin, lineY, pageWidth - margin, lineY);
 
       // Logo
       if (logoBase64) {
@@ -114,11 +118,6 @@ export async function generateSchedulePdf(
       doc.setFontSize(16);
       doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
       
-      // Divider line
-      const lineY = contentStartY + 20;
-      doc.setLineWidth(0.5);
-      doc.line(margin, lineY, pageWidth - margin, lineY);
-
       // Sub-header text
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -133,7 +132,7 @@ export async function generateSchedulePdf(
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text('Scheduled by Harikrishnan P S', margin, footerTop);
+      doc.text('Scheduled by:', margin, footerTop);
 
       doc.text('Signature:', pageWidth / 2 - 20, footerTop);
       doc.line(pageWidth / 2 + 20, footerTop, pageWidth / 2 + 80, footerTop);
