@@ -60,11 +60,14 @@ export async function generateSchedulePdf(
     item.remarks || '',
   ]);
 
+  const headerBoxHeight = 42;
+  const tableStartY = margin + headerBoxHeight + 5; // Fixed start position for the table
+
   doc.autoTable({
     head: [headRow],
     body: bodyRows,
     theme: 'grid',
-    margin: { top: 75 }, // Increased top margin to create space for the header
+    margin: { top: tableStartY },
     styles: {
         fontSize: 7,
         lineWidth: 0.2,
@@ -92,11 +95,8 @@ export async function generateSchedulePdf(
         9: { cellWidth: 'auto' },
     },
     didDrawPage: (data) => {
-      // Draw Header
-      const headerBoxHeight = 42;
-      // Position the bottom of the header box EXACTLY where the table's top border is
-      const tableStartY = data.table.startY;
-      const headerStartY = tableStartY - headerBoxHeight;
+      // === HEADER SECTION ======================================================
+      const headerStartY = margin;
       const contentStartY = headerStartY + 2;
       
       doc.setLineWidth(0.2);
@@ -126,7 +126,7 @@ export async function generateSchedulePdf(
       doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
       doc.text(formattedDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
-      // Footer
+      // === FOOTER SECTION =======================================================
       const pageHeight = doc.internal.pageSize.getHeight();
       const footerTop = pageHeight - 40;
       const bottomRowY = pageHeight - 20;
