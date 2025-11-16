@@ -37,7 +37,7 @@ export async function generateSchedulePdf(
   projectName: string,
   selectedDate: Date
 ) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 10;
@@ -48,54 +48,31 @@ export async function generateSchedulePdf(
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
-  // === HEADER =============================================================
-  const headerBoxY = lastY;
-  const topHeaderHeight = 12;
-  const bottomHeaderHeight = 8;
-  const totalHeaderHeight = topHeaderHeight + bottomHeaderHeight;
-
-  // Draw borders
+  // === HEADER BOX ======================================================
   doc.setLineWidth(0.5);
-  doc.rect(margin, headerBoxY, pageWidth - margin * 2, totalHeaderHeight);
-  doc.line(margin, headerBoxY + topHeaderHeight, pageWidth - margin, headerBoxY + topHeaderHeight);
+  doc.rect(margin, lastY, pageWidth - margin * 2, 28); // Main header box
+  doc.line(margin, lastY + 14, pageWidth - margin, lastY + 14); // Middle line
 
-  // --- Top Header Content ---
+  // === HEADER CONTENT =================================================
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', margin + 2, headerBoxY + 1, 30, 10);
+    doc.addImage(logoBase64, 'PNG', margin + 2, lastY + 1, 35, 12);
   }
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('Job Schedule', pageWidth / 2, headerBoxY + 8, { align: 'center' });
 
-  // --- Bottom Header Content ---
-  const infoRowY = headerBoxY + topHeaderHeight + 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('Job Schedule', pageWidth / 2, lastY + 10, { align: 'center' });
+
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Division/Branch:', margin + 2, infoRowY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('I & M / Jamnagar', margin + 30, infoRowY);
+  doc.text('Division/Branch: I & M / Jamnagar', margin + 2, lastY + 22);
+  doc.text('Sub-Div.: R A', pageWidth / 2 - 10, lastY + 22);
+  doc.text(formattedDate, pageWidth - margin - 2, lastY + 22, { align: 'right' });
 
-  doc.setFont('helvetica', 'bold');
-  doc.text('Sub-Div.:', pageWidth / 2 - 15, infoRowY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('R A', pageWidth / 2 - 5, infoRowY);
-
-  doc.text(formattedDate, pageWidth - margin - 2, infoRowY, { align: 'right' });
-
-  lastY += totalHeaderHeight + 5; // Set Y for table start, includes gap
+  lastY += 28; // Set Y for the table to start exactly where the header ends
 
   // === TABLE ============================================================
   const headRow = [
-    'Sr. No',
-    'Name',
-    'Job Type',
-    'Job No.',
-    "Project/Vessel's name",
-    'Location',
-    'Reporting Time',
-    'Client / Contact Person Number',
-    'Vehicle',
-    'Special instruction/Remarks',
+    'Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name",
+    'Location', 'Reporting Time', 'Client / Contact Person Number', 'Vehicle', 'Special instruction/Remarks',
   ];
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
@@ -124,21 +101,21 @@ export async function generateSchedulePdf(
         cellPadding: 2,
     },
     headStyles: {
-        fillColor: [230, 230, 230],
-        textColor: [0, 0, 0],
+        fillColor: [255, 255, 255], // White background for header
+        textColor: [0, 0, 0], // Black text
         fontStyle: 'bold',
         halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: 'center' }, // Sr. No
-      1: { cellWidth: 35 }, // Name
-      2: { cellWidth: 15, halign: 'center' }, // Job Type
-      3: { cellWidth: 15, halign: 'center' }, // Job No.
-      4: { cellWidth: 28 }, // Project/Vessel
-      5: { cellWidth: 15 }, // Location
-      6: { cellWidth: 15, halign: 'center' }, // Reporting Time
-      7: { cellWidth: 22 }, // Client/Contact
-      8: { cellWidth: 15, halign: 'center' }, // Vehicle
+      0: { cellWidth: 15 },  // Sr. No
+      1: { cellWidth: 40 },  // Name
+      2: { cellWidth: 20 },  // Job Type
+      3: { cellWidth: 20 },  // Job No.
+      4: { cellWidth: 40 },  // Project/Vessel
+      5: { cellWidth: 25 },  // Location
+      6: { cellWidth: 20, halign: 'center' },  // Reporting Time
+      7: { cellWidth: 35 },  // Client/Contact
+      8: { cellWidth: 20, halign: 'center' },  // Vehicle
       9: { cellWidth: 'auto' }, // Remarks
     },
     didDrawPage: (data) => {
@@ -167,9 +144,9 @@ export async function generateSchedulePdf(
         bottomRowY
       );
 
-      const totalPages = (doc as any).internal.getNumberOfPages();
+      const pageCount = (doc as any).internal.getNumberOfPages();
       doc.text(
-        `Page ${data.pageNumber} of ${totalPages}`,
+        `Page ${data.pageNumber} of ${pageCount}`,
         pageWidth - margin,
         bottomRowY,
         { align: 'right' }
