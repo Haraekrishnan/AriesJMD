@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { JobSchedule } from '@/lib/types';
 
 export default function JobSchedulePage() {
-    const { user, jobSchedules, can, manpowerProfiles, vehicles } = useAppContext();
+    const { user, users, jobSchedules, can, manpowerProfiles, vehicles } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
 
     const scheduleForDate: JobSchedule | undefined = useMemo(() => {
