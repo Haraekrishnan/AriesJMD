@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,12 +41,11 @@ type ScheduleFormValues = z.infer<typeof scheduleSchema>;
 
 interface EditableJobScheduleProps {
   schedule?: JobSchedule;
-  projectId: string;
   selectedDate: string;
   globallyAssignedIds: Set<string>;
 }
 
-export default function EditableJobSchedule({ schedule, projectId, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
+export default function EditableJobSchedule({ schedule, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
   const { user, users, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, projects, can } = useAppContext();
   const { toast } = useToast();
   
@@ -70,26 +68,21 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
   const manpowerOptions = useMemo(() => {
     const regularManpower = manpowerProfiles
         .filter(p => p.status === 'Working')
-        .map(p => ({ value: p.id, label: `${p.name} (${p.trade})` }));
+        .map(p => ({ value: p.id, label: `${p.name} (${p.trade})`, projectId: p.eic }));
 
-    if (can.prepare_master_schedule) {
-        const adminAndManagers = users
-            .filter(u => (u.role === 'Admin' || u.role === 'Manager') && u.status === 'active')
-            .map(u => ({ value: u.id, label: `${u.name} (${u.role})`}));
-        
-        // Combine and remove duplicates, giving precedence to manpowerProfiles entry if exists
-        const combinedMap = new Map();
-        regularManpower.forEach(u => combinedMap.set(u.value, u));
-        adminAndManagers.forEach(u => {
-            if (!combinedMap.has(u.value)) {
-                combinedMap.set(u.value, u);
-            }
-        });
-        return Array.from(combinedMap.values());
-    }
+    const adminAndManagers = users
+        .filter(u => (u.role === 'Admin' || u.role === 'Manager') && u.status === 'active')
+        .map(u => ({ value: u.id, label: `${u.name} (${u.role})`, projectId: u.projectId }));
     
-    return regularManpower;
-  }, [manpowerProfiles, users, can.prepare_master_schedule]);
+    const combinedMap = new Map();
+    regularManpower.forEach(u => combinedMap.set(u.value, u));
+    adminAndManagers.forEach(u => {
+        if (!combinedMap.has(u.value)) {
+            combinedMap.set(u.value, u);
+        }
+    });
+    return Array.from(combinedMap.values());
+  }, [manpowerProfiles, users]);
 
 
   const watchedItems = form.watch('items');
@@ -100,10 +93,11 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
   const vehicleOptions = useMemo(() => vehicles, [vehicles]);
 
   const onSubmit = (data: ScheduleFormValues) => {
+    const scheduleId = `schedule_${selectedDate}`;
     saveJobSchedule({
-      id: schedule?.id || `${projectId}_${selectedDate}`,
+      id: schedule?.id || scheduleId,
       date: selectedDate,
-      projectId: projectId,
+      projectId: 'all', // Centralized schedule
       supervisorId: user!.id,
       createdAt: schedule?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -114,12 +108,12 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
   
   const handleCopyYesterday = () => {
     const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
-    const yesterdaySchedule = jobSchedules.find(s => s.date === yesterdayStr && s.projectId === projectId);
+    const yesterdaySchedule = jobSchedules.find(s => s.date === yesterdayStr);
     
     if (yesterdaySchedule && yesterdaySchedule.items) {
       const newItems = yesterdaySchedule.items.map(item => ({
         ...item,
-        id: `item-${Date.now()}-${Math.random()}`, // Create a new unique ID for the new row
+        id: `item-${Date.now()}-${Math.random()}`, 
       }));
       replace(newItems);
       toast({ title: "Yesterday's Schedule Copied", description: "Review and save the schedule for today." });
@@ -130,8 +124,8 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
 
   const yesterdayScheduleExists = useMemo(() => {
     const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
-    return jobSchedules.some(s => s.date === yesterdayStr && s.projectId === projectId);
-  }, [jobSchedules, selectedDate, projectId]);
+    return jobSchedules.some(s => s.date === yesterdayStr);
+  }, [jobSchedules, selectedDate]);
   
   const getAssignmentInfo = (manpowerId: string) => {
     for (const s of jobSchedules) {
@@ -140,7 +134,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
             for (const item of s.items) {
               if (item.manpowerIds.includes(manpowerId)) {
                 const supervisor = users.find(u => u.id === s.supervisorId);
-                const projectName = projects.find(p => p.id === s.projectId)?.name || 'Unknown Project';
+                const projectName = s.projectId !== 'all' ? (projects.find(p => p.id === s.projectId)?.name || 'a project') : 'the schedule';
                 return `Assigned to ${projectName} by ${supervisor?.name || 'Unknown'}`;
               }
             }
@@ -286,7 +280,7 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
             )}
            </div>
            <div className="flex gap-2">
-             <Button type="button" variant="outline" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '', clientContact: '', vehicleId: 'none', remarks: '' })}>
+             <Button type="button" variant="outline" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '09:00', clientContact: '', vehicleId: 'none', remarks: '' })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Row
             </Button>
             <Button type="submit">
@@ -298,5 +292,3 @@ export default function EditableJobSchedule({ schedule, projectId, selectedDate,
     </form>
   );
 }
-
-    

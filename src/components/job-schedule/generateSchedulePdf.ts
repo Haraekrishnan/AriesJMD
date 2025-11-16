@@ -7,8 +7,8 @@ import type { JobSchedule } from '@/lib/types';
 export async function generateSchedulePdf(schedule: JobSchedule | undefined, projectName: string, selectedDate: Date) {
     
     const doc = new jsPDF({ orientation: 'landscape' });
-    const title = projectName === 'Master Schedule' ? 'MASTER JOB SCHEDULE' : 'Job Schedule';
-    const projectTitle = projectName === 'Master Schedule' ? `All Projects` : `Project: ${projectName}`;
+    const title = 'Daily Job Schedule';
+    const projectTitle = projectName;
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
@@ -61,9 +61,7 @@ export async function generateSchedulePdf(schedule: JobSchedule | undefined, pro
         }
     });
     
-    const fileName = projectName === 'Master Schedule' 
-        ? `Master_JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`
-        : `JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.pdf`;
+    const fileName = `JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`;
     
     doc.save(fileName);
 }

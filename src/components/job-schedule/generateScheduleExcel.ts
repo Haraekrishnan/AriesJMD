@@ -25,8 +25,8 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
         item.remarks || ''
     ]);
 
-    const title = projectName === 'Master Schedule' ? 'MASTER JOB SCHEDULE' : 'Job Schedule';
-    const projectTitle = projectName === 'Master Schedule' ? `All Projects` : `Project: ${projectName}`;
+    const title = 'Daily Job Schedule';
+    const projectTitle = projectName;
     
     const ws_data = [
         ["ARIES", null, null, null, null, null, null, null, null, title],
@@ -84,9 +84,7 @@ export function generateScheduleExcel(schedule: JobSchedule | undefined, project
 
     XLSX.utils.book_append_sheet(wb, ws, "Job Schedule");
     
-    const fileName = projectName === 'Master Schedule' 
-        ? `Master_JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`
-        : `JobSchedule_${projectName}_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`;
+    const fileName = `JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`;
     
     XLSX.writeFile(wb, fileName);
 }
