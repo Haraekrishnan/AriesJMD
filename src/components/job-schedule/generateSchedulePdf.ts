@@ -64,14 +64,14 @@ export async function generateSchedulePdf(
     head: [headRow],
     body: bodyRows,
     theme: 'grid',
-    margin: { top: 80 }, // Leave enough space for the header to be drawn
+    margin: { top: 70 }, // Set a fixed top margin for the table
     styles: {
         fontSize: 7,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
         valign: 'middle',
-        cellPadding: 3,
+        cellPadding: 2,
     },
     headStyles: {
         fillColor: [255, 255, 255],
@@ -93,33 +93,29 @@ export async function generateSchedulePdf(
     },
     didDrawPage: (data) => {
       // Draw Header
-      const headerStartY = 20;
       const headerBoxHeight = 42;
-      const tableStartY = data.table.startY; // The Y position where the table (including its header) starts
-      
-      // We draw the header box so its bottom aligns with the table's top.
-      const boxY = tableStartY - headerBoxHeight;
-      const contentY = boxY + 2;
+      const headerStartY = 20; 
+      const contentStartY = headerStartY + 2;
       
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
 
       // Outer box
-      doc.rect(margin, boxY, pageWidth - margin * 2, headerBoxHeight); 
+      doc.rect(margin, headerStartY, pageWidth - margin * 2, headerBoxHeight); 
       
       // Divider line
-      const lineY = contentY + 20;
+      const lineY = contentStartY + 20;
       doc.line(margin, lineY, pageWidth - margin, lineY);
 
       // Logo
       if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', margin + 5, contentY, 80, 18);
+        doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
       }
 
       // "Job Schedule" Title
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
-      doc.text('Job Schedule', pageWidth / 2, contentY + 12, { align: 'center' });
+      doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
       
       // Sub-header text
       doc.setFontSize(9);
