@@ -16,7 +16,7 @@ declare module 'jspdf' {
 async function fetchImageAsBase64(url: string): Promise<string> {
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Image not found at ' + url);
+    if (!response.ok) throw new Error('Logo not found at ' + url);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -47,11 +47,11 @@ export async function generateSchedulePdf(
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
   // === HEADER BOX ======================================================
-  const headerHeight = 28; // The total height of the header area
+  const headerHeight = 28; 
   doc.setLineWidth(0.2);
-  doc.setDrawColor(0, 0, 0); // Black border
-  doc.rect(margin, lastY, pageWidth - margin * 2, headerHeight); // Main header box
-  doc.line(margin, lastY + 14, pageWidth - margin, lastY + 14); // Middle dividing line
+  doc.setDrawColor(0, 0, 0); 
+  doc.rect(margin, lastY, pageWidth - margin * 2, headerHeight); 
+  doc.line(margin, lastY + 14, pageWidth - margin, lastY + 14); 
 
   // === HEADER CONTENT =================================================
   if (logoBase64) {
@@ -62,7 +62,7 @@ export async function generateSchedulePdf(
   doc.setFontSize(16);
   doc.text('Job Schedule', pageWidth / 2, lastY + 10, { align: 'center' });
 
-  lastY += 16; // Move to the second row of the header
+  lastY += 16; 
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
