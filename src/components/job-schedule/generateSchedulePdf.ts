@@ -12,22 +12,22 @@ declare module 'jspdf' {
   }
 }
 
-// Helper to fetch logo as Base64 for PDF
+// Helper to fetch image as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Logo not found at ' + url);
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error("Error fetching image for PDF:", error);
-        return ''; // Return empty string on failure
-    }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Logo not found at ' + url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error fetching image for PDF:', error);
+    return ''; // Return empty string on failure
+  }
 }
 
 export async function generateSchedulePdf(
@@ -42,18 +42,18 @@ export async function generateSchedulePdf(
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
 
+  // === LOAD IMAGES (logo + signature) ==================================
+  const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
+  // NOTE: because file name has a space, encode it as %20:
+  const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
+
   // === HEADER BAR ======================================================
   doc.setFillColor(221, 233, 255);
   doc.rect(0, 0, pageWidth, 40, 'F');
 
   // === LOGO =============================================================
-  try {
-    const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
-    if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', margin, 8, 40, 20);
-    }
-  } catch (error) {
-      console.error("Could not add logo to PDF:", error);
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', margin, 8, 40, 20);
   }
 
   // === TITLE ============================================================
@@ -82,9 +82,16 @@ export async function generateSchedulePdf(
 
   // === TABLE ============================================================
   const headRow = [
-    'Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name",
-    'Location', 'Reporting Time', 'Client / Contact Person Number',
-    'Vehicle', 'Special instruction/Remarks'
+    'Sr. No',
+    'Name',
+    'Job Type',
+    'Job No.',
+    "Project/Vessel's name",
+    'Location',
+    'Reporting Time',
+    'Client / Contact Person Number',
+    'Vehicle',
+    'Special instruction/Remarks',
   ];
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
@@ -106,7 +113,7 @@ export async function generateSchedulePdf(
     startY: 62,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [230,230,230], fontStyle: 'bold' },
+    headStyles: { fillColor: [230, 230, 230], fontStyle: 'bold' },
     columnStyles: {
       0: { cellWidth: 25 },
       1: { cellWidth: 100 },
@@ -120,17 +127,54 @@ export async function generateSchedulePdf(
       9: { cellWidth: 70 },
     },
     didDrawPage: (data) => {
-      const footerY = pageHeight - 12;
+      // === FOOTER BLOCK (matches your attached format) ==================
+      const footerTop = pageHeight - 40; // top of "Scheduled by / Signature / Date" row
+      const bottomRowY = pageHeight - 12; // ref + page row
 
+      // Row 1: Scheduled by | Signature (with image) | Date
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+
+      // "Scheduled by ..." (left)
+      doc.text('Scheduled by Harikrishnan P S', margin + 4, footerTop);
+
+      // "Signature:" (centre) + signature image
+      const sigLabelX = pageWidth / 2 - 40;
+      doc.text('Signature:', sigLabelX, footerTop);
+
+      if (signatureBase64) {
+        // small signature image to the right of label
+        doc.addImage(
+          signatureBase64,
+          'JPEG',
+          sigLabelX + 40,
+          footerTop - 14,
+          60,
+          24
+        );
+      }
+
+      // "Date: dd-mm-yyyy" (right)
+      doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTop, {
+        align: 'right',
+      });
+
+      // Row 2: bottom reference + page number
       doc.setFontSize(8);
-      doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, footerY);
-      doc.text(`Page ${data.pageNumber}`, pageWidth - margin, footerY, { align:'right' });
+      doc.text(
+        'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
+        margin,
+        bottomRowY
+      );
 
-      const sigY = footerY - 12;
-      doc.text('Scheduled by: ____________________', margin, sigY);
-      doc.text('Signature: ____________________', pageWidth / 2 - 60, sigY);
-      doc.text(`Date: ${formattedDate}`, pageWidth - margin, sigY, { align:'right' });
-    }
+      const totalPages = doc.getNumberOfPages();
+      doc.text(
+        `Page ${data.pageNumber} of ${totalPages}`,
+        pageWidth - margin,
+        bottomRowY,
+        { align: 'right' }
+      );
+    },
   });
 
   doc.save(`JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
