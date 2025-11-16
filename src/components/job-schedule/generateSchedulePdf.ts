@@ -46,27 +46,34 @@ export async function generateSchedulePdf(
 
   // === HEADER SECTION ======================================================
   const headerBoxHeight = 28;
+  const contentStartY = lastY + 2;
+
+  // Outer box
   doc.setLineWidth(0.2);
   doc.setDrawColor(0);
-  doc.rect(margin, lastY, pageWidth - margin * 2, headerBoxHeight); // Outer box
+  doc.rect(margin, lastY, pageWidth - margin * 2, headerBoxHeight); 
 
   // Logo
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', margin + 2, lastY + 1, 35, 12);
+    doc.addImage(logoBase64, 'PNG', margin + 2, contentStartY, 35, 12);
   }
 
   // "Job Schedule" Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('Job Schedule', pageWidth / 2, lastY + 10, { align: 'center' });
+  doc.text('Job Schedule', pageWidth / 2, contentStartY + 7, { align: 'center' });
+  
+  // Divider line
+  const lineY = contentStartY + 12;
   doc.setLineWidth(0.2);
-  doc.line(margin, lastY + 14, pageWidth - margin, lastY + 14); // Divider line
+  doc.line(margin, lineY, pageWidth - margin, lineY);
 
   // Sub-header text
   doc.setFontSize(9);
-  doc.text('Division/Branch: I & M / Jamnagar', margin + 2, lastY + 21);
-  doc.text('Sub-Div.: R A', pageWidth / 2, lastY + 21, { align: 'center' });
-  doc.text(formattedDate, pageWidth - margin - 2, lastY + 21, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Division/Branch: I & M / Jamnagar', margin + 2, lineY + 7);
+  doc.text('Sub-Div.: R A', pageWidth / 2, lineY + 7, { align: 'center' });
+  doc.text(formattedDate, pageWidth - margin - 2, lineY + 7, { align: 'right' });
   
   const tableStartY = lastY + headerBoxHeight;
 
