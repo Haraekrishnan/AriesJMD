@@ -1,4 +1,3 @@
-
 'use client';
 
 import jsPDF from 'jspdf';
@@ -35,57 +34,35 @@ export async function generateSchedulePdf(
   projectName: string,
   selectedDate: Date
 ) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 40;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
 
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
-  
-  // === HEADER (Rebuilt to match template) =================================
-  const headerY = 20;
-  const headerHeight = 50;
-  const subHeaderHeight = 20;
 
-  // Outer Box
-  doc.setLineWidth(1);
-  doc.rect(margin, headerY, pageWidth - (margin * 2), headerHeight + subHeaderHeight);
+  // === HEADER BLOCK =======================================================
+  // Outer box for the entire header
+  doc.setLineWidth(0.5);
+  doc.rect(margin, 10, pageWidth - margin * 2, 28); // Main header box
+  doc.line(margin, 25, pageWidth - margin, 25); // Line separating top and bottom of header
 
-  // Line dividing top and bottom sections of the header
-  doc.line(margin, headerY + headerHeight, pageWidth - margin, headerY + headerHeight);
-
-  // Top Section
+  // Top part of the header (Logo and Title)
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', margin + 10, headerY + 10, 100, 30);
+    doc.addImage(logoBase64, 'PNG', margin + 2, 12, 40, 10);
   }
-
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Job Schedule', pageWidth - margin - 10, headerY + 30, { align: 'right' });
+  doc.text('Job Schedule', pageWidth - margin - 2, 19, { align: 'right' });
 
-  // Bottom Section
-  const subHeaderY = headerY + headerHeight + 12; // Y position for the text inside the sub-header
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  
-  const col1X = margin + 5;
-  const col2X = margin + 200;
-  const col3X = pageWidth - margin - 5;
-  
-  doc.text('Division/Branch:', col1X, subHeaderY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('I & M/Jamnagar', col1X + 70, subHeaderY);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Sub-Div.:', col2X, subHeaderY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('R A', col2X + 45, subHeaderY);
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(formattedDate, col3X, subHeaderY, { align: 'right' });
-
+  // Bottom part of the header (Division, Sub-Div, Date)
+  doc.setFontSize(10);
+  doc.text('Division/Branch: I & M/Jamnagar', margin + 2, 32);
+  doc.text('Sub-Div.: R A', pageWidth / 2, 32, { align: 'center' });
+  doc.text(formattedDate, pageWidth - margin - 2, 32, { align: 'right' });
 
   // === TABLE ============================================================
   const headRow = [
@@ -117,32 +94,45 @@ export async function generateSchedulePdf(
   doc.autoTable({
     head: [headRow],
     body: bodyRows,
-    startY: headerY + headerHeight + subHeaderHeight + 2, // Start table right after header box
+    startY: 42,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 4, halign: 'center' },
+    styles: { fontSize: 8, cellPadding: 4, halign: 'center', valign: 'middle' },
     headStyles: { fillColor: [230, 230, 230], fontStyle: 'bold', textColor: [0, 0, 0] },
+    columnStyles: {
+      0: { cellWidth: 20, halign: 'center' },
+      1: { cellWidth: 80, halign: 'left' },
+      2: { cellWidth: 30, halign: 'center' },
+      3: { cellWidth: 30, halign: 'center' },
+      4: { cellWidth: 80, halign: 'left' },
+      5: { cellWidth: 50, halign: 'left' },
+      6: { cellWidth: 50, halign: 'center' },
+      7: { cellWidth: 80, halign: 'left' },
+      8: { cellWidth: 40, halign: 'center' },
+      9: { cellWidth: 60, halign: 'left' },
+    },
     didDrawPage: (data) => {
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const footerTop = pageHeight - 40;
+        // === FOOTER BLOCK ===============================================
+        const footerTopY = pageHeight - 35; 
         const bottomRowY = pageHeight - 12;
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
 
-        doc.text('Scheduled by Harikrishnan P S', margin + 4, footerTop);
+        doc.text('Scheduled by Harikrishnan P S', margin + 4, footerTopY);
 
         const sigLabelX = pageWidth / 2 - 40;
-        doc.text('Signature:', sigLabelX, footerTop);
+        doc.text('Signature:', sigLabelX, footerTopY);
+
         if (signatureBase64) {
-            doc.addImage(signatureBase64, 'JPEG', sigLabelX + 40, footerTop - 14, 60, 24);
+            doc.addImage(signatureBase64, 'JPEG', sigLabelX + 40, footerTopY - 14, 60, 24);
         }
 
-        doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTop, { align: 'right' });
+        doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTopY, { align: 'right' });
 
         doc.setFontSize(8);
         doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, bottomRowY);
 
-        const totalPages = doc.getNumberOfPages();
+        const totalPages = doc.getNumberOfPages ? doc.getNumberOfPages() : (doc as any).internal.getNumberOfPages();
         doc.text(`Page ${data.pageNumber} of ${totalPages}`, pageWidth - margin, bottomRowY, { align: 'right' });
     },
   });
