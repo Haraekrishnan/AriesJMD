@@ -15,10 +15,8 @@ declare module 'jspdf' {
 // Helper to fetch image as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
   try {
-    // Ensure we're fetching from the root of the domain
-    const fetchUrl = new URL(url, window.location.origin).href;
-    const response = await fetch(fetchUrl);
-    if (!response.ok) throw new Error(`Logo not found at ${url}. Status: ${response.status}`);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Logo not found at ' + url);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -70,7 +68,6 @@ export async function generateSchedulePdf(
   doc.text('Sub-Div.: R A', pageWidth / 2, lastY + 21, { align: 'center' });
   doc.text(formattedDate, pageWidth - margin - 2, lastY + 21, { align: 'right' });
   
-  // Set the start position for the table right after the header box
   const tableStartY = lastY + headerBoxHeight;
 
   // === TABLE SECTION ============================================================
@@ -93,9 +90,9 @@ export async function generateSchedulePdf(
   ]);
 
   doc.autoTable({
+    margin: { top: tableStartY },
     head: [headRow],
     body: bodyRows,
-    startY: tableStartY,
     theme: 'grid',
     styles: {
         fontSize: 7,
