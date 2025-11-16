@@ -13,8 +13,12 @@ declare module 'jspdf' {
 async function fetchImageAsBase64(url: string) {
   try {
     const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch image: ${response.statusText}`);
+      return "";
+    }
     const blob = await response.blob();
-    return new Promise((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
       reader.onerror = reject;
@@ -25,62 +29,60 @@ async function fetchImageAsBase64(url: string) {
   }
 }
 
+
 export async function generateSchedulePdf(
   schedule: JobSchedule | undefined,
   projectName: string,
   selectedDate: Date
 ) {
-  const doc = new jsPDF({ orientation: 'landscape' });
-
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 30;
 
-  // === LOGO =============================================================
-  try {
-    const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
-    if (logoBase64) {
-      doc.addImage(logoBase64, 'PNG', 10, 8, 25, 12);
-    }
-  } catch (error) {
-    console.error("PDF logo error:", error);
-  }
-
-  // === HEADER ===========================================================
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('ARIES', 40, 18);
-
-  doc.setFontSize(16);
-  doc.text('Job Schedule', pageWidth - 10, 18, { align: 'right' });
-
-  doc.setDrawColor(0);
-  doc.line(10, 22, pageWidth - 10, 22);
-
+  // --- Header ---
+  const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
 
+  // Top blue bar
+  doc.setFillColor(221, 233, 255); // A light blue color similar to the image
+  doc.rect(0, 0, pageWidth, 50, 'F');
+
+  // Logo
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', margin, 12, 100, 25);
+  }
+
+  // Title
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Job Schedule', pageWidth / 2, 35, { align: 'center' });
+
+  // Second header row
+  doc.setLineWidth(1);
+  doc.line(margin, 52, pageWidth - margin, 52);
+
   doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Division/Branch:', margin, 62);
   doc.setFont('helvetica', 'normal');
-  doc.text('Division/Branch: I & M / Jamnagar', 10, 28);
-  doc.text(`Sub-Div.: R A ${formattedDate}`, 120, 28);
+  doc.text('I & M / Jamnagar', margin + 75, 62);
 
-  doc.text(`Project/ Vessel’s name: ${projectName}`, 10, 34);
-  doc.text(`Date: ${formattedDate}`, pageWidth - 10, 34, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.text('Sub-Div.:', pageWidth / 2 - 50, 62, { align: 'left'});
+  doc.setFont('helvetica', 'normal');
+  doc.text('R A', pageWidth / 2 - 15, 62);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text(formattedDate, pageWidth - margin, 62, { align: 'right' });
+  
+  doc.line(margin, 68, pageWidth - margin, 68);
 
-  doc.setLineWidth(0.2);
-  doc.line(10, 38, pageWidth - 10, 38);
 
-  // === TABLE COLUMNS ====================================================
+  // --- Table ---
   const headRow = [
-    'Sr. No',
-    'Name',
-    'Job Type',
-    'Job No.',
-    "Project/Vessel's name",
-    'Location',
-    'Reporting Time',
-    'Client / Contact Person Number',
-    'Vehicle',
-    'Special instruction/Remarks',
+    'Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name",
+    'Location', 'Reporting Time', 'Client / Contact Person Number', 'Vehicle', 'Special instruction/Remarks',
   ];
 
   const bodyRows = (schedule?.items || []).map((item, index) => [
@@ -99,49 +101,46 @@ export async function generateSchedulePdf(
   doc.autoTable({
     head: [headRow],
     body: bodyRows,
-    startY: 42,
+    startY: 72,
     theme: 'grid',
     styles: {
       font: 'helvetica',
       fontSize: 8,
-      cellPadding: 1.5,
-      overflow: 'linebreak',
+      cellPadding: 2,
       valign: 'middle',
     },
     headStyles: {
-      fillColor: [220, 220, 220],
+      fillColor: [230, 230, 230],
       textColor: 0,
       fontStyle: 'bold',
+      halign: 'center',
     },
     columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 40 },
-      2: { cellWidth: 18 },
-      3: { cellWidth: 18 },
-      4: { cellWidth: 35 },
-      5: { cellWidth: 25 },
-      6: { cellWidth: 20 },
-      7: { cellWidth: 30 },
-      8: { cellWidth: 18 },
-      9: { cellWidth: 40 },
+        0: { cellWidth: 25 },
+        1: { cellWidth: 100 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 100 },
+        5: { cellWidth: 80 },
+        6: { cellWidth: 60 },
+        7: { cellWidth: 100 },
+        8: { cellWidth: 50 },
+        9: { cellWidth: 'auto' },
     },
+    didDrawPage: function (data) {
+        // --- Footer ---
+        const footerY = pageHeight - 20;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, footerY);
+        doc.text(`Page ${data.pageNumber}`, pageWidth - margin, footerY, { align: 'right' });
+        
+        const sigY = footerY - 15;
+        doc.text('Scheduled by: ____________________', margin, sigY);
+        doc.text('Signature: ____________________', pageWidth / 2 - 50, sigY);
+        doc.text(`Date: ${formattedDate}`, pageWidth - margin, sigY, { align: 'right' });
+    }
   });
-
-  // === FOOTER ===========================================================
-  const finalY = (doc as any).lastAutoTable.finalY || pageHeight - 20;
-
-  const footerY = pageHeight - 10;
-  
-  doc.setFontSize(8);
-  doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', 10, footerY);
-  doc.text('Page 1 of 1', pageWidth - 10, footerY, { align: 'right' });
-
-  const schedY = footerY - 6;
-
-  doc.setFontSize(9);
-  doc.text('Scheduled by: ____________________', 10, schedY);
-  doc.text('Signature: ____________________', pageWidth / 2, schedY);
-  doc.text(`Date: ${formattedDate}`, pageWidth - 10, schedY, { align: 'right' });
 
   doc.save(`JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
 }
