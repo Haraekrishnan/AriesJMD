@@ -15,8 +15,10 @@ declare module 'jspdf' {
 // Helper to fetch image as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Logo not found at ' + url);
+    // For client-side fetching, ensure the URL is absolute
+    const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) throw new Error(`Logo not found at ${absoluteUrl}`);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -35,50 +37,46 @@ export async function generateSchedulePdf(
   projectName: string,
   selectedDate: Date
 ) {
-  const doc = new jsPDF({ orientation: 'landscape' });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 14;
+  const margin = 40; // A common margin in points
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
 
-  // === LOAD IMAGES (logo + signature) ==================================
+  // === LOAD IMAGES ==================================
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
-  // NOTE: because file name has a space, encode it as %20:
   const signatureBase64 = await fetchImageAsBase64('/hari%20sign.jpg');
 
-  // === HEADER BAR ======================================================
-  doc.setFillColor(221, 233, 255);
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  // === HEADER ======================================================
+  doc.setFillColor(221, 233, 255); // Light blue background
+  doc.rect(0, 0, pageWidth, 70, 'F');
 
-  // === LOGO =============================================================
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', margin, 8, 40, 20);
+    doc.addImage(logoBase64, 'PNG', margin, 20, 120, 30);
   }
 
-  // === TITLE ============================================================
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text('Job Schedule', pageWidth / 2, 26, { align: 'center' });
+  doc.text('Job Schedule', pageWidth / 2, 45, { align: 'center' });
 
-  doc.setLineWidth(0.5);
-  doc.line(margin, 38, pageWidth - margin, 38);
-
-  // === SECOND HEADER ROW ===============================================
+  // === SUB-HEADER ===============================================
+  const subHeaderY = 90;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Division/Branch:', margin, 52);
+  doc.text('Division/Branch:', margin, subHeaderY);
   doc.setFont('helvetica', 'normal');
-  doc.text('I & M / Jamnagar', margin + 80, 52);
+  doc.text('I & M / Jamnagar', margin + 80, subHeaderY);
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Sub-Div.:', pageWidth / 2 - 30, 52);
+  doc.text('Sub-Div.:', pageWidth / 2, subHeaderY);
   doc.setFont('helvetica', 'normal');
-  doc.text('R A', pageWidth / 2 + 10, 52);
+  doc.text('R A', pageWidth / 2 + 50, subHeaderY);
 
-  doc.text(formattedDate, pageWidth - margin, 52, { align: 'right' });
+  doc.text(formattedDate, pageWidth - margin, subHeaderY, { align: 'right' });
 
-  doc.line(margin, 58, pageWidth - margin, 58);
+  doc.setLineWidth(0.5);
+  doc.line(margin, subHeaderY + 10, pageWidth - margin, subHeaderY + 10);
 
   // === TABLE ============================================================
   const headRow = [
@@ -89,9 +87,9 @@ export async function generateSchedulePdf(
     "Project/Vessel's name",
     'Location',
     'Reporting Time',
-    'Client / Contact Person Number',
+    'Client / Contact',
     'Vehicle',
-    'Special instruction/Remarks',
+    'Remarks',
   ];
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
@@ -103,77 +101,44 @@ export async function generateSchedulePdf(
     item.location || '',
     item.reportingTime || '',
     item.clientContact || '',
-    item.vehicleId || '',
+    item.vehicleId && item.vehicleId !== 'none' ? item.vehicleId : 'N/A',
     item.remarks || '',
   ]);
 
   doc.autoTable({
     head: [headRow],
     body: bodyRows,
-    startY: 62,
+    startY: subHeaderY + 20,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [230, 230, 230], fontStyle: 'bold' },
-    columnStyles: {
-      0: { cellWidth: 25 },
-      1: { cellWidth: 100 },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 40 },
-      4: { cellWidth: 100 },
-      5: { cellWidth: 60 },
-      6: { cellWidth: 50 },
-      7: { cellWidth: 100 },
-      8: { cellWidth: 50 },
-      9: { cellWidth: 70 },
-    },
+    styles: { fontSize: 8, cellPadding: 4, halign: 'center' },
+    headStyles: { fillColor: [230, 230, 230], fontStyle: 'bold', textColor: [0, 0, 0] },
     didDrawPage: (data) => {
-      // === FOOTER BLOCK (matches your attached format) ==================
-      const footerTop = pageHeight - 40; // top of "Scheduled by / Signature / Date" row
-      const bottomRowY = pageHeight - 12; // ref + page row
+      // === FOOTER BLOCK ==================
+      const footerTop = pageHeight - 80;
+      const bottomRowY = pageHeight - 30;
 
-      // Row 1: Scheduled by | Signature (with image) | Date
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
 
-      // "Scheduled by ..." (left)
-      doc.text('Scheduled by Harikrishnan P S', margin + 4, footerTop);
+      // Scheduled by
+      doc.text('Scheduled by Harikrishnan P S', margin, footerTop);
 
-      // "Signature:" (centre) + signature image
-      const sigLabelX = pageWidth / 2 - 40;
-      doc.text('Signature:', sigLabelX, footerTop);
-
+      // Signature
+      const sigLabelX = pageWidth / 2;
+      doc.text('Signature:', sigLabelX - 30, footerTop, { align: 'right' });
       if (signatureBase64) {
-        // small signature image to the right of label
-        doc.addImage(
-          signatureBase64,
-          'JPEG',
-          sigLabelX + 40,
-          footerTop - 14,
-          60,
-          24
-        );
+        doc.addImage(signatureBase64, 'JPEG', sigLabelX - 20, footerTop - 25, 90, 36);
       }
 
-      // "Date: dd-mm-yyyy" (right)
-      doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTop, {
-        align: 'right',
-      });
+      // Date
+      doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTop, { align: 'right' });
 
-      // Row 2: bottom reference + page number
+      // Bottom reference and page number
       doc.setFontSize(8);
-      doc.text(
-        'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
-        margin,
-        bottomRowY
-      );
+      doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, bottomRowY);
 
       const totalPages = doc.getNumberOfPages();
-      doc.text(
-        `Page ${data.pageNumber} of ${totalPages}`,
-        pageWidth - margin,
-        bottomRowY,
-        { align: 'right' }
-      );
+      doc.text(`Page ${data.pageNumber} of ${totalPages}`, pageWidth - margin, bottomRowY, { align: 'right' });
     },
   });
 
