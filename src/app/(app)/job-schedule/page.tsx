@@ -26,7 +26,7 @@ export default function JobSchedulePage() {
         return jobSchedules.find(s => s.date === dateStr);
     }, [jobSchedules, selectedDate]);
 
-    const handleExport = (type: 'excel' | 'pdf') => {
+    const handleExport = async (type: 'excel' | 'pdf') => {
         if (!scheduleForDate || !scheduleForDate.items || scheduleForDate.items.length === 0) return;
 
         const scheduleWithNames = {
@@ -45,9 +45,9 @@ export default function JobSchedulePage() {
         const projectName = `Daily Schedule for ${format(selectedDate, 'dd-MM-yyyy')}`;
 
         if (type === 'excel') {
-            generateScheduleExcel(scheduleWithNames, projectName, selectedDate);
+            await generateScheduleExcel(scheduleWithNames, projectName, selectedDate);
         } else {
-            generateSchedulePdf(scheduleWithNames, projectName, selectedDate);
+            await generateSchedulePdf(scheduleWithNames, projectName, selectedDate);
         }
     };
 
