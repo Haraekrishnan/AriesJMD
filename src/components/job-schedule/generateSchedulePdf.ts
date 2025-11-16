@@ -37,10 +37,7 @@ export async function generateSchedulePdf(
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 28; // approx 10mm in points
-  const headerBoxHeight = 42;
-  const initialY = 20; // Fixed starting position
+  const margin = 28; 
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -67,14 +64,14 @@ export async function generateSchedulePdf(
     head: [headRow],
     body: bodyRows,
     theme: 'grid',
-    margin: { top: initialY + headerBoxHeight }, // Use margin to position the table reliably
+    margin: { top: 80 }, // Leave enough space for the header to be drawn
     styles: {
         fontSize: 7,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
         valign: 'middle',
-        cellPadding: 2,
+        cellPadding: 3,
     },
     headStyles: {
         fillColor: [255, 255, 255],
@@ -83,50 +80,56 @@ export async function generateSchedulePdf(
         halign: 'center',
     },
     columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 40 },
-        5: { cellWidth: 25 },
-        6: { cellWidth: 20, halign: 'center' },
-        7: { cellWidth: 35 },
-        8: { cellWidth: 20, halign: 'center' },
+        0: { cellWidth: 25 },
+        1: { cellWidth: 65 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 70 },
+        5: { cellWidth: 50 },
+        6: { cellWidth: 35, halign: 'center' },
+        7: { cellWidth: 55 },
+        8: { cellWidth: 30, halign: 'center' },
         9: { cellWidth: 'auto' },
     },
     didDrawPage: (data) => {
-      // Use the fixed initialY for header drawing on every page
-      const headerStartY = initialY;
-      const contentStartY = headerStartY + 2;
+      // Draw Header
+      const headerStartY = 20;
+      const headerBoxHeight = 42;
+      const tableStartY = data.table.startY; // The Y position where the table (including its header) starts
+      
+      // We draw the header box so its bottom aligns with the table's top.
+      const boxY = tableStartY - headerBoxHeight;
+      const contentY = boxY + 2;
       
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
 
       // Outer box
-      doc.rect(margin, headerStartY, pageWidth - margin * 2, headerBoxHeight); 
+      doc.rect(margin, boxY, pageWidth - margin * 2, headerBoxHeight); 
       
       // Divider line
-      const lineY = contentStartY + 20;
+      const lineY = contentY + 20;
       doc.line(margin, lineY, pageWidth - margin, lineY);
 
       // Logo
       if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
+        doc.addImage(logoBase64, 'PNG', margin + 5, contentY, 80, 18);
       }
 
       // "Job Schedule" Title
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
-      doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
+      doc.text('Job Schedule', pageWidth / 2, contentY + 12, { align: 'center' });
       
       // Sub-header text
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
-      doc.text('Sub-Div.: R A', pageWidth / 2, lineY + 12, { align: 'center' });
+      doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
       doc.text(formattedDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
-      // === FOOTER SECTION ======================================================
+      // Footer
+      const pageHeight = doc.internal.pageSize.getHeight();
       const footerTop = pageHeight - 40;
       const bottomRowY = pageHeight - 20;
       doc.setLineWidth(0.2);
