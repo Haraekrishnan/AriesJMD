@@ -4,6 +4,12 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 async function fetchImageAsBase64(url: string) {
   try {
     const response = await fetch(url);
@@ -90,7 +96,7 @@ export async function generateSchedulePdf(
     item.remarks || '',
   ]);
 
-  (doc as any).autoTable({
+  doc.autoTable({
     head: [headRow],
     body: bodyRows,
     startY: 42,
@@ -122,8 +128,10 @@ export async function generateSchedulePdf(
   });
 
   // === FOOTER ===========================================================
-  const footerY = pageHeight - 10;
+  const finalY = (doc as any).lastAutoTable.finalY || pageHeight - 20;
 
+  const footerY = pageHeight - 10;
+  
   doc.setFontSize(8);
   doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', 10, footerY);
   doc.text('Page 1 of 1', pageWidth - 10, footerY, { align: 'right' });
