@@ -105,25 +105,32 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       (item as any).machineName ||
       (item as any).equipmentName;
   
+    // Extract ARIES ID from ALL possible field names
+    const ariesId =
+      (item as any).ariesId ||
+      (item as any).ariesID ||
+      (item as any).aries_id ||
+      (item as any).AriesId ||
+      (item as any).AriesID ||
+      undefined;
+  
+    // Always merge ARIES ID into manufacturerSrNo
+    let mergedSerial = item.serialNumber;
+    if (ariesId) {
+      mergedSerial = `${item.serialNumber} (${ariesId})`;
+    }
+  
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
       materialName,
-      manufacturerSrNo: item.serialNumber,
-
+      manufacturerSrNo: mergedSerial,  // <-- ALWAYS merged
       chestCrollNo:
         item.itemType === 'Inventory' &&
         materialName?.toLowerCase() === 'harness'
           ? (item as InventoryItem).chestCrollNo
           : undefined,
-
-      ariesId:
-        (item as any).ariesId ||
-        (item.itemType === 'Inventory' ? (item as InventoryItem).ariesId : undefined) ||
-        (item.itemType === 'UTMachine' ? (item as UTMachine).ariesId : undefined) ||
-        (item.itemType === 'DftMachine' ? (item as DftMachine).ariesId : undefined) ||
-        (item.itemType === 'OtherEquipment' ? (item as OtherEquipment).ariesId : undefined) ||
-        (item.itemType === 'LaptopDesktop' ? (item as LaptopDesktop).ariesId : undefined),
+      ariesId: ariesId,
     };
   
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
@@ -248,16 +255,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => {
-                    let displaySerial = item.manufacturerSrNo;
-                    if (item.ariesId) {
-                        displaySerial = `${item.manufacturerSrNo} (${item.ariesId})`;
-                    }
-                    
                     return (
                         <TableRow key={`${item.itemId}-${item.itemType}`}>
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{item.materialName}</TableCell>
-                          <TableCell>{displaySerial || '-'}</TableCell>
+                          <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
                           <TableCell>{item.chestCrollNo || '-'}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>
@@ -303,3 +305,5 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     </Dialog>
   );
 }
+
+    

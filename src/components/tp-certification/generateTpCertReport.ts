@@ -1,5 +1,4 @@
 
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -59,12 +58,7 @@ const processItemsForMerging = (items: CertItem[]) => {
 
   items.forEach(item => {
     const key = item.materialName.toLowerCase();
-
-    // Always merge ARIES ID into serial number
-    let mergedSerial = item.manufacturerSrNo;
-    if (item.ariesId && item.ariesId.trim() !== "") {
-      mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
-    }
+    const mergedSerial = item.manufacturerSrNo; // Already merged in handleSelect
 
     if (itemMap.has(key)) {
       const existing = itemMap.get(key)!;
@@ -267,17 +261,14 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   ];
   
   // Convert TpCertListItem to CertItem so ARIES ID exists
-  const certItems: CertItem[] = items.map(it => {
-    const serial = it.manufacturerSrNo || (it as any).serialNumber;
-    return {
-        itemId: it.itemId,
-        itemType: it.itemType,
-        materialName: it.materialName,
-        manufacturerSrNo: serial,
-        chestCrollNo: it.chestCrollNo,
-        ariesId: it.ariesId,
-    };
-  });
+  const certItems: CertItem[] = items.map(it => ({
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
+  }));
 
   const processedItems = processItemsForMerging(certItems);
   const tableRows: any[][] = [];
@@ -380,3 +371,5 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
+
+    
