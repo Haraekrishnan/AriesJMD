@@ -95,9 +95,11 @@ export async function generateTpCertExcel(
   const certItems: CertItem[] = items.map(it => {
     const original = allItems.find(i => i.id === it.itemId);
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = original?.ariesId || it.ariesId;
+    const realAriesId = original?.ariesId;
 
-    const combinedSrNo = realAriesId ? `${serial} (${realAriesId})` : serial;
+    const combinedSrNo = realAriesId
+      ? `${serial} (${realAriesId})`
+      : serial;
     
     return {
       itemId: it.itemId,
@@ -248,9 +250,11 @@ export async function generateTpCertPdf(
   const certItems: CertItem[] = items.map(it => {
     const original = allItems.find(i => i.id === it.itemId);
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = original?.ariesId || it.ariesId;
+    const realAriesId = original?.ariesId;
 
-    const combinedSrNo = realAriesId ? `${serial} (${realAriesId})` : serial;
+    const combinedSrNo = realAriesId
+      ? `${serial} (${realAriesId})`
+      : serial;
 
     return {
       itemId: it.itemId,
