@@ -785,22 +785,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     
     if (sendNotification) {
+        const allRecipients = new Set<string>();
         const requester = users.find(u => u.id === request.requesterId);
-        if (requester?.email && request.requesterId !== user.id) {
-            const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-            createAndSendNotification(
-                requester.email,
-                `New Query on your PPE Request for ${employee?.name || '...'}`,
-                `Query from ${user.name}`,
-                {
-                    'Request For': employee?.name || 'N/A',
-                    'Item': `${request.ppeType} (Size: ${request.size})`,
-                    'Question': commentText,
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-                'Reply to Query'
-            );
-        }
+        if (requester) allRecipients.add(requester.email);
+        
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(u.role));
+        storePersonnel.forEach(p => { if (p.email) allRecipients.add(p.email) });
+        
+        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+        
+        allRecipients.forEach(recipientEmail => {
+             if (recipientEmail !== user.email) {
+                createAndSendNotification(
+                    recipientEmail,
+                    `Query on PPE Request for ${employee?.name || '...'}`,
+                    `Query from ${user.name}`,
+                    {
+                        'Request For': employee?.name || 'N/A',
+                        'Item': `${request.ppeType} (Size: ${request.size})`,
+                        'Question': commentText,
+                    },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                    'Reply to Query'
+                );
+            }
+        });
     }
   }, [user, ppeRequests, users, manpowerProfiles]);
 
@@ -1967,63 +1976,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request) return;
-
+  
     const updates: { [key: string]: any } = {};
     updates[`ppeRequests/${requestId}/status`] = status;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-
-    // Add comment but don't send notification email for status changes
-    addPpeRequestComment(requestId, comment || `Status changed to ${status}`, false);
-
+  
+    // Add comment but don't send a separate notification for the comment itself
+    addPpeRequestComment(requestId, comment || `Status changed to ${status}.`, false);
+  
+    const allRecipients = new Set<string>();
     const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+    if (requester?.email) allRecipients.add(requester.email);
+    
+    // Add store personnel to CC
+    const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Project Coordinator', 'Admin'].includes(u.role));
+    storePersonnel.forEach(p => { if (p.email) allRecipients.add(p.email) });
+  
+    const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+  
+    allRecipients.forEach(recipientEmail => {
+      // Don't send status update to the person who made the change
+      if (recipientEmail !== user.email) {
         createAndSendNotification(
-            requester.email,
-            `Update on your PPE Request for ${employee?.name || '...'}`,
-            `Request Status: ${status}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Updated By': user.name,
-                'Comment': comment || `Status updated to ${status}.`
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'View Request'
+          recipientEmail,
+          `Update on PPE Request for ${employee?.name || '...'}`,
+          `Request Status: ${status}`,
+          {
+            'Request For': employee?.name || 'N/A',
+            'Item': `${request.ppeType} (Size: ${request.size})`,
+            'Updated By': user.name,
+            'Comment': comment || `Status updated to ${status}.`,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+          'View Request'
         );
-    }
-
+      }
+    });
+  
     if (status === 'Approved') {
-        updates[`ppeRequests/${requestId}/approverId`] = user.id;
+      updates[`ppeRequests/${requestId}/approverId`] = user.id;
     } else if (status === 'Issued') {
-        updates[`ppeRequests/${requestId}/issuedById`] = user.id;
-        const newHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
-        const historyRecord: PpeHistoryRecord = {
-          id: newHistoryRef.key!,
-          ppeType: request.ppeType,
-          size: request.size,
-          quantity: request.quantity,
-          issueDate: new Date().toISOString(),
-          requestType: request.requestType,
-          remarks: `Issued based on request ID: ${requestId.slice(-6)}. ${request.remarks || ''}`,
-          issuedById: user.id,
-          approverId: request.approverId
-        };
-        updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${newHistoryRef.key}`] = historyRecord;
-        
-        // Update stock
-        const stockPath = `/ppeStock/${request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
-        get(ref(rtdb, stockPath)).then(snapshot => {
-            const stockData = snapshot.val();
-            if (request.ppeType === 'Coverall') {
-                const currentSizeStock = stockData.sizes[request.size] || 0;
-                update(ref(rtdb, `${stockPath}/sizes`), { [request.size]: currentSizeStock - request.quantity });
-            } else {
-                update(ref(rtdb, stockPath), { quantity: (stockData.quantity || 0) - request.quantity });
-            }
-        });
+      updates[`ppeRequests/${requestId}/issuedById`] = user.id;
+      const newHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
+      const historyRecord: PpeHistoryRecord = {
+        id: newHistoryRef.key!,
+        ppeType: request.ppeType,
+        size: request.size,
+        quantity: request.quantity,
+        issueDate: new Date().toISOString(),
+        requestType: request.requestType,
+        remarks: `Issued based on request ID: ${requestId.slice(-6)}. ${request.remarks || ''}`,
+        issuedById: user.id,
+        approverId: request.approverId,
+      };
+      updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${newHistoryRef.key}`] = historyRecord;
+      
+      // Update stock
+      const stockPath = `/ppeStock/${request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+      get(ref(rtdb, stockPath)).then(snapshot => {
+        const stockData = snapshot.val();
+        if (request.ppeType === 'Coverall') {
+          const currentSizeStock = stockData.sizes?.[request.size] || 0;
+          update(ref(rtdb, `${stockPath}/sizes`), { ...stockData.sizes, [request.size]: currentSizeStock - request.quantity });
+        } else {
+          update(ref(rtdb, stockPath), { quantity: (stockData.quantity || 0) - request.quantity });
+        }
+      });
     }
-
+  
     update(ref(rtdb), updates);
   }, [user, ppeRequests, addPpeRequestComment, users, manpowerProfiles]);
   
@@ -3384,12 +3404,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (storedUserId) {
         const foundUser = usersById[storedUserId];
         if (foundUser) {
+            const currentUserStatus = user?.status;
+            const newStatus = foundUser.status;
+            if (currentUserStatus && newStatus && currentUserStatus !== newStatus) {
+                if (newStatus === 'locked' || newStatus === 'deactivated') {
+                    router.push('/status');
+                } else if (newStatus === 'active') {
+                    router.push('/dashboard');
+                }
+            }
             setUser({ ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById });
         }
     } else {
         setUser(null);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, router, user?.status]);
 
   // Listen for status changes on the current user
   useEffect(() => {
@@ -3403,13 +3432,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (user.status !== updatedUser.status) {
-                setUser(updatedUser);
+            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                 setUser(updatedUser);
             }
         });
         return () => unsubscribe();
     }
-  }, [user, setStoredUserId, router]);
+  }, [user?.id, setStoredUserId, router]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
