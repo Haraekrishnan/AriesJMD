@@ -190,6 +190,7 @@ export async function generateTpCertExcel(
     const isHarness = group.materialName.toLowerCase() === 'harness';
     
     group.serialNumbers.forEach((serial, index) => {
+      // Always show ARIES ID in brackets if available
       let manufacturerSrNo = serial;
       if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== '') {
         manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
@@ -321,46 +322,28 @@ export async function generateTpCertPdf(
     group.serialNumbers.forEach((serial, index) => {
       // Always add ARIES ID in brackets
       let manufacturerSrNo = serial;
-      if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== '') {
-        manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
+      if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== "") {
+          manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
       }
 
       const chestCrollNo = group.chestCrollNos[index];
-
+      
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
-        {
-          content: index === 0 ? group.materialName : '',
-          rowSpan: index === 0 ? groupSize : 1,
-        },
-        manufacturerSrNo || '',
+        { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
+        manufacturerSrNo,
         isHarness ? (chestCrollNo || '') : '',
-        {
-          content: index === 0 ? group.capacity : '',
-          rowSpan: index === 0 ? groupSize : 1,
-        },
-        {
-          content: index === 0 ? groupSize : '',
-          rowSpan: index === 0 ? groupSize : 1,
-        },
-        {
-          content: index === 0 ? 'OLD' : '',
-          rowSpan: index === 0 ? groupSize : 1,
-        },
-        {
-          content: '',
-          rowSpan: index === 0 ? groupSize : 1,
-        },
-        {
-          content: '',
-          rowSpan: index === 0 ? groupSize : 1,
-        },
+        { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
       // remove merged cells for child rows
       const filteredRow = rowData.filter((_, cellIndex) => {
         if (index > 0 && [0, 1, 4, 5, 6, 7, 8].includes(cellIndex)) {
-          return false;
+            return false;
         }
         return true;
       });
@@ -369,7 +352,7 @@ export async function generateTpCertPdf(
     });
     srNo++;
   });
-
+  
   const finalTableColumns = tableColumn;
 
   (doc as any).autoTable({
