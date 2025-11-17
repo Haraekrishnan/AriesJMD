@@ -45,37 +45,37 @@ const getCapacity = (materialName: string): string => {
 };
 
 const processItemsForMerging = (items: CertItem[]) => {
-  const itemMap = new Map<
-    string,
-    {
-      materialName: string;
-      serialNumbers: string[];
-      chestCrollNos: (string | undefined | null)[];
-      capacity: string;
-    }
-  >();
-
-  items.forEach(item => {
-    const key = item.materialName.toLowerCase();
-    const mergedSerial = item.manufacturerSrNo; // Serial is already merged from the dialog
-
-    if (itemMap.has(key)) {
-      const existing = itemMap.get(key)!;
-      existing.serialNumbers.push(mergedSerial);
-      existing.chestCrollNos.push(item.chestCrollNo);
-    } else {
-      itemMap.set(key, {
-        materialName: item.materialName,
-        serialNumbers: [mergedSerial],
-        chestCrollNos: [item.chestCrollNo],
-        capacity: getCapacity(item.materialName),
-      });
-    }
-  });
-
-  return Array.from(itemMap.values()).sort((a, b) =>
-    a.materialName.localeCompare(b.materialName)
-  );
+    const itemMap = new Map<
+      string,
+      {
+        materialName: string;
+        serialNumbers: string[];
+        chestCrollNos: (string | undefined | null)[];
+        capacity: string;
+      }
+    >();
+  
+    items.forEach(item => {
+      const key = item.materialName.toLowerCase();
+      const mergedSerial = item.manufacturerSrNo; // Merged in the generator function
+  
+      if (itemMap.has(key)) {
+        const existing = itemMap.get(key)!;
+        existing.serialNumbers.push(mergedSerial);
+        existing.chestCrollNos.push(item.chestCrollNo);
+      } else {
+        itemMap.set(key, {
+          materialName: item.materialName,
+          serialNumbers: [mergedSerial],
+          chestCrollNos: [item.chestCrollNo],
+          capacity: getCapacity(item.materialName),
+        });
+      }
+    });
+  
+    return Array.from(itemMap.values()).sort((a, b) =>
+      a.materialName.localeCompare(b.materialName)
+    );
 };
 
 
@@ -159,7 +159,9 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     itemId: it.itemId,
     itemType: it.itemType,
     materialName: it.materialName,
-    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    manufacturerSrNo: it.ariesId
+      ? `${it.manufacturerSrNo || (it as any).serialNumber} (${it.ariesId})`
+      : it.manufacturerSrNo || (it as any).serialNumber,
     chestCrollNo: it.chestCrollNo,
     ariesId: it.ariesId
   }));
@@ -263,7 +265,9 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     itemId: it.itemId,
     itemType: it.itemType,
     materialName: it.materialName,
-    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    manufacturerSrNo: it.ariesId
+      ? `${it.manufacturerSrNo || (it as any).serialNumber} (${it.ariesId})`
+      : it.manufacturerSrNo || (it as any).serialNumber,
     chestCrollNo: it.chestCrollNo,
     ariesId: it.ariesId
   }));
