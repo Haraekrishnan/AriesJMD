@@ -92,25 +92,43 @@ export async function generateTpCertExcel(
   const headerImagePath = '/images/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
-  const certItems: CertItem[] = items.map(it => {
+  const resolveItemData = (it: TpCertListItem): CertItem => {
     const original = allItems.find(i => i.id === it.itemId);
-    const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = original?.ariesId || it.ariesId;
 
-    let combinedSrNo = serial;
-    if (realAriesId && realAriesId.trim() !== '') {
-        combinedSrNo = `${serial} (Aries ID: ${realAriesId})`;
-    }
+    // Manufacturer Sr No fallback priority
+    const serial =
+      (original as any)?.serialNumber ||
+      (original as any)?.machineSerial ||
+      (original as any)?.modelNumber ||
+      it.manufacturerSrNo ||
+      "N/A";
+
+    // Aries ID fallback priority
+    const ariesId =
+      (original as any)?.ariesId ||
+      it.ariesId ||
+      null;
+
+    // Combined display string
+    const displaySerial =
+      ariesId && ariesId.trim() !== ""
+        ? `${serial} (Aries ID: ${ariesId})`
+        : serial;
 
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: combinedSrNo,
-      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
-      ariesId: realAriesId,
+      manufacturerSrNo: displaySerial,
+      chestCrollNo:
+        (original as any)?.chestCrollNo ||
+        it.chestCrollNo ||
+        null,
+      ariesId,
     };
-  });
+  };
+
+  const certItems: CertItem[] = items.map(resolveItemData);
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(sheetName || "TP Certification List", {
@@ -248,25 +266,43 @@ export async function generateTpCertPdf(
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
-  const certItems: CertItem[] = items.map(it => {
+  const resolveItemData = (it: TpCertListItem): CertItem => {
     const original = allItems.find(i => i.id === it.itemId);
-    const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = original?.ariesId || it.ariesId;
-
-    let combinedSrNo = serial;
-    if (realAriesId && realAriesId.trim() !== '') {
-        combinedSrNo = `${serial} (Aries ID: ${realAriesId})`;
-    }
-
+  
+    // Manufacturer Sr No fallback priority
+    const serial =
+      (original as any)?.serialNumber ||
+      (original as any)?.machineSerial ||
+      (original as any)?.modelNumber ||
+      it.manufacturerSrNo ||
+      "N/A";
+  
+    // Aries ID fallback priority
+    const ariesId =
+      (original as any)?.ariesId ||
+      it.ariesId ||
+      null;
+  
+    // Combined display string
+    const displaySerial =
+      ariesId && ariesId.trim() !== ""
+        ? `${serial} (Aries ID: ${ariesId})`
+        : serial;
+  
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: combinedSrNo,
-      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
-      ariesId: realAriesId,
+      manufacturerSrNo: displaySerial,
+      chestCrollNo:
+        (original as any)?.chestCrollNo ||
+        it.chestCrollNo ||
+        null,
+      ariesId,
     };
-  });
+  };
+
+  const certItems: CertItem[] = items.map(resolveItemData);
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
