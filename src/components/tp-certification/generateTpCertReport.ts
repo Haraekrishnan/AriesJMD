@@ -47,26 +47,42 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined)[], capacity: string, ariesIds: (string | undefined)[] }>();
+  const itemMap = new Map<
+    string,
+    {
+      materialName: string;
+      serialNumbers: string[];
+      chestCrollNos: (string | undefined)[];
+      capacity: string;
+    }
+  >();
 
-    items.forEach(item => {
-        const key = item.materialName.toLowerCase();
-        if (itemMap.has(key)) {
-            itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
-            itemMap.get(key)!.chestCrollNos.push(item.chestCrollNo);
-            itemMap.get(key)!.ariesIds.push(item.ariesId);
-        } else {
-            itemMap.set(key, {
-                materialName: item.materialName,
-                serialNumbers: [item.manufacturerSrNo],
-                chestCrollNos: [item.chestCrollNo],
-                ariesIds: [item.ariesId],
-                capacity: getCapacity(item.materialName),
-            });
-        }
-    });
+  items.forEach(item => {
+    const key = item.materialName.toLowerCase();
 
-    return Array.from(itemMap.values()).sort((a, b) => a.materialName.localeCompare(b.materialName));
+    // Always merge ARIES ID into serial number EXACTLY like WIRE SLING logic
+    let mergedSerial = item.manufacturerSrNo;
+    if (item.ariesId && item.ariesId.trim() !== "") {
+      mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
+    }
+
+    if (itemMap.has(key)) {
+      const existing = itemMap.get(key)!;
+      existing.serialNumbers.push(mergedSerial);
+      existing.chestCrollNos.push(item.chestCrollNo);
+    } else {
+      itemMap.set(key, {
+        materialName: item.materialName,
+        serialNumbers: [mergedSerial],
+        chestCrollNos: [item.chestCrollNo],
+        capacity: getCapacity(item.materialName),
+      });
+    }
+  });
+
+  return Array.from(itemMap.values()).sort((a, b) =>
+    a.materialName.localeCompare(b.materialName)
+  );
 };
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
@@ -164,17 +180,12 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     const isHarness = group.materialName.toLowerCase() === 'harness';
     
     group.serialNumbers.forEach((serial, index) => {
-        let manufacturerSrNo = serial;
-        if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== "") {
-            manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
-        }
-        
         const chestCrollNo = group.chestCrollNos[index];
         
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            manufacturerSrNo,
+            serial,
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -262,8 +273,8 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     chestCrollNo: it.chestCrollNo,
     ariesId: it.ariesId
   }));
-  const processedItems = processItemsForMerging(certItems);
 
+  const processedItems = processItemsForMerging(certItems);
   const tableRows: any[][] = [];
   let srNo = 1;
 
@@ -272,17 +283,12 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     const isHarness = group.materialName.toLowerCase() === 'harness';
 
     group.serialNumbers.forEach((serial, index) => {
-      let manufacturerSrNo = serial;
-      if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== "") {
-          manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
-      }
-
       const chestCrollNo = group.chestCrollNos[index];
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        manufacturerSrNo,
+        serial, // Already contains Aries ID
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
@@ -291,24 +297,43 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
-      let filteredRow = rowData;
-      // For subsequent rows in same group, manually reduce to required columns
-      if (index > 0) {
-        filteredRow = [
-          manufacturerSrNo, // Keep serial + ARIES ID always
-          isHarness ? (chestCrollNo || '') : '', // Chest Croll No
-        ];
+      // For non-harness items, merge the two serial number columns
+      if (!isHarness) {
+        const serialCell = rowData[2] as any;
+        if(typeof serialCell === 'object' && serialCell !== null) {
+            serialCell.colSpan = 2;
+        } else {
+            rowData[2] = { content: serialCell, colSpan: 2 };
+        }
+        rowData.splice(3, 1); // remove the empty chest croll no cell
       }
+      
+      const filteredRow = rowData.filter((_, cellIndex) => {
+        // For non-first rows in a group, only show serial and chest number
+        if (index > 0) {
+            if (isHarness) {
+                return cellIndex === 2 || cellIndex === 3;
+            } else {
+                return cellIndex === 2; // only serial number column
+            }
+        }
+        return true;
+      });
 
       tableRows.push(filteredRow);
     });
     srNo++;
   });
   
-  const finalTableColumns = tableColumn;
+  const finalTableColumns = isHarness => isHarness 
+    ? tableColumn 
+    : tableColumn.filter(header => header !== "Chest Scroll No.");
+    
+  const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
+
 
   (doc as any).autoTable({
-      head: [finalTableColumns],
+      head: [finalTableColumns(isAnyHarness)],
       body: tableRows,
       startY: 170,
       theme: "grid",
@@ -316,8 +341,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
       didParseCell: (data: any) => {
         const cell = data.cell;
-        const row = data.row.raw;
-
+        
         if (typeof cell.raw === 'object' && cell.raw !== null) {
             if (cell.raw.rowSpan > 1) cell.rowSpan = cell.raw.rowSpan;
             if (cell.raw.colSpan > 1) cell.colSpan = cell.raw.colSpan;
