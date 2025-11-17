@@ -6,16 +6,17 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import StatCard from '@/components/dashboard/stat-card';
-import { FileText, Users, CheckCircle, ListTodo, Megaphone, PlusCircle, UserMinus } from 'lucide-react';
+import { FileText, Users, CheckCircle, ListTodo, Megaphone, PlusCircle, UserMinus, AlertCircle } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
 import { startOfMonth } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount, isManpowerUpdatedToday } = useAppContext();
   const [selectedPlannerDate, setSelectedPlannerDate] = useState<Date | undefined>(new Date());
   const [currentPlannerMonth, setCurrentPlannerMonth] = useState(startOfMonth(new Date()));
   const [selectedPlannerUser, setSelectedPlannerUser] = useState<string>(user!.id);
@@ -81,9 +82,10 @@ export default function DashboardPage() {
         />
         <StatCard 
           title="Manpower" 
-          value={workingManpowerCount.toString()}
-          icon={Users}
-          description={`${activeManpowerToday} active, ${onLeaveManpowerCount} on leave`}
+          value={isManpowerUpdatedToday ? workingManpowerCount.toString() : '--'}
+          icon={isManpowerUpdatedToday ? Users : AlertCircle}
+          description={isManpowerUpdatedToday ? `${activeManpowerToday} active, ${onLeaveManpowerCount} on leave` : 'Not updated for today'}
+          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
         />
       </div>
 

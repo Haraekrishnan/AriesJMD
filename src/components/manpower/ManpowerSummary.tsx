@@ -1,13 +1,15 @@
 
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Users, UserCheck, UserX } from 'lucide-react';
+import { Users, UserCheck, UserX, AlertCircle } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 import { format, isBefore, parseISO, startOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function ManpowerSummary() {
-  const { manpowerLogs, projects } = useAppContext();
+  const { manpowerLogs, projects, isManpowerUpdatedToday } = useAppContext();
 
   const { totalWorking, totalOnLeave, totalActive } = useMemo(() => {
     const today = new Date();
@@ -48,21 +50,24 @@ export default function ManpowerSummary() {
     <div className="grid gap-6 md:grid-cols-3">
        <StatCard 
           title="Total Working" 
-          value={totalWorking} 
-          icon={Users} 
-          description="Total manpower count for today"
+          value={isManpowerUpdatedToday ? totalWorking : '--'}
+          icon={isManpowerUpdatedToday ? Users : AlertCircle} 
+          description={isManpowerUpdatedToday ? "Total manpower count for today" : "Not updated for today"}
+          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
         />
         <StatCard 
           title="Today's Active" 
-          value={totalActive}
-          icon={UserCheck} 
-          description="Working manpower minus those on leave"
+          value={isManpowerUpdatedToday ? totalActive : '--'}
+          icon={isManpowerUpdatedToday ? UserCheck : AlertCircle} 
+          description={isManpowerUpdatedToday ? "Working manpower minus those on leave" : "Not updated for today"}
+          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
         />
         <StatCard 
           title="Today's Leave" 
-          value={totalOnLeave} 
-          icon={UserX} 
-          description="Manpower on leave today"
+          value={isManpowerUpdatedToday ? totalOnLeave : '--'}
+          icon={isManpowerUpdatedToday ? UserX : AlertCircle} 
+          description={isManpowerUpdatedToday ? "Manpower on leave today" : "Not updated for today"}
+          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
         />
     </div>
   );
