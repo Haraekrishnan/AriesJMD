@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -49,26 +50,30 @@ export default function ManpowerSummary() {
   }, [manpowerLogs, projects]);
 
   const lastUpdateText = `Last update: ${lastManpowerUpdate ? formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true }) : 'never'}`;
+  
+  const workingDescription = `Total manpower count. ${lastUpdateText}`;
+  const activeDescription = `Working minus on leave. ${lastUpdateText}`;
+  const leaveDescription = `Manpower on leave. ${lastUpdateText}`;
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
        <StatCard 
           title="Total Working" 
-          value={isManpowerUpdatedToday ? totalWorking : '--'}
+          value={totalWorking}
           icon={Users} 
-          description={isManpowerUpdatedToday ? "Total manpower count for today" : lastUpdateText}
+          description={workingDescription}
         />
         <StatCard 
           title="Today's Active" 
-          value={isManpowerUpdatedToday ? totalActive : '--'}
+          value={totalActive}
           icon={UserCheck} 
-          description={isManpowerUpdatedToday ? "Working manpower minus those on leave" : lastUpdateText}
+          description={activeDescription}
         />
         <StatCard 
           title="Today's Leave" 
-          value={isManpowerUpdatedToday ? totalOnLeave : '--'}
+          value={totalOnLeave}
           icon={UserX} 
-          description={isManpowerUpdatedToday ? "Manpower on leave today" : lastUpdateText}
+          description={leaveDescription}
         />
     </div>
   );

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -49,10 +50,14 @@ export default function DashboardPage() {
   const activeManpowerToday = workingManpowerCount - onLeaveManpowerCount;
 
   const manpowerDescription = useMemo(() => {
+    const lastUpdateString = lastManpowerUpdate
+      ? `Last update: ${formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true })}`
+      : 'No recent updates';
+
     if (!isManpowerUpdatedToday) {
-      return `Last update: ${lastManpowerUpdate ? formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true }) : 'never'}`;
+      return lastUpdateString;
     }
-    return `${activeManpowerToday} active, ${onLeaveManpowerCount} on leave`;
+    return `${activeManpowerToday} active, ${onLeaveManpowerCount} on leave. (${lastUpdateString})`;
   }, [isManpowerUpdatedToday, lastManpowerUpdate, activeManpowerToday, onLeaveManpowerCount]);
 
 
@@ -90,7 +95,7 @@ export default function DashboardPage() {
         />
         <StatCard 
           title="Manpower" 
-          value={isManpowerUpdatedToday ? workingManpowerCount.toString() : '--'}
+          value={workingManpowerCount.toString()}
           icon={Users}
           description={manpowerDescription}
         />
