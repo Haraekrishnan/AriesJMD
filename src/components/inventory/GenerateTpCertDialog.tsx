@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -118,7 +117,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         materialName?.toLowerCase() === 'harness'
           ? (item as InventoryItem).chestCrollNo
           : undefined,
-      ariesId: (item as any).ariesId,
+      ariesId: 'ariesId' in item ? (item.ariesId || null) : null,
     };
   
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
@@ -220,6 +219,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                 className="cursor-pointer"
                             >
                                 {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {item.serialNumber || 'N/A'})
+                                {'ariesId' in item && item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                             </CommandItem>
                             ))}
                         </CommandGroup>
