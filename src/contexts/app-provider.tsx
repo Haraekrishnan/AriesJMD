@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -3203,9 +3205,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const todaysLogs = manpowerLogs.filter(log => log.date === todayStr);
     const isManpowerUpdatedToday = todaysLogs.length > 0;
 
-    const mostRecentLog = manpowerLogs.length > 0 
-      ? manpowerLogs.sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime())[0] 
-      : null;
+    const logsWithTime = manpowerLogs.filter(log => log && log.updatedAt);
+    const mostRecentLog = logsWithTime.length > 0
+        ? logsWithTime.sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime())[0]
+        : null;
     const lastManpowerUpdate = mostRecentLog ? mostRecentLog.updatedAt : null;
 
     projects.forEach(project => {
@@ -3445,3 +3448,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
