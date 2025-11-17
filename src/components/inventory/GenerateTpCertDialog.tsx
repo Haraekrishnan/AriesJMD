@@ -20,7 +20,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 import { Trash2 } from 'lucide-react';
 import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -239,8 +239,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                   <TableBody>
                     {selectedItems.length > 0 ? (
                       selectedItems.map((item, index) => {
-                        const displaySerial = item.ariesId 
-                          ? `${item.manufacturerSrNo || 'N/A'} (Aries ID: ${item.ariesId})`
+                        const displaySerial = item.ariesId
+                          ? `${item.manufacturerSrNo || 'N/A'} (${item.ariesId})`
                           : item.manufacturerSrNo;
                         
                         return (

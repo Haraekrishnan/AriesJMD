@@ -53,15 +53,13 @@ const processItemsForMerging = (items: CertItem[]) => {
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
-        const mergedSerial = item.manufacturerSrNo;
-
         if (itemMap.has(key)) {
-            itemMap.get(key)!.serialNumbers.push(mergedSerial);
+            itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
             itemMap.get(key)!.chestCrollNos.push(item.chestCrollNo);
         } else {
             itemMap.set(key, {
                 materialName: item.materialName,
-                serialNumbers: [mergedSerial],
+                serialNumbers: [item.manufacturerSrNo],
                 chestCrollNos: [item.chestCrollNo],
             });
         }
@@ -99,17 +97,15 @@ export async function generateTpCertExcel(
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
     const realAriesId = original?.ariesId || it.ariesId;
 
-    const combinedSrNo = realAriesId
-      ? `${serial} (Aries ID: ${realAriesId})`
-      : serial;
-
+    const combinedSrNo = realAriesId ? `${serial} (${realAriesId})` : serial;
+    
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
       manufacturerSrNo: combinedSrNo,
       chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
-      ariesId: realAriesId
+      ariesId: realAriesId,
     };
   });
   
@@ -131,6 +127,7 @@ export async function generateTpCertExcel(
 
   const dateToUse = listDate ? (typeof listDate === 'string' ? parseISO(listDate) : listDate) : new Date();
 
+  // Add Date Row
   const dateRow = worksheet.getRow(4);
   worksheet.mergeCells('A4:H4');
   dateRow.getCell('H').value = `Date: ${format(dateToUse, 'dd-MM-yyyy')}`;
@@ -253,9 +250,7 @@ export async function generateTpCertPdf(
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
     const realAriesId = original?.ariesId || it.ariesId;
 
-    const combinedSrNo = realAriesId
-      ? `${serial} (Aries ID: ${realAriesId})`
-      : serial;
+    const combinedSrNo = realAriesId ? `${serial} (${realAriesId})` : serial;
 
     return {
       itemId: it.itemId,
@@ -263,7 +258,7 @@ export async function generateTpCertPdf(
       materialName: it.materialName,
       manufacturerSrNo: combinedSrNo,
       chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
-      ariesId: realAriesId
+      ariesId: realAriesId,
     };
   });
 
