@@ -250,11 +250,11 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     const isHarness = group.materialName.toLowerCase() === 'harness';
 
     group.serialNumbers.forEach((serial, index) => {
-        let manufacturerSrNo = serial;
-        if (group.ariesIds[index]) {
-            manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
-        }
-        const chestCrollNo = group.chestCrollNos[index];
+      let manufacturerSrNo = serial;
+      if (group.ariesIds[index]) {
+          manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
+      }
+      const chestCrollNo = group.chestCrollNos[index];
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
