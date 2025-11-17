@@ -59,7 +59,7 @@ const processItemsForMerging = (items: CertItem[]) => {
   items.forEach(item => {
     const key = item.materialName.toLowerCase();
 
-    // Always merge ARIES ID into serial number
+    // MERGE ARIES ID INTO SERIAL NUMBER (same as wire sling logic)
     let mergedSerial = item.manufacturerSrNo;
     if (item.ariesId && item.ariesId.trim() !== "") {
       mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
@@ -161,6 +161,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
   });
   
+  // Convert to CertItem before processing
   const certItems: CertItem[] = items.map(it => ({
     itemId: it.itemId,
     itemType: it.itemType,
@@ -265,6 +266,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       "Valid upto if Renewal", "Submit Last Testing Report",
   ];
   
+  // Convert TpCertListItem to CertItem before processing
   const certItems: CertItem[] = items.map(it => ({
     itemId: it.itemId,
     itemType: it.itemType,
@@ -288,7 +290,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        serial, // Already contains Aries ID
+        serial,
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
