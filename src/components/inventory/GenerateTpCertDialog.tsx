@@ -68,12 +68,13 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       useEffect(() => {
         if (existingList) {
           setListName(existingList.name);
-          // When editing an existing list, ensure the full original item is fetched for correct display
           const enrichedItems = existingList.items.map(listItem => {
             const fullItem = allSearchableItems.find(i => i.id === listItem.itemId);
             return {
                 ...listItem,
-                ariesId: fullItem?.ariesId || listItem.ariesId
+                ariesId: fullItem?.ariesId || listItem.ariesId,
+                // Ensure the serial number is the most current one from the source
+                manufacturerSrNo: fullItem?.serialNumber || listItem.manufacturerSrNo,
             };
           });
           setSelectedItems(enrichedItems);
@@ -122,7 +123,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
           materialName,
           manufacturerSrNo: item.serialNumber,
           chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
-          ariesId: 'ariesId' in item ? (item.ariesId || null) : null,
+          ariesId: item.ariesId || null,
         };
       
         if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {

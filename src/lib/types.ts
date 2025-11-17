@@ -94,9 +94,9 @@ export type Payment = {
     vendorId: string;
     amount: number;
     date: string; // ISO String
-    durationFrom?: string; // ISO String
-    durationTo?: string; // ISO String
-    emailSentDate?: string; // ISO String
+    durationFrom?: string | null; // ISO String
+    durationTo?: string | null; // ISO String
+    emailSentDate?: string | null; // ISO String
     status: PaymentStatus;
     remarks?: string;
     comments: Comment[];
@@ -602,7 +602,7 @@ export type InventoryItem = {
   name: string;
   serialNumber: string;
   ariesId?: string;
-  chestCrollNo?: string;
+  chestCrollNo?: string | null;
   status: InventoryItemStatus;
   projectId: string;
   plantUnit?: string;
@@ -616,7 +616,7 @@ export type InventoryItem = {
   category?: InventoryCategory;
   quantity?: number;
   unit?: string;
-  movedToProjectId?: string;
+  movedToProjectId?: string | null;
 };
 
 export type UTMachine = {
