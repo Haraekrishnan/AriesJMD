@@ -9,7 +9,7 @@ import { format, parseISO, isValid } from 'date-fns';
 
 interface CertItem {
   itemId: string;
-  itemType: 'Inventory' | 'UTMachine' | 'DftMachine';
+  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim';
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
@@ -174,6 +174,10 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
         ];
         const row = worksheet.addRow(rowData);
         
+        if (!isHarness) {
+            worksheet.mergeCells(row.number, 3, row.number, 4);
+        }
+
         row.eachCell(cell => {
           cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
           cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -268,6 +272,16 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
+      if (!isHarness) {
+        rowData.splice(3, 1); // remove the empty chest croll no cell
+        const serialCell = rowData[2] as any;
+        if(typeof serialCell === 'object' && serialCell !== null) {
+          serialCell.colSpan = 2;
+        } else {
+            rowData[2] = { content: serialCell, colSpan: 2 };
+        }
+      }
+
       const filteredRow = rowData.filter((_, cellIndex) => {
         if (index > 0 && [0, 1, 4, 5, 6, 7, 8].includes(cellIndex)) {
             return false;
@@ -280,7 +294,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     srNo++;
   });
   
-  const finalTableColumns = tableColumn;
+  const finalTableColumns = tableColumn.filter(header => header !== "Chest Scroll No." || items.some(i => i.materialName.toLowerCase() === 'harness'));
 
   (doc as any).autoTable({
       head: [finalTableColumns],
