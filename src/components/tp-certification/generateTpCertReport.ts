@@ -34,58 +34,56 @@ const getCapacity = (materialName: string): string => {
 
     const liftingMagnetMatch = name.match(/lifting magnet (\d+)\s?kg/);
     if (liftingMagnetMatch) return `${liftingMagnetMatch[1]} kg`;
-    
+
     const webSlingMatch = name.match(/web sling.*?(\d+t)/);
     if (webSlingMatch) return webSlingMatch[1].toUpperCase();
 
     const chainBlockMatch = name.match(/chain block.*?(\d+t)/);
     if (chainBlockMatch) return chainBlockMatch[1].toUpperCase();
 
-    return ''; // Default empty string if no match
+    return ''; 
 };
 
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<
-      string,
-      {
-        materialName: string;
-        serialNumbers: string[];
-        chestCrollNos: (string | undefined | null)[];
-        capacity: string;
-      }
-    >();
-  
-    items.forEach(item => {
-      const key = item.materialName.toLowerCase();
-      const mergedSerial = item.manufacturerSrNo; // Merged in the generator function
-  
-      if (itemMap.has(key)) {
-        const existing = itemMap.get(key)!;
-        existing.serialNumbers.push(mergedSerial);
-        existing.chestCrollNos.push(item.chestCrollNo);
-      } else {
-        itemMap.set(key, {
-          materialName: item.materialName,
-          serialNumbers: [mergedSerial],
-          chestCrollNos: [item.chestCrollNo],
-          capacity: getCapacity(item.materialName),
-        });
-      }
-    });
-  
-    return Array.from(itemMap.values()).sort((a, b) =>
-      a.materialName.localeCompare(b.materialName)
-    );
+  const itemMap = new Map<
+    string,
+    {
+      materialName: string;
+      serialNumbers: string[];
+      chestCrollNos: (string | undefined | null)[];
+      capacity: string;
+    }
+  >();
+
+  items.forEach(item => {
+    const key = item.materialName.toLowerCase();
+    const mergedSerial = item.manufacturerSrNo; // Already merged in handleSelect
+
+    if (itemMap.has(key)) {
+      const existing = itemMap.get(key)!;
+      existing.serialNumbers.push(mergedSerial);
+      existing.chestCrollNos.push(item.chestCrollNo);
+    } else {
+      itemMap.set(key, {
+        materialName: item.materialName,
+        serialNumbers: [mergedSerial],
+        chestCrollNos: [item.chestCrollNo],
+        capacity: getCapacity(item.materialName),
+      });
+    }
+  });
+
+  return Array.from(itemMap.values()).sort((a, b) =>
+    a.materialName.localeCompare(b.materialName)
+  );
 };
 
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
-  // Construct the full URL if it's a relative path
   const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error('Failed to fetch header image');
   const buffer = await resp.arrayBuffer();
-  // convert to base64 for jsPDF
   const bytes = new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
@@ -159,13 +157,11 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     itemId: it.itemId,
     itemType: it.itemType,
     materialName: it.materialName,
-    manufacturerSrNo: it.ariesId
-      ? `${it.manufacturerSrNo || (it as any).serialNumber} (${it.ariesId})`
-      : it.manufacturerSrNo || (it as any).serialNumber,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
     chestCrollNo: it.chestCrollNo,
     ariesId: it.ariesId
   }));
-  
+
   const processedItems = processItemsForMerging(certItems);
   let currentRowIndex = headerRowIndex + 1;
   let srNo = 1;
@@ -177,11 +173,10 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     
     group.serialNumbers.forEach((serial, index) => {
         const chestCrollNo = group.chestCrollNos[index];
-        
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            serial, 
+            serial,
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -203,6 +198,9 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 
     if (groupSize > 1) {
         const mergeCols = [1, 2, 5, 6, 7, 8, 9]; 
+        if(isHarness) {
+            mergeCols.push(4); // also merge chest croll no. if not harness
+        }
         mergeCols.forEach(col => {
             worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
         });
@@ -265,9 +263,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     itemId: it.itemId,
     itemType: it.itemType,
     materialName: it.materialName,
-    manufacturerSrNo: it.ariesId
-      ? `${it.manufacturerSrNo || (it as any).serialNumber} (${it.ariesId})`
-      : it.manufacturerSrNo || (it as any).serialNumber,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
     chestCrollNo: it.chestCrollNo,
     ariesId: it.ariesId
   }));
@@ -296,7 +292,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       ];
 
       if (!isHarness) {
-        rowData.splice(3, 1); // remove the empty chest croll no cell
+        rowData.splice(3, 1);
         const serialCell = rowData[2] as any;
         if(typeof serialCell === 'object' && serialCell !== null) {
           serialCell.colSpan = 2;
@@ -343,7 +339,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
             if (raw.colSpan > 1) cell.colSpan = raw.colSpan;
             if (raw.content !== undefined) cell.content = raw.content;
         }
-      },
+      }
   });
 
 
@@ -371,3 +367,4 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
+

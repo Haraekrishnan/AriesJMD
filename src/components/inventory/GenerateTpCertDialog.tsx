@@ -42,7 +42,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
   const { 
     inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
     addTpCertList, updateTpCertList 
-  } = useAppContext();
+  } from '@/contexts/app-provider';
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
@@ -110,14 +110,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       (item as any).machineName ||
       (item as any).equipmentName;
   
-    const ariesId =
-      (item as any).ariesId ||
-      (item.itemType === 'Inventory' ? (item as InventoryItem).ariesId : undefined) ||
-      (item.itemType === 'UTMachine' ? (item as UTMachine).ariesId : undefined) ||
-      (item.itemType === 'DftMachine' ? (item as DftMachine).ariesId : undefined) ||
-      (item.itemType === 'OtherEquipment' ? (item as OtherEquipment).ariesId : undefined) ||
-      (item.itemType === 'LaptopDesktop' ? (item as LaptopDesktop).ariesId : undefined);
-  
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
@@ -128,7 +120,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         materialName?.toLowerCase() === 'harness'
           ? (item as InventoryItem).chestCrollNo
           : undefined,
-      ariesId: ariesId,
+      ariesId: 'ariesId' in item ? (item.ariesId || null) : null,
     };
   
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
