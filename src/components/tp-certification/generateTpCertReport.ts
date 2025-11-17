@@ -1,5 +1,4 @@
 
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -84,7 +83,7 @@ async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: A
 
 export async function generateTpCertExcel(
     items: TpCertListItem[],
-    allItems: FullItem[],
+    allItems: FullItem[], // Now correctly accepting allItems
     existingWorkbook?: ExcelJS.Workbook,
     sheetName?: string,
     listDate?: Date | string
@@ -93,38 +92,27 @@ export async function generateTpCertExcel(
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const resolveItemData = (it: TpCertListItem): CertItem => {
+    // 1. Find the current, full item data using ID
     const original = allItems.find(i => i.id === it.itemId);
+    
+    // 2. Use the most up-to-date data, falling back to stored data
+    const serial = (original as any)?.serialNumber || it.manufacturerSrNo || 'N/A';
+    const realAriesId = (original as any)?.ariesId || it.ariesId;
 
-    // Manufacturer Sr No fallback priority
-    const serial =
-      (original as any)?.serialNumber ||
-      (original as any)?.machineSerial ||
-      (original as any)?.modelNumber ||
-      it.manufacturerSrNo ||
-      "N/A";
+    // 3. Construct the combined serial number string
+    let combinedSrNo = serial;
+    if (realAriesId && realAriesId.trim() !== '') {
+        combinedSrNo = `${serial} (Aries ID: ${realAriesId})`;
+    }
 
-    // Aries ID fallback priority
-    const ariesId =
-      (original as any)?.ariesId ||
-      it.ariesId ||
-      null;
-
-    // Combined display string
-    const displaySerial =
-      ariesId && ariesId.trim() !== ""
-        ? `${serial} (Aries ID: ${ariesId})`
-        : serial;
-
+    // 4. Return the processed item
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: displaySerial,
-      chestCrollNo:
-        (original as any)?.chestCrollNo ||
-        it.chestCrollNo ||
-        null,
-      ariesId,
+      manufacturerSrNo: combinedSrNo, // Use the combined string
+      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo, // Always prefer original for chestCrollNo
+      ariesId: realAriesId,
     };
   };
 
@@ -260,48 +248,37 @@ export async function generateTpCertExcel(
 
 export async function generateTpCertPdf(
     items: TpCertListItem[],
-    allItems: FullItem[],
+    allItems: FullItem[], // Now correctly accepting allItems
     listDate?: Date | string
 ) {
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const resolveItemData = (it: TpCertListItem): CertItem => {
+    // 1. Find the current, full item data using ID
     const original = allItems.find(i => i.id === it.itemId);
-  
-    // Manufacturer Sr No fallback priority
-    const serial =
-      (original as any)?.serialNumber ||
-      (original as any)?.machineSerial ||
-      (original as any)?.modelNumber ||
-      it.manufacturerSrNo ||
-      "N/A";
-  
-    // Aries ID fallback priority
-    const ariesId =
-      (original as any)?.ariesId ||
-      it.ariesId ||
-      null;
-  
-    // Combined display string
-    const displaySerial =
-      ariesId && ariesId.trim() !== ""
-        ? `${serial} (Aries ID: ${ariesId})`
-        : serial;
-  
+
+    // 2. Use the most up-to-date data, falling back to stored data
+    const serial = (original as any)?.serialNumber || it.manufacturerSrNo || 'N/A';
+    const realAriesId = (original as any)?.ariesId || it.ariesId;
+
+    // 3. Construct the combined serial number string
+    let combinedSrNo = serial;
+    if (realAriesId && realAriesId.trim() !== '') {
+        combinedSrNo = `${serial} (Aries ID: ${realAriesId})`;
+    }
+
+    // 4. Return the processed item
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: displaySerial,
-      chestCrollNo:
-        (original as any)?.chestCrollNo ||
-        it.chestCrollNo ||
-        null,
-      ariesId,
+      manufacturerSrNo: combinedSrNo, // Use the combined string
+      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo, // Always prefer original for chestCrollNo
+      ariesId: realAriesId,
     };
   };
-
+  
   const certItems: CertItem[] = items.map(resolveItemData);
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });

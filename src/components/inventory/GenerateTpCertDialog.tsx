@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -72,9 +71,9 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
             const fullItem = allSearchableItems.find(i => i.id === listItem.itemId);
             return {
                 ...listItem,
-                ariesId: fullItem?.ariesId || listItem.ariesId,
+                ariesId: fullItem?.ariesId || listItem.ariesId, // Use fullItem's ariesId
                 // Ensure the serial number is the most current one from the source
-                manufacturerSrNo: fullItem?.serialNumber || listItem.manufacturerSrNo,
+                manufacturerSrNo: fullItem?.serialNumber || listItem.manufacturerSrNo, // Use fullItem's serialNumber
             };
           });
           setSelectedItems(enrichedItems);
