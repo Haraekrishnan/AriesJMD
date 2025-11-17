@@ -100,7 +100,6 @@ export default function DashboardPage() {
           value={workingManpowerCount.toString()}
           icon={Users}
           description={manpowerDescription}
-          isManpowerCard={true}
         />
       </div>
 

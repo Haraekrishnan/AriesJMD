@@ -10,12 +10,11 @@ interface StatCardProps {
   icon: LucideIcon;
   description: React.ReactNode;
   className?: string;
-  isManpowerCard?: boolean;
 }
 
-export default function StatCard({ title, value, icon: Icon, description, className, isManpowerCard }: StatCardProps) {
+export default function StatCard({ title, value, icon: Icon, description, className }: StatCardProps) {
   return (
-    <Card className={cn("transition-all duration-300 hover:bg-secondary/50 hover:shadow-lg", className, isManpowerCard && 'bg-blue-50 dark:bg-blue-900/20')}>
+    <Card className={cn("transition-all duration-300 hover:bg-secondary/50 hover:shadow-lg", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />

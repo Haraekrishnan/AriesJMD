@@ -79,21 +79,18 @@ export default function ManpowerSummary() {
           value={totalWorking}
           icon={Users} 
           description={workingDescription}
-          isManpowerCard={true}
         />
         <StatCard 
           title="Today's Active" 
           value={totalActive}
           icon={UserCheck} 
           description={activeDescription}
-          isManpowerCard={true}
         />
         <StatCard 
           title="Today's Leave" 
           value={totalOnLeave}
           icon={UserX} 
           description={leaveDescription}
-          isManpowerCard={true}
         />
     </div>
   );
