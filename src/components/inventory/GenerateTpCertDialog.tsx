@@ -39,7 +39,7 @@ interface GenerateTpCertDialogProps {
 type CertItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
-  const { inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, addTpCertList, updateTpCertList } = useAppContext();
+  const { inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, addTpCertList, updateTpCertList } = useAppContext();
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
@@ -56,8 +56,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     digitalCameras?.forEach(item => items.push({ ...item, itemType: 'DigitalCamera' }));
     anemometers?.forEach(item => items.push({ ...item, itemType: 'Anemometer' }));
     otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
+    laptopsDesktops?.forEach(item => items.push({ ...item, itemType: 'LaptopDesktop' }));
+    mobileSims?.forEach(item => items.push({ ...item, itemType: 'MobileSim' }));
     return items;
-  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments]);
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
 
   useEffect(() => {
     if (existingList) {
@@ -105,26 +107,19 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       (item as any).machineName ||
       (item as any).equipmentName;
   
-    // Extract ARIES ID from ALL possible field names
     const ariesId =
       (item as any).ariesId ||
-      (item as any).ariesID ||
-      (item as any).aries_id ||
-      (item as any).AriesId ||
-      (item as any).AriesID ||
-      undefined;
-  
-    // Always merge ARIES ID into manufacturerSrNo
-    let mergedSerial = item.serialNumber;
-    if (ariesId) {
-      mergedSerial = `${item.serialNumber} (${ariesId})`;
-    }
+      (item.itemType === 'Inventory' ? (item as InventoryItem).ariesId : undefined) ||
+      (item.itemType === 'UTMachine' ? (item as UTMachine).ariesId : undefined) ||
+      (item.itemType === 'DftMachine' ? (item as DftMachine).ariesId : undefined) ||
+      (item.itemType === 'OtherEquipment' ? (item as OtherEquipment).ariesId : undefined) ||
+      (item.itemType === 'LaptopDesktop' ? (item as LaptopDesktop).ariesId : undefined);
   
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
       materialName,
-      manufacturerSrNo: mergedSerial,  // <-- ALWAYS merged
+      manufacturerSrNo: item.serialNumber,
       chestCrollNo:
         item.itemType === 'Inventory' &&
         materialName?.toLowerCase() === 'harness'
@@ -305,5 +300,3 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     </Dialog>
   );
 }
-
-    
