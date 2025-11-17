@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -39,7 +38,10 @@ interface GenerateTpCertDialogProps {
 type CertItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
-  const { inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, addTpCertList, updateTpCertList } = useAppContext();
+  const { 
+    inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
+    addTpCertList, updateTpCertList 
+  } = useAppContext();
   const { toast } = useToast();
   const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
@@ -107,6 +109,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       (item as any).machineName ||
       (item as any).equipmentName;
   
+    const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
+  
     const newItem: TpCertListItem = {
       itemId: item.id,
       itemType: item.itemType,
@@ -117,7 +121,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         materialName?.toLowerCase() === 'harness'
           ? (item as InventoryItem).chestCrollNo
           : undefined,
-      ariesId: 'ariesId' in item ? (item.ariesId || null) : null,
+      ariesId: ariesId,
     };
   
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
@@ -219,7 +223,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                 className="cursor-pointer"
                             >
                                 {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {item.serialNumber || 'N/A'})
-                                {'ariesId' in item && item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
+                                {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                             </CommandItem>
                             ))}
                         </CommandGroup>
@@ -243,11 +247,15 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => {
+                    const displaySerial = item.ariesId
+                      ? `${item.manufacturerSrNo || 'N/A'} (${item.ariesId})`
+                      : item.manufacturerSrNo;
+                    
                     return (
                         <TableRow key={`${item.itemId}-${item.itemType}`}>
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{item.materialName}</TableCell>
-                          <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
+                          <TableCell>{displaySerial || '-'}</TableCell>
                           <TableCell>{item.chestCrollNo || '-'}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>

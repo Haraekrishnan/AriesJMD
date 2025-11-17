@@ -1,5 +1,3 @@
-
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -12,7 +10,7 @@ interface CertItem {
   itemType: string;
   materialName: string;
   manufacturerSrNo: string;
-  chestCrollNo?: string;
+  chestCrollNo?: string | null;
   ariesId?: string | null;
 }
 
@@ -58,15 +56,7 @@ const processItemsForMerging = (items: CertItem[]) => {
 
   items.forEach(item => {
     const key = item.materialName.toLowerCase();
-
-    // ALWAYS MERGE ARIES ID into serial number here
-    let mergedSerial = item.manufacturerSrNo;
-    const ariesId = item.ariesId; // Get ariesId
-
-    // Check if ariesId is not undefined, not null, and not empty/whitespace
-    if (ariesId !== undefined && ariesId !== null && ariesId.trim() !== "") {
-      mergedSerial = `${item.manufacturerSrNo} (${ariesId})`;
-    }
+    const mergedSerial = item.manufacturerSrNo; // Serial is already merged in the dialog
 
     if (itemMap.has(key)) {
       const existing = itemMap.get(key)!;

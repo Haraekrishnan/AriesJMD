@@ -1,5 +1,4 @@
 
-
 'use client';
 
 export type Broadcast = {
@@ -169,7 +168,7 @@ export type ApprovalState = 'none' | 'pending' | 'approved' | 'returned' | 'stat
 export type Subtask = {
     userId: string;
     status: TaskStatus;
-    updatedAt: string; // ISO String
+    updatedAt: string;
 };
 
 export type Task = {
@@ -660,8 +659,6 @@ export type DigitalCamera = {
   status: string;
   projectId: string;
   remarks?: string;
-  tpInspectionDueDate?: string;
-  certificateUrl?: string;
 };
 
 export type Anemometer = {
@@ -674,8 +671,6 @@ export type Anemometer = {
   projectId: string;
   calibrationDueDate?: string; // ISO String
   remarks?: string;
-  tpInspectionDueDate?: string;
-  certificateUrl?: string;
 };
 
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
@@ -690,8 +685,6 @@ export type MobileSim = {
   projectId: string;
   status: MobileSimStatus;
   remarks?: string;
-  tpInspectionDueDate?: string;
-  certificateUrl?: string;
 };
 
 export type LaptopDesktop = {
@@ -703,8 +696,6 @@ export type LaptopDesktop = {
     ariesId?: string;
     password?: string;
     remarks?: string;
-    tpInspectionDueDate?: string;
-    certificateUrl?: string;
 };
 
 export type OtherEquipment = {
@@ -714,8 +705,6 @@ export type OtherEquipment = {
     ariesId?: string;
     allottedTo: string; // User ID
     remarks?: string;
-    tpInspectionDueDate?: string;
-    certificateUrl?: string;
 };
 
 export type MachineLog = {
@@ -937,21 +926,3 @@ export type InspectionChecklist = {
   purchaseDate?: string | null;
   firstUseDate?: string | null;
 };
-      
-
-    
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
