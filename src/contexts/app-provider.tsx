@@ -201,7 +201,7 @@ type AppContextType = {
   addPpeRequest: (request: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
-  addPpeRequestComment: (requestId: string, commentText: string) => void;
+  addPpeRequestComment: (requestId: string, commentText: string, sendNotification?: boolean) => void;
   resolvePpeDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
   deletePpeAttachment: (requestId: string) => void;
@@ -550,32 +550,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const userData = snapshot.val();
     const userId = Object.keys(userData)[0];
     const targetUser = { id: userId, ...userData[userId] };
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
     const newRequest: Omit<PasswordResetRequest, 'id'> = {
       userId: targetUser.id,
       email: targetUser.email,
       date: new Date().toISOString(),
       status: 'pending',
-      resetCode: code,
     };
     const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
     await set(newRequestRef, newRequest);
 
-    await createAndSendNotification(
-        targetUser.email,
-        `Your Password Reset Code`,
-        'Your Password Reset Code',
-        {
-          'Code': code,
-          'Instructions': 'Please use this code to reset your password. If you did not request this, please ignore this email.'
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/login`,
-        'Reset Password'
-    );
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+        if (admin.email) {
+            createAndSendNotification(
+                admin.email,
+                `Password Reset Request from ${targetUser.email}`,
+                'Password Reset Request',
+                { 'User Email': targetUser.email },
+                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+                'View Requests'
+            );
+        }
+    });
 
     return true;
-  }, []);
+  }, [users]);
   
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -770,7 +770,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
   
-  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
+  const addPpeRequestComment = useCallback((requestId: string, commentText: string, sendNotification: boolean = true) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request) return;
@@ -784,21 +784,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     update(ref(rtdb), updates);
     
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        createAndSendNotification(
-            requester.email,
-            `New Query on your PPE Request for ${employee?.name || '...'}`,
-            `Query from ${user.name}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Question': commentText,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'Reply to Query'
-        );
+    if (sendNotification) {
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email && request.requesterId !== user.id) {
+            const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+            createAndSendNotification(
+                requester.email,
+                `New Query on your PPE Request for ${employee?.name || '...'}`,
+                `Query from ${user.name}`,
+                {
+                    'Request For': employee?.name || 'N/A',
+                    'Item': `${request.ppeType} (Size: ${request.size})`,
+                    'Question': commentText,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'Reply to Query'
+            );
+        }
     }
   }, [user, ppeRequests, users, manpowerProfiles]);
 
@@ -1970,7 +1972,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/status`] = status;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
-    addPpeRequestComment(requestId, comment || `Status changed to ${status}`);
+    // Add comment but don't send notification email for status changes
+    addPpeRequestComment(requestId, comment || `Status changed to ${status}`, false);
 
     const requester = users.find(u => u.id === request.requesterId);
     if (requester?.email && request.requesterId !== user.id) {
@@ -3418,3 +3421,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
