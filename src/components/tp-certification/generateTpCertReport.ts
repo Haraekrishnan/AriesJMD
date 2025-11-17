@@ -1,3 +1,4 @@
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -160,7 +161,6 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
   });
   
-  // Convert to CertItem before processing
   const certItems: CertItem[] = items.map(it => ({
     itemId: it.itemId,
     itemType: it.itemType,
@@ -185,7 +185,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            serial, // Already contains Aries ID
+            serial, // Already contains Aries ID from processItemsForMerging
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -265,15 +265,21 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       "Valid upto if Renewal", "Submit Last Testing Report",
   ];
   
-  // Convert TpCertListItem to CertItem before processing
-  const certItems: CertItem[] = items.map(it => ({
-    itemId: it.itemId,
-    itemType: it.itemType,
-    materialName: it.materialName,
-    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
-    chestCrollNo: it.chestCrollNo,
-    ariesId: it.ariesId
-  }));
+  // Convert TpCertListItem to CertItem so ARIES ID exists
+  const certItems: CertItem[] = items.map(it => {
+    let serial = it.manufacturerSrNo || (it as any).serialNumber;
+    if (it.ariesId && it.ariesId.trim() !== "") {
+        serial = `${serial} (${it.ariesId})`;
+    }
+    return {
+        itemId: it.itemId,
+        itemType: it.itemType,
+        materialName: it.materialName,
+        manufacturerSrNo: serial, // merged serial WITH ARIES ID
+        chestCrollNo: it.chestCrollNo,
+        ariesId: it.ariesId
+    };
+  });
 
   const processedItems = processItemsForMerging(certItems);
   const tableRows: any[][] = [];
@@ -298,24 +304,12 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
-      if (!isHarness) {
-        rowData.splice(3, 1);
-        const serialCell = rowData[2] as any;
-        if(typeof serialCell === 'object' && serialCell !== null) {
-          serialCell.colSpan = 2;
-        } else {
-            rowData[2] = { content: serialCell, colSpan: 2 };
-        }
-      }
-      
+      // For non-first rows, we only want the serial and chest croll number
       let filteredRow = rowData;
       if (index > 0) {
-        if(isHarness) {
-          filteredRow = [serial, (chestCrollNo || '')];
-        } else {
-            filteredRow = [serial];
-        }
+        filteredRow = [serial, isHarness ? (chestCrollNo || '') : ''];
       }
+      
       tableRows.push(filteredRow);
     });
     srNo++;
@@ -326,7 +320,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     ? tableColumn 
     : tableColumn.filter(header => header !== "Chest Scroll No.");
 
-
+  // This autoTable call might need adjustment if row-spanning is complex
   (doc as any).autoTable({
       head: [finalTableColumns],
       body: tableRows,
@@ -341,6 +335,14 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
             if (raw.rowSpan > 1) cell.rowSpan = raw.rowSpan;
             if (raw.colSpan > 1) cell.colSpan = raw.colSpan;
             if (raw.content !== undefined) cell.content = raw.content;
+        }
+      },
+      // Ensure the correct number of columns is rendered for spanned rows
+      willDrawCell: (data: any) => {
+        if (data.row.raw.length < finalTableColumns.length && data.row.index > 0) {
+          if (!isAnyHarness && data.column.index > 1) {
+            data.cell.styles.halign = 'center';
+          }
         }
       }
   });
@@ -370,3 +372,5 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
+
+    
