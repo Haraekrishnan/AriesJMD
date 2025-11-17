@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -107,13 +108,13 @@ export async function generateTpCertExcel(
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet(sheetName || 'TP Certification List', {
-    pageSetup: { paperSize: 9, orientation: 'portrait' }, // A4 Portrait
+  const worksheet = workbook.addWorksheet(sheetName || "TP Certification List", {
+    pageSetup: { paperSize: 9, orientation: "portrait" }, // A4 Portrait
   });
 
   const imageId = workbook.addImage({
     buffer: imageBuffer,
-    extension: 'png',
+    extension: "png",
   });
 
   worksheet.addImage(imageId, {
@@ -267,6 +268,7 @@ export async function generateTpCertExcel(
   }
 }
 
+
 export async function generateTpCertPdf(
   items: TpCertListItem[],
   listDate?: Date | string
@@ -319,7 +321,7 @@ export async function generateTpCertPdf(
     'Submit Last Testing Report',
   ];
 
-  // Convert TpCertListItem → CertItem so ARIES ID exists
+  // Convert TpCertListItem -> CertItem so ARIES ID exists
   const certItems: CertItem[] = items.map(it => ({
     itemId: it.itemId,
     itemType: it.itemType,
@@ -330,6 +332,7 @@ export async function generateTpCertPdf(
   }));
 
   const processedItems = processItemsForMerging(certItems);
+
   const tableRows: any[][] = [];
   let srNo = 1;
 
