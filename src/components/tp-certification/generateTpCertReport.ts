@@ -13,7 +13,7 @@ interface CertItem {
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
-  ariesId?: string;
+  ariesId?: string | null;
 }
 
 // Helper to get capacity from material name
@@ -51,7 +51,7 @@ const processItemsForMerging = (items: CertItem[]) => {
     {
       materialName: string;
       serialNumbers: string[];
-      chestCrollNos: (string | undefined)[];
+      chestCrollNos: (string | undefined | null)[];
       capacity: string;
     }
   >();
@@ -61,8 +61,11 @@ const processItemsForMerging = (items: CertItem[]) => {
 
     // ALWAYS MERGE ARIES ID into serial number here
     let mergedSerial = item.manufacturerSrNo;
-    if (item.ariesId && item.ariesId.trim() !== "") {
-      mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
+    const ariesId = item.ariesId; // Get ariesId
+
+    // Check if ariesId is not undefined, not null, and not empty/whitespace
+    if (ariesId !== undefined && ariesId !== null && ariesId.trim() !== "") {
+      mergedSerial = `${item.manufacturerSrNo} (${ariesId})`;
     }
 
     if (itemMap.has(key)) {
@@ -265,7 +268,6 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       "Valid upto if Renewal", "Submit Last Testing Report",
   ];
   
-  // Convert TpCertListItem -> CertItem so ARIES ID exists
   const certItems: CertItem[] = items.map(it => ({
     itemId: it.itemId,
     itemType: it.itemType,
@@ -374,5 +376,3 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
-
-    
