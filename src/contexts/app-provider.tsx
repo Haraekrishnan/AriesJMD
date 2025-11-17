@@ -491,16 +491,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
-            // setUser(foundUser); // This is handled by useEffect on storedUserId change
+            setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
-            // Don't set loading to false here, let the useEffect do it
+            setLoading(false);
             return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-}, [setStoredUserId, addActivityLog]);
-
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -520,6 +519,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user) {
       addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
+      if (user.id === updatedUser.id) setUser(updatedUser);
     }
   }, [user, addActivityLog]);
 
@@ -783,7 +783,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
-
+    
     const requester = users.find(u => u.id === request.requesterId);
     if (requester?.email && request.requesterId !== user.id) {
         const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
@@ -1970,6 +1970,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/status`] = status;
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
+    addPpeRequestComment(requestId, comment || `Status changed to ${status}`);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    if (requester?.email && request.requesterId !== user.id) {
+        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+        createAndSendNotification(
+            requester.email,
+            `Update on your PPE Request for ${employee?.name || '...'}`,
+            `Request Status: ${status}`,
+            {
+                'Request For': employee?.name || 'N/A',
+                'Item': `${request.ppeType} (Size: ${request.size})`,
+                'Updated By': user.name,
+                'Comment': comment || `Status updated to ${status}.`
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+            'View Request'
+        );
+    }
+
     if (status === 'Approved') {
         updates[`ppeRequests/${requestId}/approverId`] = user.id;
     } else if (status === 'Issued') {
@@ -2002,26 +2022,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb), updates);
-    addPpeRequestComment(requestId, comment || `Status changed to ${status}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        createAndSendNotification(
-            requester.email,
-            `Update on your PPE Request for ${employee?.name || '...'}`,
-            `PPE Request ${status}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Status': status,
-                'Comment': comment,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'View Request'
-        );
-    }
-  }, [user, ppeRequests, users, manpowerProfiles, addPpeRequestComment]);
+  }, [user, ppeRequests, addPpeRequestComment, users, manpowerProfiles]);
   
   const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
     if (!user) return;
@@ -3377,20 +3378,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, activityLogs, broadcasts]);
   
   useEffect(() => {
-    if (storedUserId && usersById[storedUserId]) {
-      const foundUser = { id: storedUserId, ...usersById[storedUserId] };
-      // Check if user object or dismissedPendingUpdatesById has changed
-      if (JSON.stringify(user) !== JSON.stringify(foundUser) || user?.dismissedPendingUpdates !== dismissedPendingUpdatesById) {
-        setUser({ ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById });
-      }
-    } else if (storedUserId && !usersById[storedUserId]) {
-        // User might have been deleted, log them out
-        logout();
-    } else if (!storedUserId) {
+    if (storedUserId) {
+        const foundUser = usersById[storedUserId];
+        if (foundUser) {
+            setUser({ ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById });
+        }
+    } else {
         setUser(null);
     }
-}, [storedUserId, usersById, dismissedPendingUpdatesById, user, logout]);
-
+  }, [storedUserId, usersById, dismissedPendingUpdatesById]);
 
   // Listen for status changes on the current user
   useEffect(() => {
@@ -3398,19 +3394,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userRef = ref(rtdb, `users/${user.id}`);
         const unsubscribe = onValue(userRef, (snapshot) => {
             if (!snapshot.exists()) {
-                logout();
+                setStoredUserId(null);
+                setUser(null);
+                router.replace('/login');
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            
-            // Only update if there is an actual change to prevent loops
-            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                 setUser(updatedUser);
+            if (user.status !== updatedUser.status) {
+                setUser(updatedUser);
             }
         });
         return () => unsubscribe();
     }
-  }, [user?.id, logout]); // Depend only on user.id and logout
+  }, [user, setStoredUserId, router]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

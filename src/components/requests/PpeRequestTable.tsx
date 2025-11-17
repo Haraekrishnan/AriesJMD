@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -68,7 +67,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
 
     const handleConfirmAction = () => {
         if (!selectedRequest || !action) return;
-        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed')) {
+        if (!comment.trim() && (action === 'Rejected' || action === 'Disputed' || action === 'Query')) {
             toast({ title: 'Comment required', variant: 'destructive'});
             return;
         }
@@ -78,11 +77,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             toast({ title: 'Query Sent'});
         } else {
             updatePpeRequestStatus(selectedRequest.id, action, comment);
+            toast({ title: `Request ${action}` });
         }
 
         setSelectedRequest(null);
         setAction(null);
-        setComment('');
     }
     
     const handleEditClick = (req: PpeRequest) => {
