@@ -1,11 +1,10 @@
 
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { TpCertListItem } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 interface CertItem {
   itemId: string;
@@ -47,42 +46,39 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-  const itemMap = new Map<
-    string,
-    {
+    const itemMap = new Map<string, {
       materialName: string;
       serialNumbers: string[];
       chestCrollNos: (string | undefined)[];
       capacity: string;
-    }
-  >();
-
-  items.forEach(item => {
-    const key = item.materialName.toLowerCase();
-
-    // Always merge ARIES ID into serial number EXACTLY like WIRE SLING logic
-    let mergedSerial = item.manufacturerSrNo;
-    if (item.ariesId && item.ariesId.trim() !== "") {
-      mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
-    }
-
-    if (itemMap.has(key)) {
-      const existing = itemMap.get(key)!;
-      existing.serialNumbers.push(mergedSerial);
-      existing.chestCrollNos.push(item.chestCrollNo);
-    } else {
-      itemMap.set(key, {
-        materialName: item.materialName,
-        serialNumbers: [mergedSerial],
-        chestCrollNos: [item.chestCrollNo],
-        capacity: getCapacity(item.materialName),
-      });
-    }
-  });
-
-  return Array.from(itemMap.values()).sort((a, b) =>
-    a.materialName.localeCompare(b.materialName)
-  );
+    }>();
+  
+    items.forEach(item => {
+      const key = item.materialName.toLowerCase();
+  
+      // Always merge ARIES ID into serial number
+      let mergedSerial = item.manufacturerSrNo;
+      if (item.ariesId && item.ariesId.trim() !== "") {
+        mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
+      }
+  
+      if (itemMap.has(key)) {
+        const existing = itemMap.get(key)!;
+        existing.serialNumbers.push(mergedSerial);
+        existing.chestCrollNos.push(item.chestCrollNo);
+      } else {
+        itemMap.set(key, {
+          materialName: item.materialName,
+          serialNumbers: [mergedSerial],
+          chestCrollNos: [item.chestCrollNo],
+          capacity: getCapacity(item.materialName),
+        });
+      }
+    });
+  
+    return Array.from(itemMap.values()).sort((a, b) =>
+      a.materialName.localeCompare(b.materialName)
+    );
 };
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
@@ -237,6 +233,8 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 
 
 export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date | string) {
+  console.log("ITEMS RECEIVED BY PDF:", JSON.stringify(items, null, 2));
+
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
@@ -288,7 +286,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        serial, // Already contains Aries ID
+        serial, // Already contains Aries ID from processItemsForMerging
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
@@ -308,24 +306,27 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         rowData.splice(3, 1); // remove the empty chest croll no cell
       }
       
-      const filteredRow = rowData.filter((_, cellIndex) => {
-        // For non-first rows in a group, only show serial and chest number
-        if (index > 0) {
-            if (isHarness) {
-                return cellIndex === 2 || cellIndex === 3;
-            } else {
-                return cellIndex === 2; // only serial number column
-            }
+      let filteredRow = rowData;
+      // For subsequent rows in a group, manually craft what should be shown
+      if (index > 0) {
+        if(isHarness) {
+          filteredRow = [
+            serial, // Manufacturer Sr. No. WITH ARIES ID
+            (chestCrollNo || ''), // Chest Croll No
+          ];
+        } else {
+          filteredRow = [
+            serial, // Manufacturer Sr. No. WITH ARIES ID
+          ];
         }
-        return true;
-      });
+      }
 
       tableRows.push(filteredRow);
     });
     srNo++;
   });
   
-  const finalTableColumns = isHarness => isHarness 
+  const finalTableColumns = (isAnyHarness: boolean) => isAnyHarness 
     ? tableColumn 
     : tableColumn.filter(header => header !== "Chest Scroll No.");
     
