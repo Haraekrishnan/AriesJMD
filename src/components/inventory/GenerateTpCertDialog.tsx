@@ -99,20 +99,25 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         const term = searchTerm.toLowerCase();
         return itemsOfSelectedName.filter(item => 
             (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
-            ('ariesId' in item && item.ariesId && item.ariesId.toLowerCase().includes(term))
+            (item.ariesId && item.ariesId.toLowerCase().includes(term))
         );
       }, [searchTerm, itemsOfSelectedName]);
 
 
       const handleSelect = (item: CertItem) => {
         const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
+      
         const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
+        let mergedSerial = item.serialNumber;
+        if (ariesId) {
+          mergedSerial = `${item.serialNumber} (${ariesId})`;
+        }
       
         const newItem: TpCertListItem = {
           itemId: item.id,
           itemType: item.itemType,
           materialName,
-          manufacturerSrNo: item.serialNumber,
+          manufacturerSrNo: mergedSerial,
           chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
           ariesId: ariesId,
         };
@@ -123,7 +128,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       
         setSearchTerm('');
       };
-
+      
       const handleRemove = (itemId: string, itemType: string) => {
         setSelectedItems(prev => prev.filter(item => !(item.itemId === itemId && item.itemType === itemType)));
       };
@@ -240,15 +245,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                   <TableBody>
                     {selectedItems.length > 0 ? (
                       selectedItems.map((item, index) => {
-                        const displaySerial = item.ariesId 
-                          ? `${item.manufacturerSrNo || 'N/A'} (${item.ariesId})`
-                          : item.manufacturerSrNo;
-                        
                         return (
                             <TableRow key={`${item.itemId}-${item.itemType}`}>
                               <TableCell>{index + 1}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
-                              <TableCell>{displaySerial || '-'}</TableCell>
+                              <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
                               <TableCell>{item.chestCrollNo || '-'}</TableCell>
                               <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>

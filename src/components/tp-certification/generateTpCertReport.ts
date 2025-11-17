@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -51,11 +52,7 @@ const processItemsForMerging = (items: CertItem[]) => {
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
         
-        let mergedSerial = item.manufacturerSrNo;
-        const ariesId = item.ariesId;
-        if (ariesId !== undefined && ariesId !== null && ariesId.trim() !== "") {
-          mergedSerial = `${item.manufacturerSrNo} (${ariesId})`;
-        }
+        const mergedSerial = item.manufacturerSrNo;
 
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(mergedSerial);
@@ -169,10 +166,12 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     
     group.serialNumbers.forEach((serial, index) => {
         const chestCrollNo = group.chestCrollNos[index];
+        const manufacturerSrNo = serial;
+        
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            serial,
+            manufacturerSrNo,
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -274,11 +273,12 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
     group.serialNumbers.forEach((serial, index) => {
       const chestCrollNo = group.chestCrollNos[index];
+      const manufacturerSrNo = serial;
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        serial,
+        manufacturerSrNo || '',
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
