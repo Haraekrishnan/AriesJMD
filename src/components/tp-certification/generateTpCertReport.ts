@@ -95,9 +95,12 @@ export async function generateTpCertExcel(
     // 1. Find the current, full item data using ID
     const original = allItems.find(i => i.id === it.itemId);
     
-    // 2. Use the most up-to-date data, falling back to stored data
-    const serial = (original as any)?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = (original as any)?.ariesId || it.ariesId;
+    // Use type assertion to ensure serialNumber and ariesId are accessible
+    const fullItemData = original as any; 
+
+    // 2. Use the most up-to-date data from the live inventory, falling back to stored data
+    const serial = fullItemData?.serialNumber || it.manufacturerSrNo || 'N/A';
+    const realAriesId = fullItemData?.ariesId || it.ariesId;
 
     // 3. Construct the combined serial number string
     let combinedSrNo = serial;
@@ -111,7 +114,8 @@ export async function generateTpCertExcel(
       itemType: it.itemType,
       materialName: it.materialName,
       manufacturerSrNo: combinedSrNo, // Use the combined string
-      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo, // Always prefer original for chestCrollNo
+      // Always check if it's an InventoryItem for chestCrollNo
+      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo, 
       ariesId: realAriesId,
     };
   };
@@ -257,10 +261,13 @@ export async function generateTpCertPdf(
   const resolveItemData = (it: TpCertListItem): CertItem => {
     // 1. Find the current, full item data using ID
     const original = allItems.find(i => i.id === it.itemId);
+    
+    // Use type assertion to ensure serialNumber and ariesId are accessible
+    const fullItemData = original as any; 
 
-    // 2. Use the most up-to-date data, falling back to stored data
-    const serial = (original as any)?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = (original as any)?.ariesId || it.ariesId;
+    // 2. Use the most up-to-date data from the live inventory, falling back to stored data
+    const serial = fullItemData?.serialNumber || it.manufacturerSrNo || 'N/A';
+    const realAriesId = fullItemData?.ariesId || it.ariesId;
 
     // 3. Construct the combined serial number string
     let combinedSrNo = serial;
@@ -274,11 +281,12 @@ export async function generateTpCertPdf(
       itemType: it.itemType,
       materialName: it.materialName,
       manufacturerSrNo: combinedSrNo, // Use the combined string
-      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo, // Always prefer original for chestCrollNo
+      // Always check if it's an InventoryItem for chestCrollNo
+      chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo, 
       ariesId: realAriesId,
     };
   };
-  
+
   const certItems: CertItem[] = items.map(resolveItemData);
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
