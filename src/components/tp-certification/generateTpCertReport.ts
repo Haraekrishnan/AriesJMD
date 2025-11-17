@@ -46,40 +46,44 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, {
+  const itemMap = new Map<
+    string,
+    {
       materialName: string;
       serialNumbers: string[];
       chestCrollNos: (string | undefined)[];
       capacity: string;
-    }>();
-  
-    items.forEach(item => {
-      const key = item.materialName.toLowerCase();
-  
-      // Always merge ARIES ID into serial number
-      let mergedSerial = item.manufacturerSrNo;
-      if (item.ariesId && item.ariesId.trim() !== "") {
-        mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
-      }
-  
-      if (itemMap.has(key)) {
-        const existing = itemMap.get(key)!;
-        existing.serialNumbers.push(mergedSerial);
-        existing.chestCrollNos.push(item.chestCrollNo);
-      } else {
-        itemMap.set(key, {
-          materialName: item.materialName,
-          serialNumbers: [mergedSerial],
-          chestCrollNos: [item.chestCrollNo],
-          capacity: getCapacity(item.materialName),
-        });
-      }
-    });
-  
-    return Array.from(itemMap.values()).sort((a, b) =>
-      a.materialName.localeCompare(b.materialName)
-    );
+    }
+  >();
+
+  items.forEach(item => {
+    const key = item.materialName.toLowerCase();
+
+    // Always merge ARIES ID into serial number
+    let mergedSerial = item.manufacturerSrNo;
+    if (item.ariesId && item.ariesId.trim() !== "") {
+      mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
+    }
+
+    if (itemMap.has(key)) {
+      const existing = itemMap.get(key)!;
+      existing.serialNumbers.push(mergedSerial);
+      existing.chestCrollNos.push(item.chestCrollNo);
+    } else {
+      itemMap.set(key, {
+        materialName: item.materialName,
+        serialNumbers: [mergedSerial],
+        chestCrollNos: [item.chestCrollNo],
+        capacity: getCapacity(item.materialName),
+      });
+    }
+  });
+
+  return Array.from(itemMap.values()).sort((a, b) =>
+    a.materialName.localeCompare(b.materialName)
+  );
 };
+
 
 async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: ArrayBuffer; base64: string }> {
   // Construct the full URL if it's a relative path
@@ -181,7 +185,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            serial,
+            serial, // Already contains Aries ID
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -233,8 +237,6 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 
 
 export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date | string) {
-  console.log("ITEMS RECEIVED BY PDF:", JSON.stringify(items, null, 2));
-
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
@@ -286,7 +288,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        serial, // Already contains Aries ID from processItemsForMerging
+        serial, // Already contains Aries ID
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
