@@ -241,10 +241,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => {
-                    const isWireSling = item.materialName.toLowerCase() === 'wire sling';
-                    const displaySerial = isWireSling && item.ariesId
-                      ? `${item.manufacturerSrNo} (${item.ariesId})`
-                      : item.manufacturerSrNo;
+                    const isHarness = item.materialName.toLowerCase() === 'harness';
+                    let displaySerial = item.manufacturerSrNo;
+                    if (!isHarness && item.ariesId) {
+                        displaySerial = `${item.manufacturerSrNo} (${item.ariesId})`;
+                    }
                     
                     return (
                         <TableRow key={`${item.itemId}-${item.itemType}`}>
@@ -296,4 +297,3 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
     </Dialog>
   );
 }
-

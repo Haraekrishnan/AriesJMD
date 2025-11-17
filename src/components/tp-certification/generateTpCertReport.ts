@@ -155,9 +155,8 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     const isHarness = group.materialName.toLowerCase() === 'harness';
     
     group.serialNumbers.forEach((serial, index) => {
-        const isWireSling = group.materialName.toLowerCase() === 'wire sling';
         let manufacturerSrNo = serial;
-        if (isWireSling && group.ariesIds[index]) {
+        if (!isHarness && group.ariesIds[index]) {
             manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
         }
 
@@ -251,9 +250,8 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     const isHarness = group.materialName.toLowerCase() === 'harness';
 
     group.serialNumbers.forEach((serial, index) => {
-        const isWireSling = group.materialName.toLowerCase() === 'wire sling';
         let manufacturerSrNo = serial;
-        if (isWireSling && group.ariesIds[index]) {
+        if (!isHarness && group.ariesIds[index]) {
             manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
         }
         const chestCrollNo = group.chestCrollNos[index];
