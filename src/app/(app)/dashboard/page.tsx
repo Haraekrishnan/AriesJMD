@@ -54,11 +54,13 @@ export default function DashboardPage() {
       ? `Last update: ${formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true })}`
       : 'No recent updates';
 
-    if (!isManpowerUpdatedToday) {
-      return lastUpdateString;
-    }
-    return `${activeManpowerToday} active, ${onLeaveManpowerCount} on leave. (${lastUpdateString})`;
-  }, [isManpowerUpdatedToday, lastManpowerUpdate, activeManpowerToday, onLeaveManpowerCount]);
+    return (
+        <>
+            <span>{activeManpowerToday} active, {onLeaveManpowerCount} on leave.</span>
+            <span className="block mt-1">{lastUpdateString}</span>
+        </>
+    )
+  }, [lastManpowerUpdate, activeManpowerToday, onLeaveManpowerCount]);
 
 
   return (
@@ -98,6 +100,7 @@ export default function DashboardPage() {
           value={workingManpowerCount.toString()}
           icon={Users}
           description={manpowerDescription}
+          isManpowerCard={true}
         />
       </div>
 

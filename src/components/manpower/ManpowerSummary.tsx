@@ -51,9 +51,26 @@ export default function ManpowerSummary() {
 
   const lastUpdateText = `Last update: ${lastManpowerUpdate ? formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true }) : 'never'}`;
   
-  const workingDescription = `Total manpower count. ${lastUpdateText}`;
-  const activeDescription = `Working minus on leave. ${lastUpdateText}`;
-  const leaveDescription = `Manpower on leave. ${lastUpdateText}`;
+  const workingDescription = (
+    <>
+      <span>Total manpower count.</span>
+      <span className="block mt-1">{lastUpdateText}</span>
+    </>
+  );
+  
+  const activeDescription = (
+    <>
+      <span>Working minus on leave.</span>
+      <span className="block mt-1">{lastUpdateText}</span>
+    </>
+  );
+
+  const leaveDescription = (
+    <>
+      <span>Manpower on leave.</span>
+      <span className="block mt-1">{lastUpdateText}</span>
+    </>
+  );
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -62,18 +79,21 @@ export default function ManpowerSummary() {
           value={totalWorking}
           icon={Users} 
           description={workingDescription}
+          isManpowerCard={true}
         />
         <StatCard 
           title="Today's Active" 
           value={totalActive}
           icon={UserCheck} 
           description={activeDescription}
+          isManpowerCard={true}
         />
         <StatCard 
           title="Today's Leave" 
           value={totalOnLeave}
           icon={UserX} 
           description={leaveDescription}
+          isManpowerCard={true}
         />
     </div>
   );
