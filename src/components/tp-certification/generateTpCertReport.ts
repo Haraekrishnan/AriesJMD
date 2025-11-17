@@ -156,7 +156,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     
     group.serialNumbers.forEach((serial, index) => {
         let manufacturerSrNo = serial;
-        if (!isHarness && group.ariesIds[index]) {
+        if (group.ariesIds[index]) {
             manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
         }
 
@@ -251,7 +251,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
     group.serialNumbers.forEach((serial, index) => {
         let manufacturerSrNo = serial;
-        if (!isHarness && group.ariesIds[index]) {
+        if (group.ariesIds[index]) {
             manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
         }
         const chestCrollNo = group.chestCrollNos[index];

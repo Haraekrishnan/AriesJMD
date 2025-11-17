@@ -241,9 +241,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => {
-                    const isHarness = item.materialName.toLowerCase() === 'harness';
                     let displaySerial = item.manufacturerSrNo;
-                    if (!isHarness && item.ariesId) {
+                    if (item.ariesId) {
                         displaySerial = `${item.manufacturerSrNo} (${item.ariesId})`;
                     }
                     
