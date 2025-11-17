@@ -39,10 +39,10 @@ interface GenerateTpCertDialogProps {
 type CertItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
-    const { 
-        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
-        addTpCertList, updateTpCertList 
-    } = useAppContext();
+  const { 
+      inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
+      addTpCertList, updateTpCertList 
+  } = useAppContext();
       const { toast } = useToast();
       const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
       const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
@@ -106,11 +106,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
       const handleSelect = (item: CertItem) => {
         const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
-      
-        const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
+        
+        const ariesId = 'ariesId' in item ? item.ariesId : undefined;
         let mergedSerial = item.serialNumber;
-        if (ariesId) {
-          mergedSerial = `${item.serialNumber} (${ariesId})`;
+        if (ariesId && ariesId.trim() !== "") {
+            mergedSerial = `${item.serialNumber} (${ariesId})`;
         }
       
         const newItem: TpCertListItem = {

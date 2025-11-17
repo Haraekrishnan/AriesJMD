@@ -47,12 +47,11 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined | null)[]; capacity: string }>();
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined | null)[] }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
-        
-        const mergedSerial = item.manufacturerSrNo;
+        const mergedSerial = item.manufacturerSrNo; // Use the pre-merged serial number
 
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(mergedSerial);
@@ -62,7 +61,6 @@ const processItemsForMerging = (items: CertItem[]) => {
                 materialName: item.materialName,
                 serialNumbers: [mergedSerial],
                 chestCrollNos: [item.chestCrollNo],
-                capacity: getCapacity(item.materialName),
             });
         }
     });
@@ -89,12 +87,8 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems: CertItem[] = items.map(it => ({
-    itemId: it.itemId,
-    itemType: it.itemType,
-    materialName: it.materialName,
+    ...it,
     manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
-    chestCrollNo: it.chestCrollNo,
-    ariesId: it.ariesId
   }));
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
@@ -173,7 +167,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
             index === 0 ? group.materialName : '',
             manufacturerSrNo,
             isHarness ? (chestCrollNo || '') : '',
-            index === 0 ? group.capacity : '',
+            index === 0 ? getCapacity(group.materialName) : '',
             index === 0 ? groupSize : '',
             index === 0 ? 'OLD' : '',
             '', ''
@@ -194,7 +188,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     if (groupSize > 1) {
         const mergeCols = [1, 2, 5, 6, 7, 8, 9]; 
         if(!isHarness) {
-            mergeCols.push(4); // also merge chest croll no. if not harness
+            mergeCols.push(4);
         }
         mergeCols.forEach(col => {
             worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
@@ -230,12 +224,8 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems: CertItem[] = items.map(it => ({
-    itemId: it.itemId,
-    itemType: it.itemType,
-    materialName: it.materialName,
+    ...it,
     manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
-    chestCrollNo: it.chestCrollNo,
-    ariesId: it.ariesId
   }));
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
@@ -280,7 +270,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
         manufacturerSrNo || '',
         isHarness ? (chestCrollNo || '') : '',
-        { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
+        { content: index === 0 ? getCapacity(group.materialName) : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: '', rowSpan: index === 0 ? groupSize : 1 },
