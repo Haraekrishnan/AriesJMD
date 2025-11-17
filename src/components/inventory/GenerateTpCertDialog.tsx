@@ -106,11 +106,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
       const handleSelect = (item: CertItem) => {
         const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
-        
-        const ariesId = 'ariesId' in item ? item.ariesId : undefined;
-        let mergedSerial = item.serialNumber;
+        const ariesId = 'ariesId' in item ? item.ariesId : null;
+        let mergedSerial = item.serialNumber || 'N/A';
         if (ariesId && ariesId.trim() !== "") {
-            mergedSerial = `${item.serialNumber} (${ariesId})`;
+            mergedSerial = `${mergedSerial} (${ariesId})`;
         }
       
         const newItem: TpCertListItem = {
@@ -119,7 +118,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
           materialName,
           manufacturerSrNo: mergedSerial,
           chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
-          ariesId: ariesId,
+          ariesId: ariesId || undefined,
         };
       
         if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {

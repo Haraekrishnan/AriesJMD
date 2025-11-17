@@ -1,5 +1,4 @@
 
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -88,7 +87,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
   
   const certItems: CertItem[] = items.map(it => ({
     ...it,
-    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    manufacturerSrNo: it.manufacturerSrNo, // It's already pre-formatted
   }));
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
@@ -225,7 +224,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   
   const certItems: CertItem[] = items.map(it => ({
     ...it,
-    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    manufacturerSrNo: it.manufacturerSrNo, // It's already pre-formatted
   }));
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
