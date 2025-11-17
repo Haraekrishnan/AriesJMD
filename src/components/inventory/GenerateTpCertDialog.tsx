@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -111,12 +110,20 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       itemType: item.itemType,
       materialName,
       manufacturerSrNo: item.serialNumber,
+
       chestCrollNo:
         item.itemType === 'Inventory' &&
         materialName?.toLowerCase() === 'harness'
           ? (item as InventoryItem).chestCrollNo
           : undefined,
-      ariesId: item.ariesId,
+
+      ariesId:
+        (item as any).ariesId ||
+        (item.itemType === 'Inventory' ? (item as InventoryItem).ariesId : undefined) ||
+        (item.itemType === 'UTMachine' ? (item as UTMachine).ariesId : undefined) ||
+        (item.itemType === 'DftMachine' ? (item as DftMachine).ariesId : undefined) ||
+        (item.itemType === 'OtherEquipment' ? (item as OtherEquipment).ariesId : undefined) ||
+        (item.itemType === 'LaptopDesktop' ? (item as LaptopDesktop).ariesId : undefined),
     };
   
     if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {

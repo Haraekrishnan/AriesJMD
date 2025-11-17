@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -185,7 +186,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
         const rowData = [
             index === 0 ? srNo : '',
             index === 0 ? group.materialName : '',
-            serial, // Already contains Aries ID from processItemsForMerging
+            serial, 
             isHarness ? (chestCrollNo || '') : '',
             index === 0 ? group.capacity : '',
             index === 0 ? groupSize : '',
@@ -267,17 +268,14 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   
   // Convert TpCertListItem to CertItem so ARIES ID exists
   const certItems: CertItem[] = items.map(it => {
-    let serial = it.manufacturerSrNo || (it as any).serialNumber;
-    if (it.ariesId && it.ariesId.trim() !== "") {
-        serial = `${serial} (${it.ariesId})`;
-    }
+    const serial = it.manufacturerSrNo || (it as any).serialNumber;
     return {
         itemId: it.itemId,
         itemType: it.itemType,
         materialName: it.materialName,
-        manufacturerSrNo: serial, // merged serial WITH ARIES ID
+        manufacturerSrNo: serial,
         chestCrollNo: it.chestCrollNo,
-        ariesId: it.ariesId
+        ariesId: it.ariesId,
     };
   });
 
@@ -304,12 +302,31 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
-      // For non-first rows, we only want the serial and chest croll number
-      let filteredRow = rowData;
-      if (index > 0) {
-        filteredRow = [serial, isHarness ? (chestCrollNo || '') : ''];
+      if (!isHarness) {
+        rowData.splice(3, 1); // remove the empty chest croll no cell
+        const serialCell = rowData[2] as any;
+        if(typeof serialCell === 'object' && serialCell !== null) {
+          serialCell.colSpan = 2;
+        } else {
+            rowData[2] = { content: serialCell, colSpan: 2 };
+        }
       }
-      
+
+      const filteredRow = rowData.filter((_, cellIndex) => {
+        if (index > 0) {
+            // For non-harness, serial is at index 2. For harness, it's also 2.
+            const serialIndex = 2; 
+            const chestCrollIndex = 3;
+            // Only keep serial number and chest croll number for subsequent rows
+            if (isHarness) {
+                return cellIndex === serialIndex || cellIndex === chestCrollIndex;
+            } else {
+                return cellIndex === serialIndex;
+            }
+        }
+        return true;
+      });
+
       tableRows.push(filteredRow);
     });
     srNo++;
@@ -320,7 +337,6 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     ? tableColumn 
     : tableColumn.filter(header => header !== "Chest Scroll No.");
 
-  // This autoTable call might need adjustment if row-spanning is complex
   (doc as any).autoTable({
       head: [finalTableColumns],
       body: tableRows,
@@ -337,14 +353,6 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
             if (raw.content !== undefined) cell.content = raw.content;
         }
       },
-      // Ensure the correct number of columns is rendered for spanned rows
-      willDrawCell: (data: any) => {
-        if (data.row.raw.length < finalTableColumns.length && data.row.index > 0) {
-          if (!isAnyHarness && data.column.index > 1) {
-            data.cell.styles.halign = 'center';
-          }
-        }
-      }
   });
 
 
@@ -372,5 +380,3 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
-
-    

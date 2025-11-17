@@ -1,5 +1,4 @@
 
-
 'use client';
 
 export type Broadcast = {
@@ -842,7 +841,7 @@ export type JobRecordPlant = {
 
 export type TpCertListItem = {
   itemId: string;
-  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim';
+  itemType: string;
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
@@ -950,6 +949,7 @@ export type InspectionChecklist = {
 
 
     
+
 
 
 
