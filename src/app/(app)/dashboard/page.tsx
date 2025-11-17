@@ -12,11 +12,11 @@ import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribu
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
 import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
-import { startOfMonth } from 'date-fns';
+import { startOfMonth, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount, isManpowerUpdatedToday } = useAppContext();
+  const { user, getVisibleUsers, tasks: allTasks, workingManpowerCount, onLeaveManpowerCount, isManpowerUpdatedToday, lastManpowerUpdate } = useAppContext();
   const [selectedPlannerDate, setSelectedPlannerDate] = useState<Date | undefined>(new Date());
   const [currentPlannerMonth, setCurrentPlannerMonth] = useState(startOfMonth(new Date()));
   const [selectedPlannerUser, setSelectedPlannerUser] = useState<string>(user!.id);
@@ -47,6 +47,14 @@ export default function DashboardPage() {
   }, [visibleTasks, getVisibleUsers]);
   
   const activeManpowerToday = workingManpowerCount - onLeaveManpowerCount;
+
+  const manpowerDescription = useMemo(() => {
+    if (!isManpowerUpdatedToday) {
+      return `Last update: ${lastManpowerUpdate ? formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true }) : 'never'}`;
+    }
+    return `${activeManpowerToday} active, ${onLeaveManpowerCount} on leave`;
+  }, [isManpowerUpdatedToday, lastManpowerUpdate, activeManpowerToday, onLeaveManpowerCount]);
+
 
   return (
     <div className="space-y-6">
@@ -83,9 +91,8 @@ export default function DashboardPage() {
         <StatCard 
           title="Manpower" 
           value={isManpowerUpdatedToday ? workingManpowerCount.toString() : '--'}
-          icon={isManpowerUpdatedToday ? Users : AlertCircle}
-          description={isManpowerUpdatedToday ? `${activeManpowerToday} active, ${onLeaveManpowerCount} on leave` : 'Not updated for today'}
-          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
+          icon={Users}
+          description={manpowerDescription}
         />
       </div>
 

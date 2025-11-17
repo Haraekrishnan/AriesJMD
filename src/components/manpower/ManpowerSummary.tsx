@@ -1,15 +1,18 @@
-
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Users, UserCheck, UserX, AlertCircle } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
-import { format, isBefore, parseISO, startOfDay } from 'date-fns';
+import { format, isBefore, parseISO, startOfDay, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export default function ManpowerSummary() {
-  const { manpowerLogs, projects, isManpowerUpdatedToday } = useAppContext();
+  const { 
+    manpowerLogs, 
+    projects, 
+    isManpowerUpdatedToday, 
+    lastManpowerUpdate 
+  } = useAppContext();
 
   const { totalWorking, totalOnLeave, totalActive } = useMemo(() => {
     const today = new Date();
@@ -45,29 +48,27 @@ export default function ManpowerSummary() {
     return { totalWorking, totalOnLeave, totalActive };
   }, [manpowerLogs, projects]);
 
+  const lastUpdateText = `Last update: ${lastManpowerUpdate ? formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true }) : 'never'}`;
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
        <StatCard 
           title="Total Working" 
           value={isManpowerUpdatedToday ? totalWorking : '--'}
-          icon={isManpowerUpdatedToday ? Users : AlertCircle} 
-          description={isManpowerUpdatedToday ? "Total manpower count for today" : "Not updated for today"}
-          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
+          icon={Users} 
+          description={isManpowerUpdatedToday ? "Total manpower count for today" : lastUpdateText}
         />
         <StatCard 
           title="Today's Active" 
           value={isManpowerUpdatedToday ? totalActive : '--'}
-          icon={isManpowerUpdatedToday ? UserCheck : AlertCircle} 
-          description={isManpowerUpdatedToday ? "Working manpower minus those on leave" : "Not updated for today"}
-          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
+          icon={UserCheck} 
+          description={isManpowerUpdatedToday ? "Working manpower minus those on leave" : lastUpdateText}
         />
         <StatCard 
           title="Today's Leave" 
           value={isManpowerUpdatedToday ? totalOnLeave : '--'}
-          icon={isManpowerUpdatedToday ? UserX : AlertCircle} 
-          description={isManpowerUpdatedToday ? "Manpower on leave today" : "Not updated for today"}
-          className={cn(!isManpowerUpdatedToday && "bg-muted text-muted-foreground")}
+          icon={UserX} 
+          description={isManpowerUpdatedToday ? "Manpower on leave today" : lastUpdateText}
         />
     </div>
   );
