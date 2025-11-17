@@ -660,6 +660,7 @@ export type DigitalCamera = {
   status: string;
   projectId: string;
   remarks?: string;
+  ariesId?: string;
 };
 
 export type Anemometer = {
@@ -672,6 +673,7 @@ export type Anemometer = {
   projectId: string;
   calibrationDueDate?: string; // ISO String
   remarks?: string;
+  ariesId?: string;
 };
 
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
@@ -686,6 +688,7 @@ export type MobileSim = {
   projectId: string;
   status: MobileSimStatus;
   remarks?: string;
+  ariesId?: string;
 };
 
 export type LaptopDesktop = {

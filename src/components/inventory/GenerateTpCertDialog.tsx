@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -52,7 +53,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
       const allSearchableItems = useMemo(() => {
         const items: CertItem[] = [];
-
         inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
         utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
         dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
@@ -61,7 +61,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
         laptopsDesktops?.forEach(item => items.push({ ...item, itemType: 'LaptopDesktop' }));
         mobileSims?.forEach(item => items.push({ ...item, itemType: 'MobileSim' }));
-        
         return items;
       }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
 
@@ -106,22 +105,16 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
 
       const handleSelect = (item: CertItem) => {
-        const materialName =
-          (item as any).name ||
-          (item as any).machineName ||
-          (item as any).equipmentName;
+        const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
+        const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
       
         const newItem: TpCertListItem = {
           itemId: item.id,
           itemType: item.itemType,
           materialName,
           manufacturerSrNo: item.serialNumber,
-          chestCrollNo:
-            item.itemType === 'Inventory' &&
-            materialName?.toLowerCase() === 'harness'
-              ? (item as InventoryItem).chestCrollNo
-              : undefined,
-          ariesId: 'ariesId' in item ? (item.ariesId || null) : null,
+          chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
+          ariesId: ariesId,
         };
       
         if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {

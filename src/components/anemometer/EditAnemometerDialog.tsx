@@ -14,12 +14,14 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Textarea } from '../ui/textarea';
 import type { Anemometer } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { parseISO } from 'date-fns';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
+  ariesId: z.string().optional(),
   status: z.string().min(1, 'Status is required'),
   projectId: z.string().min(1, 'Project is required'),
   calibrationDueDate: z.date().optional(),
@@ -91,10 +93,16 @@ export default function EditAnemometerDialog({ isOpen, setIsOpen, item }: EditAn
               {form.formState.errors.model && <p className="text-xs text-destructive">{form.formState.errors.model.message}</p>}
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="serialNumber">Serial Number</Label>
-            <Input id="serialNumber" {...form.register('serialNumber')} />
-            {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Input id="serialNumber" {...form.register('serialNumber')} />
+                {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="ariesId">Aries ID</Label>
+                <Input id="ariesId" {...form.register('ariesId')} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
