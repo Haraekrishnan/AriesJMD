@@ -106,20 +106,14 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
       const handleSelect = (item: CertItem) => {
         const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
-        let mergedSerial = item.serialNumber || 'N/A';
-        const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
-      
-        if (ariesId && ariesId.trim() !== "") {
-            mergedSerial = `${mergedSerial} (${ariesId})`;
-        }
       
         const newItem: TpCertListItem = {
           itemId: item.id,
           itemType: item.itemType,
           materialName,
-          manufacturerSrNo: mergedSerial,
+          manufacturerSrNo: item.serialNumber,
           chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
-          ariesId: ariesId || undefined,
+          ariesId: 'ariesId' in item ? (item.ariesId || null) : null,
         };
       
         if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
@@ -245,11 +239,15 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                   <TableBody>
                     {selectedItems.length > 0 ? (
                       selectedItems.map((item, index) => {
+                        const displaySerial = item.ariesId 
+                          ? `${item.manufacturerSrNo || 'N/A'} (Aries ID: ${item.ariesId})`
+                          : item.manufacturerSrNo;
+                        
                         return (
                             <TableRow key={`${item.itemId}-${item.itemType}`}>
                               <TableCell>{index + 1}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
-                              <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
+                              <TableCell>{displaySerial || '-'}</TableCell>
                               <TableCell>{item.chestCrollNo || '-'}</TableCell>
                               <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>

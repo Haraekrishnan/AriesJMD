@@ -1,5 +1,4 @@
 
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -51,7 +50,7 @@ const processItemsForMerging = (items: CertItem[]) => {
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
-        const mergedSerial = item.manufacturerSrNo; // Use the pre-merged serial number
+        const mergedSerial = item.manufacturerSrNo;
 
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(mergedSerial);
@@ -87,8 +86,14 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems: CertItem[] = items.map(it => ({
-    ...it,
-    manufacturerSrNo: it.manufacturerSrNo, // It's already pre-formatted
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.ariesId
+      ? `${it.manufacturerSrNo || (it as any).serialNumber} (Aries ID: ${it.ariesId})`
+      : it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
   }));
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
@@ -224,8 +229,14 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems: CertItem[] = items.map(it => ({
-    ...it,
-    manufacturerSrNo: it.manufacturerSrNo, // It's already pre-formatted
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.ariesId
+      ? `${it.manufacturerSrNo || (it as any).serialNumber} (${it.ariesId})`
+      : it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
   }));
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
