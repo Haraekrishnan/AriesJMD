@@ -8,32 +8,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
 
-const Redirecting = () => (
-    <div className="flex h-screen w-full items-center justify-center bg-background">
-        <p>Redirecting...</p>
-    </div>
-);
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return;
-
-    if (!user && pathname !== '/login') {
+    if (!loading && !user && pathname !== '/login') {
       router.replace('/login');
-    } else if (user) {
-      if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-        router.replace('/status');
-      } else if (user.status === 'active' && pathname === '/status') {
-        router.replace('/dashboard');
-      }
     }
   }, [user, loading, router, pathname]);
 
-  if (loading) {
+  if (loading || (!user && pathname !== '/login')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -46,26 +32,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  // Handle redirection states explicitly
-  if (!user && pathname !== '/login') {
-    return <Redirecting />;
-  }
-  if (user?.status === 'locked' && pathname !== '/status') {
-    return <Redirecting />;
-  }
-  if (user?.status === 'deactivated' && pathname !== '/status') {
-    return <Redirecting />;
-  }
-
-  // If user is authenticated but on a page they shouldn't be, the useEffect handles it.
-  // Don't render the layout for the login page if the user is somehow still there.
-  if (user && pathname === '/login') {
-    return null;
-  }
-
-  // The status page has its own layout, so we don't render the AppLayout there.
-  if (pathname === '/status') {
+  
+  if (pathname === '/login' || pathname === '/status') {
     return <>{children}</>;
   }
 

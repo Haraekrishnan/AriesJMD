@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem, TpCertList, InventoryTransferRequest, TRANSFER_REASONS, DownloadableDocument, LogbookRequest, InspectionChecklist } from '../lib/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore, isToday, isFuture, endOfWeek, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
@@ -450,6 +450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
@@ -3408,41 +3409,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (storedUserId) {
         const foundUser = usersById[storedUserId];
         if (foundUser) {
-            const currentUserStatus = user?.status;
-            const newStatus = foundUser.status;
-            if (currentUserStatus && newStatus && currentUserStatus !== newStatus) {
-                if (newStatus === 'locked' || newStatus === 'deactivated') {
-                    router.push('/status');
-                } else if (newStatus === 'active') {
-                    router.push('/dashboard');
-                }
-            }
             setUser({ ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById });
         }
     } else {
         setUser(null);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById, router, user?.status]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById]);
 
-  // Listen for status changes on the current user
+  // Centralized redirection logic
   useEffect(() => {
-    if (user?.id) {
-        const userRef = ref(rtdb, `users/${user.id}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (!snapshot.exists()) {
-                setStoredUserId(null);
-                setUser(null);
-                router.replace('/login');
-                return;
-            }
-            const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                 setUser(updatedUser);
-            }
-        });
-        return () => unsubscribe();
+    if (loading) return;
+
+    if (user) {
+        if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
+            router.replace('/status');
+        } else if (user.status === 'active' && pathname === '/status') {
+            router.replace('/dashboard');
+        }
+    } else if (pathname !== '/login') {
+        router.replace('/login');
     }
-  }, [user?.id, setStoredUserId, router]);
+  }, [user, loading, pathname, router]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3454,3 +3441,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+

@@ -5,13 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function StatusPage() {
   const { user, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
+  const router = useRouter();
 
-  if (!user) {
-    return null; // Let layout handle redirect
+  useEffect(() => {
+    if (user && user.status === 'active') {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
+
+  if (!user || user.status === 'active') {
+    return null; // Let redirection logic handle it
   }
 
   const handleUnlockRequest = () => {
