@@ -85,16 +85,22 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
   const headerImagePath = '/images/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
-  const certItems: CertItem[] = items.map(it => ({
-    itemId: it.itemId,
-    itemType: it.itemType,
-    materialName: it.materialName,
-    manufacturerSrNo: it.ariesId
-      ? `${it.manufacturerSrNo || (it as any).serialNumber} (Aries ID: ${it.ariesId})`
-      : it.manufacturerSrNo || (it as any).serialNumber,
-    chestCrollNo: it.chestCrollNo,
-    ariesId: it.ariesId
-  }));
+  const certItems: CertItem[] = items.map(it => {
+    const serial = it.manufacturerSrNo || (it as any).serialNumber || 'N/A';
+    // Combine Serial Number and Aries ID if Aries ID exists for ANY item type
+    const combinedSrNo = it.ariesId
+      ? `${serial} (Aries ID: ${it.ariesId})`
+      : serial;
+
+    return {
+      itemId: it.itemId,
+      itemType: it.itemType,
+      materialName: it.materialName,
+      manufacturerSrNo: combinedSrNo, // Use the combined string here
+      chestCrollNo: it.chestCrollNo,
+      ariesId: it.ariesId
+    };
+  });
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(sheetName || "TP Certification List", {
@@ -228,16 +234,22 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
-  const certItems: CertItem[] = items.map(it => ({
-    itemId: it.itemId,
-    itemType: it.itemType,
-    materialName: it.materialName,
-    manufacturerSrNo: it.ariesId
-      ? `${it.manufacturerSrNo || (it as any).serialNumber} (${it.ariesId})`
-      : it.manufacturerSrNo || (it as any).serialNumber,
-    chestCrollNo: it.chestCrollNo,
-    ariesId: it.ariesId
-  }));
+  const certItems: CertItem[] = items.map(it => {
+    const serial = it.manufacturerSrNo || (it as any).serialNumber || 'N/A';
+    // Combine Serial Number and Aries ID if Aries ID exists for ANY item type
+    const combinedSrNo = it.ariesId
+      ? `${serial} (Aries ID: ${it.ariesId})`
+      : serial;
+    
+    return {
+      itemId: it.itemId,
+      itemType: it.itemType,
+      materialName: it.materialName,
+      manufacturerSrNo: combinedSrNo, // Use the combined string here
+      chestCrollNo: it.chestCrollNo,
+      ariesId: it.ariesId
+    };
+  });
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
