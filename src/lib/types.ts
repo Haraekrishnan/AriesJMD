@@ -1,4 +1,5 @@
 
+
 'use client';
 
 export type Broadcast = {
@@ -705,6 +706,8 @@ export type OtherEquipment = {
     ariesId?: string;
     allottedTo: string; // User ID
     remarks?: string;
+    tpInspectionDueDate?: string | null;
+    certificateUrl?: string;
 };
 
 export type MachineLog = {

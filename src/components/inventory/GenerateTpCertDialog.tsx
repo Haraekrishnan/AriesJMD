@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -109,7 +110,13 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       (item as any).machineName ||
       (item as any).equipmentName;
   
-    const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
+    const ariesId =
+      (item as any).ariesId ||
+      (item.itemType === 'Inventory' ? (item as InventoryItem).ariesId : undefined) ||
+      (item.itemType === 'UTMachine' ? (item as UTMachine).ariesId : undefined) ||
+      (item.itemType === 'DftMachine' ? (item as DftMachine).ariesId : undefined) ||
+      (item.itemType === 'OtherEquipment' ? (item as OtherEquipment).ariesId : undefined) ||
+      (item.itemType === 'LaptopDesktop' ? (item as LaptopDesktop).ariesId : undefined);
   
     const newItem: TpCertListItem = {
       itemId: item.id,
@@ -247,7 +254,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
               <TableBody>
                 {selectedItems.length > 0 ? (
                   selectedItems.map((item, index) => {
-                    const displaySerial = item.ariesId
+                    const displaySerial = item.ariesId 
                       ? `${item.manufacturerSrNo || 'N/A'} (${item.ariesId})`
                       : item.manufacturerSrNo;
                     

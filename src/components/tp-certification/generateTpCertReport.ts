@@ -1,3 +1,4 @@
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -56,7 +57,7 @@ const processItemsForMerging = (items: CertItem[]) => {
 
   items.forEach(item => {
     const key = item.materialName.toLowerCase();
-    const mergedSerial = item.manufacturerSrNo; // Serial is already merged in the dialog
+    const mergedSerial = item.manufacturerSrNo; // Serial is already merged from the dialog
 
     if (itemMap.has(key)) {
       const existing = itemMap.get(key)!;
