@@ -1,4 +1,5 @@
 
+
 'use client';
 
 export type Broadcast = {
@@ -844,8 +845,8 @@ export type TpCertListItem = {
   itemType: string;
   materialName: string;
   manufacturerSrNo: string;
-  chestCrollNo?: string;
-  ariesId?: string;
+  chestCrollNo?: string | null;
+  ariesId?: string | null;
 };
 
 export type TpCertList = {
@@ -949,6 +950,7 @@ export type InspectionChecklist = {
 
 
     
+
 
 
 

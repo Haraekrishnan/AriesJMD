@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -44,7 +45,6 @@ const getCapacity = (materialName: string): string => {
     return ''; // Default empty string if no match
 };
 
-// Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
   const itemMap = new Map<
     string,
@@ -58,7 +58,12 @@ const processItemsForMerging = (items: CertItem[]) => {
 
   items.forEach(item => {
     const key = item.materialName.toLowerCase();
-    const mergedSerial = item.manufacturerSrNo; // Already merged in handleSelect
+
+    // ALWAYS MERGE ARIES ID into serial number here
+    let mergedSerial = item.manufacturerSrNo;
+    if (item.ariesId && item.ariesId.trim() !== "") {
+      mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
+    }
 
     if (itemMap.has(key)) {
       const existing = itemMap.get(key)!;
@@ -260,7 +265,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       "Valid upto if Renewal", "Submit Last Testing Report",
   ];
   
-  // Convert TpCertListItem to CertItem so ARIES ID exists
+  // Convert TpCertListItem -> CertItem so ARIES ID exists
   const certItems: CertItem[] = items.map(it => ({
     itemId: it.itemId,
     itemType: it.itemType,
@@ -305,10 +310,8 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
       const filteredRow = rowData.filter((_, cellIndex) => {
         if (index > 0) {
-            // For non-harness, serial is at index 2. For harness, it's also 2.
             const serialIndex = 2; 
             const chestCrollIndex = 3;
-            // Only keep serial number and chest croll number for subsequent rows
             if (isHarness) {
                 return cellIndex === serialIndex || cellIndex === chestCrollIndex;
             } else {
