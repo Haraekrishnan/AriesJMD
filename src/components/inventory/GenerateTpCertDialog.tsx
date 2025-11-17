@@ -249,7 +249,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                     {selectedItems.length > 0 ? (
                       selectedItems.map((item, index) => {
                         const displaySerial = item.ariesId
-                          ? `${item.manufacturerSrNo} (${item.ariesId})`
+                          ? `${item.manufacturerSrNo} (Aries ID: ${item.ariesId})`
                           : item.manufacturerSrNo;
                         
                         return (

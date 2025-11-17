@@ -49,20 +49,18 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined | null)[]; ariesIds: (string | undefined | null)[] }>();
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined | null)[] }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
             itemMap.get(key)!.chestCrollNos.push(item.chestCrollNo);
-            itemMap.get(key)!.ariesIds.push(item.ariesId);
         } else {
             itemMap.set(key, {
                 materialName: item.materialName,
                 serialNumbers: [item.manufacturerSrNo],
                 chestCrollNos: [item.chestCrollNo],
-                ariesIds: [item.ariesId],
             });
         }
     });
@@ -99,11 +97,16 @@ export async function generateTpCertExcel(
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
     const realAriesId = original?.ariesId || it.ariesId;
 
+    let combinedSrNo = serial;
+    if (realAriesId && realAriesId.trim() !== '') {
+        combinedSrNo = `${serial} (Aries ID: ${realAriesId})`;
+    }
+
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: serial,
+      manufacturerSrNo: combinedSrNo,
       chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
       ariesId: realAriesId,
     };
@@ -178,8 +181,7 @@ export async function generateTpCertExcel(
     
     group.serialNumbers.forEach((serial, index) => {
         const chestCrollNo = group.chestCrollNos[index];
-        const ariesId = group.ariesIds[index];
-        const manufacturerSrNo = ariesId ? `${serial} (${ariesId})` : serial;
+        const manufacturerSrNo = serial;
         
         const rowData = [
             index === 0 ? srNo : '',
@@ -251,11 +253,16 @@ export async function generateTpCertPdf(
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
     const realAriesId = original?.ariesId || it.ariesId;
 
+    let combinedSrNo = serial;
+    if (realAriesId && realAriesId.trim() !== '') {
+        combinedSrNo = `${serial} (Aries ID: ${realAriesId})`;
+    }
+
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: serial,
+      manufacturerSrNo: combinedSrNo,
       chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
       ariesId: realAriesId,
     };
@@ -296,8 +303,7 @@ export async function generateTpCertPdf(
 
     group.serialNumbers.forEach((serial, index) => {
       const chestCrollNo = group.chestCrollNos[index];
-      const ariesId = group.ariesIds[index];
-      const manufacturerSrNo = ariesId ? `${serial} (${ariesId})` : serial;
+      const manufacturerSrNo = serial;
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
@@ -327,8 +333,10 @@ export async function generateTpCertPdf(
             const chestCrollIndex = 3;
             
             if (isHarness) {
+                // For Harness, keep Serial (2) and Chest Croll (3)
                 return cellIndex === serialIndex || cellIndex === chestCrollIndex;
             } else {
+                // For Non-Harness, we only keep Serial (2), Chest Croll (3) was spliced out
                 return cellIndex === serialIndex;
             }
         }
