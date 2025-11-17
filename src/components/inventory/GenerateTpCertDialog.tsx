@@ -106,8 +106,9 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
       const handleSelect = (item: CertItem) => {
         const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
-        const ariesId = 'ariesId' in item ? item.ariesId : null;
         let mergedSerial = item.serialNumber || 'N/A';
+        const ariesId = 'ariesId' in item ? (item.ariesId || null) : null;
+      
         if (ariesId && ariesId.trim() !== "") {
             mergedSerial = `${mergedSerial} (${ariesId})`;
         }
