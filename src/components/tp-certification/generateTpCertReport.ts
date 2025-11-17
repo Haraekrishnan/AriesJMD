@@ -229,23 +229,25 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
   }
 }
 
-
 export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date | string) {
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
+  // 1. Process Items: Combine Serial + Aries ID for ALL items immediately
   const certItems: CertItem[] = items.map(it => {
     const serial = it.manufacturerSrNo || (it as any).serialNumber || 'N/A';
-    // Combine Serial Number and Aries ID if Aries ID exists for ANY item type
-    const combinedSrNo = it.ariesId
-      ? `${serial} (Aries ID: ${it.ariesId})`
-      : serial;
+    
+    // Check if Aries ID exists and isn't already in the string to avoid duplication
+    let combinedSrNo = serial;
+    if (it.ariesId && it.ariesId.trim() !== '' && !serial.includes('Aries ID')) {
+        combinedSrNo = `${serial} (Aries ID: ${it.ariesId})`;
+    }
     
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: combinedSrNo, // Use the combined string here
+      manufacturerSrNo: combinedSrNo, // This is now the "Master" string
       chestCrollNo: it.chestCrollNo,
       ariesId: it.ariesId
     };
@@ -256,13 +258,15 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   const dateToUse = listDate ? (typeof listDate === 'string' ? parseISO(listDate) : listDate) : new Date();
 
+  // Header Image
   doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
 
+  // Date
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
 
-
+  // Title Section
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text("Trivedi & Associates Technical Services (P.) Ltd.", pageWidth / 2, 110, { align: 'center' });
@@ -271,11 +275,13 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
   doc.setFont("helvetica", "normal");
   doc.text("Subject : Testing & Certification", 40, 155);
 
+  // Define Columns
   const tableColumn = [
       "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old",
       "Valid upto if Renewal", "Submit Last Testing Report",
   ];
   
+  // 2. Group Items using the helper
   const processedItems = processItemsForMerging(certItems);
   const tableRows: any[][] = [];
   let srNo = 1;
@@ -286,12 +292,14 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
     group.serialNumbers.forEach((serial, index) => {
       const chestCrollNo = group.chestCrollNos[index];
-      const manufacturerSrNo = serial;
+      
+      // Use the pre-processed serial which already contains (Aries ID: ...)
+      const manufacturerSrNo = serial; 
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        manufacturerSrNo || '',
+        manufacturerSrNo || '', // This will contain "SN (Aries ID: ID)"
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? getCapacity(group.materialName) : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
@@ -300,23 +308,32 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
+      // 3. Handle Non-Harness Formatting (Merge Serial + Chest Croll columns)
       if (!isHarness) {
+        // Remove the Chest Croll data cell
         rowData.splice(3, 1);
+        
+        // Expand the Manufacturer Sr No cell to take up 2 columns width
         const serialCell = rowData[2] as any;
         if(typeof serialCell === 'object' && serialCell !== null) {
           serialCell.colSpan = 2;
         } else {
-            rowData[2] = { content: serialCell, colSpan: 2 };
+           rowData[2] = { content: serialCell, colSpan: 2 };
         }
       }
 
+      // Filter out cells hidden by rowSpans in subsequent rows of a group
       const filteredRow = rowData.filter((_, cellIndex) => {
         if (index > 0) {
+           // Determine indices based on whether it is a harness (structure changes due to splice)
             const serialIndex = 2; 
             const chestCrollIndex = 3;
+            
             if (isHarness) {
+                // For Harness, keep Serial (2) and Chest Croll (3)
                 return cellIndex === serialIndex || cellIndex === chestCrollIndex;
             } else {
+                // For Non-Harness, we only keep Serial (2), Chest Croll (3) was spliced out
                 return cellIndex === serialIndex;
             }
         }
@@ -328,6 +345,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     srNo++;
   });
   
+  // Dynamic Header: Only show "Chest Scroll No." if there are Harnesses
   const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
   const finalTableColumns = isAnyHarness 
     ? tableColumn 
@@ -350,7 +368,6 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         }
       }
   });
-
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
 
