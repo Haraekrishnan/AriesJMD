@@ -156,7 +156,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     
     group.serialNumbers.forEach((serial, index) => {
         let manufacturerSrNo = serial;
-        if (group.ariesIds[index]) {
+        if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== "") {
             manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
         }
 
@@ -254,16 +254,19 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     const isHarness = group.materialName.toLowerCase() === 'harness';
 
     group.serialNumbers.forEach((serial, index) => {
+
+      // Always add ARIES ID in brackets
       let manufacturerSrNo = serial;
-      if (group.ariesIds[index]) {
+      if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== "") {
           manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
       }
+
       const chestCrollNo = group.chestCrollNos[index];
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? group.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-        manufacturerSrNo || '',
+        manufacturerSrNo,
         isHarness ? (chestCrollNo || '') : '',
         { content: index === 0 ? group.capacity : '', rowSpan: index === 0 ? groupSize : 1 },
         { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
@@ -272,16 +275,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
-      if (!isHarness) {
-        rowData.splice(3, 1); // remove the empty chest croll no cell
-        const serialCell = rowData[2] as any;
-        if(typeof serialCell === 'object' && serialCell !== null) {
-          serialCell.colSpan = 2;
-        } else {
-            rowData[2] = { content: serialCell, colSpan: 2 };
-        }
-      }
-
+      // remove merged cells for child rows
       const filteredRow = rowData.filter((_, cellIndex) => {
         if (index > 0 && [0, 1, 4, 5, 6, 7, 8].includes(cellIndex)) {
             return false;
