@@ -180,7 +180,16 @@ export async function generateTpCertExcel(
     };
   });
 
-  const processedItems = processItemsForMerging(items as unknown as CertItem[]);
+  const certItems: CertItem[] = items.map(it => ({
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
+  }));
+
+  const processedItems = processItemsForMerging(certItems);
   let currentRowIndex = headerRowIndex + 1;
   let srNo = 1;
 
@@ -190,7 +199,6 @@ export async function generateTpCertExcel(
     const isHarness = group.materialName.toLowerCase() === 'harness';
     
     group.serialNumbers.forEach((serial, index) => {
-      // Always show ARIES ID in brackets if available
       let manufacturerSrNo = serial;
       if (group.ariesIds[index] && group.ariesIds[index]?.trim() !== '') {
         manufacturerSrNo = `${serial} (${group.ariesIds[index]})`;
@@ -311,7 +319,17 @@ export async function generateTpCertPdf(
     'Submit Last Testing Report',
   ];
 
-  const processedItems = processItemsForMerging(items as unknown as CertItem[]);
+  // Convert TpCertListItem → CertItem so ARIES ID exists
+  const certItems: CertItem[] = items.map(it => ({
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
+  }));
+
+  const processedItems = processItemsForMerging(certItems);
   const tableRows: any[][] = [];
   let srNo = 1;
 
