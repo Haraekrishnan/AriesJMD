@@ -49,18 +49,20 @@ const getCapacity = (materialName: string): string => {
 
 // Helper function to process items: group by name
 const processItemsForMerging = (items: CertItem[]) => {
-    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined | null)[] }>();
+    const itemMap = new Map<string, { materialName: string; serialNumbers: string[]; chestCrollNos: (string | undefined | null)[]; ariesIds: (string | undefined | null)[] }>();
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(item.manufacturerSrNo);
             itemMap.get(key)!.chestCrollNos.push(item.chestCrollNo);
+            itemMap.get(key)!.ariesIds.push(item.ariesId);
         } else {
             itemMap.set(key, {
                 materialName: item.materialName,
                 serialNumbers: [item.manufacturerSrNo],
                 chestCrollNos: [item.chestCrollNo],
+                ariesIds: [item.ariesId],
             });
         }
     });
@@ -95,17 +97,13 @@ export async function generateTpCertExcel(
   const certItems: CertItem[] = items.map(it => {
     const original = allItems.find(i => i.id === it.itemId);
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = original?.ariesId;
+    const realAriesId = original?.ariesId || it.ariesId;
 
-    const combinedSrNo = realAriesId
-      ? `${serial} (${realAriesId})`
-      : serial;
-    
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: combinedSrNo,
+      manufacturerSrNo: serial,
       chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
       ariesId: realAriesId,
     };
@@ -180,7 +178,8 @@ export async function generateTpCertExcel(
     
     group.serialNumbers.forEach((serial, index) => {
         const chestCrollNo = group.chestCrollNos[index];
-        const manufacturerSrNo = serial;
+        const ariesId = group.ariesIds[index];
+        const manufacturerSrNo = ariesId ? `${serial} (${ariesId})` : serial;
         
         const rowData = [
             index === 0 ? srNo : '',
@@ -250,17 +249,13 @@ export async function generateTpCertPdf(
   const certItems: CertItem[] = items.map(it => {
     const original = allItems.find(i => i.id === it.itemId);
     const serial = original?.serialNumber || it.manufacturerSrNo || 'N/A';
-    const realAriesId = original?.ariesId;
-
-    const combinedSrNo = realAriesId
-      ? `${serial} (${realAriesId})`
-      : serial;
+    const realAriesId = original?.ariesId || it.ariesId;
 
     return {
       itemId: it.itemId,
       itemType: it.itemType,
       materialName: it.materialName,
-      manufacturerSrNo: combinedSrNo,
+      manufacturerSrNo: serial,
       chestCrollNo: (original as InventoryItem)?.chestCrollNo || it.chestCrollNo,
       ariesId: realAriesId,
     };
@@ -301,7 +296,8 @@ export async function generateTpCertPdf(
 
     group.serialNumbers.forEach((serial, index) => {
       const chestCrollNo = group.chestCrollNos[index];
-      const manufacturerSrNo = serial;
+      const ariesId = group.ariesIds[index];
+      const manufacturerSrNo = ariesId ? `${serial} (${ariesId})` : serial;
       
       const rowData = [
         { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },

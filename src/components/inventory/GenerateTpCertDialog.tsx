@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -36,7 +37,7 @@ interface GenerateTpCertDialogProps {
   existingList?: TpCertList | null;
 }
 
-type CertItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
+type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
   const { 
@@ -52,7 +53,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
 
       const allSearchableItems = useMemo(() => {
-        const items: CertItem[] = [];
+        const items: SearchableItem[] = [];
         inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
         utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
         dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
@@ -67,13 +68,21 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       useEffect(() => {
         if (existingList) {
           setListName(existingList.name);
-          setSelectedItems(existingList.items);
+          // When editing an existing list, ensure the full original item is fetched for correct display
+          const enrichedItems = existingList.items.map(listItem => {
+            const fullItem = allSearchableItems.find(i => i.id === listItem.itemId);
+            return {
+                ...listItem,
+                ariesId: fullItem?.ariesId || listItem.ariesId
+            };
+          });
+          setSelectedItems(enrichedItems);
           const parsedDate = parseISO(existingList.date);
           setListDate(isValid(parsedDate) ? parsedDate : new Date());
         } else {
             setListDate(new Date());
         }
-      }, [existingList, isOpen]);
+      }, [existingList, isOpen, allSearchableItems]);
 
       const uniqueItemNames = useMemo(() => {
         const names = new Set<string>();
@@ -104,7 +113,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       }, [searchTerm, itemsOfSelectedName]);
 
 
-      const handleSelect = (item: CertItem) => {
+      const handleSelect = (item: SearchableItem) => {
         const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
       
         const newItem: TpCertListItem = {
@@ -240,7 +249,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                     {selectedItems.length > 0 ? (
                       selectedItems.map((item, index) => {
                         const displaySerial = item.ariesId
-                          ? `${item.manufacturerSrNo || 'N/A'} (${item.ariesId})`
+                          ? `${item.manufacturerSrNo} (${item.ariesId})`
                           : item.manufacturerSrNo;
                         
                         return (
