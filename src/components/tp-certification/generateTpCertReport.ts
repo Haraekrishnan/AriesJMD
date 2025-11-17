@@ -50,7 +50,12 @@ const processItemsForMerging = (items: CertItem[]) => {
 
     items.forEach(item => {
         const key = item.materialName.toLowerCase();
-        const mergedSerial = item.manufacturerSrNo; // Merged in handleSelect
+        
+        let mergedSerial = item.manufacturerSrNo;
+        const ariesId = item.ariesId;
+        if (ariesId !== undefined && ariesId !== null && ariesId.trim() !== "") {
+          mergedSerial = `${item.manufacturerSrNo} (${ariesId})`;
+        }
 
         if (itemMap.has(key)) {
             itemMap.get(key)!.serialNumbers.push(mergedSerial);
@@ -85,6 +90,15 @@ async function fetchImageAsBufferAndBase64(imgPath: string): Promise<{ buffer: A
 export async function generateTpCertExcel(items: TpCertListItem[], existingWorkbook?: ExcelJS.Workbook, sheetName?: string, listDate?: Date | string) {
   const headerImagePath = '/images/aries-header.png';
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
+  
+  const certItems: CertItem[] = items.map(it => ({
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
+  }));
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(sheetName || "TP Certification List", {
@@ -144,7 +158,7 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" }, };
   });
   
-  const processedItems = processItemsForMerging(items);
+  const processedItems = processItemsForMerging(certItems);
   let currentRowIndex = headerRowIndex + 1;
   let srNo = 1;
 
@@ -215,6 +229,15 @@ export async function generateTpCertExcel(items: TpCertListItem[], existingWorkb
 export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date | string) {
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
+  
+  const certItems: CertItem[] = items.map(it => ({
+    itemId: it.itemId,
+    itemType: it.itemType,
+    materialName: it.materialName,
+    manufacturerSrNo: it.manufacturerSrNo || (it as any).serialNumber,
+    chestCrollNo: it.chestCrollNo,
+    ariesId: it.ariesId
+  }));
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -241,7 +264,7 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       "Valid upto if Renewal", "Submit Last Testing Report",
   ];
   
-  const processedItems = processItemsForMerging(items);
+  const processedItems = processItemsForMerging(certItems);
   const tableRows: any[][] = [];
   let srNo = 1;
 
