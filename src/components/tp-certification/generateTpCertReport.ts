@@ -315,12 +315,12 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       if (index > 0) {
         if(isHarness) {
           filteredRow = [
-            serial, // Manufacturer Sr. No. WITH ARIES ID
+            serial, // Manufacturer Sr. No.
             (chestCrollNo || ''), // Chest Croll No
           ];
         } else {
           filteredRow = [
-            serial, // Manufacturer Sr. No. WITH ARIES ID
+            serial, // Manufacturer Sr. No. (colSpan handled by autoTable)
           ];
         }
       }
@@ -330,15 +330,14 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
     srNo++;
   });
   
-  const finalTableColumns = (isAnyHarness: boolean) => isAnyHarness 
+  const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
+  const finalTableColumns = isAnyHarness 
     ? tableColumn 
     : tableColumn.filter(header => header !== "Chest Scroll No.");
-    
-  const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
 
 
   (doc as any).autoTable({
-      head: [finalTableColumns(isAnyHarness)],
+      head: [finalTableColumns],
       body: tableRows,
       startY: 170,
       theme: "grid",
@@ -380,3 +379,4 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
+
