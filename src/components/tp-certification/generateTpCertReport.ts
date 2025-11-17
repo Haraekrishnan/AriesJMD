@@ -1,4 +1,3 @@
-
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -8,7 +7,7 @@ import { format, parseISO, isValid } from 'date-fns';
 
 interface CertItem {
   itemId: string;
-  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim';
+  itemType: string;
   materialName: string;
   manufacturerSrNo: string;
   chestCrollNo?: string;
@@ -59,7 +58,7 @@ const processItemsForMerging = (items: CertItem[]) => {
   items.forEach(item => {
     const key = item.materialName.toLowerCase();
 
-    // MERGE ARIES ID INTO SERIAL NUMBER (same as wire sling logic)
+    // Always merge ARIES ID into serial number
     let mergedSerial = item.manufacturerSrNo;
     if (item.ariesId && item.ariesId.trim() !== "") {
       mergedSerial = `${item.manufacturerSrNo} (${item.ariesId})`;
@@ -299,32 +298,24 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
         { content: '', rowSpan: index === 0 ? groupSize : 1 }
       ];
 
-      // For non-harness items, merge the two serial number columns
       if (!isHarness) {
+        rowData.splice(3, 1);
         const serialCell = rowData[2] as any;
         if(typeof serialCell === 'object' && serialCell !== null) {
-            serialCell.colSpan = 2;
+          serialCell.colSpan = 2;
         } else {
             rowData[2] = { content: serialCell, colSpan: 2 };
         }
-        rowData.splice(3, 1); // remove the empty chest croll no cell
       }
       
       let filteredRow = rowData;
-      // For subsequent rows in a group, manually craft what should be shown
       if (index > 0) {
         if(isHarness) {
-          filteredRow = [
-            serial, // Manufacturer Sr. No.
-            (chestCrollNo || ''), // Chest Croll No
-          ];
+          filteredRow = [serial, (chestCrollNo || '')];
         } else {
-          filteredRow = [
-            serial, // Manufacturer Sr. No. (colSpan handled by autoTable)
-          ];
+            filteredRow = [serial];
         }
       }
-
       tableRows.push(filteredRow);
     });
     srNo++;
@@ -345,11 +336,11 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
       didParseCell: (data: any) => {
         const cell = data.cell;
-        
-        if (typeof cell.raw === 'object' && cell.raw !== null) {
-            if (cell.raw.rowSpan > 1) cell.rowSpan = cell.raw.rowSpan;
-            if (cell.raw.colSpan > 1) cell.colSpan = cell.raw.colSpan;
-            cell.content = cell.raw.content;
+        const raw = cell.raw;
+        if (typeof raw === 'object' && raw !== null) {
+            if (raw.rowSpan > 1) cell.rowSpan = raw.rowSpan;
+            if (raw.colSpan > 1) cell.colSpan = raw.colSpan;
+            if (raw.content !== undefined) cell.content = raw.content;
         }
       }
   });
@@ -379,4 +370,3 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
-
