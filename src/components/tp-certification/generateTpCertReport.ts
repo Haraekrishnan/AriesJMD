@@ -166,7 +166,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
 
 export async function generateTpCertExcel(
   items: TpCertListItem[],
-  allItems: FullItem[], // Now correctly accepting allItems
+  allItems: FullItem[],
   existingWorkbook?: ExcelJS.Workbook,
   sheetName?: string,
   listDate?: Date | string
@@ -419,17 +419,20 @@ export async function generateTpCertPdf(
         }
       }
 
-      // For subsequent rows in the group, we reduce columns:
+      // For subsequent rows in a group, we reduce columns:
       const filteredRow = rowData.filter((_, cellIndex) => {
         if (index > 0) {
-          const serialIndex = 2; 
-          const chestCrollIndex = 3;
+           // Determine indices based on whether it is a harness (structure changes due to splice)
+            const serialIndex = 2; 
+            const chestCrollIndex = 3;
             
-          if (isHarness) {
-              return cellIndex === serialIndex || cellIndex === chestCrollIndex;
-          } else {
-              return cellIndex === serialIndex;
-          }
+            if (isHarness) {
+                // For Harness, keep Serial (2) and Chest Croll (3)
+                return cellIndex === serialIndex || cellIndex === chestCrollIndex;
+            } else {
+                // For Non-Harness, we only keep Serial (2), Chest Croll (3) was spliced out
+                return cellIndex === serialIndex;
+            }
         }
         return true;
       });
