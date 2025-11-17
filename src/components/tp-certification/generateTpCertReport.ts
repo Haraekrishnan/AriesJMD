@@ -367,4 +367,3 @@ export async function generateTpCertPdf(items: TpCertListItem[], listDate?: Date
 
   doc.save("TP_Certification_List.pdf");
 }
-
