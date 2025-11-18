@@ -2291,12 +2291,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
             }
-            if (typeof date === 'string') {
-                const parsed = parse(date, 'yyyy-MM-dd', new Date());
-                if (isValid(parsed)) return parsed.toISOString();
-                const parsed2 = parseISO(date);
-                if (isValid(parsed2)) return parsed2.toISOString();
-            }
             return null;
         };
         
@@ -2433,7 +2427,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
-
+  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -2443,7 +2437,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       materialName: item.materialName,
       manufacturerSrNo: item.manufacturerSrNo,
       ariesId: item.ariesId || null,
-      chestCrollNo: (item as any).chestCrollNo || null,
+      chestCrollNo: item.chestCrollNo || null,
     }));
     const newList: Omit<TpCertList, 'id'> = {
         ...listData,
@@ -2479,7 +2473,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
-      const newListData = {
+      const listData = {
         name: `From Transfer ${request.id.slice(-6)}`,
         date: new Date().toISOString().split('T')[0],
         items: request.items.map(item => ({
@@ -2491,7 +2485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           chestCrollNo: (item as any).chestCrollNo || null,
         })),
       };
-      addTpCertList(newListData);
+      addTpCertList(listData);
     }
   
     update(ref(rtdb), updates);
@@ -3313,7 +3307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `purchaseRegisters/${id}`));
   }, [user]);
 
-  const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
+  const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'igpOgpRecords'));
     const newRecord: Omit<IgpOgpRecord, 'id'> = {
@@ -3373,7 +3367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
     }
   }, [user, feedback, can.manage_feedback]);
-
+  
   const addDocument = useCallback((doc: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'downloadableDocuments'));
@@ -3469,56 +3463,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
+
+  // All other function definitions exist here...
   
+  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo || null,
+    }));
+    const newList: Omit<TpCertList, 'id'> = {
+        ...listData,
+        items: sanitizedItems,
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
+    };
+    set(newRef, newList);
+    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
+  
+  // SECTION: Computed Values (Memoized)
   const isManpowerUpdatedToday = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     return manpowerLogs.some(log => log.date === todayStr);
   }, [manpowerLogs]);
 
   const lastManpowerUpdate = useMemo(() => {
-      const sortedLogs = [...manpowerLogs].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      return sortedLogs.length > 0 ? sortedLogs[0].updatedAt : null;
+      if (manpowerLogs.length === 0) return null;
+      const sortedLogs = [...manpowerLogs].sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
+      return sortedLogs[0].updatedAt;
   }, [manpowerLogs]);
   
-  const pendingTaskApprovalCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(t => t.creatorId === user.id && t.statusRequest?.status === 'Pending').length;
+  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useMemo(() => {
+    if (!user) return { pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0 };
+    const pendingApproval = tasks.filter(t => t.creatorId === user.id && t.statusRequest?.status === 'Pending').length;
+    const newForMe = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
+    const myRequests = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
+    return { pendingTaskApprovalCount: pendingApproval, myNewTaskCount: newForMe, myPendingTaskRequestCount: myRequests };
   }, [user, tasks]);
 
-  const myNewTaskCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
-  }, [user, tasks]);
+  const { myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount } = useMemo(() => {
+    if (!user) return { myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0 };
+    const myFulfilledStore = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const myFulfilledEquip = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
+    const pendingStore = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const pendingEquip = can.approve_store_requests ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    return { myFulfilledStoreCertRequestCount: myFulfilledStore, myFulfilledEquipmentCertRequests: myFulfilledEquip, pendingStoreCertRequestCount: pendingStore, pendingEquipmentCertRequestCount: pendingEquip };
+  }, [user, certificateRequests, can.approve_store_requests]);
   
-  const myPendingTaskRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
-  }, [user, tasks]);
-
-  const myFulfilledStoreCertRequestCount = useMemo(() => {
-    if (!user) return 0;
-    return certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
-  }, [user, certificateRequests]);
-
-  const myFulfilledEquipmentCertRequests = useMemo(() => {
-    if (!user) return [];
-    return certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
-  }, [user, certificateRequests]);
-  
-  const pendingStoreCertRequestCount = useMemo(() => {
-    if (!can.approve_store_requests) return 0;
-    return certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length;
-  }, [can.approve_store_requests, certificateRequests]);
-  
-  const pendingEquipmentCertRequestCount = useMemo(() => {
-    if (!can.approve_store_requests) return 0;
-    return certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length;
-  }, [can.approve_store_requests, certificateRequests]);
-
   const plannerNotificationCount = useMemo(() => {
     if (!user) return 0;
     return dailyPlannerComments.filter(dayComment => {
-      if (!dayComment || !dayComment.day || !dayComment.comments) return false;
+      if (!dayComment.day || !dayComment.comments) return false;
   
       // Get all unique event IDs mentioned in this day's comments
       const eventIdsInComments = new Set(Object.values(dayComment.comments).map(c => c?.eventId).filter(Boolean));
@@ -3532,12 +3533,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!isParticipant) continue;
   
           // Now check if there's any unread comment from another user for this event on this day
-          const hasUnread = Object.values(dayComment.comments).some(c => 
-              c && 
-              c.eventId === eventId && 
-              c.userId !== user.id && 
-              !c.viewedBy?.[user.id]
-          );
+          const hasUnread = Object.values(dayComment.comments).some(c => c && c.eventId === eventId && c.userId !== user.id && !c.viewedBy?.[user.id]);
   
           if (hasUnread) return true; // Found an unread comment for this user
       }
@@ -3552,10 +3548,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const isMyRequest = r.requesterId === user.id;
       if (!isMyRequest) return false;
     
-      const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
-      const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-      
-      return isRejectedButActive || isStandardUpdate;
+        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
+        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+        
+        return isRejectedButActive || isStandardUpdate;
     }).length;
     return { pendingInternalRequestCount: pending, updatedInternalRequestCount: updated };
   }, [user, can.approve_store_requests, internalRequests]);
@@ -3857,4 +3853,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
+
 
