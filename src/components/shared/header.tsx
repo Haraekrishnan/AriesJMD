@@ -33,16 +33,16 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const notificationCounts = useMemo(() => {
     if (!user) return {};
 
-    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
-    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
+    const myFulfilledStoreCertRequestCount = (certificateRequests || []).filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
+    const myFulfilledEquipmentCertRequests = (certificateRequests || []).filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
 
     const isStoreManager = can.approve_store_requests;
-    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
-    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
+    const pendingStoreCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && r.itemId).length : 0;
+    const pendingEquipmentCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
+    const unreadCommentsForUser = (dailyPlannerComments || []).filter(dayComment => {
         if (!dayComment.day || !dayComment.comments) return false;
-        const eventsOnDay = plannerEvents.filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+        const eventsOnDay = (plannerEvents || []).filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
         if (eventsOnDay.length === 0) return false;
 
         const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
@@ -56,23 +56,21 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     });
     const plannerNotificationCount = unreadCommentsForUser.length;
 
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
+    const pendingInternalRequestCount = isStoreManager ? (internalRequests || []).filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
     
-    const updatedInternalRequestCount = internalRequests.filter(r => {
+    const updatedInternalRequestCount = (internalRequests || []).filter(r => {
         const isMyRequest = r.requesterId === user.id;
         if (!isMyRequest) return false;
-    
         const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
         const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-        
         return isRejectedButActive || isStandardUpdate;
     }).length;
 
     const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
-    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
-    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
+    const pendingManagementRequestCount = (managementRequests || []).filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
+    const updatedManagementRequestCount = (managementRequests || []).filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
 
-    const incidentNotificationCount = incidentReports.filter(i => {
+    const incidentNotificationCount = (incidentReports || []).filter(i => {
       const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
       const isUnread = !i.viewedBy?.[user.id];
       return isParticipant && isUnread;
@@ -81,23 +79,30 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
     const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
     
-    const pendingApproval = canApprovePpe ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
-    const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
-    const pendingDisputes = (canApprovePpe || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
+    const pendingApproval = canApprovePpe ? (ppeRequests || []).filter(r => r.status === 'Pending').length : 0;
+    const pendingIssuance = canIssuePpe ? (ppeRequests || []).filter(r => r.status === 'Approved').length : 0;
+    const pendingDisputes = (canApprovePpe || canIssuePpe) ? (ppeRequests || []).filter(r => r.status === 'Disputed').length : 0;
     const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
 
-    const updatedPpeRequestCount = ppeRequests.filter(r => r.requesterId === user.id && (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
+    const myPpeRequests = (ppeRequests || []).filter(r => r.requesterId === user.id);
+    const ppeQueries = myPpeRequests.filter(req => {
+      const comments = req.comments ? (Array.isArray(req.comments) ? req.comments : Object.values(req.comments)) : [];
+      const lastComment = comments[comments.length - 1];
+      return lastComment && lastComment.userId !== user.id && !req.viewedByRequester;
+    }).length;
+
+    const updatedPpeRequestCount = myPpeRequests.filter(r => (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length + ppeQueries;
     
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
-    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
-    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
-    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
+    const pendingPaymentApprovalCount = canApprovePayments ? (payments || []).filter(p => p.status === 'Pending').length : 0;
+    const pendingPasswordResetRequestCount = can.manage_password_resets ? (passwordResetRequests || []).filter(r => r.status === 'pending').length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedBy?.[user.id]).length : 0;
+    const pendingUnlockRequestCount = can.manage_user_lock_status ? (unlockRequests || []).filter(r => r.status === 'pending').length : 0;
 
     const canApproveTransfers = can.approve_store_requests;
-    const pendingInventoryTransferRequestCount = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+    const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
 
-    const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
+    const pendingLogbookRequestCount = can.manage_logbook ? (logbookRequests || []).filter(r => r.status === 'Pending').length : 0;
 
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
@@ -108,7 +113,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount,
-      manpower: pendingLogbookRequestCount,
+      manpower: pendingLogbookRequestCount
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
@@ -288,5 +293,7 @@ export default function Header() {
     </>
   );
 }
+
+    
 
     
