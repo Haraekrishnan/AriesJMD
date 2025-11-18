@@ -144,7 +144,6 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       (original as any)?.name ||
       (original as any)?.machineName ||
       (original as any)?.equipmentName ||
-      (original as any)?.model ||
       "Unknown";
 
     // Chest croll resolver

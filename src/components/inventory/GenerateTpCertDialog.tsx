@@ -73,7 +73,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                 ...listItem,
                 ariesId: fullItem?.ariesId || listItem.ariesId, // Use fullItem's ariesId
                 // Ensure the serial number is the most current one from the source
-                manufacturerSrNo: fullItem?.serialNumber || listItem.manufacturerSrNo, // Use fullItem's serialNumber
+                manufacturerSrNo: (fullItem as any)?.serialNumber || listItem.manufacturerSrNo, // Use fullItem's serialNumber
             };
           });
           setSelectedItems(enrichedItems);
@@ -120,7 +120,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
           itemId: item.id,
           itemType: item.itemType,
           materialName,
-          manufacturerSrNo: item.serialNumber,
+          manufacturerSrNo: (item as any).serialNumber,
           chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
           ariesId: item.ariesId || null,
         };
@@ -223,7 +223,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                     onSelect={() => handleSelect(item)}
                                     className="cursor-pointer"
                                 >
-                                    {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {item.serialNumber || 'N/A'})
+                                    {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {(item as any).serialNumber || 'N/A'})
                                     {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                                 </CommandItem>
                                 ))}
