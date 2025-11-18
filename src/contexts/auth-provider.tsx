@@ -57,12 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
+            if (foundUser.status === 'locked') {
+                router.replace('/status');
+            }
             return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
