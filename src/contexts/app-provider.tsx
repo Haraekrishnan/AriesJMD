@@ -463,7 +463,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return canObject;
   }, [user, roles]);
 
-  // SECTION: ALL FUNCTION DEFINITIONS START HERE
+  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
+    if (!userId) {
+      console.error("addActivityLog: userId is undefined or null");
+      return;
+    }
+    const logRef = push(ref(rtdb, 'activityLogs'));
+    const newLog: Partial<ActivityLog> = {
+      userId,
+      action,
+      timestamp: new Date().toISOString(),
+    };
+    if (details) {
+      newLog.details = details;
+    }
+    set(logRef, newLog);
+  }, []);
+
+  // SECTION: AUTHENTICATION
   const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
     setLoading(true);
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -557,25 +574,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     addActivityLog(validRequest.userId, 'Password Reset');
     return true;
-
   }, [addActivityLog]);
 
-  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
-    if (!userId) {
-        console.error("addActivityLog: userId is undefined or null");
-        return;
-    }
-    const logRef = push(ref(rtdb, 'activityLogs'));
-    const newLog: Partial<ActivityLog> = {
-        userId,
-        action,
-        timestamp: new Date().toISOString(),
-    };
-    if (details) {
-        newLog.details = details;
-    }
-    set(logRef, newLog);
+  const generateResetCode = useCallback((requestId: string) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
   }, []);
+  
+  const resolveResetRequest = useCallback((requestId: string) => {
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
+  }, []);
+
+  // All other function definitions exist here...
+  // ... including login, logout, etc.
+
+  // SECTION: ALL FUNCTION DEFINITIONS START HERE
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -608,15 +621,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, updateUser, toast]);
 
-  const generateResetCode = useCallback((requestId: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
-  }, []);
-
-  const resolveResetRequest = useCallback((requestId: string) => {
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
-  }, []);
-  
   const lockUser = useCallback((userId: string) => {
     update(ref(rtdb, `users/${userId}`), { status: 'locked' });
   }, []);
@@ -1890,7 +1894,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requesterId: user.id,
       date: new Date().toISOString(),
       status: 'Pending',
-      comments: [{ id: `comm-init`, text: 'Request created', userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
+      comments: [{ id: 'comment-initial', text: 'Request created', userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
       viewedByRequester: true,
     };
     set(newRequestRef, newRequest);
@@ -2345,8 +2349,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
     if (!user || !can.manage_inventory) {
-      toast({ variant: 'destructive', title: 'Permission Denied' });
-      return;
+        toast({ variant: 'destructive', title: 'Permission Denied' });
+        return;
     }
     const dbUpdates: { [key: string]: any } = {};
     const itemsToUpdate = inventoryItems.filter(
@@ -2354,25 +2358,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   
     if (itemsToUpdate.length === 0) {
-      toast({
-        title: 'No Matching Items',
-        description: 'No items were found with that name and TP due date.',
-        variant: 'destructive',
-      });
-      return;
+        toast({
+            title: 'No Matching Items',
+            description: 'No items were found with that name and TP due date.',
+            variant: 'destructive',
+        });
+        return;
     }
   
     itemsToUpdate.forEach((item) => {
-      const itemUpdates: Partial<InventoryItem> = {
-          lastUpdated: new Date().toISOString()
-      };
+      const itemPath = `inventoryItems/${item.id}`;
       if (updates.tpInspectionDueDate) {
-        itemUpdates.tpInspectionDueDate = updates.tpInspectionDueDate;
+          dbUpdates[`${itemPath}/tpInspectionDueDate`] = updates.tpInspectionDueDate;
       }
       if (updates.certificateUrl) {
-        itemUpdates.certificateUrl = updates.certificateUrl;
+          dbUpdates[`${itemPath}/certificateUrl`] = updates.certificateUrl;
       }
-      dbUpdates[`/inventoryItems/${item.id}`] = { ...item, ...itemUpdates };
+      dbUpdates[`${itemPath}/lastUpdated`] = new Date().toISOString();
     });
   
     if (Object.keys(dbUpdates).length > 0) {
@@ -2388,7 +2390,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [user, can.manage_inventory, inventoryItems, addActivityLog, toast]);
-
+  
   const updateInventoryItemGroupByProject = useCallback((itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
     const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.projectId === projectId);
     if(itemsToUpdate.length === 0) return;
@@ -2434,12 +2436,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
     const sanitizedItems = listData.items.map(item => ({
-        itemId: item.itemId,
-        itemType: item.itemType,
-        materialName: item.materialName,
-        manufacturerSrNo: item.manufacturerSrNo,
-        ariesId: item.ariesId || null,
-        chestCrollNo: (item as any).chestCrollNo || null,
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
     }));
     const newList: Omit<TpCertList, 'id'> = {
         ...listData,
@@ -2455,18 +2457,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const { id, ...data } = listData;
     const sanitizedItems = data.items.map(item => ({
-        itemId: item.itemId,
-        itemType: item.itemType,
-        materialName: item.materialName,
-        manufacturerSrNo: item.manufacturerSrNo,
-        ariesId: item.ariesId || null,
-        chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
     }));
     const sanitizedData = { ...data, items: sanitizedItems };
     update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
     addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
-}, [user, addActivityLog]);
-
+  }, [user, addActivityLog]);
+  
   const deleteTpCertList = useCallback((listId: string) => {
     if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `tpCertLists/${listId}`));
@@ -3447,12 +3449,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
-
+  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
     const sanitizedItems = listData.items.map(item => ({
-      ...item,
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
       ariesId: item.ariesId || null,
       chestCrollNo: (item as any).chestCrollNo || null,
     }));
@@ -3464,6 +3469,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRef, newList);
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
+  
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    if (!user) return;
+    const { id, ...data } = listData;
+    const sanitizedItems = data.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+    }));
+    const sanitizedData = { ...data, items: sanitizedItems };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+    addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
+  }, [user, addActivityLog]);
+  
+  const deleteTpCertList = useCallback((listId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `tpCertLists/${listId}`));
+    addActivityLog(user.id, 'TP Certification List Deleted', `List ID: ${listId}`);
   }, [user, addActivityLog]);
 
   // All other function definitions exist here...
@@ -3659,7 +3686,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return { workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave };
   }, [manpowerLogs, projects]);
-
+  
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can, isManpowerUpdatedToday, lastManpowerUpdate,
@@ -3852,3 +3879,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
