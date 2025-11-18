@@ -117,10 +117,8 @@ export default function RecentPlannerActivity() {
     myDelegatedEvents.forEach((event) => {
       const eventDate = parseISO(event.date);
 
-      // Only care once the event date is in the past (not today)
-      if (isPast(eventDate) && !isToday(eventDate)) {
+      if (isPast(eventDate) || isToday(eventDate)) {
         const dayStr = format(eventDate, 'yyyy-MM-dd');
-
         const dayCommentData = dailyPlannerComments.find(
           (dc) => dc.id === `${dayStr}_${event.userId}`
         );
@@ -159,7 +157,7 @@ export default function RecentPlannerActivity() {
     eventsDelegatedToMe.forEach((event) => {
       const eventDate = parseISO(event.date);
 
-      if (isPast(eventDate) && !isToday(eventDate)) {
+      if (isPast(eventDate) || isToday(eventDate)) {
         const dayStr = format(eventDate, 'yyyy-MM-dd');
 
         const dayCommentData = dailyPlannerComments.find(
