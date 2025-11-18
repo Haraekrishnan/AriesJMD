@@ -1,10 +1,9 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, startOfToday } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -33,7 +32,6 @@ interface MyPendingUpdateInfo {
     event: PlannerEvent;
     delegatedBy?: User;
 }
-
 
 export default function RecentPlannerActivity() {
   const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents, dismissPendingUpdate, addPlannerEventComment } = useAppContext();
@@ -76,13 +74,8 @@ export default function RecentPlannerActivity() {
       });
     });
 
-    // Check for delegated events with no comments from assignee
-    const myDelegatedEvents = plannerEvents.filter(e => 
-      e.creatorId === user.id && 
-      e.userId !== user.id && 
-      isPast(parseISO(e.date)) &&
-      userMap.has(e.userId) // Ensure assignee exists
-    );
+    // Delegator View: Check for events delegated by me that have not been updated
+    const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && userMap.has(e.userId));
     
     myDelegatedEvents.forEach(event => {
       const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
@@ -107,7 +100,7 @@ export default function RecentPlannerActivity() {
       });
     });
     
-    // Check for events delegated TO ME that I haven't updated
+    // Assignee View: Check for events delegated TO ME that I haven't updated
     const eventsDelegatedToMe = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id);
     eventsDelegatedToMe.forEach(event => {
         const expanded = getExpandedPlannerEvents(parseISO(event.date), user.id);
