@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1591,7 +1590,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateManpowerProfile = useCallback(async (profile: ManpowerProfile): Promise<void> => {
     const { id, ...data } = profile;
-    await update(ref(rtdb, `manpowerProfiles/${id}`), data);
+    const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => (value === undefined ? null : value)));
+    await update(ref(rtdb, `manpowerProfiles/${id}`), sanitizedData);
   }, []);
   
   const deleteManpowerProfile = useCallback((profileId: string) => {
@@ -2272,6 +2272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...itemData, 
       lastUpdated: new Date().toISOString(),
       movedToProjectId: itemData.movedToProjectId || null,
+      chestCrollNo: itemData.chestCrollNo || null,
     };
     set(newRef, dataToSave);
     addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
@@ -2333,11 +2334,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     return importedCount;
 }, [user, inventoryItems, projects, addActivityLog]);
-
+  
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
     const updates = { 
       ...data, 
+      chestCrollNo: data.chestCrollNo || null,
       lastUpdated: new Date().toISOString(),
       movedToProjectId: data.movedToProjectId || null,
     };
@@ -2429,27 +2431,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
   
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
-  
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
   
@@ -2512,7 +2493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             'View Transfers'
         );
     }
-  }, [user, addActivityLog, addTpCertList, users, projects]);
+  }, [user, addActivityLog, users, projects]);
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
@@ -2555,7 +2536,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       }
     });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects, addTpCertList]);
+  }, [user, addActivityLog, users, can.approve_store_requests, projects, approveInventoryTransferRequest]);
   
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
@@ -3135,7 +3116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
            }
         }
     }
@@ -3467,6 +3448,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // All other function definitions exist here...
   
+  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo || null,
+    }));
+    const newList: Omit<TpCertList, 'id'> = {
+        ...listData,
+        items: sanitizedItems,
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
+    };
+    set(newRef, newList);
+    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
+
   // SECTION: Computed Values (Memoized)
   const isManpowerUpdatedToday = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -3474,12 +3476,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [manpowerLogs]);
 
   const lastManpowerUpdate = useMemo(() => {
-      if (!manpowerLogs || manpowerLogs.length === 0) return null;
-      const sortedLogs = manpowerLogs
-        .filter(log => log && log.updatedAt)
-        .sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
-      if (sortedLogs.length === 0) return null;
-      return sortedLogs[0].updatedAt;
+    if (!manpowerLogs || manpowerLogs.length === 0) return null;
+    const sortedLogs = [...manpowerLogs]
+      .filter(log => log && log.updatedAt) // Ensure updatedAt exists
+      .sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
+    return sortedLogs[0].updatedAt;
   }, [manpowerLogs]);
   
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useMemo(() => {
@@ -3836,9 +3837,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
-
-
 
