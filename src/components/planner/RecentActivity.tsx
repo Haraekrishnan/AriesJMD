@@ -1,6 +1,5 @@
-
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -87,17 +86,29 @@ export default function RecentPlannerActivity() {
     });
 
     // Check pending updates
-    const checkEventForPendingUpdate = (event: PlannerEvent) => {
+    const checkEventForPendingUpdate = (event: PlannerEvent, eventDate: Date) => {
         const assignedUserExists = userMap.has(event.userId);
         const creatorExists = userMap.has(event.creatorId);
-        if (!assignedUserExists || !creatorExists) return; // skip ghost events
-
-        const eventDate = parseISO(event.date);
-        if (isNaN(eventDate.getTime())) return;
+        if (!assignedUserExists || !creatorExists) return;
 
         if (!(isPast(eventDate) || isToday(eventDate))) return;
 
         const dayStr = format(eventDate, 'yyyy-MM-dd');
+        
+        // 🔒 NEW SAFETY CHECK — event MUST exist on this date
+        const isEventAssignedOnThisDay = (() => {
+            if (event.frequency === 'once') {
+                return event.date.startsWith(dayStr);
+            }
+
+            const instances = getExpandedPlannerEvents(parseISO(event.date), event.userId);
+            return instances.some(inst =>
+                inst.eventDate.toISOString().startsWith(dayStr)
+            );
+        })();
+
+        if (!isEventAssignedOnThisDay) return; // 🚫 STOP — ghost event detected
+
         const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
 
         const commentsForEvent = dayCommentData
@@ -136,17 +147,16 @@ export default function RecentPlannerActivity() {
     // Iterate valid events only
     plannerEvents.forEach(event => {
         if (!event) return;
-        if (!userMap.has(event.userId) || !userMap.has(event.creatorId)) return; // skip old/deleted events
+        if (!userMap.has(event.userId) || !userMap.has(event.creatorId)) return;
 
         if (event.creatorId === user.id || event.userId === user.id) {
             if (event.frequency === 'once') {
-                checkEventForPendingUpdate(event);
+                checkEventForPendingUpdate(event, parseISO(event.date));
             } else {
                 const instances = getExpandedPlannerEvents(parseISO(event.date), event.userId);
                 instances.forEach(instance => {
-                    // Skip invalid ghost recurrence instance
                     if (!instance?.eventDate) return;
-                    checkEventForPendingUpdate({ ...event, date: instance.eventDate.toISOString() });
+                    checkEventForPendingUpdate({ ...event, date: instance.eventDate.toISOString() }, instance.eventDate);
                 });
             }
         }
@@ -172,7 +182,7 @@ export default function RecentPlannerActivity() {
       }
     }
   };
-
+  
   const handleAddComment = (eventId: string, day: string, userId: string) => {
     const commentKey = `${day}-${eventId}`;
     const commentText = newComments[commentKey];
@@ -299,5 +309,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
-    
