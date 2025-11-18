@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateTpCertExcel, generateTpCertPdf } from '@/components/inventory/generateTpCertReport';
+import { generateTpCertExcel, generateTpCertPdf } from '@/components/tp-certification/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import type { TpCertList } from '@/lib/types';
@@ -24,17 +23,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import UpdateCertValidityDialog from '@/components/tp-certification/UpdateCertValidityDialog';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 export default function TpCertificationPage() {
-    const { user, users, tpCertLists, deleteTpCertList } = useAppContext();
+    const { 
+        user, users, tpCertLists, deleteTpCertList,
+        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims
+     } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [editingList, setEditingList] = useState<TpCertList | null>(null);
     const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
+    
+    const allItems = useMemo(() => [
+      ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
+      ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+    ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
 
     const filteredLists = useMemo(() => {
         const allLists = (tpCertLists || [])
-            .filter(list => !!list.createdAt) // Ensure createdAt exists
+            .filter(list => !!list.createdAt)
             .sort((a,b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
         if (!searchTerm.trim()) {
             return allLists;
@@ -57,7 +65,7 @@ export default function TpCertificationPage() {
         const workbook = new ExcelJS.Workbook();
         
         for (const list of filteredLists) {
-            await generateTpCertExcel(list.items, workbook, list.name, list.date);
+            await generateTpCertExcel(list.items, allItems, workbook, list.name, list.date);
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -67,9 +75,9 @@ export default function TpCertificationPage() {
     const handleGenerateSingleFile = async (list: TpCertList, type: 'excel' | 'pdf') => {
         try {
             if (type === 'excel') {
-                await generateTpCertExcel(list.items, undefined, list.name, list.date);
+                await generateTpCertExcel(list.items, allItems, undefined, list.name, list.date);
             } else {
-                await generateTpCertPdf(list.items, list.date);
+                await generateTpCertPdf(list.items, allItems, list.date);
             }
             toast({ title: `${type.toUpperCase()} Generated` });
         } catch (error) {
@@ -120,6 +128,7 @@ export default function TpCertificationPage() {
                                     acc[item.materialName] = (acc[item.materialName] || 0) + 1;
                                     return acc;
                                 }, {} as Record<string, number>);
+                                const totalQuantity = list.items.length;
 
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
@@ -132,7 +141,10 @@ export default function TpCertificationPage() {
                                                     </p>
                                                 </div>
                                             </AccordionTrigger>
-                                            <div className="flex items-center gap-2 pl-4">
+
+                                            <Badge variant="secondary" className="mx-4">Total Qty: {totalQuantity}</Badge>
+
+                                            <div className="flex items-center gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
@@ -156,7 +168,7 @@ export default function TpCertificationPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        <AccordionContent className="p-4 pt-0">
+                                        <AccordionContent className="p-4 pt-0 max-h-[450px] overflow-y-auto">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
@@ -171,6 +183,10 @@ export default function TpCertificationPage() {
                                                             <TableCell className="text-right">{count}</TableCell>
                                                         </TableRow>
                                                     ))}
+                                                    <TableRow className="bg-muted font-bold">
+                                                        <TableCell>Total</TableCell>
+                                                        <TableCell className="text-right">{totalQuantity}</TableCell>
+                                                    </TableRow>
                                                 </TableBody>
                                             </Table>
                                         </AccordionContent>
