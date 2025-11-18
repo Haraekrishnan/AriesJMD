@@ -1735,6 +1735,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'Pending',
         comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
         viewedByRequester: true,
+        acknowledgedByRequester: false,
     };
 
     set(newRequestRef, newRequest);
@@ -2448,7 +2449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newList);
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
   }, [user, addActivityLog]);
-
+  
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
   
@@ -3139,7 +3140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
   }, [buildings]);
-
+  
   const saveJobSchedule = useCallback((schedule: JobSchedule) => {
       update(ref(rtdb, `jobSchedules/${schedule.id}`), schedule);
   }, []);
@@ -3466,27 +3467,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // All other function definitions exist here...
   
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
-  
   // SECTION: Computed Values (Memoized)
   const isManpowerUpdatedToday = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -3494,7 +3474,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [manpowerLogs]);
 
   const lastManpowerUpdate = useMemo(() => {
-      if (manpowerLogs.length === 0) return null;
+      if (!manpowerLogs || manpowerLogs.length === 0) return null;
+      // Sort logs by `updatedAt` in descending order and get the first one
       const sortedLogs = [...manpowerLogs].sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
       return sortedLogs[0].updatedAt;
   }, [manpowerLogs]);
@@ -3853,6 +3834,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 
