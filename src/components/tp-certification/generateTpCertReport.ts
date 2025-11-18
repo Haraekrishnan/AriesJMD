@@ -194,6 +194,19 @@ export async function generateTpCertExcel(
     cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
   });
+  
+  // Set column widths
+  worksheet.columns = [
+    { width: 8 },   // SR. No.
+    { width: 25 },  // Material Name
+    { width: 30 },  // Manufacturer Sr. No.
+    { width: 25 },  // Chest Scroll No.
+    { width: 15 },  // Cap. in MT
+    { width: 10 },  // Qty in Nos
+    { width: 15 },  // New or Old
+    { width: 20 },  // Valid upto if Renewal
+    { width: 30 },  // Submit Last Testing Report
+  ];
 
   const groupedItems = groupItemsForExport(certItems);
   let currentRowIndex = headerRowIndex + 1;
@@ -228,8 +241,6 @@ export async function generateTpCertExcel(
     });
 
     if (groupSize > 1) {
-      const colsToMerge = [1, 2, 5, 6, 7, 8, 9];
-      if (!isHarness) colsToMerge.push(3); // This was a bug, should not merge serial
       worksheet.mergeCells(groupStartRow, 1, groupStartRow + groupSize - 1, 1);
       worksheet.mergeCells(groupStartRow, 2, groupStartRow + groupSize - 1, 2);
       worksheet.mergeCells(groupStartRow, 5, groupStartRow + groupSize - 1, 5);
@@ -332,6 +343,28 @@ export async function generateTpCertPdf(
   
   const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
   const finalTableColumns = isAnyHarness ? tableColumn : tableColumn.filter(header => header !== "Chest Scroll No.");
+  const columnStyles = isAnyHarness
+    ? {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 90 }, // Manufacturer Sr. No.
+        3: { cellWidth: 70 }, // Chest Scroll No.
+        4: { cellWidth: 40 },
+        5: { cellWidth: 30 },
+        6: { cellWidth: 35 },
+        7: { cellWidth: 50 },
+        8: { cellWidth: 'auto' },
+      }
+    : {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 160 }, // Merged Manufacturer Sr. No. and Chest Scroll No.
+        3: { cellWidth: 40 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 35 },
+        6: { cellWidth: 50 },
+        7: { cellWidth: 'auto' },
+      };
 
   (doc as any).autoTable({
       head: [finalTableColumns],
@@ -340,6 +373,7 @@ export async function generateTpCertPdf(
       theme: "grid",
       styles: { fontSize: 8, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
+      columnStyles: columnStyles,
       didParseCell: (data: any) => {
         if (typeof data.cell.raw === 'object' && data.cell.raw !== null) {
             if (data.cell.raw.rowSpan > 1) data.cell.rowSpan = data.cell.raw.rowSpan;
