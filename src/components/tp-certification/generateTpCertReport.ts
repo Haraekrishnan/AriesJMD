@@ -68,6 +68,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
   return items.map(it => {
     const original = allItems.find(i => i.id === it.itemId);
 
+    // UNIVERSAL serial number resolver
     const serial =
       (original as any)?.serialNumber ||
       (original as any)?.model ||
@@ -76,23 +77,28 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       it.manufacturerSrNo ||
       "N/A";
 
+    // UNIVERSAL Aries ID resolver
     const ariesId =
       (original as any)?.ariesId ||
       it.ariesId ||
       null;
 
+    // FINAL formatted serial string (UI & Export match)
     const finalSerial =
       ariesId && ariesId.trim() !== ""
         ? `${serial} (Aries ID: ${ariesId})`
         : serial;
 
+    // Material name resolver
     const materialName =
       it.materialName ||
       (original as any)?.name ||
       (original as any)?.machineName ||
       (original as any)?.equipmentName ||
+      (original as any)?.model ||
       "Unknown";
 
+    // Chest croll resolver
     const chest =
       (original as any)?.chestCrollNo ||
       it.chestCrollNo ||
@@ -109,17 +115,18 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
   });
 };
 
-const groupItems = (items: CertItem[]) => {
-    const grouped = new Map<string, CertItem[]>();
-    items.forEach(item => {
-        const key = item.materialName.toLowerCase();
-        if (!grouped.has(key)) {
-            grouped.set(key, []);
-        }
-        grouped.get(key)!.push(item);
-    });
-    return Array.from(grouped.values()).sort((a,b) => a[0].materialName.localeCompare(b[0].materialName));
+const groupItemsForExport = (items: CertItem[]) => {
+  const grouped = new Map<string, CertItem[]>();
+  items.forEach(item => {
+      const key = item.materialName.toLowerCase();
+      if (!grouped.has(key)) {
+          grouped.set(key, []);
+      }
+      grouped.get(key)!.push(item);
+  });
+  return Array.from(grouped.values()).sort((a,b) => a[0].materialName.localeCompare(b[0].materialName));
 };
+
 
 async function fetchImageAsBufferAndBase64(
   imgPath: string,
@@ -169,11 +176,14 @@ export async function generateTpCertExcel(
 
   const startRow = 5;
   worksheet.mergeCells(`A${startRow}:H${startRow}`).value = "Trivedi & Associates Technical Services (P.) Ltd.";
-  worksheet.getCell(`A${startRow}`).font = { bold: true, size: 12, alignment: { horizontal: 'center' } };
+  worksheet.getCell(`A${startRow}`).font = { bold: true, size: 12 };
+  worksheet.getCell(`A${startRow}`).alignment = { horizontal: 'center' };
   worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`).value = "Jamnagar.";
-  worksheet.getCell(`A${startRow + 1}`).font = { bold: true, size: 12, alignment: { horizontal: 'center' } };
+  worksheet.getCell(`A${startRow + 1}`).font = { bold: true, size: 12 };
+  worksheet.getCell(`A${startRow + 1}`).alignment = { horizontal: 'center' };
   worksheet.mergeCells(`A${startRow + 3}:H${startRow + 3}`).value = "Subject : Testing & Certification";
-  worksheet.getCell(`A${startRow + 3}`).font = { bold: true, size: 12, alignment: { horizontal: 'left' } };
+  worksheet.getCell(`A${startRow + 3}`).font = { bold: true, size: 12 };
+  worksheet.getCell(`A${startRow + 3}`).alignment = { horizontal: 'left' };
 
   const headerRowIndex = startRow + 5;
   const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)" ];
@@ -185,7 +195,7 @@ export async function generateTpCertExcel(
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
   });
 
-  const groupedItems = groupItems(certItems);
+  const groupedItems = groupItemsForExport(certItems);
   let currentRowIndex = headerRowIndex + 1;
   let srNo = 1;
 
@@ -219,13 +229,18 @@ export async function generateTpCertExcel(
 
     if (groupSize > 1) {
       const colsToMerge = [1, 2, 5, 6, 7, 8, 9];
-      if (!isHarness) colsToMerge.push(3);
-      colsToMerge.forEach(col => {
-        worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
-      });
+      if (!isHarness) colsToMerge.push(3); // This was a bug, should not merge serial
+      worksheet.mergeCells(groupStartRow, 1, groupStartRow + groupSize - 1, 1);
+      worksheet.mergeCells(groupStartRow, 2, groupStartRow + groupSize - 1, 2);
+      worksheet.mergeCells(groupStartRow, 5, groupStartRow + groupSize - 1, 5);
+      worksheet.mergeCells(groupStartRow, 6, groupStartRow + groupSize - 1, 6);
+      worksheet.mergeCells(groupStartRow, 7, groupStartRow + groupSize - 1, 7);
+      worksheet.mergeCells(groupStartRow, 8, groupStartRow + groupSize - 1, 8);
+      worksheet.mergeCells(groupStartRow, 9, groupStartRow + groupSize - 1, 9);
     }
     srNo++;
   });
+
 
   const footerStart = worksheet.lastRow!.number + 2;
   const footerLines = [ "Company Authorised Contact Person", "Name : VIJAY SAI", "Contact Number : 919662095558", "Site : RELIANCE INDUSTRIES LTD", "email id: ariesril@ariesmar.com", 'Note : For "New Materials only" Manufacturer Test Certificates submitted.' ];
@@ -273,7 +288,7 @@ export async function generateTpCertPdf(
 
   const tableColumn = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
   
-  const groupedItems = groupItems(certItems);
+  const groupedItems = groupItemsForExport(certItems);
   const tableRows: any[][] = [];
   let srNo = 1;
 
