@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -213,7 +214,7 @@ type AppContextType = {
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
-  updateInventoryItemGroup: (itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
+  updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
   deleteInventoryItem: (itemId: string) => void;
   deleteInventoryItemGroup: (itemName: string) => void;
@@ -2202,8 +2203,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `inventoryItems/${id}`), updates);
   }, []);
   
-  const updateInventoryItemGroup = useCallback((itemName: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
-    const itemsToUpdate = inventoryItems.filter(item => item.name === itemName);
+  const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
+    const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === originalDueDate);
     if(itemsToUpdate.length === 0) return;
     const dbUpdates: { [key: string]: any } = {};
     itemsToUpdate.forEach(item => {
@@ -3451,3 +3452,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
