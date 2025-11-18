@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -46,83 +47,117 @@ export default function RecentPlannerActivity() {
     const myAllPendingUpdates: MyPendingUpdateInfo[] = [];
     const userMap = new Map(users.map(u => [u.id, u]));
 
-    // Check for unread comments on events I'm part of
+    // Process unread comments
     dailyPlannerComments.forEach(dayComment => {
-      if (!dayComment || !dayComment.day || !dayComment.comments) return;
-      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      comments.forEach(comment => {
-        if (!comment) return;
-        const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
-        if (!eventForComment || !userMap.has(eventForComment.userId)) return;
+        if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
-        const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
-        const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
+        // Skip ghost user days
+        if (!userMap.has(dayComment.userId)) return;
 
-        if (isParticipant && isUnreadFromOther) {
-            allUnread.push({ type: 'comment', day: dayComment.day, event: eventForComment, comment, delegatedBy: users.find(u => u.id === eventForComment.creatorId), delegatedTo: users.find(u => u.id === eventForComment.userId) });
-        }
-      });
+        const comments = Array.isArray(dayComment.comments)
+            ? dayComment.comments
+            : Object.values(dayComment.comments || {});
+
+        comments.forEach(comment => {
+            if (!comment) return;
+
+            const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
+            if (!eventForComment) return; // event deleted → skip
+
+            // Skip ghost event users
+            if (!userMap.has(eventForComment.userId) || !userMap.has(eventForComment.creatorId)) return;
+
+            // Skip ghost comment users
+            if (!userMap.has(comment.userId)) return;
+
+            const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
+            const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
+
+            if (isParticipant && isUnreadFromOther) {
+                allUnread.push({
+                    type: 'comment',
+                    day: dayComment.day,
+                    event: eventForComment,
+                    comment,
+                    delegatedBy: userMap.get(eventForComment.creatorId),
+                    delegatedTo: userMap.get(eventForComment.userId),
+                });
+            }
+        });
     });
 
+    // Check pending updates
     const checkEventForPendingUpdate = (event: PlannerEvent) => {
+        const assignedUserExists = userMap.has(event.userId);
+        const creatorExists = userMap.has(event.creatorId);
+        if (!assignedUserExists || !creatorExists) return; // skip ghost events
+
         const eventDate = parseISO(event.date);
+        if (isNaN(eventDate.getTime())) return;
 
-        if (isPast(eventDate) || isToday(eventDate)) {
-            const dayStr = format(eventDate, 'yyyy-MM-dd');
-            const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
-            const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c && c.eventId === event.id) : [];
+        if (!(isPast(eventDate) || isToday(eventDate))) return;
 
-            // Check for delegator's view (my delegated events)
-            if (event.creatorId === user.id && event.userId !== user.id) {
-                const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
-                const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+        const dayStr = format(eventDate, 'yyyy-MM-dd');
+        const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
 
-                if (!assigneeCommented && !isDismissed) {
-                    allPendingUpdates.push({
-                        type: 'pending_update',
-                        day: dayStr,
-                        event: event,
-                        delegatedTo: userMap.get(event.userId),
-                    });
-                }
+        const commentsForEvent = dayCommentData
+            ? Object.values(dayCommentData.comments || {}).filter(c => c && c.eventId === event.id)
+            : [];
+
+        // Delegator view
+        if (event.creatorId === user.id && event.userId !== user.id) {
+            const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
+            const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+
+            if (!assigneeCommented && !isDismissed) {
+                allPendingUpdates.push({
+                    type: 'pending_update',
+                    day: dayStr,
+                    event,
+                    delegatedTo: userMap.get(event.userId),
+                });
             }
+        }
 
-            // Check for assignee's view (events delegated to me)
-            if (event.userId === user.id && event.creatorId !== user.id) {
-                const iCommented = commentsForEvent.some(c => c.userId === user.id);
-
-                if (!iCommented) {
-                    myAllPendingUpdates.push({
-                        type: 'my_pending_update',
-                        day: dayStr,
-                        event: event,
-                        delegatedBy: userMap.get(event.creatorId),
-                    });
-                }
+        // Assignee view
+        if (event.userId === user.id && event.creatorId !== user.id) {
+            const iCommented = commentsForEvent.some(c => c.userId === user.id);
+            if (!iCommented) {
+                myAllPendingUpdates.push({
+                    type: 'my_pending_update',
+                    day: dayStr,
+                    event,
+                    delegatedBy: userMap.get(event.creatorId),
+                });
             }
         }
     };
-    
-    // Iterate over all delegated events
+
+    // Iterate valid events only
     plannerEvents.forEach(event => {
+        if (!event) return;
+        if (!userMap.has(event.userId) || !userMap.has(event.creatorId)) return; // skip old/deleted events
+
         if (event.creatorId === user.id || event.userId === user.id) {
             if (event.frequency === 'once') {
                 checkEventForPendingUpdate(event);
             } else {
                 const instances = getExpandedPlannerEvents(parseISO(event.date), event.userId);
                 instances.forEach(instance => {
+                    // Skip invalid ghost recurrence instance
+                    if (!instance?.eventDate) return;
                     checkEventForPendingUpdate({ ...event, date: instance.eventDate.toISOString() });
                 });
             }
         }
     });
 
-    return { 
-        unreadComments: allUnread.sort((a,b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()),
+    return {
+        unreadComments: allUnread.sort((a, b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()),
         pendingUpdates: [...new Map(allPendingUpdates.map(item => [`${item.day}-${item.event.id}`, item])).values()],
-        myPendingUpdates: [...new Map(myAllPendingUpdates.map(item => [`${item.day}-${item.event.id}`, item])).values()]
+        myPendingUpdates: [...new Map(myAllPendingUpdates.map(item => [`${item.day}-${item.event.id}`, item])).values()],
     };
-  }, [user, dailyPlannerComments, plannerEvents, users, getExpandedPlannerEvents]);
+}, [user, dailyPlannerComments, plannerEvents, users, getExpandedPlannerEvents]);
 
   if (unreadComments.length === 0 && myPendingUpdates.length === 0 && pendingUpdates.length === 0) {
     return null;
@@ -137,7 +172,7 @@ export default function RecentPlannerActivity() {
       }
     }
   };
-  
+
   const handleAddComment = (eventId: string, day: string, userId: string) => {
     const commentKey = `${day}-${eventId}`;
     const commentText = newComments[commentKey];
@@ -264,3 +299,5 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+
+    
