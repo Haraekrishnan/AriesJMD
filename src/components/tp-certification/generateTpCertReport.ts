@@ -86,7 +86,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
     // FINAL formatted serial string (UI & Export match)
     const finalSerial =
       ariesId && ariesId.trim() !== ""
-        ? `${serial} (Aries ID: ${ariesId})`
+        ? `${serial} (${ariesId})`
         : serial;
 
     // Material name resolver
@@ -367,4 +367,23 @@ export async function generateTpCertPdf(
   doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', footerX, footerY);
 
   doc.save("TP_Certification_List.pdf");
+}
+
+
+export async function generateChecklistPdf(
+  checklist: any,
+  item: any,
+  inspector: any,
+  reviewer: any
+) {
+  // Implementation for checklist PDF generation
+}
+
+export async function generateChecklistExcel(
+  checklist: any,
+  item: any,
+  inspector: any,
+  reviewer: any
+) {
+  // Implementation for checklist Excel generation
 }
