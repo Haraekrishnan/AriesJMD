@@ -15,7 +15,7 @@ import type {
   LaptopDesktop,
   MobileSim,
 } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 type FullItem =
   | InventoryItem
@@ -35,34 +35,6 @@ interface CertItem {
   chestCrollNo?: string | null;
   ariesId?: string | null;
 }
-
-const getCapacity = (materialName: string): string => {
-  const name = materialName.toLowerCase();
-  if (name.includes('tape sling')) return '220KG X 1.5 MTR';
-  if (name.includes('asap lock')) return '130KG';
-  if (name.includes('asap')) return '130 KG';
-  if (name.includes('id')) return '150 KG';
-  if (name.includes('hand jammer')) return '150 KG';
-  if (name.includes('wire sling')) return '0.5 T X 2M';
-  if (name.includes('fixe pulley')) return '23 KN';
-  if (name.includes('rescue pulley')) return '36 KN';
-  if (name.includes('double pulley')) return '36 KN';
-  if (name.includes('twin pulley')) return '36 KN';
-  if (name.includes('swivel pulley')) return '36 KN';
-  if (name.includes('dee shackle')) return '3.25MT';
-  if (name.includes('harness')) return '140 KG';
-
-  const liftingMagnetMatch = name.match(/lifting magnet (\d+)\s?kg/);
-  if (liftingMagnetMatch) return `${liftingMagnetMatch[1]} kg`;
-
-  const webSlingMatch = name.match(/web sling.*?(\d+t)/);
-  if (webSlingMatch) return webSlingMatch[1].toUpperCase();
-
-  const chainBlockMatch = name.match(/chain block.*?(\d+t)/);
-  if (chainBlockMatch) return chainBlockMatch[1].toUpperCase();
-
-  return '';
-};
 
 const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem[] => {
   return items.map(it => {
@@ -113,6 +85,34 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       ariesId,
     };
   });
+};
+
+const getCapacity = (materialName: string): string => {
+  const name = materialName.toLowerCase();
+  if (name.includes('tape sling')) return '220KG X 1.5 MTR';
+  if (name.includes('asap lock')) return '130KG';
+  if (name.includes('asap')) return '130 KG';
+  if (name.includes('id')) return '150 KG';
+  if (name.includes('hand jammer')) return '150 KG';
+  if (name.includes('wire sling')) return '0.5 T X 2M';
+  if (name.includes('fixe pulley')) return '23 KN';
+  if (name.includes('rescue pulley')) return '36 KN';
+  if (name.includes('double pulley')) return '36 KN';
+  if (name.includes('twin pulley')) return '36 KN';
+  if (name.includes('swivel pulley')) return '36 KN';
+  if (name.includes('dee shackle')) return '3.25MT';
+  if (name.includes('harness')) return '140 KG';
+
+  const liftingMagnetMatch = name.match(/lifting magnet (\d+)\s?kg/);
+  if (liftingMagnetMatch) return `${liftingMagnetMatch[1]} kg`;
+
+  const webSlingMatch = name.match(/web sling.*?(\d+t)/);
+  if (webSlingMatch) return webSlingMatch[1].toUpperCase();
+
+  const chainBlockMatch = name.match(/chain block.*?(\d+t)/);
+  if (chainBlockMatch) return chainBlockMatch[1].toUpperCase();
+
+  return '';
 };
 
 const groupItemsForExport = (items: CertItem[]) => {
@@ -186,7 +186,7 @@ export async function generateTpCertExcel(
   worksheet.getCell(`A${startRow + 3}`).alignment = { horizontal: 'left' };
 
   const headerRowIndex = startRow + 5;
-  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report (Form No.10/12/Any Other)" ];
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
   const hr = worksheet.getRow(headerRowIndex);
   hr.values = headers;
   hr.eachCell(cell => {
@@ -199,13 +199,13 @@ export async function generateTpCertExcel(
   worksheet.columns = [
     { width: 8 },   // SR. No.
     { width: 25 },  // Material Name
-    { width: 30 },  // Manufacturer Sr. No.
-    { width: 25 },  // Chest Scroll No.
+    { width: 45 },  // Manufacturer Sr. No.
+    { width: 35 },  // Chest Scroll No.
     { width: 15 },  // Cap. in MT
     { width: 10 },  // Qty in Nos
     { width: 15 },  // New or Old
     { width: 20 },  // Valid upto if Renewal
-    { width: 30 },  // Submit Last Testing Report
+    { width: 15 },  // Submit Last Testing Report
   ];
 
   const groupedItems = groupItemsForExport(certItems);
@@ -219,36 +219,36 @@ export async function generateTpCertExcel(
 
     group.forEach((item, index) => {
       const rowData = [
-        index === 0 ? srNo : '',
-        index === 0 ? item.materialName : '',
+        srNo,
+        item.materialName,
         item.manufacturerSrNo,
         isHarness ? item.chestCrollNo || '' : '',
-        index === 0 ? getCapacity(item.materialName) : '',
-        index === 0 ? groupSize : '',
-        index === 0 ? 'OLD' : '',
+        getCapacity(item.materialName),
+        groupSize,
+        'OLD',
         '',
         ''
       ];
       const row = worksheet.addRow(rowData);
       
-      if (!isHarness) worksheet.mergeCells(row.number, 3, row.number, 4);
+      if (!isHarness) {
+        worksheet.mergeCells(row.number, 3, row.number, 4);
+      }
 
-      row.eachCell(cell => {
+      row.eachCell((cell, colNumber) => {
         cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        
+        // Don't merge the first item of a group that will be merged
+        if (index > 0 && [1, 2, 5, 6, 7, 8, 9].includes(colNumber)) return;
+        
+        if (index === 0 && groupSize > 1) {
+            worksheet.mergeCells(groupStartRow, colNumber, groupStartRow + groupSize - 1, colNumber);
+        }
       });
       currentRowIndex++;
     });
 
-    if (groupSize > 1) {
-      worksheet.mergeCells(groupStartRow, 1, groupStartRow + groupSize - 1, 1);
-      worksheet.mergeCells(groupStartRow, 2, groupStartRow + groupSize - 1, 2);
-      worksheet.mergeCells(groupStartRow, 5, groupStartRow + groupSize - 1, 5);
-      worksheet.mergeCells(groupStartRow, 6, groupStartRow + groupSize - 1, 6);
-      worksheet.mergeCells(groupStartRow, 7, groupStartRow + groupSize - 1, 7);
-      worksheet.mergeCells(groupStartRow, 8, groupStartRow + groupSize - 1, 8);
-      worksheet.mergeCells(groupStartRow, 9, groupStartRow + groupSize - 1, 9);
-    }
     srNo++;
   });
 
@@ -343,35 +343,38 @@ export async function generateTpCertPdf(
   
   const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
   const finalTableColumns = isAnyHarness ? tableColumn : tableColumn.filter(header => header !== "Chest Scroll No.");
-  const columnStyles = isAnyHarness
-    ? {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 70 },
-        2: { cellWidth: 90 }, // Manufacturer Sr. No.
-        3: { cellWidth: 70 }, // Chest Scroll No.
-        4: { cellWidth: 40 },
-        5: { cellWidth: 30 },
-        6: { cellWidth: 35 },
-        7: { cellWidth: 50 },
-        8: { cellWidth: 'auto' },
-      }
-    : {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 70 },
-        2: { cellWidth: 160 }, // Merged Manufacturer Sr. No. and Chest Scroll No.
-        3: { cellWidth: 40 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: 35 },
-        6: { cellWidth: 50 },
-        7: { cellWidth: 'auto' },
-      };
+  const columnStyles = {
+    0: { cellWidth: 25 },
+    1: { cellWidth: 60 },
+    2: { cellWidth: 120 }, // Manufacturer Sr. No.
+    3: { cellWidth: 80 }, // Chest Scroll No.
+    4: { cellWidth: 40 }, // Cap
+    5: { cellWidth: 30 }, // Qty
+    6: { cellWidth: 35 }, // New/Old
+    7: { cellWidth: 50 }, // Valid
+    8: { cellWidth: 'auto' }, // Last column
+  };
+
+  if(!isAnyHarness) {
+    columnStyles[2].cellWidth = 200; // Merge manufacturer and chest croll widths
+    delete (columnStyles as any)[3];
+    // Shift subsequent column styles
+    const keys = Object.keys(columnStyles).map(Number).sort((a, b) => a - b);
+    for (let i = 0; i < keys.length; i++) {
+        if(keys[i] > 2) {
+            (columnStyles as any)[keys[i] - 1] = (columnStyles as any)[keys[i]];
+            delete (columnStyles as any)[keys[i]];
+        }
+    }
+  }
+
 
   (doc as any).autoTable({
       head: [finalTableColumns],
       body: tableRows,
       startY: 170,
       theme: "grid",
-      styles: { fontSize: 8, halign: 'center', valign: 'middle' },
+      styles: { fontSize: 7, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
       columnStyles: columnStyles,
       didParseCell: (data: any) => {
