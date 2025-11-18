@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, startOfToday } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, startOfMonth } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -78,7 +78,8 @@ export default function RecentPlannerActivity() {
     const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && userMap.has(e.userId));
     
     myDelegatedEvents.forEach(event => {
-      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
+      // Correctly get events for the current month view and filter for past instances
+      const expanded = getExpandedPlannerEvents(startOfMonth(new Date()), event.userId);
       const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
 
       pastInstances.forEach(instance => {
@@ -103,7 +104,7 @@ export default function RecentPlannerActivity() {
     // Assignee View: Check for events delegated TO ME that I haven't updated
     const eventsDelegatedToMe = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id);
     eventsDelegatedToMe.forEach(event => {
-        const expanded = getExpandedPlannerEvents(parseISO(event.date), user.id);
+        const expanded = getExpandedPlannerEvents(startOfMonth(new Date()), user.id);
         const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
 
         pastInstances.forEach(instance => {
