@@ -382,7 +382,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                         </div>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleConfirmAction()}>{action}</AlertDialogAction>
+                            <AlertDialogAction onClick={() => handleConfirmAction()}>Confirm</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
