@@ -46,7 +46,7 @@ export default function RecentPlannerActivity() {
     const myAllPendingUpdates: MyPendingUpdateInfo[] = [];
     const userMap = new Map(users.map(u => [u.id, u]));
 
-    // Check for unread comments
+    // Check for unread comments on events I'm part of
     dailyPlannerComments.forEach(dayComment => {
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
 
@@ -78,8 +78,8 @@ export default function RecentPlannerActivity() {
     const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && userMap.has(e.userId));
     
     myDelegatedEvents.forEach(event => {
-      // Correctly get events for the current month view and filter for past instances
-      const expanded = getExpandedPlannerEvents(startOfMonth(new Date()), event.userId);
+      // Use the event's own start date to get its instances
+      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
       const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
 
       pastInstances.forEach(instance => {
@@ -104,7 +104,7 @@ export default function RecentPlannerActivity() {
     // Assignee View: Check for events delegated TO ME that I haven't updated
     const eventsDelegatedToMe = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id);
     eventsDelegatedToMe.forEach(event => {
-        const expanded = getExpandedPlannerEvents(startOfMonth(new Date()), user.id);
+        const expanded = getExpandedPlannerEvents(parseISO(event.date), user.id);
         const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
 
         pastInstances.forEach(instance => {
