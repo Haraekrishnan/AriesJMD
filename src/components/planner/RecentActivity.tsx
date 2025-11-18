@@ -67,8 +67,9 @@ export default function RecentPlannerActivity() {
             const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${user.id}`);
             const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
             const iCommented = commentsForEvent.some(c => c.userId === user.id);
+            const isDismissed = user.dismissedPendingUpdates && user.dismissedPendingUpdates[`${event.id}_${dayStr}`];
 
-            if (!iCommented) {
+            if (!iCommented && !isDismissed) {
                 myAllPendingUpdates.push({ type: 'my_pending_update', day: dayStr, event: event, delegatedBy: users.find(u => u.id === event.creatorId) });
             }
         });
@@ -93,6 +94,10 @@ export default function RecentPlannerActivity() {
       }
     }
   };
+  
+  const handleDismissUpdate = (eventId: string, day: string) => {
+    dismissPendingUpdate(eventId, day);
+  }
 
   const handleGoToEvent = (day: string, eventUserId: string) => {
     router.push(`/schedule?userId=${eventUserId}&date=${day}`);
@@ -120,7 +125,10 @@ export default function RecentPlannerActivity() {
                                         Update needed for {format(parseISO(day), 'dd MMM, yyyy')}. Delegated by <span className="font-medium">{delegatedBy?.name}</span>.
                                     </p>
                                 </div>
-                                <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Add Update</Button>
+                                <div className='flex items-center gap-1'>
+                                    <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Add Update</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => handleDismissUpdate(event.id, day)}>Dismiss</Button>
+                                </div>
                             </div>
                         </div>
                     ))}
