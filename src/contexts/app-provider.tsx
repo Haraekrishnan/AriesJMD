@@ -3135,7 +3135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (room.beds) {
            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
            if (bedKey) {
-                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}/occupantId`));
+                remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/occupantId`));
            }
         }
     }
@@ -3475,8 +3475,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const lastManpowerUpdate = useMemo(() => {
       if (!manpowerLogs || manpowerLogs.length === 0) return null;
-      // Sort logs by `updatedAt` in descending order and get the first one
-      const sortedLogs = [...manpowerLogs].sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
+      const sortedLogs = manpowerLogs
+        .filter(log => log && log.updatedAt)
+        .sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
+      if (sortedLogs.length === 0) return null;
       return sortedLogs[0].updatedAt;
   }, [manpowerLogs]);
   
@@ -3834,6 +3836,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 
