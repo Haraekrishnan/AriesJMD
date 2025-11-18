@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -2211,14 +2210,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
     const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === originalDueDate);
-    if(itemsToUpdate.length === 0) return;
+    if (itemsToUpdate.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Items Found',
+        description: `No "${itemName}" items with the due date ${format(parseISO(originalDueDate), 'dd-MM-yyyy')} were found.`,
+      });
+      return;
+    }
     const dbUpdates: { [key: string]: any } = {};
     itemsToUpdate.forEach(item => {
-        if(updates.tpInspectionDueDate) dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate;
-        if(updates.certificateUrl) dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
+      if (updates.tpInspectionDueDate) {
+        dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate;
+      }
+      if (updates.certificateUrl) {
+        dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
+      }
     });
-    update(ref(rtdb), dbUpdates);
-  }, [inventoryItems]);
+    if (Object.keys(dbUpdates).length > 0) {
+      update(ref(rtdb), dbUpdates);
+    }
+  }, [inventoryItems, toast]);
 
   const updateInventoryItemGroupByProject = useCallback((itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
     const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.projectId === projectId);
@@ -3450,5 +3462,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-

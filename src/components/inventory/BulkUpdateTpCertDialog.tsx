@@ -16,10 +16,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronsUpDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { format, parseISO } from 'date-fns';
+import { DatePickerInput } from '../ui/date-picker-input';
 
 const bulkUpdateSchema = z.object({
   itemName: z.string().min(1, 'Please select an item name.'),
-  tpInspectionDueDate: z.string({ required_error: 'TP Inspection Due Date is required' }),
+  originalDueDate: z.string({ required_error: 'Please select the due date to target.' }),
+  newDueDate: z.date({ required_error: 'A new due date is required.' }),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }),
 });
 
@@ -55,13 +57,13 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
   }, [watchItemName, inventoryItems]);
 
   const onSubmit = (data: BulkUpdateFormValues) => {
-    updateInventoryItemGroup(data.itemName, {
-      tpInspectionDueDate: data.tpInspectionDueDate,
+    updateInventoryItemGroup(data.itemName, data.originalDueDate, {
+      tpInspectionDueDate: data.newDueDate.toISOString(),
       certificateUrl: data.certificateUrl,
     });
     toast({
       title: 'Bulk Update Successful',
-      description: `All items named "${data.itemName}" have been updated.`,
+      description: `All items named "${data.itemName}" with the selected due date have been updated.`,
     });
     setIsOpen(false);
     form.reset();
@@ -80,7 +82,7 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
         <DialogHeader>
           <DialogTitle>Bulk Update TP Certificate</DialogTitle>
           <DialogDescription>
-            Update the TP Inspection Due Date and Certificate Link for all items with the same name.
+            Update the TP Inspection Due Date and Certificate Link for all items with the same name and due date.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -109,7 +111,7 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
                               value={name}
                               onSelect={() => {
                                 form.setValue("itemName", name);
-                                form.setValue("tpInspectionDueDate", ""); // Reset date on item change
+                                form.setValue("originalDueDate", ""); // Reset date on item change
                                 setIsItemPopoverOpen(false);
                               }}
                             >
@@ -127,14 +129,14 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
           </div>
 
           <div className="space-y-2">
-            <Label>TP Inspection Due Date to Update</Label>
+            <Label>Current TP Inspection Due Date</Label>
             <Controller
-                name="tpInspectionDueDate"
+                name="originalDueDate"
                 control={form.control}
                 render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value} disabled={!watchItemName || availableDates.length === 0}>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select a due date..." />
+                            <SelectValue placeholder="Select a due date to target..." />
                         </SelectTrigger>
                         <SelectContent>
                             {availableDates.map(date => (
@@ -146,7 +148,13 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
                     </Select>
                 )}
             />
-            {form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}
+            {form.formState.errors.originalDueDate && <p className="text-xs text-destructive">{form.formState.errors.originalDueDate.message}</p>}
+          </div>
+          
+           <div className="space-y-2">
+            <Label>New TP Inspection Due Date</Label>
+            <Controller name="newDueDate" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+            {form.formState.errors.newDueDate && <p className="text-xs text-destructive">{form.formState.errors.newDueDate.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -157,7 +165,7 @@ export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdate
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Update All</Button>
+            <Button type="submit">Update Matching Items</Button>
           </DialogFooter>
         </form>
       </DialogContent>
