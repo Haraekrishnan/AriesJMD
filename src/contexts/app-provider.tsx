@@ -493,7 +493,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
-            setUser(foundUser);
+            if (foundUser.status === 'locked' || foundUser.status === 'deactivated') {
+                setUser(foundUser); 
+                router.push('/status');
+            } else {
+                setUser(foundUser);
+                router.push('/dashboard');
+            }
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
             return { success: true, status: foundUser.status || 'active', user: foundUser };
@@ -501,7 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -794,9 +800,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Add store personnel to CC
         const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Project Coordinator', 'Admin'].includes(u.role));
         storePersonnel.forEach(p => { if (p.email) allRecipients.add(p.email) });
-        
+  
         const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        
+  
         allRecipients.forEach(recipientEmail => {
              if (recipientEmail !== user.email) {
                 createAndSendNotification(
@@ -2208,8 +2214,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if(itemsToUpdate.length === 0) return;
     const dbUpdates: { [key: string]: any } = {};
     itemsToUpdate.forEach(item => {
-        dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate || item.tpInspectionDueDate;
-        dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl || item.certificateUrl;
+        if(updates.tpInspectionDueDate) dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate;
+        if(updates.certificateUrl) dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
     });
     update(ref(rtdb), dbUpdates);
   }, [inventoryItems]);
@@ -3291,17 +3297,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (!storedUserId) {
       setLoading(false);
-      // Clear all state when user logs out
-      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
-      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
-      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setInventoryTransferRequestsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
-      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
-      clearState(setUnlockRequestsById);
-      clearState(setTpCertListsById);
-      clearState(setDownloadableDocumentsById);
-      clearState(setLogbookRequestsById);
-      clearState(setInspectionChecklistsById);
+      if (pathname !== '/login') {
+        router.push('/login');
+      }
       return;
     }
   
@@ -3376,7 +3374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       brandingListener();
       dismissedListener();
     };
-  }, [storedUserId, user?.role]);
+  }, [storedUserId, user?.role, pathname, router]);
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -3452,4 +3450,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
