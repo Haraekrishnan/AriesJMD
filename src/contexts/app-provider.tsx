@@ -203,7 +203,7 @@ type AppContextType = {
   addPpeRequest: (request: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
-  addPpeRequestComment: (requestId: string, commentText: string) => void;
+  addPpeRequestComment: (requestId: string, commentText: string, notify?: boolean) => void;
   resolvePpeDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
   deletePpeAttachment: (requestId: string) => void;
@@ -495,12 +495,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
+            if (foundUser.status === 'locked') {
+                router.replace('/status');
+            }
             return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -1044,19 +1047,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     const newStatus = task.statusRequest.newStatus;
     
-    updates[`tasks/${taskId}/status`] = newStatus;
-    updates[`tasks/${taskId}/subtasks`] = Object.entries(task.subtasks || {}).reduce((acc, [userId, subtask]) => {
+    updates[`/tasks/${taskId}/status`] = newStatus;
+    updates[`/tasks/${taskId}/subtasks`] = Object.entries(task.subtasks || {}).reduce((acc, [userId, subtask]) => {
       acc[userId] = { ...subtask, status: newStatus };
       return acc;
     }, {} as {[key:string]: Subtask});
     
     if (newStatus === 'Done') {
-        updates[`tasks/${taskId}/completionDate`] = new Date().toISOString();
+        updates[`/tasks/${taskId}/completionDate`] = new Date().toISOString();
     }
     
-    updates[`tasks/${taskId}/statusRequest`] = null;
-    updates[`tasks/${taskId}/approvalState`] = 'none';
-    updates[`tasks/${taskId}/viewedBy/${task.statusRequest.requestedBy}`] = false;
+    updates[`/tasks/${taskId}/statusRequest`] = null;
+    updates[`/tasks/${taskId}/approvalState`] = 'none';
+    updates[`/tasks/${taskId}/viewedBy/${task.statusRequest.requestedBy}`] = false;
 
     update(ref(rtdb), updates);
     toast({ title: 'Task Approved' });
@@ -2140,8 +2143,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const markPpeRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;
-    update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
-  }, [user]);
+    const request = ppeRequests.find(r => r.id === requestId);
+    if(request?.requesterId === user.id) {
+        update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
+    }
+  }, [user, ppeRequests]);
   
   const updatePpeStock = useCallback((stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => {
       if (!user) return;
@@ -2427,49 +2433,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
-  
-  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+
+  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
-    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
-    
-    const sanitizedItems = requestData.items.map(item => ({
-      ...item,
+    const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
       ariesId: item.ariesId || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
     }));
-  
-    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-        ...requestData,
+    const newList: Omit<TpCertList, 'id'> = {
+        ...listData,
         items: sanitizedItems,
-        requesterId: user.id,
-        requestDate: new Date().toISOString(),
-        status: 'Pending',
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
     };
-    set(newRequestRef, newRequest);
-    addActivityLog(user.id, 'Inventory Transfer Request Created');
-  
-    const approvers = users.filter(u => can.approve_store_requests);
-    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-  
-    approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Request from ${user.name}`,
-          'New Inventory Transfer Request',
-          {
-            'Requester': user.name,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': requestData.reason,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Request'
-        );
-      }
-    });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects]);
+    set(newRef, newList);
+    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
 
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
@@ -2534,6 +2518,67 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
     }
   }, [user, addActivityLog, addTpCertList, users, projects]);
+  
+  const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
+    if (!user) return;
+    const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    
+    const sanitizedItems = requestData.items.map(item => ({
+      ...item,
+      ariesId: item.ariesId || null,
+    }));
+  
+    const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+        ...requestData,
+        items: sanitizedItems,
+        requesterId: user.id,
+        requestDate: new Date().toISOString(),
+        status: 'Pending',
+    };
+    set(newRequestRef, newRequest);
+    addActivityLog(user.id, 'Inventory Transfer Request Created');
+  
+    const approvers = users.filter(u => can.approve_store_requests);
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+  
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
+  }, [user, addActivityLog, users, can.approve_store_requests, projects, addTpCertList]);
+  
+  const deleteInventoryTransferRequest = useCallback((requestId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only an administrator can delete transfer requests.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `inventoryTransferRequests/${requestId}`));
+    toast({
+      title: 'Transfer Request Deleted',
+      description: 'The request has been permanently removed.',
+      variant: 'destructive',
+    });
+    addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
+  }, [user, toast, addActivityLog]);
   
   const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -2644,7 +2689,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
     }
   }, [user, inventoryTransferRequests]);
+  
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    if (!user) return;
+    const { id, ...data } = listData;
+    const sanitizedItems = data.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+    }));
+    const sanitizedData = { ...data, items: sanitizedItems };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+    addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
+  }, [user, addActivityLog]);
 
+  const deleteTpCertList = useCallback((listId: string) => {
+    if (!user || user.role !== 'Admin') return;
+    remove(ref(rtdb, `tpCertLists/${listId}`));
+    addActivityLog(user.id, 'TP Certification List Deleted', `List ID: ${listId}`);
+  }, [user, addActivityLog]);
+  
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -3403,52 +3470,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
   
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: (item as any).chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
-  
-  const updateTpCertList = useCallback((listData: TpCertList) => {
-    if (!user) return;
-    const { id, ...data } = listData;
-    const sanitizedItems = data.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
-    }));
-    const sanitizedData = { ...data, items: sanitizedItems };
-    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-    addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
-  }, [user, addActivityLog]);
-  
-  const deleteTpCertList = useCallback((listId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `tpCertLists/${listId}`));
-    addActivityLog(user.id, 'TP Certification List Deleted', `List ID: ${listId}`);
-  }, [user, addActivityLog]);
-
-  // All other function definitions exist here...
-  
-  // SECTION: Computed Values (Memoized)
   const isManpowerUpdatedToday = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     return manpowerLogs.some(log => log.date === todayStr);
@@ -3640,6 +3661,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave };
   }, [manpowerLogs, projects]);
   
+  // All other function definitions exist here...
+  // ... including login, logout, etc.
+
+  // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can, isManpowerUpdatedToday, lastManpowerUpdate,
@@ -3832,3 +3857,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
