@@ -50,7 +50,6 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       const [listName, setListName] = useState('');
       const [listDate, setListDate] = useState<Date | undefined>(new Date());
 
-
       const allSearchableItems = useMemo(() => {
         const items: SearchableItem[] = [];
         inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
@@ -87,7 +86,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       const uniqueItemNames = useMemo(() => {
         const names = new Set<string>();
         allSearchableItems.forEach(item => {
-            const name = (item as any).name || (item as any).machineName || (item as any).equipmentName;
+            const name = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).model;
             if (name) names.add(name);
         });
         return Array.from(names).sort();
@@ -96,7 +95,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       const itemsOfSelectedName = useMemo(() => {
         if (!selectedItemName) return [];
         return allSearchableItems.filter(item => {
-            const name = 'name' in item ? item.name : ('machineName' in item ? item.machineName : ('equipmentName' in item ? item.equipmentName : ''));
+            const name = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).model;
             return name === selectedItemName;
         });
       }, [selectedItemName, allSearchableItems]);
@@ -107,21 +106,22 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         }
         const term = searchTerm.toLowerCase();
         return itemsOfSelectedName.filter(item => 
-            (item.serialNumber && item.serialNumber.toLowerCase().includes(term)) ||
+            ((item as any).serialNumber && (item as any).serialNumber.toLowerCase().includes(term)) ||
             (item.ariesId && item.ariesId.toLowerCase().includes(term))
         );
       }, [searchTerm, itemsOfSelectedName]);
 
 
       const handleSelect = (item: SearchableItem) => {
-        const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName;
-      
+        const materialName = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).model;
+        const serialNumber = (item as any).serialNumber || (item as any).model || (item as any).makeModel || (item as any).number || 'N/A';
+
         const newItem: TpCertListItem = {
           itemId: item.id,
           itemType: item.itemType,
           materialName,
-          manufacturerSrNo: (item as any).serialNumber,
-          chestCrollNo: item.itemType === 'Inventory' && materialName?.toLowerCase() === 'harness' ? (item as InventoryItem).chestCrollNo : undefined,
+          manufacturerSrNo: serialNumber,
+          chestCrollNo: (item as InventoryItem).chestCrollNo,
           ariesId: item.ariesId || null,
         };
       
@@ -214,21 +214,23 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                           onValueChange={setSearchTerm}
                           disabled={!selectedItemName}
                         />
-                        <CommandList>
-                            <CommandEmpty>No results found.</CommandEmpty>
-                            <CommandGroup>
-                                {filteredItems.map(item => (
-                                <CommandItem
-                                    key={`${item.id}-${item.itemType}`}
-                                    onSelect={() => handleSelect(item)}
-                                    className="cursor-pointer"
-                                >
-                                    {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {(item as any).serialNumber || 'N/A'})
-                                    {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
-                                </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
+                        <ScrollArea className="h-24">
+                          <CommandList>
+                              <CommandEmpty>No results found.</CommandEmpty>
+                              <CommandGroup>
+                                  {filteredItems.map(item => (
+                                  <CommandItem
+                                      key={`${item.id}-${item.itemType}`}
+                                      onSelect={() => handleSelect(item)}
+                                      className="cursor-pointer"
+                                  >
+                                      {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {(item as any).serialNumber || 'N/A'})
+                                      {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
+                                  </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                          </CommandList>
+                        </ScrollArea>
                     </Command>
                  </div>
             </div>
