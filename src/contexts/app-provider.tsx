@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -791,6 +790,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const requester = users.find(u => u.id === request.requesterId);
         if (requester?.email) allRecipients.add(requester.email);
         
+        // Add store personnel to CC
         const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Project Coordinator', 'Admin'].includes(u.role));
         storePersonnel.forEach(p => { if (p.email) allRecipients.add(p.email) });
         
@@ -3445,5 +3445,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
