@@ -1,4 +1,5 @@
 
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -144,7 +145,6 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       (original as any)?.name ||
       (original as any)?.machineName ||
       (original as any)?.equipmentName ||
-      (original as any)?.model ||
       "Unknown";
 
     // Chest croll resolver
@@ -163,6 +163,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
     };
   });
 };
+
 
 export async function generateTpCertExcel(
   items: TpCertListItem[],

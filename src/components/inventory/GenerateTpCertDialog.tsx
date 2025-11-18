@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -224,7 +225,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                       onSelect={() => handleSelect(item)}
                                       className="cursor-pointer"
                                   >
-                                      {(item as any).name || (item as any).machineName || (item as any).equipmentName} — (SN: {(item as any).serialNumber || 'N/A'})
+                                      {(item as any).serialNumber || 'N/A'}
                                       {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
                                   </CommandItem>
                                   ))}
