@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '../ui/scroll-area';
 import type { InspectionChecklist } from '@/lib/types';
 import { format } from 'date-fns';
-import { generateChecklistPdf, generateChecklistExcel } from './generateChecklistReport';
+import { generateChecklistPdf, generateChecklistExcel } from '@/components/tp-certification/generateTpCertReport';
 import { Download } from 'lucide-react';
 
 interface ViewInspectionDialogProps {
@@ -66,18 +66,18 @@ export default function ViewInspectionDialog({ isOpen, setIsOpen, checklist }: V
                     <div><span className="font-semibold">Aries ID:</span> {item.ariesId || 'N/A'}</div>
                     <div><span className="font-semibold">Serial No:</span> {item.serialNumber}</div>
                     <div><span className="font-semibold">Model:</span> {item.name}</div>
-                    <div><span className="font-semibold">Date of Purchase:</span> {item.inspectionDate ? format(new Date(item.inspectionDate), 'dd-MMM-yyyy') : 'N/A'}</div>
+                    <div><span className="font-semibold">Date of Purchase:</span> {checklist.purchaseDate ? format(new Date(checklist.purchaseDate), 'dd-MMM-yyyy') : 'N/A'}</div>
                     <div className="lg:col-span-2"><span className="font-semibold">Known History:</span> {checklist.knownHistory || 'None'}</div>
                     <div className="lg:col-span-2"><span className="font-semibold">Procedure Ref:</span> ARIES-RAOP-001 [Rev 07]</div>
                 </div>
 
                 <div className="p-4 border rounded-md space-y-2">
                     <h3 className="font-semibold border-b pb-2">Inspection Findings</h3>
-                    <FindingDisplay label="Preliminary Observation" value={checklist.preliminaryObservation} />
-                    <FindingDisplay label="Condition of Sheath" value={checklist.conditionSheath} />
-                    <FindingDisplay label="Condition of Core" value={checklist.conditionCore} />
-                    <FindingDisplay label="Sheaths & Terminations" value={checklist.sheathsAndTerminations} />
-                    <FindingDisplay label="Other Components" value={checklist.otherComponents} />
+                    <FindingDisplay label="Preliminary Observation" value={checklist.findings?.preliminaryObservation} />
+                    <FindingDisplay label="Condition of Sheath" value={checklist.findings?.straps} />
+                    <FindingDisplay label="Condition of Core" value={checklist.findings?.conditionCore} />
+                    <FindingDisplay label="Sheaths & Terminations" value={checklist.findings?.sheathsAndTerminations} />
+                    <FindingDisplay label="Other Components" value={checklist.findings?.otherComponents} />
                 </div>
 
                  <div className="space-y-1 text-sm">
