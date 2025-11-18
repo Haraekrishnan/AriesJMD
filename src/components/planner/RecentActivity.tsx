@@ -64,43 +64,57 @@ export default function RecentPlannerActivity() {
       });
     });
 
-    const checkEventForPendingUpdate = (event: PlannerEvent, instances: { eventDate: Date }[], updateList: any[], type: 'pending_update' | 'my_pending_update') => {
-        instances.forEach(instance => {
-            const eventDate = instance.eventDate;
-            if (isPast(eventDate) || isToday(eventDate)) {
-                const dayStr = format(eventDate, 'yyyy-MM-dd');
-                const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
-                const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c && c.eventId === event.id) : [];
-                
-                const assigneeId = event.userId;
-                const assigneeCommented = commentsForEvent.some(c => c.userId === assigneeId);
+    const checkEventForPendingUpdate = (event: PlannerEvent) => {
+        const eventDate = parseISO(event.date);
+
+        if (isPast(eventDate) || isToday(eventDate)) {
+            const dayStr = format(eventDate, 'yyyy-MM-dd');
+            const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
+            const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c && c.eventId === event.id) : [];
+
+            // Check for delegator's view (my delegated events)
+            if (event.creatorId === user.id && event.userId !== user.id) {
+                const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
                 const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
 
                 if (!assigneeCommented && !isDismissed) {
-                     updateList.push({
-                        type: type,
+                    allPendingUpdates.push({
+                        type: 'pending_update',
                         day: dayStr,
                         event: event,
-                        delegatedTo: users.find(u => u.id === event.userId),
-                        delegatedBy: users.find(u => u.id === event.creatorId),
+                        delegatedTo: userMap.get(event.userId),
                     });
                 }
             }
-        });
-    };
 
-    // Check for events I delegated that need updates
-    const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && userMap.has(e.userId));
-    myDelegatedEvents.forEach(event => {
-        const instances = event.frequency === 'once' ? [{ eventDate: parseISO(event.date) }] : getExpandedPlannerEvents(parseISO(event.date), event.userId);
-        checkEventForPendingUpdate(event, instances, allPendingUpdates, 'pending_update');
-    });
+            // Check for assignee's view (events delegated to me)
+            if (event.userId === user.id && event.creatorId !== user.id) {
+                const iCommented = commentsForEvent.some(c => c.userId === user.id);
+
+                if (!iCommented) {
+                    myAllPendingUpdates.push({
+                        type: 'my_pending_update',
+                        day: dayStr,
+                        event: event,
+                        delegatedBy: userMap.get(event.creatorId),
+                    });
+                }
+            }
+        }
+    };
     
-    // Check for events delegated TO ME that I haven't updated
-    const eventsDelegatedToMe = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id);
-    eventsDelegatedToMe.forEach(event => {
-        const instances = event.frequency === 'once' ? [{ eventDate: parseISO(event.date) }] : getExpandedPlannerEvents(parseISO(event.date), user.id);
-        checkEventForPendingUpdate(event, instances, myAllPendingUpdates, 'my_pending_update');
+    // Iterate over all delegated events
+    plannerEvents.forEach(event => {
+        if (event.creatorId === user.id || event.userId === user.id) {
+            if (event.frequency === 'once') {
+                checkEventForPendingUpdate(event);
+            } else {
+                const instances = getExpandedPlannerEvents(parseISO(event.date), event.userId);
+                instances.forEach(instance => {
+                    checkEventForPendingUpdate({ ...event, date: instance.eventDate.toISOString() });
+                });
+            }
+        }
     });
 
     return { 
