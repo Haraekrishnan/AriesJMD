@@ -55,7 +55,7 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
     updateOtherEquipment({
         ...item,
         ...data,
-        tpInspectionDueDate: data.tpInspectionDueDate?.toISOString(),
+        tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : null,
     });
     toast({
       title: 'Equipment Updated',

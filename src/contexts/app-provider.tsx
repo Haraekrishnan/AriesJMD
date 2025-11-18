@@ -2644,7 +2644,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
     const { id, ...data } = equipment;
-    update(ref(rtdb, `otherEquipments/${id}`), data);
+    const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => value === undefined ? null : value));
+    update(ref(rtdb, `otherEquipments/${id}`), sanitizedData);
   }, []);
 
   const deleteOtherEquipment = useCallback((equipmentId: string) => {
@@ -3420,20 +3421,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [storedUserId, usersById, dismissedPendingUpdatesById]);
 
-  // Centralized redirection logic
+  // Listen for status changes on the current user
   useEffect(() => {
-    if (loading) return;
-
-    if (user) {
-        if ((user.status === 'locked' || user.status === 'deactivated') && pathname !== '/status') {
-            router.replace('/status');
-        } else if (user.status === 'active' && pathname === '/status') {
-            router.replace('/dashboard');
-        }
-    } else if (pathname !== '/login') {
-        router.replace('/login');
+    if (user?.id) {
+        const userRef = ref(rtdb, `users/${user.id}`);
+        const unsubscribe = onValue(userRef, (snapshot) => {
+            if (!snapshot.exists()) {
+                setStoredUserId(null);
+                setUser(null);
+                router.replace('/login');
+                return;
+            }
+            const updatedUser = { id: snapshot.key, ...snapshot.val() };
+            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                 setUser(updatedUser);
+            }
+        });
+        return () => unsubscribe();
     }
-  }, [user, loading, pathname, router]);
+  }, [user, setStoredUserId, router]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3445,6 +3451,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
