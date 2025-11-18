@@ -470,17 +470,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const logRef = push(ref(rtdb, 'activityLogs'));
     const newLog: Partial<ActivityLog> = {
-      userId,
-      action,
-      timestamp: new Date().toISOString(),
+        userId,
+        action,
+        timestamp: new Date().toISOString(),
     };
     if (details) {
-      newLog.details = details;
+        newLog.details = details;
     }
     set(logRef, newLog);
   }, []);
 
-  // SECTION: AUTHENTICATION
   const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
     setLoading(true);
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -493,17 +492,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
+            setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
-            if (foundUser.status === 'locked') {
-                router.replace('/status');
-            }
             return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -513,7 +510,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(null);
     router.push('/login');
   }, [user, setStoredUserId, router, addActivityLog]);
+  
+  const updateUser = useCallback((updatedUser: User) => {
+    const { id, ...data } = updatedUser;
+    const dataToSave: any = { ...data };
+    if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
+      dataToSave.supervisorId = null;
+    }
+    update(ref(rtdb, `users/${id}`), dataToSave);
+    if (user) {
+      addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
+      if (user.id === updatedUser.id) setUser(updatedUser);
+    }
+  }, [user, addActivityLog]);
 
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
+    if (user) {
+        const updatedUser: User = { ...user, name, email };
+        if (password) updatedUser.password = password;
+
+        if (avatarFile) {
+            try {
+                const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
+                updatedUser.avatar = avatarUrl;
+            } catch (error) {
+                console.error("Avatar upload failed:", error);
+                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
+            }
+        }
+        updateUser(updatedUser);
+    }
+  }, [user, updateUser, toast]);
+  
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
     const snapshot = await get(usersRef);
@@ -550,6 +578,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   }, [users]);
   
+  const generateResetCode = useCallback((requestId: string) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
+  }, []);
+
+  const resolveResetRequest = useCallback((requestId: string) => {
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
+  }, []);
+  
   const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
     const requestsRef = query(ref(rtdb, 'passwordResetRequests'), orderByChild('email'), equalTo(email));
     const snapshot = await get(requestsRef);
@@ -574,53 +611,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     addActivityLog(validRequest.userId, 'Password Reset');
     return true;
+
   }, [addActivityLog]);
-
-  const generateResetCode = useCallback((requestId: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
-  }, []);
   
-  const resolveResetRequest = useCallback((requestId: string) => {
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
-  }, []);
-
-  // All other function definitions exist here...
-  // ... including login, logout, etc.
-
-  // SECTION: ALL FUNCTION DEFINITIONS START HERE
-  
-  const updateUser = useCallback((updatedUser: User) => {
-    const { id, ...data } = updatedUser;
-    const dataToSave: any = { ...data };
-    if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
-      dataToSave.supervisorId = null;
-    }
-    update(ref(rtdb, `users/${id}`), dataToSave);
-    if (user) {
-      addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-      if (user.id === updatedUser.id) setUser(updatedUser);
-    }
-  }, [user, addActivityLog]);
-
-  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
-    if (user) {
-        const updatedUser: User = { ...user, name, email };
-        if (password) updatedUser.password = password;
-
-        if (avatarFile) {
-            try {
-                const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
-                updatedUser.avatar = avatarUrl;
-            } catch (error) {
-                console.error("Avatar upload failed:", error);
-                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
-            }
-        }
-        updateUser(updatedUser);
-    }
-  }, [user, updateUser, toast]);
-
   const lockUser = useCallback((userId: string) => {
     update(ref(rtdb, `users/${userId}`), { status: 'locked' });
   }, []);
@@ -778,7 +771,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById]);
   
-  const addPpeRequestComment = useCallback((requestId: string, commentText: string) => {
+  const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if (!request) return;
@@ -791,22 +784,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email && request.requesterId !== user.id) {
-        const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
-        createAndSendNotification(
-            requester.email,
-            `New Query on your PPE Request for ${employee?.name || '...'}`,
-            `Query from ${user.name}`,
-            {
-                'Request For': employee?.name || 'N/A',
-                'Item': `${request.ppeType} (Size: ${request.size})`,
-                'Question': commentText,
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-            'Reply to Query'
-        );
+    
+    if (notify) {
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email && request.requesterId !== user.id) {
+            const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
+            createAndSendNotification(
+                requester.email,
+                `New Query on your PPE Request for ${employee?.name || '...'}`,
+                `Query from ${user.name}`,
+                {
+                    'Request For': employee?.name || 'N/A',
+                    'Item': `${request.ppeType} (Size: ${request.size})`,
+                    'Question': commentText,
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'Reply to Query'
+            );
+        }
     }
   }, [user, ppeRequests, users, manpowerProfiles]);
 
@@ -1374,7 +1369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reportTime: new Date().toISOString(),
       status: 'New',
       isPublished: false,
-      comments: [{ id: 'comment-initial', userId: user.id, text: 'Incident Reported', date: new Date().toISOString() }],
+      comments: [{ id: 'comment-initial', userId: user.id, text: 'Incident Reported', date: new Date().toISOString(), eventId: newRef.key! }],
       reportedToUserIds: Array.from(reportedToUserIds),
       lastUpdated: new Date().toISOString(),
       viewedBy: { [user.id]: true }
@@ -1392,7 +1387,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: newCommentRef.key,
         userId: user!.id,
         text: comment,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        eventId: id,
       };
       
       // Mark as unread for all participants
@@ -1924,7 +1920,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const requester = users.find(u => u.id === request.requesterId);
     if (requester && requester.email) {
-        const vendor = vendors.find(v => v.id === request.vendorId);
+        const vendor = vendors.find(v => (v as any).id === request.vendorId);
         createAndSendNotification(
             requester.email,
             `Update on your request: ${request.subject}`,
@@ -2032,38 +2028,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
   
     if (status === 'Approved') {
-      updates[`ppeRequests/${requestId}/approverId`] = user.id;
+        updates[`ppeRequests/${requestId}/approverId`] = user.id;
     } else if (status === 'Issued') {
-      updates[`ppeRequests/${requestId}/issuedById`] = user.id;
-      
-      const ppeHistoryRecord: Omit<PpeHistoryRecord, 'id'> = {
-        ppeType: request.ppeType,
-        size: request.size,
-        quantity: request.quantity,
-        issueDate: new Date().toISOString(),
-        requestType: request.requestType,
-        remarks: request.remarks,
-        storeComment: comment,
-        requestId: request.id,
-        issuedById: user.id,
-        approverId: request.approverId,
-      };
-      const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
-      updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
-      
-      if (request.ppeType === 'Coverall') {
-        const stock = ppeStock.find(s => s.id === 'coveralls');
-        if (stock && 'sizes' in stock && stock.sizes) {
-          const currentSizeQty = stock.sizes[request.size] || 0;
-          updates[`ppeStock/coveralls/sizes/${request.size}`] = Math.max(0, currentSizeQty - (request.quantity || 1));
+        updates[`ppeRequests/${requestId}/issuedById`] = user.id;
+        
+        const ppeHistoryRecord: Omit<PpeHistoryRecord, 'id'> = {
+          ppeType: request.ppeType,
+          size: request.size,
+          quantity: request.quantity,
+          issueDate: new Date().toISOString(),
+          requestType: request.requestType,
+          remarks: request.remarks,
+          storeComment: comment,
+          requestId: request.id,
+          issuedById: user.id,
+          approverId: request.approverId,
+        };
+        const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
+        updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
+        
+        if (request.ppeType === 'Coverall') {
+            const stock = ppeStock.find(s => s.id === 'coveralls');
+            if (stock && 'sizes' in stock && stock.sizes) {
+              const currentSizeQty = stock.sizes[request.size] || 0;
+              updates[`ppeStock/coveralls/sizes/${request.size}`] = Math.max(0, currentSizeQty - (request.quantity || 1));
+            }
+        } else {
+            const stock = ppeStock.find(s => s.id === 'safetyShoes');
+            if (stock && 'quantity' in stock) {
+              const currentQty = stock.quantity || 0;
+              updates['ppeStock/safetyShoes/quantity'] = Math.max(0, currentQty - (request.quantity || 1));
+            }
         }
-      } else {
-        const stock = ppeStock.find(s => s.id === 'safetyShoes');
-        if (stock && 'quantity' in stock) {
-          const currentQty = stock.quantity || 0;
-          updates['ppeStock/safetyShoes/quantity'] = Math.max(0, currentQty - (request.quantity || 1));
-        }
-      }
     } else if (status === 'Rejected' || status === 'Disputed') {
       updates[`ppeRequests/${requestId}/approverId`] = user.id;
     }
@@ -2431,49 +2427,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
-  
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: (item as any).chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
-  
-  const updateTpCertList = useCallback((listData: TpCertList) => {
-    if (!user) return;
-    const { id, ...data } = listData;
-    const sanitizedItems = data.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
-    }));
-    const sanitizedData = { ...data, items: sanitizedItems };
-    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-    addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
-  }, [user, addActivityLog]);
-  
-  const deleteTpCertList = useCallback((listId: string) => {
-    if (!user || user.role !== 'Admin') return;
-    remove(ref(rtdb, `tpCertLists/${listId}`));
-    addActivityLog(user.id, 'TP Certification List Deleted', `List ID: ${listId}`);
-  }, [user, addActivityLog]);
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
@@ -2952,7 +2905,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         approverId,
         status: 'pending',
         createdAt: new Date().toISOString(),
-        comments: [{ userId: user.id, text: 'Announcement created', date: new Date().toISOString() }],
+        comments: [{ id: 'comment-initial', userId: user.id, text: 'Announcement created', date: new Date().toISOString(), eventId: newRef.key! }],
         notifyAll: data.notifyAll || false,
     };
     set(newRef, newAnnouncement);
@@ -3879,5 +3832,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
