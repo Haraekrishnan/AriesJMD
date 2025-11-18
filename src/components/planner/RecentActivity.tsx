@@ -67,12 +67,13 @@ export default function RecentPlannerActivity() {
     // Delegator View: Check for events delegated by me that have not been updated
     const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && userMap.has(e.userId));
     myDelegatedEvents.forEach(event => {
-        const eventDate = parseISO(event.date);
-
-        if (isPast(eventDate) && !isToday(eventDate)) {
-            const dayStr = format(eventDate, 'yyyy-MM-dd');
+        // Expand recurring events based on their own start date to find all past instances
+        const expandedInstances = getExpandedPlannerEvents(parseISO(event.date), event.userId);
+        const pastInstances = expandedInstances.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
+        
+        pastInstances.forEach(instance => {
+            const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
             const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
-            
             const commentsForEvent = dayCommentData 
                 ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) 
                 : [];
@@ -88,16 +89,17 @@ export default function RecentPlannerActivity() {
                     delegatedTo: users.find(u => u.id === event.userId)
                 });
             }
-        }
+        });
     });
 
     // Assignee View: Check for events delegated TO ME that I haven't updated
     const eventsDelegatedToMe = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id);
     eventsDelegatedToMe.forEach(event => {
-        const eventDate = parseISO(event.date);
+        const expandedInstances = getExpandedPlannerEvents(parseISO(event.date), user.id);
+        const pastInstances = expandedInstances.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
 
-        if (isPast(eventDate) && !isToday(eventDate)) {
-            const dayStr = format(eventDate, 'yyyy-MM-dd');
+        pastInstances.forEach(instance => {
+            const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
             const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${user.id}`);
             const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
             const iCommented = commentsForEvent.some(c => c.userId === user.id);
@@ -105,7 +107,7 @@ export default function RecentPlannerActivity() {
             if (!iCommented) {
                 myAllPendingUpdates.push({ type: 'my_pending_update', day: dayStr, event: event, delegatedBy: users.find(u => u.id === event.creatorId) });
             }
-        }
+        });
     });
 
     return { 
@@ -170,7 +172,7 @@ export default function RecentPlannerActivity() {
                     ))}
                 </div>
             )}
-            {pendingUpdates.length > 0 && (
+             {pendingUpdates.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-orange-500" />Pending Event Updates from Your Team</h4>
                  {pendingUpdates.map(({ day, event, delegatedTo }) => {
@@ -255,3 +257,4 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+    
