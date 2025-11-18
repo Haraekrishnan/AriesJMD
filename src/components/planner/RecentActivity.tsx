@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, startOfMonth } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -49,12 +49,9 @@ export default function RecentPlannerActivity() {
     // Check for unread comments on events I'm part of
     dailyPlannerComments.forEach(dayComment => {
       if (!dayComment || !dayComment.day || !dayComment.comments) return;
-
       const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      
       comments.forEach(comment => {
         if (!comment) return;
-
         const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
         if (!eventForComment || !userMap.has(eventForComment.userId)) return;
 
@@ -62,53 +59,45 @@ export default function RecentPlannerActivity() {
         const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
 
         if (isParticipant && isUnreadFromOther) {
-            allUnread.push({
-                type: 'comment',
-                day: dayComment.day,
-                event: eventForComment,
-                comment: comment,
-                delegatedBy: users.find(u => u.id === eventForComment.creatorId),
-                delegatedTo: users.find(u => u.id === eventForComment.userId),
-            });
+            allUnread.push({ type: 'comment', day: dayComment.day, event: eventForComment, comment, delegatedBy: users.find(u => u.id === eventForComment.creatorId), delegatedTo: users.find(u => u.id === eventForComment.userId) });
         }
       });
     });
 
     // Delegator View: Check for events delegated by me that have not been updated
     const myDelegatedEvents = plannerEvents.filter(e => e.creatorId === user.id && e.userId !== user.id && userMap.has(e.userId));
-    
     myDelegatedEvents.forEach(event => {
-      // Use the event's own start date to get its instances
-      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
-      const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
+        const eventDate = parseISO(event.date);
 
-      pastInstances.forEach(instance => {
-          const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-          const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
-          const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
-          const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
-          
-          const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+        if (isPast(eventDate) && !isToday(eventDate)) {
+            const dayStr = format(eventDate, 'yyyy-MM-dd');
+            const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
+            
+            const commentsForEvent = dayCommentData 
+                ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) 
+                : [];
+            
+            const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
+            const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
 
-          if (!assigneeCommented && !isDismissed) {
-              allPendingUpdates.push({
-                  type: 'pending_update',
-                  day: dayStr,
-                  event: event,
-                  delegatedTo: users.find(u => u.id === event.userId),
-              });
-          }
-      });
+            if (!assigneeCommented && !isDismissed) {
+                allPendingUpdates.push({
+                    type: 'pending_update',
+                    day: dayStr,
+                    event: event,
+                    delegatedTo: users.find(u => u.id === event.userId)
+                });
+            }
+        }
     });
-    
+
     // Assignee View: Check for events delegated TO ME that I haven't updated
     const eventsDelegatedToMe = plannerEvents.filter(e => e.userId === user.id && e.creatorId !== user.id);
     eventsDelegatedToMe.forEach(event => {
-        const expanded = getExpandedPlannerEvents(parseISO(event.date), user.id);
-        const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
+        const eventDate = parseISO(event.date);
 
-        pastInstances.forEach(instance => {
-            const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+        if (isPast(eventDate) && !isToday(eventDate)) {
+            const dayStr = format(eventDate, 'yyyy-MM-dd');
             const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${user.id}`);
             const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
             const iCommented = commentsForEvent.some(c => c.userId === user.id);
@@ -116,7 +105,7 @@ export default function RecentPlannerActivity() {
             if (!iCommented) {
                 myAllPendingUpdates.push({ type: 'my_pending_update', day: dayStr, event: event, delegatedBy: users.find(u => u.id === event.creatorId) });
             }
-        });
+        }
     });
 
     return { 
@@ -139,7 +128,7 @@ export default function RecentPlannerActivity() {
       }
     }
   };
-  
+
   const handleAddComment = (eventId: string, day: string, userId: string) => {
     const commentKey = `${day}-${eventId}`;
     const commentText = newComments[commentKey];
