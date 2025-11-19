@@ -272,6 +272,8 @@ type AppContextType = {
   addRoom: (buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => void;
   updateBed: (buildingId: string, roomId: string, bed: Bed) => void;
   deleteRoom: (buildingId: string, roomId: string) => void;
+  addBed: (buildingId: string, roomId: string) => void;
+  deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   saveJobSchedule: (schedule: JobSchedule) => void;
@@ -2015,7 +2017,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const { id, ...data } = request;
     const cleanData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [key, value === undefined ? null : value])
+        Object.entries(data).filter(([_, v]) => v !== undefined)
     );
     update(ref(rtdb, `ppeRequests/${id}`), cleanData);
     addActivityLog(user.id, 'PPE Request Updated', `Request ID: ${id}`);
@@ -2345,18 +2347,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
-    const updates: Partial<InventoryItem> = {
-      ...data,
-      chestCrollNo: data.chestCrollNo || null,
-      lastUpdated: new Date().toISOString(),
-      movedToProjectId: data.movedToProjectId || null,
-    };
-    
-    const cleanUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([_, v]) => v !== undefined)
+    const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== undefined)
     );
-
-    update(ref(rtdb, `inventoryItems/${id}`), cleanUpdates);
+    const updates = { 
+        ...cleanData,
+        lastUpdated: new Date().toISOString(),
+        movedToProjectId: data.movedToProjectId || null,
+        chestCrollNo: data.chestCrollNo || null,
+    };
+    update(ref(rtdb, `inventoryItems/${id}`), updates);
   }, []);
   
   const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
@@ -2444,22 +2444,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
   
-  const updateTpCertList = useCallback((listData: TpCertList) => {
-    if (!user) return;
-    const { id, ...data } = listData;
-    const sanitizedItems = data.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo || null,
-    }));
-    const sanitizedData = { ...data, items: sanitizedItems };
-    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-    addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
-  }, [user, addActivityLog]);
-  
   const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'tpCertLists'));
@@ -2476,6 +2460,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRef, { ...newList, id: newRef.key });
     addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
+  
+  const updateTpCertList = useCallback((listData: TpCertList) => {
+    if (!user) return;
+    const { id, ...data } = listData;
+    const sanitizedItems = data.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo || null,
+    }));
+    const sanitizedData = { ...data, items: sanitizedItems };
+    update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
+    addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
   }, [user, addActivityLog]);
   
   const deleteTpCertList = useCallback((listId: string) => {
@@ -3072,11 +3072,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
     const roomRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
-    const beds = Array.from({ length: roomData.numberOfBeds }, (_, i) => ({
-      id: `bed-${i + 1}`, bedNumber: `${i + 1}`, bedType: 'Bunk'
-    }));
-    set(roomRef, { id: roomRef.key, roomNumber: roomData.roomNumber, beds });
+    const beds = Array.from({ length: roomData.numberOfBeds }, (_, i) => {
+      const bedRef = push(ref(rtdb)); // Generate a unique key for the bed
+      return { id: bedRef.key, bedNumber: `${i + 1}`, bedType: 'Bunk' }
+    });
+    set(roomRef, { id: roomRef.key, roomNumber: roomData.roomNumber, beds: beds.reduce((acc, bed) => ({...acc, [bed.id!]: bed}), {}) });
   }, []);
+
+  const addBed = useCallback((buildingId: string, roomId: string) => {
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building || !building.rooms) return;
+    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any]?.id === roomId);
+    if (roomKey) {
+        const room = building.rooms[roomKey as any];
+        const nextBedNumber = room.beds ? Object.keys(room.beds).length + 1 : 1;
+        const newBedRef = push(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds`));
+        set(newBedRef, { id: newBedRef.key, bedNumber: `${nextBedNumber}`, bedType: 'Bunk' });
+    }
+  }, [buildings]);
+
+  const deleteBed = useCallback((buildingId: string, roomId: string, bedId: string) => {
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building || !building.rooms) return;
+
+    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any]?.id === roomId);
+    if (roomKey) {
+        const room = building.rooms[roomKey as any];
+        if(room.beds) {
+            const bedKey = Object.keys(room.beds).find(key => room.beds[key as any]?.id === bedId);
+            if (bedKey) {
+                 remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}/beds/${bedKey}`));
+            }
+        }
+    }
+  }, [buildings]);
   
   const updateBed = useCallback((buildingId: string, roomId: string, bed: Bed) => {
       const building = buildings.find(b => b.id === buildingId);
@@ -3594,7 +3623,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const isUpdated = manpowerLogs.some(log => log.date === todayStr);
 
-    const sortedLogs = manpowerLogs.length > 0
+    const sortedLogs = manpowerLogs.filter(log => log?.updatedAt).length > 0
       ? [...manpowerLogs].filter(log => log && log.updatedAt).sort((a, b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime())
       : [];
     const lastUpdate = sortedLogs.length > 0 ? sortedLogs[0].updatedAt : null;
@@ -3610,7 +3639,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can, isManpowerUpdatedToday, lastManpowerUpdate,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount,
-    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markSinglePlannerCommentAsRead, dismissPendingUpdate, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, updateBed, deleteRoom, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList, addDocument, updateDocument, deleteDocument, addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, deleteLogbookRecord, addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
+    login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markSinglePlannerCommentAsRead, dismissPendingUpdate, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, updateBed, deleteRoom, addBed, deleteBed, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList, addDocument, updateDocument, deleteDocument, addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, deleteLogbookRecord, addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
   };
 
   // SECTION: useEffect for Initialization and Data Listening
@@ -3801,6 +3830,7 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
 

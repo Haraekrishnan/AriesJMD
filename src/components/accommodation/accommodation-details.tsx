@@ -21,7 +21,7 @@ interface AccommodationDetailsProps {
 }
 
 export default function AccommodationDetails({ onAddRoom, onEditBuilding }: AccommodationDetailsProps) {
-    const { buildings, manpowerProfiles, can, unassignOccupant, deleteBuilding, deleteRoom } = useAppContext();
+    const { buildings, manpowerProfiles, can, unassignOccupant, deleteBuilding, deleteRoom, addBed, deleteBed } = useAppContext();
     const { toast } = useToast();
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [editingBed, setEditingBed] = useState<{buildingId: string, roomId: string, bed: Bed} | null>(null);
@@ -48,6 +48,20 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
     
     const handleEditBed = (buildingId: string, roomId: string, bed: Bed) => {
         setEditingBed({ buildingId, roomId, bed });
+    };
+
+    const handleAddBed = (buildingId: string, roomId: string) => {
+        addBed(buildingId, roomId);
+        toast({ title: 'Bed Added', description: 'A new bed has been added to the room.' });
+    };
+
+    const handleDeleteBed = (buildingId: string, roomId: string, bed: Bed) => {
+        if(bed.occupantId) {
+            toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This bed is currently occupied.' });
+            return;
+        }
+        deleteBed(buildingId, roomId, bed.id);
+        toast({ title: 'Bed Deleted', variant: 'destructive' });
     };
 
     const sortedBuildings = useMemo(() => {
@@ -99,38 +113,49 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                             <div className="space-y-4">
                                 {roomsArray.filter(room => room && room.roomNumber).sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => {
                                     const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
+                                    const occupiedCount = bedsArray.filter(b => b && b.occupantId).length;
+                                    const totalCount = bedsArray.length;
+                                    const vacantCount = totalCount - occupiedCount;
                                     return (
                                         <div key={room.id} className="p-4 border rounded-md bg-muted/50">
-                                            <h4 className="font-semibold flex items-center justify-between">
-                                                Room {room.roomNumber}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h4 className="font-semibold flex items-center gap-3">
+                                                  Room {room.roomNumber}
+                                                  <Badge variant="secondary">Total: {totalCount}</Badge>
+                                                  <Badge variant="destructive">Vacant: {vacantCount}</Badge>
+                                                </h4>
                                                 {can.manage_accommodation && (
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Delete Room {room.roomNumber}?</AlertDialogTitle>
-                                                                <AlertDialogDescription>This will also unassign any occupants. This action cannot be undone.</AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteRoom(building.id, room.id)}>Delete Room</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button variant="outline" size="sm" onClick={() => handleAddBed(building.id, room.id)}>Add Bed</Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete Room {room.roomNumber}?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>This will also unassign any occupants. This action cannot be undone.</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteRoom(building.id, room.id)}>Delete Room</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
                                                 )}
-                                            </h4>
+                                            </div>
                                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-2">
                                                 {bedsArray.map(bed => {
+                                                    if(!bed) return null;
                                                     const occupant = bed.occupantId ? manpowerProfiles.find(p => p.id === bed.occupantId) : null;
                                                     const isOccupied = !!occupant;
                                                     return (
                                                         <div 
                                                           key={bed.id} 
                                                           className={cn(
-                                                            "p-3 border rounded-lg flex flex-col items-center justify-center text-center relative",
-                                                            isOccupied ? "bg-green-50 dark:bg-green-900/20 border-green-200" : "bg-blue-50 dark:bg-blue-900/20 border-blue-200"
+                                                            "p-3 border-2 rounded-lg flex flex-col items-center justify-center text-center relative",
+                                                            isOccupied ? "bg-green-100 dark:bg-green-900/40 border-green-400" : "bg-blue-100 dark:bg-blue-900/40 border-blue-400"
                                                           )}
                                                         >
                                                             <BedSingle className={cn("h-6 w-6 mb-2", isOccupied ? "text-green-700" : "text-blue-700")} />
@@ -168,7 +193,21 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                                                     </div>
                                                                  </>
                                                             )}
-                                                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => handleEditBed(building.id, room.id, bed)}><Edit className="h-3 w-3"/></Button>
+                                                            <div className="absolute top-1 right-1 flex">
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditBed(building.id, room.id, bed)}><Edit className="h-3 w-3"/></Button>
+                                                                {!bed.occupantId && (
+                                                                    <AlertDialog>
+                                                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button></AlertDialogTrigger>
+                                                                        <AlertDialogContent>
+                                                                            <AlertDialogHeader><AlertDialogTitle>Delete Bed?</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete this bed? This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                                            <AlertDialogFooter>
+                                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                                <AlertDialogAction onClick={() => handleDeleteBed(building.id, room.id, bed)}>Delete</AlertDialogAction>
+                                                                            </AlertDialogFooter>
+                                                                        </AlertDialogContent>
+                                                                    </AlertDialog>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     )
                                                 })}
@@ -228,3 +267,4 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         </>
     );
 }
+
