@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/button';
 import { BedSingle, PlusCircle, User, UserX, Edit, Trash2 } from 'lucide-react';
 import AssignOccupantDialog from './assign-occupant-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import type { Building, Room } from '@/lib/types';
+import type { Building, Room, Bed } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import EditBedDialog from './EditBedDialog';
 
 interface AccommodationDetailsProps {
     onAddRoom: (building: Building) => void;
@@ -21,6 +24,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
     const { buildings, manpowerProfiles, can, unassignOccupant, deleteBuilding, deleteRoom } = useAppContext();
     const { toast } = useToast();
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+    const [editingBed, setEditingBed] = useState<{buildingId: string, roomId: string, bed: Bed} | null>(null);
     const [selectedBedInfo, setSelectedBedInfo] = useState<{buildingId: string, roomId: string, bedId: string} | null>(null);
 
     const handleAssignClick = (buildingId: string, roomId: string, bedId: string) => {
@@ -41,6 +45,10 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         deleteRoom(buildingId, roomId);
         toast({ title: 'Room Deleted', variant: 'destructive' });
     }
+    
+    const handleEditBed = (buildingId: string, roomId: string, bed: Bed) => {
+        setEditingBed({ buildingId, roomId, bed });
+    };
 
     const sortedBuildings = useMemo(() => {
         return [...buildings].sort((a, b) => 
@@ -65,8 +73,23 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                 return (
                     <AccordionItem key={building.id} value={building.id} className="border rounded-lg">
                         <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
-                           <div className="flex items-center gap-2">
-                             <span>Building {building.buildingNumber}</span>
+                           <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                    <span>Building {building.buildingNumber}</span>
+                                </div>
+                                <div className="flex items-center gap-2 pr-4">
+                                     {roomsArray.map(room => {
+                                        if(!room || !room.roomNumber) return null;
+                                        const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
+                                        const occupied = bedsArray.filter(b => b?.occupantId).length;
+                                        const total = bedsArray.length;
+                                        return (
+                                            <Badge key={room.id} variant="secondary">
+                                                Room {room.roomNumber}: {occupied}/{total}
+                                            </Badge>
+                                        )
+                                     })}
+                                </div>
                            </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
@@ -98,39 +121,51 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                                                 {bedsArray.map(bed => {
                                                     const occupant = bed.occupantId ? manpowerProfiles.find(p => p.id === bed.occupantId) : null;
+                                                    const isOccupied = !!occupant;
                                                     return (
-                                                        <div key={bed.id} className="p-3 border rounded-lg bg-background flex flex-col items-center justify-center text-center">
-                                                            <BedSingle className="h-6 w-6 mb-2" />
+                                                        <div 
+                                                          key={bed.id} 
+                                                          className={cn(
+                                                            "p-3 border rounded-lg flex flex-col items-center justify-center text-center",
+                                                            isOccupied ? "bg-green-50 dark:bg-green-900/20 border-green-200" : "bg-blue-50 dark:bg-blue-900/20 border-blue-200"
+                                                          )}
+                                                        >
+                                                            <BedSingle className={cn("h-6 w-6 mb-2", isOccupied ? "text-green-700" : "text-blue-700")} />
                                                             <p className="font-medium text-sm">Bed {bed.bedNumber}</p>
                                                             {occupant ? (
                                                                 <>
                                                                     <p className="text-xs text-muted-foreground mt-1">{occupant.name}</p>
-                                                                    <AlertDialog>
-                                                                        <AlertDialogTrigger asChild>
-                                                                            <Button variant="ghost" size="sm" className="mt-2 h-7 text-destructive hover:text-destructive">
-                                                                                <UserX className="mr-1 h-3 w-3"/> Unassign
-                                                                            </Button>
-                                                                        </AlertDialogTrigger>
-                                                                        <AlertDialogContent>
-                                                                            <AlertDialogHeader>
-                                                                                <AlertDialogTitle>Unassign {occupant.name}?</AlertDialogTitle>
-                                                                                <AlertDialogDescription>Are you sure you want to remove this person from this bed?</AlertDialogDescription>
-                                                                            </AlertDialogHeader>
-                                                                            <AlertDialogFooter>
-                                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                                <AlertDialogAction onClick={() => handleUnassign(building.id, room.id, bed.id)}>Unassign</AlertDialogAction>
-                                                                            </AlertDialogFooter>
-                                                                        </AlertDialogContent>
-                                                                    </AlertDialog>
+                                                                    <div className="flex items-center gap-1 mt-2">
+                                                                        <AlertDialog>
+                                                                            <AlertDialogTrigger asChild>
+                                                                                <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive">
+                                                                                    <UserX className="mr-1 h-3 w-3"/> Unassign
+                                                                                </Button>
+                                                                            </AlertDialogTrigger>
+                                                                            <AlertDialogContent>
+                                                                                <AlertDialogHeader>
+                                                                                    <AlertDialogTitle>Unassign {occupant.name}?</AlertDialogTitle>
+                                                                                    <AlertDialogDescription>Are you sure you want to remove this person from this bed?</AlertDialogDescription>
+                                                                                </AlertDialogHeader>
+                                                                                <AlertDialogFooter>
+                                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                                    <AlertDialogAction onClick={() => handleUnassign(building.id, room.id, bed.id)}>Unassign</AlertDialogAction>
+                                                                                </AlertDialogFooter>
+                                                                            </AlertDialogContent>
+                                                                        </AlertDialog>
+                                                                    </div>
                                                                 </>
                                                             ) : (
                                                                  <>
-                                                                    <p className="text-xs text-green-600 mt-1">Available</p>
-                                                                    <Button variant="outline" size="sm" className="mt-2 h-7" onClick={() => handleAssignClick(building.id, room.id, bed.id)}>
-                                                                        <User className="mr-1 h-3 w-3"/> Assign
-                                                                    </Button>
+                                                                    <p className="text-xs text-blue-600 mt-1">Available</p>
+                                                                    <div className="flex items-center gap-1 mt-2">
+                                                                        <Button variant="outline" size="sm" className="h-7" onClick={() => handleAssignClick(building.id, room.id, bed.id)}>
+                                                                            <User className="mr-1 h-3 w-3"/> Assign
+                                                                        </Button>
+                                                                    </div>
                                                                  </>
                                                             )}
+                                                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => handleEditBed(building.id, room.id, bed)}><Edit className="h-3 w-3"/></Button>
                                                         </div>
                                                     )
                                                 })}
@@ -176,6 +211,15 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                 isOpen={isAssignDialogOpen}
                 setIsOpen={setIsAssignDialogOpen}
                 bedInfo={selectedBedInfo}
+            />
+        )}
+        {editingBed && (
+            <EditBedDialog
+                isOpen={!!editingBed}
+                setIsOpen={() => setEditingBed(null)}
+                buildingId={editingBed.buildingId}
+                roomId={editingBed.roomId}
+                bed={editingBed.bed}
             />
         )}
         </>
