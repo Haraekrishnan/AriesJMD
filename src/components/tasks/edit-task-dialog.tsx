@@ -1,4 +1,5 @@
 
+
 'use client';
 import * as React from "react";
 import { useEffect, useState, useMemo } from 'react';
@@ -31,7 +32,7 @@ import { uploadFile } from '@/lib/storage';
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  assigneeIds: z.array(z.string()).min(1, 'At least one assignee is required'),
+  assigneeIds: z.array(z.string()).min(1, 'Please select at least one assignee'),
   dueDate: z.date({ required_error: 'Due date is required' }),
   priority: z.enum(['Low', 'Medium', 'High']),
   link: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
@@ -204,7 +205,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         // Toast is handled in the context provider
     } else {
         returnTaskStatusChange(taskToDisplay.id, newComment);
-        toast({ title: 'Request Returned', description: 'The task has been returned to the assignee.' });
+        toast({ title: 'Task Returned', description: 'The task has been returned to the assignee.' });
     }
     setNewComment('');
     if (setIsOpen) setIsOpen(false);

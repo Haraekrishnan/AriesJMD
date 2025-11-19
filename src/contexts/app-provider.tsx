@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -462,10 +463,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return canObject;
   }, [user, roles]);
 
+  // SECTION: ALL FUNCTION DEFINITIONS START HERE
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) {
-      console.error("addActivityLog: userId is undefined or null");
-      return;
+        console.error("addActivityLog: userId is undefined or null");
+        return;
     }
     const logRef = push(ref(rtdb, 'activityLogs'));
     const newLog: Partial<ActivityLog> = {
@@ -494,15 +496,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
-            if (foundUser.status === 'locked') {
-                router.replace('/status');
-            }
             return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -1000,6 +999,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`tasks/${taskId}/subtasks/${user.id}/status`] = newStatus;
     updates[`tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
     
+    // If one person starts, the whole task starts.
+    if (newStatus === 'In Progress' && task.status === 'To Do') {
+        updates[`tasks/${taskId}/status`] = 'In Progress';
+    }
+    
     const allSubtasksDone = Object.values(task.subtasks || {}).every(sub => (sub.userId === user.id ? newStatus === 'Done' : sub.status === 'Done'));
 
     if (newStatus === 'Done' && allSubtasksDone) {
@@ -1028,7 +1032,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 'Review Task'
             );
         }
-    } else {
+    } else if (newStatus === 'In Progress') {
         if(comment) addComment(taskId, comment);
     }
     
@@ -2264,7 +2268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'PPE Inward Deleted', `Record ID: ${record.id}`);
   }, [user, ppeStock, addActivityLog]);
-
+  
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if(!user) return;
     const newRef = push(ref(rtdb, 'inventoryItems'));
@@ -2431,6 +2435,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Inventory Item Group Renamed', `Renamed "${oldName}" to "${newName}"`);
   }, [user, inventoryItems, addActivityLog]);
   
+  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'tpCertLists'));
+    const sanitizedItems = listData.items.map(item => ({
+      itemId: item.itemId,
+      itemType: item.itemType,
+      materialName: item.materialName,
+      manufacturerSrNo: item.manufacturerSrNo,
+      ariesId: item.ariesId || null,
+      chestCrollNo: item.chestCrollNo || null,
+    }));
+    const newList: Omit<TpCertList, 'id'> = {
+        ...listData,
+        items: sanitizedItems,
+        creatorId: user.id,
+        createdAt: new Date().toISOString(),
+    };
+    set(newRef, newList);
+    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+  }, [user, addActivityLog]);
+  
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
   
@@ -2493,7 +2518,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             'View Transfers'
         );
     }
-  }, [user, addActivityLog, users, projects]);
+  }, [user, addActivityLog, addTpCertList, users, projects]);
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
@@ -2675,13 +2700,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       materialName: item.materialName,
       manufacturerSrNo: item.manufacturerSrNo,
       ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo === undefined ? null : item.chestCrollNo,
+      chestCrollNo: item.chestCrollNo || null,
     }));
     const sanitizedData = { ...data, items: sanitizedItems };
     update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
     addActivityLog(user.id, 'TP Certification List Updated', `List Name: ${data.name}`);
   }, [user, addActivityLog]);
-
+  
   const deleteTpCertList = useCallback((listId: string) => {
     if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `tpCertLists/${listId}`));
@@ -2948,7 +2973,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         approverId,
         status: 'pending',
         createdAt: new Date().toISOString(),
-        comments: [{ id: 'comment-initial', userId: user.id, text: 'Announcement created', date: new Date().toISOString(), eventId: newRef.key! }],
+        comments: [{ userId: user.id, text: 'Announcement created', date: new Date().toISOString(), eventId: newRef.key! }],
         notifyAll: data.notifyAll || false,
     };
     set(newRef, newAnnouncement);
@@ -3083,7 +3108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!building || !building.rooms) return;
 
     // Firebase stores array-like objects. Find the key associated with the roomId.
-    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any].id === roomId);
+    const roomKey = Object.keys(building.rooms).find(key => building.rooms[key as any]?.id === roomId);
     if (roomKey) {
         remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomKey}`));
     }
@@ -3215,9 +3240,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRef = push(ref(rtdb, 'payments'));
     const newPayment: Omit<Payment, 'id'> = {
         ...payment,
-        date: new Date().toISOString(),
         requesterId: user.id,
         status: 'Paid',
+        date: new Date().toISOString(),
         comments: [{ id: `comm-init`, text: 'Payment logged.', userId: user.id, date: new Date().toISOString(), eventId: newRef.key! }],
     };
     set(newRef, newPayment);
@@ -3245,7 +3270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `payments/${paymentId}`), updates);
     const requester = users.find(u => u.id === payment.requesterId);
     if (requester && requester.email) {
-        const vendor = vendors.find(v => v.id === payment.vendorId);
+        const vendor = vendors.find(v => (v as any).id === payment.vendorId);
         createAndSendNotification(
             requester.email,
             `Update on Payment for ${vendor?.name}`,
@@ -3447,41 +3472,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // All other function definitions exist here...
-  
-  const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'tpCertLists'));
-    const sanitizedItems = listData.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      materialName: item.materialName,
-      manufacturerSrNo: item.manufacturerSrNo,
-      ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo || null,
-    }));
-    const newList: Omit<TpCertList, 'id'> = {
-        ...listData,
-        items: sanitizedItems,
-        creatorId: user.id,
-        createdAt: new Date().toISOString(),
-    };
-    set(newRef, newList);
-    addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
-  }, [user, addActivityLog]);
+  // ... including login, logout, etc.
 
   // SECTION: Computed Values (Memoized)
-  const isManpowerUpdatedToday = useMemo(() => {
+  const { isManpowerUpdatedToday, lastManpowerUpdate, workingManpowerCount, onLeaveManpowerCount } = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    return manpowerLogs.some(log => log.date === todayStr);
-  }, [manpowerLogs]);
+    const isUpdated = manpowerLogs.some(log => log.date === todayStr);
 
-  const lastManpowerUpdate = useMemo(() => {
-    if (!manpowerLogs || manpowerLogs.length === 0) return null;
-    const sortedLogs = [...manpowerLogs]
-      .filter(log => log && log.updatedAt) // Ensure updatedAt exists
-      .sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
-    return sortedLogs[0].updatedAt;
-  }, [manpowerLogs]);
+    const sortedLogs = manpowerLogs.length > 0
+        ? [...manpowerLogs].filter(log => log && log.updatedAt).sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime())
+        : [];
+    const lastUpdate = sortedLogs.length > 0 ? sortedLogs[0].updatedAt : null;
+    
+    let totalWorking = 0;
+    let totalOnLeave = 0;
+    
+    projects.forEach(project => {
+        const logsForProjectDay = manpowerLogs.filter(log => log.date === todayStr && log.projectId === project.id);
+        const latestLogForDay = logsForProjectDay.length > 0
+            ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+            : null;
+        
+        const previousLogs = manpowerLogs
+            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(new Date())))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+        const mostRecentPreviousLog = previousLogs[0];
+        
+        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
+        const countIn = latestLogForDay?.countIn || 0;
+        const countOut = latestLogForDay?.countOut || 0;
+        const dayTotal = openingManpower + countIn - countOut;
+        const onLeave = latestLogForDay?.countOnLeave || 0;
+
+        totalWorking += dayTotal;
+        totalOnLeave += onLeave;
+    });
+
+    return { isManpowerUpdatedToday: isUpdated, lastManpowerUpdate: lastUpdate, workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave };
+  }, [manpowerLogs, projects]);
   
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useMemo(() => {
     if (!user) return { pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0 };
@@ -3611,36 +3640,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (logbookRequests || []).filter(r => r.status === 'Pending').length;
   }, [can.manage_logbook, logbookRequests]);
 
-  const { workingManpowerCount, onLeaveManpowerCount } = useMemo(() => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    let totalWorking = 0;
-    let totalOnLeave = 0;
-
-    projects.forEach(project => {
-        const logsForProjectDay = manpowerLogs.filter(log => log.date === todayStr && log.projectId === project.id);
-        const latestLogForDay = logsForProjectDay.length > 0
-            ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
-            : null;
-        
-        const previousLogs = manpowerLogs
-            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(new Date())))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
-        const mostRecentPreviousLog = previousLogs[0];
-        
-        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
-        const countIn = latestLogForDay?.countIn || 0;
-        const countOut = latestLogForDay?.countOut || 0;
-        const dayTotal = openingManpower + countIn - countOut;
-        const onLeave = latestLogForDay?.countOnLeave || 0;
-
-        totalWorking += dayTotal;
-        totalOnLeave += onLeave;
-    });
-
-    return { workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave };
-  }, [manpowerLogs, projects]);
-  
   // All other function definitions exist here...
   // ... including login, logout, etc.
 
@@ -3819,9 +3818,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                 setUser(updatedUser);
+            if (user.status === 'active' && updatedUser.status === 'locked') {
+                router.replace('/status');
             }
+            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                setUser(updatedUser);
+           }
         });
         return () => unsubscribe();
     }
@@ -3837,4 +3839,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
 
