@@ -70,6 +70,17 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         <Accordion type="multiple" className="w-full space-y-4">
             {sortedBuildings.map(building => {
                 const roomsArray: Room[] = building.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
+                
+                const buildingSummary = roomsArray.reduce((acc, room) => {
+                    if (!room) return acc;
+                    const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
+                    acc.totalBeds += bedsArray.length;
+                    acc.occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
+                    return acc;
+                }, { totalRooms: roomsArray.length, totalBeds: 0, occupiedBeds: 0 });
+
+                buildingSummary.vacantBeds = buildingSummary.totalBeds - buildingSummary.occupiedBeds;
+
                 return (
                     <AccordionItem key={building.id} value={building.id} className="border rounded-lg">
                         <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
@@ -78,17 +89,9 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                     <span>Building {building.buildingNumber}</span>
                                 </div>
                                 <div className="flex items-center gap-2 pr-4">
-                                     {roomsArray.map(room => {
-                                        if(!room || !room.roomNumber) return null;
-                                        const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
-                                        const occupied = bedsArray.filter(b => b?.occupantId).length;
-                                        const total = bedsArray.length;
-                                        return (
-                                            <Badge key={room.id} variant="secondary">
-                                                Room {room.roomNumber}: {occupied}/{total}
-                                            </Badge>
-                                        )
-                                     })}
+                                     <Badge variant="secondary">Rooms: {buildingSummary.totalRooms}</Badge>
+                                     <Badge variant="secondary">Total Beds: {buildingSummary.totalBeds}</Badge>
+                                     <Badge variant="destructive">Vacant: {buildingSummary.vacantBeds}</Badge>
                                 </div>
                            </div>
                         </AccordionTrigger>
@@ -118,7 +121,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                                     </AlertDialog>
                                                 )}
                                             </h4>
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-2">
                                                 {bedsArray.map(bed => {
                                                     const occupant = bed.occupantId ? manpowerProfiles.find(p => p.id === bed.occupantId) : null;
                                                     const isOccupied = !!occupant;
@@ -126,7 +129,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                                         <div 
                                                           key={bed.id} 
                                                           className={cn(
-                                                            "p-3 border rounded-lg flex flex-col items-center justify-center text-center",
+                                                            "p-3 border rounded-lg flex flex-col items-center justify-center text-center relative",
                                                             isOccupied ? "bg-green-50 dark:bg-green-900/20 border-green-200" : "bg-blue-50 dark:bg-blue-900/20 border-blue-200"
                                                           )}
                                                         >
