@@ -104,8 +104,8 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                 </div>
                                 <div className="flex items-center gap-2 pr-4">
                                      <Badge variant="secondary">Rooms: {buildingSummary.totalRooms}</Badge>
-                                     <Badge variant="secondary">Total Beds: {buildingSummary.totalBeds}</Badge>
-                                     <Badge variant="destructive">Vacant: {buildingSummary.vacantBeds}</Badge>
+                                     <Badge variant="success">Total Beds: {buildingSummary.totalBeds}</Badge>
+                                     <Badge variant="default">Vacant: {buildingSummary.vacantBeds}</Badge>
                                 </div>
                            </div>
                         </AccordionTrigger>
@@ -121,8 +121,8 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                             <div className="flex items-center justify-between mb-2">
                                                 <h4 className="font-semibold flex items-center gap-3">
                                                   Room {room.roomNumber}
-                                                  <Badge variant="secondary">Total: {totalCount}</Badge>
-                                                  <Badge variant="destructive">Vacant: {vacantCount}</Badge>
+                                                  <Badge variant="success">Total: {totalCount}</Badge>
+                                                  <Badge variant="default">Vacant: {vacantCount}</Badge>
                                                 </h4>
                                                 {can.manage_accommodation && (
                                                     <div className="flex items-center gap-1">
@@ -267,4 +267,5 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         </>
     );
 }
+
 
