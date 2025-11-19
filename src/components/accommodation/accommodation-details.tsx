@@ -18,9 +18,10 @@ import EditBedDialog from './EditBedDialog';
 interface AccommodationDetailsProps {
     onAddRoom: (building: Building) => void;
     onEditBuilding: (building: Building) => void;
+    onEditRoom: (building: Building, room: Room) => void;
 }
 
-export default function AccommodationDetails({ onAddRoom, onEditBuilding }: AccommodationDetailsProps) {
+export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEditRoom }: AccommodationDetailsProps) {
     const { buildings, manpowerProfiles, can, unassignOccupant, deleteBuilding, deleteRoom, addBed, deleteBed } = useAppContext();
     const { toast } = useToast();
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -120,7 +121,10 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
                                         <div key={room.id} className="p-4 border rounded-md bg-muted/50">
                                             <div className="flex items-center justify-between mb-2">
                                                 <h4 className="font-semibold flex items-center gap-3">
-                                                  Room {room.roomNumber}
+                                                  <span className="flex items-center gap-2">
+                                                    Room {room.roomNumber}
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditRoom(building, room)}><Edit className="h-3 w-3"/></Button>
+                                                  </span>
                                                   <Badge variant="success">Total: {totalCount}</Badge>
                                                   <Badge variant="default">Vacant: {vacantCount}</Badge>
                                                 </h4>
@@ -267,5 +271,6 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding }: Acco
         </>
     );
 }
+
 
 

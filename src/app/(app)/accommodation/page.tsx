@@ -14,13 +14,16 @@ import type { Building as BuildingType, Room, Bed } from '@/lib/types';
 import EditBuildingDialog from '@/components/accommodation/edit-building-dialog';
 import AccommodationReportDownloads from '@/components/accommodation/AccommodationReportDownloads';
 import { Input } from '@/components/ui/input';
+import EditRoomDialog from '@/components/accommodation/EditRoomDialog';
 
 export default function AccommodationPage() {
     const { can, buildings, manpowerProfiles } = useAppContext();
     const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false);
     const [isEditBuildingOpen, setIsEditBuildingOpen] = useState(false);
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
+    const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingType | null>(null);
+    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     
     const searchResult = useMemo(() => {
@@ -73,6 +76,12 @@ export default function AccommodationPage() {
         setSelectedBuilding(building);
         setIsEditBuildingOpen(true);
     }
+
+    const handleEditRoomClick = (building: BuildingType, room: Room) => {
+        setSelectedBuilding(building);
+        setSelectedRoom(room);
+        setIsEditRoomOpen(true);
+    };
 
     if (!can.manage_accommodation) {
         return (
@@ -158,7 +167,7 @@ export default function AccommodationPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <AccommodationDetails onAddRoom={handleAddRoomClick} onEditBuilding={handleEditBuildingClick} />
+                    <AccommodationDetails onAddRoom={handleAddRoomClick} onEditBuilding={handleEditBuildingClick} onEditRoom={handleEditRoomClick} />
                 </CardContent>
             </Card>
 
@@ -175,6 +184,14 @@ export default function AccommodationPage() {
                     isOpen={isEditBuildingOpen}
                     setIsOpen={setIsEditBuildingOpen}
                     building={selectedBuilding}
+                />
+            )}
+            {selectedBuilding && selectedRoom && (
+                <EditRoomDialog
+                    isOpen={isEditRoomOpen}
+                    setIsOpen={setIsEditRoomOpen}
+                    buildingId={selectedBuilding.id}
+                    room={selectedRoom}
                 />
             )}
         </div>
