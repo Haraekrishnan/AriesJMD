@@ -118,8 +118,10 @@ export default function StoreInventoryPage() {
             }
         }
 
-        if (!isPrivileged && user?.projectId && item.projectId !== user.projectId) {
-          return false;
+        if (!isPrivileged && user?.projectIds && user.projectIds.length > 0) {
+            if (!user.projectIds.includes(item.projectId)) {
+                return false;
+            }
         }
 
         return true;
