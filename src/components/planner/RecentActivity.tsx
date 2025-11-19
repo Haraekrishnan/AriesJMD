@@ -2,7 +2,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, formatDistanceToNow, parseISO, isPast, isToday } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
@@ -12,125 +12,196 @@ import { useRouter } from 'next/navigation';
 import { Textarea } from '../ui/textarea';
 
 interface UnreadCommentInfo {
-    type: 'comment';
-    day: string;
-    event: PlannerEvent;
-    comment: Comment;
-    delegatedTo?: User;
-    delegatedBy?: User;
+  type: 'comment';
+  day: string;
+  event: PlannerEvent;
+  comment: Comment;
+  delegatedTo?: User;
+  delegatedBy?: User;
 }
 
 interface PendingUpdateInfo {
-    type: 'pending_update';
-    day: string;
-    event: PlannerEvent;
-    delegatedTo?: User;
+  type: 'pending_update';
+  day: string;
+  event: PlannerEvent;
+  delegatedTo?: User;
 }
 
 export default function RecentPlannerActivity() {
-  const { user, dailyPlannerComments, plannerEvents, users, markSinglePlannerCommentAsRead, getExpandedPlannerEvents, dismissPendingUpdate, addPlannerEventComment } = useAppContext();
+  const {
+    user,
+    dailyPlannerComments,
+    plannerEvents,
+    users,
+    markSinglePlannerCommentAsRead,
+    getExpandedPlannerEvents,
+    dismissPendingUpdate,
+    addPlannerEventComment,
+  } = useAppContext();
+
   const router = useRouter();
   const [newComments, setNewComments] = useState<Record<string, string>>({});
-  
+
+  // ======================================================
+  // ===============   MAIN useMemo LOGIC  =================
+  // ======================================================
   const { unreadComments, pendingUpdates } = useMemo(() => {
     if (!user) return { unreadComments: [], pendingUpdates: [] };
 
     const allUnread: UnreadCommentInfo[] = [];
     const allPendingUpdates: PendingUpdateInfo[] = [];
-    const userMap = new Map(users.map(u => [u.id, u]));
+    const userMap = new Map(users.map((u) => [u.id, u]));
 
-    // Check for unread comments
-    dailyPlannerComments.forEach(dayComment => {
-      if (!dayComment || !dayComment.day || !dayComment.comments) return;
+    // --- UNREAD COMMENTS ---
+    dailyPlannerComments.forEach((dayComment) => {
+      if (!dayComment?.day || !dayComment.comments) return;
 
-      const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments || {});
-      
-      comments.forEach(comment => {
+      const comments = Array.isArray(dayComment.comments)
+        ? dayComment.comments
+        : Object.values(dayComment.comments || {});
+
+      comments.forEach((comment) => {
         if (!comment) return;
 
-        const eventForComment = plannerEvents.find(e => e.id === comment.eventId);
+        const eventForComment = plannerEvents.find((e) => e.id === comment.eventId);
         if (!eventForComment || !userMap.has(eventForComment.userId)) return;
 
-        const isParticipant = eventForComment.creatorId === user.id || eventForComment.userId === user.id;
+        const isParticipant =
+          eventForComment.creatorId === user.id || eventForComment.userId === user.id;
+
         const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
 
         if (isParticipant && isUnreadFromOther) {
-            allUnread.push({
-                type: 'comment',
-                day: dayComment.day,
-                event: eventForComment,
-                comment: comment,
-                delegatedBy: users.find(u => u.id === eventForComment.creatorId),
-                delegatedTo: users.find(u => u.id === eventForComment.userId),
-            });
+          allUnread.push({
+            type: 'comment',
+            day: dayComment.day,
+            event: eventForComment,
+            comment,
+            delegatedBy: users.find((u) => u.id === eventForComment.creatorId),
+            delegatedTo: users.find((u) => u.id === eventForComment.userId),
+          });
         }
       });
     });
 
-    // Check for delegated events with no comments from assignee
-    const myDelegatedEvents = plannerEvents.filter(e => 
-      e.creatorId === user.id && 
-      e.userId !== user.id && 
-      isPast(parseISO(e.date)) &&
-      userMap.has(e.userId) // Ensure assignee exists
+    // --- DELEGATOR PENDING UPDATES ---
+    const myDelegatedEvents = plannerEvents.filter(
+      (e) =>
+        e.creatorId === user.id &&
+        e.userId !== user.id &&
+        isPast(parseISO(e.date)) &&
+        userMap.has(e.userId)
     );
-    
-    myDelegatedEvents.forEach(event => {
+
+    myDelegatedEvents.forEach((event) => {
       const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
-      const pastInstances = expanded.filter(e => isPast(e.eventDate) && !isToday(e.eventDate));
+      const pastInstances = expanded.filter((e) => isPast(e.eventDate) && !isToday(e.eventDate));
 
-      pastInstances.forEach(instance => {
-          const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-          const dayCommentData = dailyPlannerComments.find(dc => dc.id === `${dayStr}_${event.userId}`);
-          const commentsForEvent = dayCommentData ? Object.values(dayCommentData.comments || {}).filter(c => c.eventId === event.id) : [];
-          const assigneeCommented = commentsForEvent.some(c => c.userId === event.userId);
-          
-          const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+      pastInstances.forEach((instance) => {
+        const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+        const dc = dailyPlannerComments.find((x) => x.id === `${dayStr}_${event.userId}`);
+        const commentsForEvent = dc
+          ? Object.values(dc.comments || {}).filter((c) => c.eventId === event.id)
+          : [];
 
-          if (!assigneeCommented && !isDismissed) {
-              allPendingUpdates.push({
-                  type: 'pending_update',
-                  day: dayStr,
-                  event: event,
-                  delegatedTo: users.find(u => u.id === event.userId),
-              });
-          }
+        const assigneeCommented = commentsForEvent.some((c) => c.userId === event.userId);
+        const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+
+        if (!assigneeCommented && !isDismissed) {
+          allPendingUpdates.push({
+            type: 'pending_update',
+            day: dayStr,
+            event,
+            delegatedTo: users.find((u) => u.id === event.userId),
+          });
+        }
       });
     });
 
-    return { 
-        unreadComments: allUnread.sort((a,b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()),
-        pendingUpdates: [...new Map(allPendingUpdates.map(item => [`${item.day}-${item.event.id}`, item])).values()]
-    };
-  }, [user, dailyPlannerComments, plannerEvents, users, getExpandedPlannerEvents]);
+    // --- ASSIGNEE PENDING UPDATES (PATCH) ---
+    const assignedEvents = plannerEvents.filter(
+      (e) =>
+        e.userId === user.id &&
+        e.creatorId !== user.id &&
+        isPast(parseISO(e.date)) &&
+        userMap.has(e.creatorId)
+    );
 
-  if (unreadComments.length === 0 && pendingUpdates.length === 0) {
-    return null;
-  }
+    assignedEvents.forEach((event) => {
+      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
+      const pastInstances = expanded.filter((e) => isPast(e.eventDate) && !isToday(e.eventDate));
+
+      pastInstances.forEach((instance) => {
+        const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+        const dc = dailyPlannerComments.find((x) => x.id === `${dayStr}_${event.userId}`);
+        const commentsForEvent = dc
+          ? Object.values(dc.comments || {}).filter((c) => c.eventId === event.id)
+          : [];
+
+        const assigneeCommented = commentsForEvent.some((c) => c.userId === event.userId);
+        const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+
+        if (!assigneeCommented && !isDismissed) {
+          allPendingUpdates.push({
+            type: 'pending_update',
+            day: dayStr,
+            event,
+            delegatedTo: users.find((u) => u.id === event.userId),
+          });
+        }
+      });
+    });
+
+    return {
+      unreadComments: allUnread.sort(
+        (a, b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()
+      ),
+      pendingUpdates: [
+        ...new Map(
+          allPendingUpdates.map((item) => [`${item.day}-${item.event.id}`, item])
+        ).values(),
+      ],
+    };
+  }, [
+    user,
+    dailyPlannerComments,
+    plannerEvents,
+    users,
+    getExpandedPlannerEvents,
+  ]);
+
+  // ======================================================
+  // ===============   OUTSIDE useMemo  ====================
+  // ======================================================
+  if (unreadComments.length === 0 && pendingUpdates.length === 0) return null;
 
   const handleMarkAsRead = (comment: Comment) => {
-    if (comment.eventId) {
-      const event = plannerEvents.find(e => e.id === comment.eventId);
-      const day = dailyPlannerComments.find(dc => dc.comments && Object.values(dc.comments).some(c => c && c.id === comment.id))?.day;
-      if (event && day) {
-        markSinglePlannerCommentAsRead(event.userId, day, comment.id);
-      }
+    const event = plannerEvents.find((e) => e.id === comment.eventId);
+    const day = dailyPlannerComments.find((dc) =>
+      Object.values(dc.comments || {}).some((c) => c?.id === comment.id)
+    )?.day;
+
+    if (event && day) {
+      markSinglePlannerCommentAsRead(event.userId, day, comment.id);
     }
   };
-  
+
   const handleAddComment = (eventId: string, day: string, userId: string) => {
-    const commentKey = `${day}-${eventId}`;
-    const commentText = newComments[commentKey];
-    if (!commentText || !commentText.trim()) return;
-    addPlannerEventComment(userId, day, eventId, commentText);
+    const key = `${day}-${eventId}`;
+    const text = newComments[key];
+    if (!text?.trim()) return;
+
+    addPlannerEventComment(userId, day, eventId, text);
     dismissPendingUpdate(eventId, day);
-    setNewComments(prev => ({ ...prev, [commentKey]: '' }));
+    setNewComments((prev) => ({ ...prev, [key]: '' }));
   };
 
-  const handleGoToEvent = (day: string, eventUserId: string) => {
+  const handleGoToEvent = (day: string, eventUserId: string) =>
     router.push(`/schedule?userId=${eventUserId}&date=${day}`);
-  }
 
+  // ======================================================
+  // ===============   JSX OUTPUT BELOW ===================
+  // ======================================================
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -139,88 +210,154 @@ export default function RecentPlannerActivity() {
           Delegated Event Report/Review
         </CardTitle>
       </CardHeader>
+
       <CardContent>
-         <div className="space-y-4">
-            {unreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
-                const commentUser = users.find(u => u.id === comment.userId);
-                const targetUserId = event.userId;
+        <div className="space-y-4">
+          {/* UNREAD COMMENTS */}
+          {unreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+            const commentUser = users.find((u) => u.id === comment.userId);
+
+            return (
+              <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
+                <p className="font-semibold text-sm">{event.title}</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Event on {format(parseISO(day), 'dd MMM yyyy')} ·{' '}
+                  {event.creatorId === event.userId
+                    ? `Personal planning for ${delegatedTo?.name}`
+                    : `Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
+                </p>
+
+                <div className="flex items-start gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={commentUser?.avatar} />
+                    <AvatarFallback>
+                      {commentUser?.name?.charAt(0) || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="text-sm bg-background p-3 rounded-md w-full">
+                    <div className="flex justify-between text-xs">
+                      <strong>{commentUser?.name}</strong>
+                      <span>
+                        {formatDistanceToNow(parseISO(comment.date), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 whitespace-pre-wrap">{comment.text}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleGoToEvent(day, event.userId)}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" /> Go to Event
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleMarkAsRead(comment)}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" /> Mark as Read
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* PENDING UPDATES */}
+          {pendingUpdates.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                Pending Event Updates
+              </h4>
+
+              {pendingUpdates.map(({ day, event, delegatedTo }) => {
+                const key = `${day}-${event.id}`;
 
                 return (
-                    <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
-                        <div className="flex justify-between items-start mb-2">
-                            <div>
-                                <p className="font-semibold text-sm">{event.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Event on {format(parseISO(day), 'dd MMM, yyyy')} &middot;
-                                    {event.creatorId === event.userId ? ` Personal planning for ${delegatedTo?.name}` : ` Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                            <Avatar className="h-8 w-8">
-                            <AvatarImage src={commentUser?.avatar} />
-                            <AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="text-sm bg-background p-3 rounded-md w-full">
-                            <div className="flex justify-between items-baseline">
-                                <p className="font-semibold">{commentUser?.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
-                                </p>
-                            </div>
-                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                            </div>
-                        </div>
-                        <div className="flex justify-end mt-2 gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, targetUserId)}><Calendar className="mr-2 h-4 w-4"/> Go to Event</Button>
-                            <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}>
-                               <CheckCircle className="mr-2 h-4 w-4"/> Mark as Read
-                            </Button>
-                        </div>
+                  <div
+                    key={key}
+                    className="mt-2 p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
+                  >
+                    {/* TOP ROW: text left, buttons right */}
+                    <div className="flex justify-between items-start w-full">
+                      {/* LEFT SIDE: title + message */}
+                      <div className="flex flex-col">
+                        <p className="font-semibold text-sm">{event.title}</p>
+
+                        <p className="text-xs">
+                          {event.creatorId === user.id ? (
+                            <>
+                              No update from{' '}
+                              <span className="font-medium">{delegatedTo?.name}</span> for{' '}
+                              {format(parseISO(day), 'dd MMM, yyyy')}.
+                            </>
+                          ) : (
+                            <>
+                              You have not updated this event for{' '}
+                              {format(parseISO(day), 'dd MMM, yyyy')}.
+                            </>
+                          )}
+                        </p>
+                      </div>
+
+                      {/* RIGHT SIDE: buttons */}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-blue-400 text-blue-600 hover:bg-blue-50"
+                          onClick={() => handleGoToEvent(day, event.userId)}
+                        >
+                          Review
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="border-red-400 text-red-600 hover:bg-red-50"
+                          onClick={() => dismissPendingUpdate(event.id, day)}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
                     </div>
-                )
-            })}
-             {pendingUpdates.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-orange-500" />Pending Event Updates</h4>
-                 {pendingUpdates.map(({ day, event, delegatedTo }) => {
-                     const commentKey = `${day}-${event.id}`;
-                     return (
-                     <div key={`${day}-${event.id}`} className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200">
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <p className="font-semibold text-sm">{event.title}</p>
-                                <p className="text-xs">
-                                    No comment from <span className="font-medium">{delegatedTo?.name}</span> for {format(parseISO(day), 'dd MMM, yyyy')}.
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}>Review</Button>
-                                <Button size="sm" variant="secondary" onClick={() => dismissPendingUpdate(event.id, day)}>Dismiss</Button>
-                            </div>
-                        </div>
-                        <div className="relative mt-2">
-                            <Textarea
-                                value={newComments[commentKey] || ''}
-                                onChange={(e) => setNewComments(prev => ({ ...prev, [commentKey]: e.target.value }))}
-                                placeholder={`Ask ${delegatedTo?.name} for an update...`}
-                                className="pr-10 text-xs bg-white dark:bg-card"
-                                rows={1}
-                            />
-                            <Button
-                                type="button"
-                                size="icon"
-                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                onClick={() => handleAddComment(event.id, day, event.userId)}
-                                disabled={!newComments[commentKey] || !newComments[commentKey].trim()}
-                            >
-                                <Send className="h-4 w-4" />
-                            </Button>
-                        </div>
-                     </div>
-                 )})}
-              </div>
-            )}
+
+                    {/* TEXTAREA ROW */}
+                    <div className="relative mt-2">
+                      <Textarea
+                        rows={1}
+                        className="text-xs pr-10 bg-white dark:bg-card"
+                        placeholder={`Ask ${delegatedTo?.name} for an update...`}
+                        value={newComments[key] || ''}
+                        onChange={(e) =>
+                          setNewComments((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }))
+                        }
+                      />
+                      <Button
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        size="icon"
+                        onClick={() => handleAddComment(event.id, day, event.userId)}
+                        disabled={!newComments[key]?.trim()}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
