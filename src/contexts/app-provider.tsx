@@ -2347,14 +2347,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const updateInventoryItem = useCallback((item: InventoryItem) => {
     const { id, ...data } = item;
-    const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== undefined)
-    );
+    const cleanData = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
     const updates = { 
         ...cleanData,
+        chestCrollNo: data.chestCrollNo || null,
         lastUpdated: new Date().toISOString(),
         movedToProjectId: data.movedToProjectId || null,
-        chestCrollNo: data.chestCrollNo || null,
     };
     update(ref(rtdb, `inventoryItems/${id}`), updates);
   }, []);
@@ -3623,9 +3621,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const isUpdated = manpowerLogs.some(log => log.date === todayStr);
 
-    const sortedLogs = manpowerLogs.filter(log => log?.updatedAt).length > 0
-      ? [...manpowerLogs].filter(log => log && log.updatedAt).sort((a, b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime())
-      : [];
+    const sortedLogs = manpowerLogs.filter(log => log?.updatedAt).sort((a, b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime());
     const lastUpdate = sortedLogs.length > 0 ? sortedLogs[0].updatedAt : null;
     
     return { isManpowerUpdatedToday: isUpdated, lastManpowerUpdate: lastUpdate };
@@ -3830,10 +3826,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
-
-
-
-

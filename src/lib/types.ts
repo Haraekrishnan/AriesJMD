@@ -139,7 +139,7 @@ export type User = {
   status?: 'active' | 'locked' | 'deactivated';
   password?: string;
   supervisorId?: string;
-  projectId?: string;
+  projectIds?: string[];
   planningScore?: number;
   permissions?: Permission[];
   dismissedPendingUpdates?: { [key: string]: boolean };

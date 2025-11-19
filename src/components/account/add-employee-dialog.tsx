@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,8 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { User } from '@/lib/types';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { ChevronsUpDown, Check } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -20,7 +25,7 @@ const employeeSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.string().min(1, 'Role is required'),
   supervisorId: z.string().optional(),
-  projectId: z.string().optional(),
+  projectIds: z.array(z.string()).optional(),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
@@ -33,6 +38,7 @@ interface AddEmployeeDialogProps {
 export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDialogProps) {
   const { addUser, projects, roles, users } = useAppContext();
   const { toast } = useToast();
+  const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
   
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
@@ -41,6 +47,7 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
       email: '',
       password: '',
       role: 'Employee',
+      projectIds: [],
     },
   });
 
@@ -64,6 +71,8 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
       }
       setIsOpen(open);
   }
+
+  const selectedProjectIds = form.watch('projectIds') || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -130,19 +139,48 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
               </div>
 
               <div className="space-y-2">
-                <Label>Project / Location</Label>
-                <Controller
-                  control={form.control}
-                  name="projectId"
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                      <SelectTrigger><SelectValue placeholder="Assign a project" /></SelectTrigger>
-                      <SelectContent>
-                          {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+                  <Label>Project / Location</Label>
+                  <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                      <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10">
+                              <div className="flex flex-wrap gap-1">
+                                  {selectedProjectIds.length > 0 ? selectedProjectIds.map(id => (
+                                      <Badge key={id} variant="secondary">{projects.find(p=>p.id === id)?.name}</Badge>
+                                  )) : "Select projects..."}
+                              </div>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                              <CommandInput placeholder="Search projects..." />
+                              <CommandList>
+                                  <CommandEmpty>No projects found.</CommandEmpty>
+                                  <CommandGroup>
+                                      {projects.map(project => (
+                                          <CommandItem
+                                              key={project.id}
+                                              value={project.name}
+                                              onSelect={() => {
+                                                  const newSelection = [...selectedProjectIds];
+                                                  const index = newSelection.indexOf(project.id);
+                                                  if (index > -1) {
+                                                      newSelection.splice(index, 1);
+                                                  } else {
+                                                      newSelection.push(project.id);
+                                                  }
+                                                  form.setValue('projectIds', newSelection);
+                                              }}
+                                          >
+                                              <Check className={`mr-2 h-4 w-4 ${selectedProjectIds.includes(project.id) ? 'opacity-100' : 'opacity-0'}`} />
+                                              {project.name}
+                                          </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                              </CommandList>
+                          </Command>
+                      </PopoverContent>
+                  </Popover>
               </div>
             </div>
           </ScrollArea>

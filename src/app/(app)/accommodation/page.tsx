@@ -1,24 +1,53 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PlusCircle } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Search } from 'lucide-react';
 import StatCard from '@/components/dashboard/stat-card';
 import { BedDouble, BedSingle, Building } from 'lucide-react';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
-import type { Building as BuildingType, Room } from '@/lib/types';
+import type { Building as BuildingType, Room, Bed } from '@/lib/types';
 import EditBuildingDialog from '@/components/accommodation/edit-building-dialog';
 import AccommodationReportDownloads from '@/components/accommodation/AccommodationReportDownloads';
+import { Input } from '@/components/ui/input';
 
 export default function AccommodationPage() {
-    const { can, buildings } = useAppContext();
+    const { can, buildings, manpowerProfiles } = useAppContext();
     const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false);
     const [isEditBuildingOpen, setIsEditBuildingOpen] = useState(false);
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingType | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    const searchResult = useMemo(() => {
+        if (!searchTerm) return null;
+
+        const lowercasedTerm = searchTerm.toLowerCase();
+        for (const building of buildings) {
+            const roomsArray: Room[] = building.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
+            for (const room of roomsArray) {
+                if (!room) continue;
+                const bedsArray: Bed[] = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
+                for (const bed of bedsArray) {
+                    if (!bed || !bed.occupantId) continue;
+                    const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
+                    if (occupant && occupant.name.toLowerCase().includes(lowercasedTerm)) {
+                        return {
+                            occupantName: occupant.name,
+                            buildingNumber: building.buildingNumber,
+                            roomNumber: room.roomNumber,
+                            bedNumber: bed.bedNumber,
+                        };
+                    }
+                }
+            }
+        }
+        return 'not_found';
+    }, [searchTerm, buildings, manpowerProfiles]);
 
     const summary = useMemo(() => {
         let totalBeds = 0;
@@ -102,6 +131,31 @@ export default function AccommodationPage() {
                 <CardHeader>
                     <CardTitle>Building & Room Details</CardTitle>
                     <CardDescription>View and manage all accommodation facilities.</CardDescription>
+                    <div className="pt-2">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by employee name..."
+                                className="pl-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        {searchResult && (
+                            <div className="mt-2 p-3 rounded-md bg-muted text-sm">
+                                {typeof searchResult === 'string' ? (
+                                    <p>No occupant found with that name.</p>
+                                ) : (
+                                    <p>
+                                        <span className="font-semibold">{searchResult.occupantName}</span> is in 
+                                        <span className="font-semibold"> Building {searchResult.buildingNumber}</span>, 
+                                        <span className="font-semibold"> Room {searchResult.roomNumber}</span>, 
+                                        <span className="font-semibold"> Bed {searchResult.bedNumber}</span>.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <AccommodationDetails onAddRoom={handleAddRoomClick} onEditBuilding={handleEditBuildingClick} />
