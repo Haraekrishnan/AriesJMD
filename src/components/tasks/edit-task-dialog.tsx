@@ -160,36 +160,36 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         });
       }
   
-      // Step 2: Warn if no comment
-      if (!newComment.trim()) {
-        toast({
-          title: 'Note',
-          description: 'No comment added. Proceeding with status change.',
-        });
+      let commentText = newComment.trim();
+      if (!commentText) {
+          if (newStatus === 'In Progress') commentText = 'Task started.';
+          else if (newStatus === 'Done') commentText = 'Task completed.';
       }
   
-      // Step 3: Proceed with status change
+      // Step 2: Proceed with status change
       await requestTaskStatusChange(
         taskToDisplay.id,
         newStatus,
-        newComment || 'Task completed',
+        commentText,
         uploadedAttachment || taskToDisplay.attachment || undefined
       );
   
       setAttachment(null);
       setNewComment('');
-      setIsOpen(false);
+      if (newStatus !== 'In Progress') {
+        setIsOpen(false);
+      }
   
       toast({
         title: 'Status Updated',
         description: `Task marked as "${newStatus}".`,
       });
     } catch (error) {
-      console.error('Error while marking task complete:', error);
+      console.error('Error while changing task status:', error);
       toast({
         variant: 'destructive',
-        title: 'Upload failed',
-        description: 'Could not upload attachment. Please try again.',
+        title: 'Update failed',
+        description: 'Could not update the task status. Please try again.',
       });
     }
   };
@@ -273,11 +273,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         }
         return <p className='text-sm text-center text-muted-foreground p-2 bg-muted rounded-md'>Awaiting approval from {users.find(u => u.id === taskToDisplay.creatorId)?.name || 'manager'}</p>
     }
-    if (isAssignee && !isCompleted && mySubtask) {
-        if (mySubtask.status === 'To Do') {
-            return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Start Progress</Button>
+    if (isAssignee && !isCompleted) {
+        if (mySubtask?.status === 'To Do') {
+            return <Button onClick={() => handleRequestStatusChange('In Progress')} className="w-full">Mark as Started</Button>
         }
-        if (mySubtask.status === 'In Progress') {
+        if (mySubtask?.status === 'In Progress') {
             return <Button onClick={() => handleRequestStatusChange('Done')} className="w-full">Mark as Completed</Button>
         }
     }
