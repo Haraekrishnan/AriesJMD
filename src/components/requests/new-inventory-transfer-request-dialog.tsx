@@ -1,251 +1,440 @@
 
 'use client';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Textarea } from '../ui/textarea';
-import { useMemo, useState } from 'react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import type { InventoryItem, UTMachine, DftMachine, TransferReason, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
-import { TRANSFER_REASONS } from '@/lib/types';
-import { ScrollArea } from '../ui/scroll-area';
-import { X, ChevronsUpDown } from 'lucide-react';
-import { Badge } from '../ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
 
-type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment'; };
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAppContext } from "@/contexts/app-provider";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useMemo, useState } from "react";
+import {
+  Command,
+  CommandInput,
+  CommandGroup,
+  CommandList,
+  CommandItem,
+  CommandEmpty,
+} from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { X } from "lucide-react";
+import type {
+  InventoryItem,
+  UTMachine,
+  DftMachine,
+  DigitalCamera,
+  Anemometer,
+  OtherEquipment,
+} from "@/lib/types";
 
-const transferRequestSchema = z.object({
-  fromProjectId: z.string().min(1, 'Origin project is required'),
-  toProjectId: z.string().min(1, 'Destination project is required'),
-  reason: z.enum(TRANSFER_REASONS, { required_error: 'A reason for transfer is required.' }),
-  requestedById: z.string().optional(),
-  remarks: z.string().optional(),
-  items: z.array(z.object({
-    itemId: z.string(),
-    itemType: z.enum(['Inventory', 'UTMachine', 'DftMachine', 'DigitalCamera', 'Anemometer', 'OtherEquipment']),
-    name: z.string(),
-    serialNumber: z.string(),
-    ariesId: z.string().optional(),
-  })).min(1, 'Please add at least one item to transfer'),
-}).refine(data => data.fromProjectId !== data.toProjectId, {
-    message: 'Destination project must be different from the origin.',
-    path: ['toProjectId'],
-}).refine(data => {
-    if (data.reason === 'Transfer to another project as requested by') {
-        return !!data.requestedById;
+import { TRANSFER_REASONS } from "@/lib/types";
+
+type SearchableItem =
+  | (InventoryItem & { itemType: "Inventory" })
+  | (UTMachine & { itemType: "UTMachine" })
+  | (DftMachine & { itemType: "DftMachine" })
+  | (DigitalCamera & { itemType: "DigitalCamera" })
+  | (Anemometer & { itemType: "Anemometer" })
+  | (OtherEquipment & { itemType: "OtherEquipment" });
+
+const transferRequestSchema = z
+  .object({
+    fromProjectId: z.string().min(1, "Origin project is required"),
+    toProjectId: z.string().min(1, "Destination project is required"),
+    reason: z.enum(TRANSFER_REASONS),
+    requestedById: z.string().optional(),
+    remarks: z.string().optional(),
+    items: z
+      .array(
+        z.object({
+          itemId: z.string(),
+          itemType: z.enum([
+            "Inventory",
+            "UTMachine",
+            "DftMachine",
+            "DigitalCamera",
+            "Anemometer",
+            "OtherEquipment",
+          ]),
+          name: z.string(),
+          serialNumber: z.string(),
+          ariesId: z.string().optional(),
+        })
+      )
+      .min(1, "Please add at least one item to transfer"),
+  })
+  .refine((d) => d.fromProjectId !== d.toProjectId, {
+    path: ["toProjectId"],
+    message: "Destination must be different from origin",
+  })
+  .refine(
+    (d) =>
+      d.reason !== "Transfer to another project as requested by" ||
+      !!d.requestedById,
+    {
+      path: ["requestedById"],
+      message: "Requested By is required for selected reason",
     }
-    return true;
-}, {
-    message: 'Please select the person who requested the transfer.',
-    path: ['requestedById'],
-});
+  );
 
-type TransferRequestFormValues = z.infer<typeof transferRequestSchema>;
+type FormValues = z.infer<typeof transferRequestSchema>;
 
-interface NewInventoryTransferRequestDialogProps {
+export default function NewInventoryTransferRequestDialog({
+  isOpen,
+  setIsOpen,
+}: {
   isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-}
-
-export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }: NewInventoryTransferRequestDialogProps) {
-  const { user, users, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, addInventoryTransferRequest } = useAppContext();
+  setIsOpen: (v: boolean) => void;
+}) {
+  const {
+    user,
+    users,
+    projects,
+    inventoryItems,
+    utMachines,
+    dftMachines,
+    digitalCameras,
+    anemometers,
+    otherEquipments,
+    addInventoryTransferRequest,
+  } = useAppContext();
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
 
-  const form = useForm<TransferRequestFormValues>({
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(transferRequestSchema),
     defaultValues: {
-      fromProjectId: user?.projectId || '',
-      toProjectId: '',
+      fromProjectId: user?.projectId || "",
+      toProjectId: "",
+      reason: undefined,
+      requestedById: undefined,
+      remarks: "",
       items: [],
-      remarks: '',
     },
   });
-  
-  const fromProjectId = form.watch('fromProjectId');
-  const selectedItems = form.watch('items');
-  const reason = form.watch('reason');
 
-  const allSearchableItems = useMemo(() => {
-    const items: SearchableItem[] = [];
-    inventoryItems?.forEach(item => items.push({ ...item, itemType: 'Inventory' }));
-    utMachines?.forEach(item => items.push({ ...item, itemType: 'UTMachine' }));
-    dftMachines?.forEach(item => items.push({ ...item, itemType: 'DftMachine' }));
-    digitalCameras?.forEach(item => items.push({ ...item, itemType: 'DigitalCamera' }));
-    anemometers?.forEach(item => items.push({ ...item, itemType: 'Anemometer' }));
-    otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
-    return items;
-  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments]);
+  const fromProjectId = form.watch("fromProjectId");
+  const selectedItems = form.watch("items");
+  const reason = form.watch("reason");
+
+  const allItems = useMemo(() => {
+    const arr: SearchableItem[] = [];
+    inventoryItems?.forEach((i) => arr.push({ ...i, itemType: "Inventory" }));
+    utMachines?.forEach((i) => arr.push({ ...i, itemType: "UTMachine" }));
+    dftMachines?.forEach((i) => arr.push({ ...i, itemType: "DftMachine" }));
+    digitalCameras?.forEach((i) =>
+      arr.push({ ...i, itemType: "DigitalCamera" })
+    );
+    anemometers?.forEach((i) =>
+      arr.push({ ...i, itemType: "Anemometer" })
+    );
+    otherEquipments?.forEach((i) =>
+      arr.push({ ...i, itemType: "OtherEquipment" })
+    );
+    return arr;
+  }, [
+    inventoryItems,
+    utMachines,
+    dftMachines,
+    digitalCameras,
+    anemometers,
+    otherEquipments,
+  ]);
 
   const availableItems = useMemo(() => {
-    return allSearchableItems.filter(item => 
-        item.projectId === fromProjectId &&
-        !selectedItems.some(sel => sel.itemId === item.id && sel.itemType === item.itemType) &&
-        (searchTerm 
-            ? ((item.name || (item as any).machineName || (item as any).equipmentName)?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-               item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               (item.ariesId && item.ariesId.toLowerCase().includes(searchTerm.toLowerCase())))
-            : true)
+    return allItems.filter(
+      (it) =>
+        it.projectId === fromProjectId &&
+        !selectedItems.some(
+          (s) => s.itemId === it.id && s.itemType === it.itemType
+        ) &&
+        (searchTerm
+          ? it.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            it.ariesId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (it as any).name?.toLowerCase().includes(searchTerm.toLowerCase())
+          : true)
     );
-  }, [allSearchableItems, fromProjectId, selectedItems, searchTerm]);
+  }, [allItems, fromProjectId, selectedItems, searchTerm]);
 
-  const handleItemSelect = (item: SearchableItem) => {
-    form.setValue('items', [...selectedItems, {
+  const handleAdd = (item: SearchableItem) => {
+    form.setValue("items", [
+      ...selectedItems,
+      {
         itemId: item.id,
         itemType: item.itemType,
-        name: (item as any).name || (item as any).machineName || (item as any).equipmentName,
+        name:
+          (item as any).name ||
+          (item as any).machineName ||
+          (item as any).equipmentName,
         serialNumber: item.serialNumber,
-        ariesId: item.ariesId || undefined,
-    }]);
-    setSearchTerm('');
+        ariesId: item.ariesId,
+      },
+    ]);
   };
-  
-  const handleItemRemove = (itemId: string, itemType: string) => {
-    form.setValue('items', selectedItems.filter(item => !(item.itemId === itemId && item.itemType === itemType)));
-  }
 
-  const onSubmit = (data: TransferRequestFormValues) => {
+  const handleRemove = (itemId: string, type: string) => {
+    form.setValue(
+      "items",
+      selectedItems.filter((x) => !(x.itemId === itemId && x.itemType === type))
+    );
+  };
+
+  const onSubmit = (data: FormValues) => {
     addInventoryTransferRequest(data);
-    toast({ title: 'Transfer Request Submitted', description: 'Your request has been sent for approval.' });
+    toast({ title: "Transfer Request Submitted" });
     setIsOpen(false);
   };
-  
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      form.reset({
-        fromProjectId: user?.projectId || '',
-        toProjectId: '',
-        reason: undefined,
-        items: [],
-        remarks: '',
-        requestedById: undefined,
-      });
-      setSearchTerm('');
-    }
-    setIsOpen(open);
+
+  const resetForm = () => {
+    form.reset({
+      fromProjectId: user?.projectId || "",
+      toProjectId: "",
+      reason: undefined,
+      requestedById: undefined,
+      remarks: "",
+      items: [],
+    });
+    setSearchTerm("");
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(v) => {
+        if (!v) resetForm();
+        setIsOpen(v);
+      }}
+    >
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>New Inventory Transfer Request</DialogTitle>
-          <DialogDescription>Request to move items from one project to another.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <div className="space-y-4 px-1 flex-1 overflow-y-auto pr-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>From Project</Label>
-                <Controller
-                  name="fromProjectId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue placeholder="Select origin..." /></SelectTrigger>
-                      <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>To Project</Label>
-                <Controller
-                  name="toProjectId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue placeholder="Select destination..." /></SelectTrigger>
-                      <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id} disabled={p.id === fromProjectId}>{p.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  )}
-                />
-                 {form.formState.errors.toProjectId && <p className="text-xs text-destructive">{form.formState.errors.toProjectId.message}</p>}
-              </div>
+
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* ------------------- Projects ------------------- */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>From Project</Label>
+              <Controller
+                name="fromProjectId"
+                control={form.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select origin..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
-             <div className="space-y-2">
-                <Label>Reason for Transfer</Label>
-                 <Controller
-                  name="reason"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue placeholder="Select a reason..." /></SelectTrigger>
-                      <SelectContent>{TRANSFER_REASONS.map(reason => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent>
-                    </Select>
-                  )}
-                />
-                {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
-            </div>
-            {reason === 'Transfer to another project as requested by' && (
-                <div className="space-y-2">
-                    <Label>Requested By</Label>
-                    <Controller
-                        name="requestedById"
-                        control={form.control}
-                        render={({ field }) => (
-                             <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger><SelectValue placeholder="Select employee..." /></SelectTrigger>
-                                <SelectContent>
-                                    {users.filter(u => u.role !== 'Manager').map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    />
-                     {form.formState.errors.requestedById && <p className="text-xs text-destructive">{form.formState.errors.requestedById.message}</p>}
-                </div>
-            )}
-            <div className="space-y-2">
-              <Label>Remarks (Optional)</Label>
-              <Textarea {...form.register('remarks')} />
-            </div>
-            <div className="space-y-2">
-              <Label>Search & Add Items</Label>
-              <Command className="rounded-lg border shadow-md">
-                <CommandInput placeholder="Search by name, serial number, or Aries ID..." value={searchTerm} onValueChange={setSearchTerm} />
-                <ScrollArea className="h-40">
-                    <CommandList>
-                        <CommandEmpty>No available items match your search.</CommandEmpty>
-                        <CommandGroup>
-                            {availableItems.map((item) => (
-                                <CommandItem key={`${item.id}-${item.itemType}`} onSelect={() => handleItemSelect(item)}>
-                                    {(item as any).name || (item as any).machineName || (item as any).equipmentName} (SN: {item.serialNumber})
-                                    {item.ariesId && <span className="text-xs text-muted-foreground ml-2">(ID: {item.ariesId})</span>}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </ScrollArea>
-              </Command>
-            </div>
-            <div className="space-y-2">
-                <Label>Items to Transfer ({selectedItems.length})</Label>
-                <ScrollArea className="h-48 border rounded-md p-2">
-                   {selectedItems.length > 0 ? (
-                    <div className="space-y-2">
-                        {selectedItems.map(item => (
-                            <div key={`${item.itemId}-${item.itemType}`} className="flex items-center justify-between p-1.5 bg-muted rounded-md text-sm">
-                                <span>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</span>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleItemRemove(item.itemId, item.itemType)}><X className="h-4 w-4"/></Button>
-                            </div>
-                        ))}
-                    </div>
-                   ) : <p className="text-center text-sm text-muted-foreground pt-10">No items added yet.</p>}
-                </ScrollArea>
-                 {form.formState.errors.items && <p className="text-xs text-destructive">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>}
+
+            <div>
+              <Label>To Project</Label>
+              <Controller
+                name="toProjectId"
+                control={form.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select destination..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => (
+                        <SelectItem
+                          key={p.id}
+                          value={p.id}
+                          disabled={p.id === fromProjectId}
+                        >
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.toProjectId && (
+                <p className="text-xs text-red-500">
+                  {form.formState.errors.toProjectId.message}
+                </p>
+              )}
             </div>
           </div>
-          <DialogFooter className="pt-4 mt-auto border-t">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+
+          {/* ------------------- Reason ------------------- */}
+          <div>
+            <Label>Reason</Label>
+            <Controller
+              name="reason"
+              control={form.control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reason..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRANSFER_REASONS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.reason && (
+              <p className="text-xs text-red-500">
+                {form.formState.errors.reason.message}
+              </p>
+            )}
+          </div>
+
+          {/* ------------------- Requested By ------------------- */}
+          {reason === "Transfer to another project as requested by" && (
+            <div>
+              <Label>Requested By</Label>
+              <Controller
+                name="requestedById"
+                control={form.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select requester..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users
+                        .filter((u) => u.role !== "Manager")
+                        .map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {form.formState.errors.requestedById && (
+                <p className="text-xs text-red-500">
+                  {form.formState.errors.requestedById.message}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ------------------- Remarks ------------------- */}
+          <div>
+            <Label>Remarks</Label>
+            <Textarea {...form.register("remarks")} />
+          </div>
+
+          {/* ------------------- Search Items ------------------- */}
+          <div>
+            <Label>Search & Add Items</Label>
+            <Command className="border rounded-md">
+              <CommandInput
+                placeholder="Search name, serial, Aries ID..."
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+              />
+              <ScrollArea className="h-40">
+                <CommandList>
+                  <CommandEmpty>No items match.</CommandEmpty>
+                  <CommandGroup>
+                    {availableItems.map((item) => (
+                      <CommandItem
+                        key={item.id + item.itemType}
+                        onSelect={() => handleAdd(item)}
+                      >
+                        {(item as any).name ||
+                          (item as any).machineName ||
+                          (item as any).equipmentName}{" "}
+                        (SN: {item.serialNumber})
+                        {item.ariesId && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            (ID: {item.ariesId})
+                          </span>
+                        )}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </ScrollArea>
+            </Command>
+          </div>
+
+          {/* ------------------- Selected Items ------------------- */}
+          <div>
+            <Label>Items to Transfer ({selectedItems.length})</Label>
+            <ScrollArea className="h-48 border rounded-md p-2">
+              {selectedItems.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  No items added yet.
+                </p>
+              ) : (
+                selectedItems.map((item) => (
+                  <div
+                    key={item.itemId + item.itemType}
+                    className="flex justify-between items-center bg-muted p-2 rounded-md text-sm mb-2"
+                  >
+                    <span>
+                      {item.name} (SN: {item.serialNumber}
+                      {item.ariesId ? `, ID: ${item.ariesId}` : ""})
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemove(item.itemId, item.itemType)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </ScrollArea>
+            {form.formState.errors.items && (
+              <p className="text-xs text-red-500">
+                {form.formState.errors.items.message}
+              </p>
+            )}
+          </div>
+
+          {/* ------------------- Footer ------------------- */}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetForm();
+                setIsOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
             <Button type="submit">Submit Request</Button>
           </DialogFooter>
         </form>
