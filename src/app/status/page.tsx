@@ -9,18 +9,22 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function StatusPage() {
-  const { user, logout, requestUnlock } = useAppContext();
+  const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.status === 'active') {
-      router.replace('/dashboard');
+    if (!loading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (user.status === 'active') {
+        router.replace('/dashboard');
+      }
     }
-  }, [user, router]);
-
-  if (!user || user.status === 'active') {
-    return null; // Let redirection logic handle it
+  }, [user, loading, router]);
+  
+  if (loading || !user || user.status !== 'locked') {
+    return null; // Render nothing while loading or redirecting
   }
 
   const handleUnlockRequest = () => {

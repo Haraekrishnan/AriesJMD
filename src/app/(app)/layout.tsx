@@ -14,8 +14,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
+    if (loading) {
+      return;
+    }
+    if (!user && pathname !== '/login') {
       router.replace('/login');
+    } else if (user && user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 
@@ -35,6 +40,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   if (pathname === '/login' || pathname === '/status') {
     return <>{children}</>;
+  }
+  
+  if (user && user.status === 'locked') {
+    return null; // or a minimal loading state while redirecting
   }
 
   return (
