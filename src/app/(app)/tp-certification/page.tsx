@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/tp-certification/generateTpCertReport';
@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 export default function TpCertificationPage() {
     const { 
         user, users, tpCertLists, deleteTpCertList,
-        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims
+        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, can
      } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
@@ -90,6 +90,20 @@ export default function TpCertificationPage() {
         deleteTpCertList(listId);
         toast({ title: 'List Deleted', variant: 'destructive' });
     };
+
+    if (!can.manage_tp_certification) {
+        return (
+            <Card className="w-full max-w-md mx-auto mt-20">
+               <CardHeader className="text-center items-center">
+                   <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                       <AlertTriangle className="h-10 w-10 text-destructive" />
+                   </div>
+                   <CardTitle>Access Denied</CardTitle>
+                   <CardDescription>You do not have permission to manage TP Certification lists.</CardDescription>
+               </CardHeader>
+           </Card>
+        );
+    }
 
     return (
         <>

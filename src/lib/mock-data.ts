@@ -40,7 +40,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
       'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
-      'manage_job_record'
+      'manage_job_record', 'manage_tp_certification'
     ],
     isEditable: false,
   },
@@ -81,7 +81,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'view_performance_reports',
       'manage_vehicles',
-      'manage_igp_ogp', 'view_ppe_requests', 'manage_ppe_stock'
+      'manage_igp_ogp', 'view_ppe_requests', 'manage_ppe_stock', 'manage_tp_certification'
     ],
     isEditable: false,
   },
@@ -169,7 +169,7 @@ export const TASKS: Task[] = [
     creatorId: '11', 
     isViewedByAssignee: true,
     comments: [
-        { id: 'c-1-1', userId: '11', text: 'Let me know if you have any questions on the design brief.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() }
+        { id: 'c-1-1', userId: '11', text: 'Let me know if you have any questions on the design brief.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), eventId: 'task-1' }
     ],
     requiresAttachmentForCompletion: true,
     approvalState: 'none'
@@ -216,8 +216,8 @@ export const TASKS: Task[] = [
     creatorId: '5', 
     isViewedByAssignee: true,
     comments: [
-        { id: 'c-4-1', userId: '5', text: 'This is a top priority, please escalate if you run into issues.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: 'c-4-2', userId: '15', text: 'On it. I think I have an idea of what the issue is.', date: new Date().toISOString() }
+        { id: 'c-4-1', userId: '5', text: 'This is a top priority, please escalate if you run into issues.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), eventId: 'task-4' },
+        { id: 'c-4-2', userId: '15', text: 'On it. I think I have an idea of what the issue is.', date: new Date().toISOString(), eventId: 'task-4' }
     ],
     requiresAttachmentForCompletion: false,
     approvalState: 'none'
@@ -308,7 +308,7 @@ export const INTERNAL_REQUESTS: InternalRequest[] = [
         status: 'Approved',
         approverId: '22',
         date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        comments: [{ id: 'c-ireq-1', userId: '22', text: 'Approved. You can collect from the main store.', date: new Date().toISOString() }],
+        comments: [{ id: 'c-ireq-1', userId: '22', text: 'Approved. You can collect from the main store.', date: new Date().toISOString(), eventId: 'ireq-2' }],
         viewedByRequester: false,
     }
 ];
@@ -345,14 +345,14 @@ export const CERTIFICATE_REQUESTS: CertificateRequest[] = [
     status: 'Pending',
     requestDate: new Date().toISOString(),
     remarks: 'Need this for client audit next week.',
-    comments: [{ id: 'c-cert-1', userId: '3', text: 'Need this for client audit next week.', date: new Date().toISOString() }],
+    comments: [{ id: 'c-cert-1', userId: '3', text: 'Need this for client audit next week.', date: new Date().toISOString(), eventId: 'cert-req-1' }],
   }
 ];
 
 export const MANPOWER_LOGS: ManpowerLog[] = [
-    { id: 'mp-1', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 20, countOut: 1, reason: '1 person sick leave', updatedBy: '3', yesterdayCount: 19, total: 38, countOnLeave: 1, personOnLeaveName: 'David' },
-    { id: 'mp-2', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-2', countIn: 15, countOut: 0, reason: 'Full attendance', updatedBy: '4', yesterdayCount: 15, total: 30, countOnLeave: 0 },
-    { id: 'mp-3', date: format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 19, countOut: 0, reason: 'Full attendance', updatedBy: '3', yesterdayCount: 19, total: 38, countOnLeave: 0 },
+    { id: 'mp-1', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 20, countOut: 1, reason: '1 person sick leave', updatedBy: '3', yesterdayCount: 19, total: 38, countOnLeave: 1, personOnLeaveName: 'David', openingManpower: 19, updatedAt: new Date().toISOString() },
+    { id: 'mp-2', date: format(new Date(), 'yyyy-MM-dd'), projectId: 'proj-2', countIn: 15, countOut: 0, reason: 'Full attendance', updatedBy: '4', yesterdayCount: 15, total: 30, countOnLeave: 0, openingManpower: 15, updatedAt: new Date().toISOString() },
+    { id: 'mp-3', date: format(sub(new Date(), { days: 1 }), 'yyyy-MM-dd'), projectId: 'proj-1', countIn: 19, countOut: 0, reason: 'Full attendance', updatedBy: '3', yesterdayCount: 19, total: 38, countOnLeave: 0, openingManpower: 19, updatedAt: sub(new Date(), { days: 1 }).toISOString() },
 ];
 
 export const UT_MACHINES: UTMachine[] = [];
@@ -429,7 +429,6 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         frequency: 'daily',
         creatorId: '11', 
         userId: '19', 
-        comments: [],
     },
     {
         id: 'event-2',
@@ -439,7 +438,6 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         frequency: 'once',
         creatorId: '2', 
         userId: '2', 
-        comments: [],
     },
     {
         id: 'event-3',
@@ -449,7 +447,6 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         frequency: 'monthly',
         creatorId: '1', 
         userId: '1', 
-        comments: [],
     },
     {
         id: 'event-4',
@@ -459,7 +456,6 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
         frequency: 'weekly',
         creatorId: '3', 
         userId: '12',
-        comments: [],
     }
 ];
 

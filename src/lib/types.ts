@@ -286,7 +286,8 @@ export const ALL_PERMISSIONS = [
   'manage_job_record',
   'manage_downloads',
   'manage_logbook',
-  'perform_inventory_inspection'
+  'perform_inventory_inspection',
+  'manage_tp_certification'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
