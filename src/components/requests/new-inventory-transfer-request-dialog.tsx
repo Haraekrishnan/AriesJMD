@@ -58,7 +58,7 @@ const transferRequestSchema = z
   .object({
     fromProjectId: z.string().min(1, "Origin project is required"),
     toProjectId: z.string().min(1, "Destination project is required"),
-    reason: z.enum(TRANSFER_REASONS),
+    reason: z.enum(TRANSFER_REASONS).optional(),
     requestedById: z.string().optional(),
     remarks: z.string().optional(),
     items: z
@@ -85,9 +85,12 @@ const transferRequestSchema = z
     message: "Destination must be different from origin",
   })
   .refine(
-    (d) =>
-      d.reason !== "Transfer to another project as requested by" ||
-      !!d.requestedById,
+    (d) => {
+        if (d.reason === 'Transfer to another project as requested by') {
+            return !!d.requestedById;
+        }
+        return true;
+    },
     {
       path: ["requestedById"],
       message: "Requested By is required for selected reason",
@@ -198,7 +201,11 @@ export default function NewInventoryTransferRequestDialog({
   };
 
   const onSubmit = (data: FormValues) => {
-    addInventoryTransferRequest(data);
+    if (!data.reason) {
+      form.setError("reason", { type: "manual", message: "Reason is required" });
+      return;
+    }
+    addInventoryTransferRequest(data as any);
     toast({ title: "Transfer Request Submitted" });
     setIsOpen(false);
   };
