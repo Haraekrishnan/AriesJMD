@@ -106,7 +106,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                 <div className="flex items-center gap-2 pr-4">
                                      <Badge variant="secondary">Rooms: {buildingSummary.totalRooms}</Badge>
                                      <Badge variant="success">Total Beds: {buildingSummary.totalBeds}</Badge>
-                                     <Badge variant="default">Vacant: {buildingSummary.vacantBeds}</Badge>
+                                     <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Vacant: {buildingSummary.vacantBeds}</Badge>
                                 </div>
                            </div>
                         </AccordionTrigger>
@@ -126,7 +126,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditRoom(building, room)}><Edit className="h-3 w-3"/></Button>
                                                   </span>
                                                   <Badge variant="success">Total: {totalCount}</Badge>
-                                                  <Badge variant="default">Vacant: {vacantCount}</Badge>
+                                                  <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Vacant: {vacantCount}</Badge>
                                                 </h4>
                                                 {can.manage_accommodation && (
                                                     <div className="flex items-center gap-1">
@@ -159,10 +159,10 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                                           key={bed.id} 
                                                           className={cn(
                                                             "p-3 border-2 rounded-lg flex flex-col items-center justify-center text-center relative",
-                                                            isOccupied ? "bg-green-100 dark:bg-green-900/40 border-green-400" : "bg-blue-100 dark:bg-blue-900/40 border-blue-400"
+                                                            isOccupied ? "bg-green-100 dark:bg-green-900/40 border-green-400" : "bg-red-100 dark:bg-red-900/40 border-red-400"
                                                           )}
                                                         >
-                                                            <BedSingle className={cn("h-6 w-6 mb-2", isOccupied ? "text-green-700" : "text-blue-700")} />
+                                                            <BedSingle className={cn("h-6 w-6 mb-2", isOccupied ? "text-green-700" : "text-red-700")} />
                                                             <p className="font-medium text-sm">Bed {bed.bedNumber}</p>
                                                             {occupant ? (
                                                                 <>
@@ -189,7 +189,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                                                 </>
                                                             ) : (
                                                                  <>
-                                                                    <p className="text-xs text-blue-600 mt-1">Available</p>
+                                                                    <p className="text-xs text-red-600 mt-1">Available</p>
                                                                     <div className="flex items-center gap-1 mt-2">
                                                                         <Button variant="outline" size="sm" className="h-7" onClick={() => handleAssignClick(building.id, room.id, bed.id)}>
                                                                             <User className="mr-1 h-3 w-3"/> Assign
@@ -271,6 +271,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
         </>
     );
 }
+
 
 
 

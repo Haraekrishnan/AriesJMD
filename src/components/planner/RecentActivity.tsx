@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -46,7 +45,7 @@ export default function RecentPlannerActivity() {
   // ===============   MAIN useMemo LOGIC  =================
   // ======================================================
   const { unreadComments, pendingUpdates } = useMemo(() => {
-    if (!user) return { unreadComments: [], pendingUpdates: [] };
+    if (!user) return { unreadComments: [] as UnreadCommentInfo[], pendingUpdates: [] as PendingUpdateInfo[] };
 
     const allUnread: UnreadCommentInfo[] = [];
     const allPendingUpdates: PendingUpdateInfo[] = [];
@@ -69,7 +68,8 @@ export default function RecentPlannerActivity() {
         const isParticipant =
           eventForComment.creatorId === user.id || eventForComment.userId === user.id;
 
-        const isUnreadFromOther = comment.userId !== user.id && !comment.viewedBy?.[user.id];
+        const isUnreadFromOther =
+          comment.userId !== user.id && !comment.viewedBy?.[user.id];
 
         if (isParticipant && isUnreadFromOther) {
           allUnread.push({
@@ -94,18 +94,37 @@ export default function RecentPlannerActivity() {
     );
 
     myDelegatedEvents.forEach((event) => {
-      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
-      const pastInstances = expanded.filter((e) => isPast(e.eventDate) && !isToday(e.eventDate));
+      const eventStart = parseISO(event.date);
+      const expanded = getExpandedPlannerEvents(eventStart, event.userId);
+
+      // ✅ IMPORTANT FIX:
+      // Only consider instances ON or AFTER the event's own start date.
+      const pastInstances = expanded.filter((instance) => {
+        const d = instance.eventDate;
+        return (
+          isPast(d) &&
+          !isToday(d) &&
+          d.getTime() >= eventStart.getTime()
+        );
+      });
 
       pastInstances.forEach((instance) => {
         const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-        const dc = dailyPlannerComments.find((x) => x.id === `${dayStr}_${event.userId}`);
+
+        const dc = dailyPlannerComments.find(
+          (x) => x.id === `${dayStr}_${event.userId}`
+        );
+
         const commentsForEvent = dc
           ? Object.values(dc.comments || {}).filter((c) => c.eventId === event.id)
           : [];
 
-        const assigneeCommented = commentsForEvent.some((c) => c.userId === event.userId);
-        const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+        const assigneeCommented = commentsForEvent.some(
+          (c) => c.userId === event.userId
+        );
+
+        const isDismissed =
+          user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
 
         if (!assigneeCommented && !isDismissed) {
           allPendingUpdates.push({
@@ -118,7 +137,7 @@ export default function RecentPlannerActivity() {
       });
     });
 
-    // --- ASSIGNEE PENDING UPDATES (PATCH) ---
+    // --- ASSIGNEE PENDING UPDATES (for events delegated TO me) ---
     const assignedEvents = plannerEvents.filter(
       (e) =>
         e.userId === user.id &&
@@ -128,18 +147,35 @@ export default function RecentPlannerActivity() {
     );
 
     assignedEvents.forEach((event) => {
-      const expanded = getExpandedPlannerEvents(parseISO(event.date), event.userId);
-      const pastInstances = expanded.filter((e) => isPast(e.eventDate) && !isToday(e.eventDate));
+      const eventStart = parseISO(event.date);
+      const expanded = getExpandedPlannerEvents(eventStart, event.userId);
+
+      const pastInstances = expanded.filter((instance) => {
+        const d = instance.eventDate;
+        return (
+          isPast(d) &&
+          !isToday(d) &&
+          d.getTime() >= eventStart.getTime()
+        );
+      });
 
       pastInstances.forEach((instance) => {
         const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-        const dc = dailyPlannerComments.find((x) => x.id === `${dayStr}_${event.userId}`);
+
+        const dc = dailyPlannerComments.find(
+          (x) => x.id === `${dayStr}_${event.userId}`
+        );
+
         const commentsForEvent = dc
           ? Object.values(dc.comments || {}).filter((c) => c.eventId === event.id)
           : [];
 
-        const assigneeCommented = commentsForEvent.some((c) => c.userId === event.userId);
-        const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+        const assigneeCommented = commentsForEvent.some(
+          (c) => c.userId === event.userId
+        );
+
+        const isDismissed =
+          user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
 
         if (!assigneeCommented && !isDismissed) {
           allPendingUpdates.push({
@@ -152,15 +188,21 @@ export default function RecentPlannerActivity() {
       });
     });
 
+    // Sort unread comments (newest first)
+    const sortedUnread = allUnread.sort(
+      (a, b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()
+    );
+
+    // Remove duplicate pending entries per (day + event)
+    const dedupedPending = [
+      ...new Map(
+        allPendingUpdates.map((item) => [`${item.day}-${item.event.id}`, item])
+      ).values(),
+    ];
+
     return {
-      unreadComments: allUnread.sort(
-        (a, b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()
-      ),
-      pendingUpdates: [
-        ...new Map(
-          allPendingUpdates.map((item) => [`${item.day}-${item.event.id}`, item])
-        ).values(),
-      ],
+      unreadComments: sortedUnread,
+      pendingUpdates: dedupedPending,
     };
   }, [
     user,
@@ -173,7 +215,9 @@ export default function RecentPlannerActivity() {
   // ======================================================
   // ===============   OUTSIDE useMemo  ====================
   // ======================================================
-  if (unreadComments.length === 0 && pendingUpdates.length === 0) return null;
+  if (!user || (unreadComments.length === 0 && pendingUpdates.length === 0)) {
+    return null;
+  }
 
   const handleMarkAsRead = (comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
@@ -186,12 +230,12 @@ export default function RecentPlannerActivity() {
     }
   };
 
-  const handleAddComment = (eventId: string, day: string, userId: string) => {
+  const handleAddComment = (eventId: string, day: string, eventUserId: string) => {
     const key = `${day}-${eventId}`;
     const text = newComments[key];
     if (!text?.trim()) return;
 
-    addPlannerEventComment(userId, day, eventId, text);
+    addPlannerEventComment(eventUserId, day, eventId, text);
     dismissPendingUpdate(eventId, day);
     setNewComments((prev) => ({ ...prev, [key]: '' }));
   };
@@ -280,6 +324,7 @@ export default function RecentPlannerActivity() {
 
               {pendingUpdates.map(({ day, event, delegatedTo }) => {
                 const key = `${day}-${event.id}`;
+                const isCreatorView = event.creatorId === user.id;
 
                 return (
                   <div
@@ -293,11 +338,13 @@ export default function RecentPlannerActivity() {
                         <p className="font-semibold text-sm">{event.title}</p>
 
                         <p className="text-xs">
-                          {event.creatorId === user.id ? (
+                          {isCreatorView ? (
                             <>
                               No update from{' '}
-                              <span className="font-medium">{delegatedTo?.name}</span> for{' '}
-                              {format(parseISO(day), 'dd MMM, yyyy')}.
+                              <span className="font-medium">
+                                {delegatedTo?.name}
+                              </span>{' '}
+                              for {format(parseISO(day), 'dd MMM, yyyy')}.
                             </>
                           ) : (
                             <>
@@ -319,14 +366,14 @@ export default function RecentPlannerActivity() {
                           Review
                         </Button>
 
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="border-red-400 text-red-600 hover:bg-red-50"
-                          onClick={() => dismissPendingUpdate(event.id, day)}
-                        >
-                          Dismiss
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="border-red-400 text-red-600 hover:bg-red-50"
+                            onClick={() => dismissPendingUpdate(event.id, day)}
+                          >
+                            Dismiss
+                          </Button>
                       </div>
                     </div>
 
@@ -335,7 +382,11 @@ export default function RecentPlannerActivity() {
                       <Textarea
                         rows={1}
                         className="text-xs pr-10 bg-white dark:bg-card"
-                        placeholder={`Ask ${delegatedTo?.name} for an update...`}
+                        placeholder={
+                          isCreatorView
+                            ? `Ask ${delegatedTo?.name || 'them'} for an update...`
+                            : 'Add an update for this event...'
+                        }
                         value={newComments[key] || ''}
                         onChange={(e) =>
                           setNewComments((prev) => ({
