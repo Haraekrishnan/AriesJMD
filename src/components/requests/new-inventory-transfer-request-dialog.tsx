@@ -64,8 +64,10 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
   const form = useForm<TransferRequestFormValues>({
     resolver: zodResolver(transferRequestSchema),
     defaultValues: {
-      fromProjectId: user?.projectId,
+      fromProjectId: user?.projectId || '',
+      toProjectId: '',
       items: [],
+      remarks: '',
     },
   });
   
@@ -119,7 +121,14 @@ export default function NewInventoryTransferRequestDialog({ isOpen, setIsOpen }:
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ fromProjectId: user?.projectId, items: [], toProjectId: undefined, reason: undefined, remarks: '', requestedById: undefined });
+      form.reset({
+        fromProjectId: user?.projectId || '',
+        toProjectId: '',
+        reason: undefined,
+        items: [],
+        remarks: '',
+        requestedById: undefined,
+      });
       setSearchTerm('');
     }
     setIsOpen(open);
