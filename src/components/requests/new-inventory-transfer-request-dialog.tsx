@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useFormContext } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAppContext } from "@/contexts/app-provider";
@@ -58,7 +58,7 @@ const transferRequestSchema = z
   .object({
     fromProjectId: z.string().min(1, "Origin project is required"),
     toProjectId: z.string().min(1, "Destination project is required"),
-    reason: z.enum(TRANSFER_REASONS).optional(),
+    reason: z.enum(TRANSFER_REASONS, { required_error: "A reason is required."}),
     requestedById: z.string().optional(),
     remarks: z.string().optional(),
     items: z
@@ -85,19 +85,16 @@ const transferRequestSchema = z
     message: "Destination must be different from origin",
   })
   .refine(
-    (d) => {
-        if (d.reason === 'Transfer to another project as requested by') {
-            return !!d.requestedById;
-        }
-        return true;
-    },
+    (d) =>
+      d.reason !== "Transfer to another project as requested by" ||
+      !!d.requestedById,
     {
       path: ["requestedById"],
       message: "Requested By is required for selected reason",
     }
   );
 
-type FormValues = z.infer<typeof transferRequestSchema>;
+export type FormValues = z.infer<typeof transferRequestSchema>;
 
 export default function NewInventoryTransferRequestDialog({
   isOpen,
@@ -122,17 +119,7 @@ export default function NewInventoryTransferRequestDialog({
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(transferRequestSchema),
-    defaultValues: {
-      fromProjectId: user?.projectId || "",
-      toProjectId: "",
-      reason: undefined,
-      requestedById: undefined,
-      remarks: "",
-      items: [],
-    },
-  });
+  const form = useFormContext<FormValues>();
 
   const fromProjectId = form.watch("fromProjectId");
   const selectedItems = form.watch("items");
@@ -201,18 +188,14 @@ export default function NewInventoryTransferRequestDialog({
   };
 
   const onSubmit = (data: FormValues) => {
-    if (!data.reason) {
-      form.setError("reason", { type: "manual", message: "Reason is required" });
-      return;
-    }
-    addInventoryTransferRequest(data as any);
+    addInventoryTransferRequest(data);
     toast({ title: "Transfer Request Submitted" });
     setIsOpen(false);
   };
 
   const resetForm = () => {
     form.reset({
-      fromProjectId: user?.projectId || "",
+      fromProjectId: user?.projectIds?.[0] || "",
       toProjectId: "",
       reason: undefined,
       requestedById: undefined,
@@ -258,6 +241,7 @@ export default function NewInventoryTransferRequestDialog({
                   </Select>
                 )}
               />
+               {form.formState.errors.fromProjectId && <p className="text-xs text-red-500">{form.formState.errors.fromProjectId.message}</p>}
             </div>
 
             <div>
