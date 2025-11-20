@@ -76,8 +76,8 @@ export default function StoreInventoryPage() {
             return false;
         }
         
-        if (projectId !== 'all' && !user?.projectIds?.includes(projectId) && !isPrivileged) {
-          if (!user?.projectIds?.includes(item.projectId)) return false;
+        if (projectId !== 'all' && user?.projectIds && !user.projectIds.includes(projectId) && !isPrivileged) {
+          if (!user.projectIds.includes(item.projectId)) return false;
         } else if (projectId !== 'all') {
             if (item.projectId !== projectId) return false;
         }

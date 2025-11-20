@@ -169,7 +169,9 @@ export default function NewInventoryTransferRequestDialog({
         (searchTerm
           ? it.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             it.ariesId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (it as any).name?.toLowerCase().includes(searchTerm.toLowerCase())
+            (it as any).name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (it as any).machineName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (it as any).equipmentName?.toLowerCase().includes(searchTerm.toLowerCase())
           : true)
     );
   }, [allItems, fromProjectId, selectedItems, searchTerm]);
@@ -188,6 +190,7 @@ export default function NewInventoryTransferRequestDialog({
         ariesId: item.ariesId,
       },
     ]);
+    setSearchTerm('');
   };
 
   const handleRemove = (itemId: string, type: string) => {
@@ -223,8 +226,8 @@ export default function NewInventoryTransferRequestDialog({
         setIsOpen(v);
       }}
     >
-      <DialogContent className="sm:max-w-3xl">
-        <FormProvider {...form}>
+      <FormProvider {...form}>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>New Inventory Transfer Request</DialogTitle>
           </DialogHeader>
@@ -440,8 +443,8 @@ export default function NewInventoryTransferRequestDialog({
               <Button type="submit">Submit Request</Button>
             </DialogFooter>
           </form>
-        </FormProvider>
-      </DialogContent>
+        </DialogContent>
+      </FormProvider>
     </Dialog>
   );
 }
