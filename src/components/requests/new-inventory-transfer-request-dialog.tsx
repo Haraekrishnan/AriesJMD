@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm, Controller, useFormContext } from "react-hook-form";
+import { useForm, Controller, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAppContext } from "@/contexts/app-provider";
@@ -58,7 +58,7 @@ const transferRequestSchema = z
   .object({
     fromProjectId: z.string().min(1, "Origin project is required"),
     toProjectId: z.string().min(1, "Destination project is required"),
-    reason: z.enum(TRANSFER_REASONS, { required_error: "A reason is required."}),
+    reason: z.enum(TRANSFER_REASONS, { errorMap: () => ({ message: "A reason is required."})}),
     requestedById: z.string().optional(),
     remarks: z.string().optional(),
     items: z
@@ -119,7 +119,17 @@ export default function NewInventoryTransferRequestDialog({
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const form = useFormContext<FormValues>();
+  const form = useForm<FormValues>({
+    resolver: zodResolver(transferRequestSchema),
+    defaultValues: {
+      fromProjectId: user?.projectIds?.[0] || "",
+      toProjectId: "",
+      reason: undefined,
+      requestedById: undefined,
+      remarks: "",
+      items: [],
+    },
+  });
 
   const fromProjectId = form.watch("fromProjectId");
   const selectedItems = form.watch("items");
@@ -214,221 +224,223 @@ export default function NewInventoryTransferRequestDialog({
       }}
     >
       <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>New Inventory Transfer Request</DialogTitle>
-        </DialogHeader>
+        <FormProvider {...form}>
+          <DialogHeader>
+            <DialogTitle>New Inventory Transfer Request</DialogTitle>
+          </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* ------------------- Projects ------------------- */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>From Project</Label>
-              <Controller
-                name="fromProjectId"
-                control={form.control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select origin..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-               {form.formState.errors.fromProjectId && <p className="text-xs text-red-500">{form.formState.errors.fromProjectId.message}</p>}
-            </div>
-
-            <div>
-              <Label>To Project</Label>
-              <Controller
-                name="toProjectId"
-                control={form.control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select destination..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem
-                          key={p.id}
-                          value={p.id}
-                          disabled={p.id === fromProjectId}
-                        >
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.toProjectId && (
-                <p className="text-xs text-red-500">
-                  {form.formState.errors.toProjectId.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* ------------------- Reason ------------------- */}
-          <div>
-            <Label>Reason</Label>
-            <Controller
-              name="reason"
-              control={form.control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select reason..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRANSFER_REASONS.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.reason && (
-              <p className="text-xs text-red-500">
-                {form.formState.errors.reason.message}
-              </p>
-            )}
-          </div>
-
-          {/* ------------------- Requested By ------------------- */}
-          {reason === "Transfer to another project as requested by" && (
-            <div>
-              <Label>Requested By</Label>
-              <Controller
-                name="requestedById"
-                control={form.control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select requester..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users
-                        .filter((u) => u.role !== "Manager")
-                        .map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.name}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* ------------------- Projects ------------------- */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>From Project</Label>
+                <Controller
+                  name="fromProjectId"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select origin..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                 {form.formState.errors.fromProjectId && <p className="text-xs text-red-500">{form.formState.errors.fromProjectId.message}</p>}
+              </div>
+
+              <div>
+                <Label>To Project</Label>
+                <Controller
+                  name="toProjectId"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select destination..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((p) => (
+                          <SelectItem
+                            key={p.id}
+                            value={p.id}
+                            disabled={p.id === fromProjectId}
+                          >
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.toProjectId && (
+                  <p className="text-xs text-red-500">
+                    {form.formState.errors.toProjectId.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ------------------- Reason ------------------- */}
+            <div>
+              <Label>Reason</Label>
+              <Controller
+                name="reason"
+                control={form.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRANSFER_REASONS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-              {form.formState.errors.requestedById && (
+              {form.formState.errors.reason && (
                 <p className="text-xs text-red-500">
-                  {form.formState.errors.requestedById.message}
+                  {form.formState.errors.reason.message}
                 </p>
               )}
             </div>
-          )}
 
-          {/* ------------------- Remarks ------------------- */}
-          <div>
-            <Label>Remarks</Label>
-            <Textarea {...form.register("remarks")} />
-          </div>
-
-          {/* ------------------- Search Items ------------------- */}
-          <div>
-            <Label>Search & Add Items</Label>
-            <Command className="border rounded-md">
-              <CommandInput
-                placeholder="Search name, serial, Aries ID..."
-                value={searchTerm}
-                onValueChange={setSearchTerm}
-              />
-              <ScrollArea className="h-40">
-                <CommandList>
-                  <CommandEmpty>No items match.</CommandEmpty>
-                  <CommandGroup>
-                    {availableItems.map((item) => (
-                      <CommandItem
-                        key={item.id + item.itemType}
-                        onSelect={() => handleAdd(item)}
-                      >
-                        {(item as any).name ||
-                          (item as any).machineName ||
-                          (item as any).equipmentName}{" "}
-                        (SN: {item.serialNumber})
-                        {item.ariesId && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            (ID: {item.ariesId})
-                          </span>
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </ScrollArea>
-            </Command>
-          </div>
-
-          {/* ------------------- Selected Items ------------------- */}
-          <div>
-            <Label>Items to Transfer ({selectedItems.length})</Label>
-            <ScrollArea className="h-48 border rounded-md p-2">
-              {selectedItems.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground">
-                  No items added yet.
-                </p>
-              ) : (
-                selectedItems.map((item) => (
-                  <div
-                    key={item.itemId + item.itemType}
-                    className="flex justify-between items-center bg-muted p-2 rounded-md text-sm mb-2"
-                  >
-                    <span>
-                      {item.name} (SN: {item.serialNumber}
-                      {item.ariesId ? `, ID: ${item.ariesId}` : ""})
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemove(item.itemId, item.itemType)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))
-              )}
-            </ScrollArea>
-            {form.formState.errors.items && (
-              <p className="text-xs text-red-500">
-                {form.formState.errors.items.message}
-              </p>
+            {/* ------------------- Requested By ------------------- */}
+            {reason === "Transfer to another project as requested by" && (
+              <div>
+                <Label>Requested By</Label>
+                <Controller
+                  name="requestedById"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select requester..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users
+                          .filter((u) => u.role !== "Manager")
+                          .map((u) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.requestedById && (
+                  <p className="text-xs text-red-500">
+                    {form.formState.errors.requestedById.message}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
 
-          {/* ------------------- Footer ------------------- */}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                resetForm();
-                setIsOpen(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit">Submit Request</Button>
-          </DialogFooter>
-        </form>
+            {/* ------------------- Remarks ------------------- */}
+            <div>
+              <Label>Remarks</Label>
+              <Textarea {...form.register("remarks")} />
+            </div>
+
+            {/* ------------------- Search Items ------------------- */}
+            <div>
+              <Label>Search & Add Items</Label>
+              <Command className="border rounded-md">
+                <CommandInput
+                  placeholder="Search name, serial, Aries ID..."
+                  value={searchTerm}
+                  onValueChange={setSearchTerm}
+                />
+                <ScrollArea className="h-40">
+                  <CommandList>
+                    <CommandEmpty>No items match.</CommandEmpty>
+                    <CommandGroup>
+                      {availableItems.map((item) => (
+                        <CommandItem
+                          key={item.id + item.itemType}
+                          onSelect={() => handleAdd(item)}
+                        >
+                          {(item as any).name ||
+                            (item as any).machineName ||
+                            (item as any).equipmentName}{" "}
+                          (SN: {item.serialNumber})
+                          {item.ariesId && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (ID: {item.ariesId})
+                            </span>
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </ScrollArea>
+              </Command>
+            </div>
+
+            {/* ------------------- Selected Items ------------------- */}
+            <div>
+              <Label>Items to Transfer ({selectedItems.length})</Label>
+              <ScrollArea className="h-48 border rounded-md p-2">
+                {selectedItems.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground">
+                    No items added yet.
+                  </p>
+                ) : (
+                  selectedItems.map((item) => (
+                    <div
+                      key={item.itemId + item.itemType}
+                      className="flex justify-between items-center bg-muted p-2 rounded-md text-sm mb-2"
+                    >
+                      <span>
+                        {item.name} (SN: {item.serialNumber}
+                        {item.ariesId ? `, ID: ${item.ariesId}` : ""})
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemove(item.itemId, item.itemType)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </ScrollArea>
+              {form.formState.errors.items && (
+                <p className="text-xs text-red-500">
+                  {form.formState.errors.items.message}
+                </p>
+              )}
+            </div>
+
+            {/* ------------------- Footer ------------------- */}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetForm();
+                  setIsOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Submit Request</Button>
+            </DialogFooter>
+          </form>
+        </FormProvider>
       </DialogContent>
     </Dialog>
   );

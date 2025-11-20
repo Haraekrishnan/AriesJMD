@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -23,55 +22,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialog';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
-import NewInventoryTransferRequestDialog, { type FormValues as TransferFormValues } from '@/components/requests/new-inventory-transfer-request-dialog';
+import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { TRANSFER_REASONS } from '@/lib/types';
-
-// Define the schema here or import from a shared location if needed elsewhere
-const transferRequestSchema = z
-  .object({
-    fromProjectId: z.string().min(1, "Origin project is required"),
-    toProjectId: z.string().min(1, "Destination project is required"),
-    reason: z.enum(TRANSFER_REASONS, { required_error: "A reason is required."}),
-    requestedById: z.string().optional(),
-    remarks: z.string().optional(),
-    items: z
-      .array(
-        z.object({
-          itemId: z.string(),
-          itemType: z.enum([
-            "Inventory",
-            "UTMachine",
-            "DftMachine",
-            "DigitalCamera",
-            "Anemometer",
-            "OtherEquipment",
-          ]),
-          name: z.string(),
-          serialNumber: z.string(),
-          ariesId: z.string().optional(),
-        })
-      )
-      .min(1, "Please add at least one item to transfer"),
-  })
-  .refine((d) => d.fromProjectId !== d.toProjectId, {
-    path: ["toProjectId"],
-    message: "Destination must be different from origin",
-  })
-  .refine(
-    (d) =>
-      d.reason !== "Transfer to another project as requested by" ||
-      !!d.requestedById,
-    {
-      path: ["requestedById"],
-      message: "Requested By is required for selected reason",
-    }
-  );
-
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
@@ -83,19 +36,6 @@ export default function StoreInventoryPage() {
     const [isTransferRequestOpen, setIsTransferRequestOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [view, setView] = useState<'list' | 'summary'>('list');
-
-    const form = useForm<TransferFormValues>({
-        resolver: zodResolver(transferRequestSchema),
-        defaultValues: {
-          fromProjectId: user?.projectIds?.[0] || "",
-          toProjectId: "",
-          reason: undefined,
-          requestedById: undefined,
-          remarks: "",
-          items: [],
-        },
-    });
-
 
     const [filters, setFilters] = useState({
         name: 'all',
@@ -136,7 +76,11 @@ export default function StoreInventoryPage() {
             return false;
         }
         
-        if (projectId !== 'all' && item.projectId !== projectId) return false;
+        if (projectId !== 'all' && !user?.projectIds?.includes(projectId) && !isPrivileged) {
+          if (!user?.projectIds?.includes(item.projectId)) return false;
+        } else if (projectId !== 'all') {
+            if (item.projectId !== projectId) return false;
+        }
         
         const now = new Date();
         const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
@@ -184,7 +128,7 @@ export default function StoreInventoryPage() {
 
         return true;
       });
-    }, [generalItems, filters, user, can.manage_inventory]);
+    }, [generalItems, filters, user, can.manage_inventory, projects]);
 
     const summaryData = useMemo(() => {
         const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};
@@ -430,14 +374,8 @@ export default function StoreInventoryPage() {
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
             <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
-            <FormProvider {...form}>
-                <NewInventoryTransferRequestDialog isOpen={isTransferRequestOpen} setIsOpen={setIsTransferRequestOpen} />
-            </FormProvider>
+            <NewInventoryTransferRequestDialog isOpen={isTransferRequestOpen} setIsOpen={setIsTransferRequestOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
 }
-
-
-
-      
