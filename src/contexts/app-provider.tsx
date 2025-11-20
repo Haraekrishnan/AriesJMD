@@ -2519,14 +2519,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             'View Transfers'
         );
     }
-  }, [user, addActivityLog, users, projects]);
+  }, [user, addActivityLog, addTpCertList, users, projects]);
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     
     const sanitizedItems = requestData.items.map(item => ({
-      ...item,
+      itemId: item.itemId,
+      itemType: item.itemType,
+      name: (item as any).name || 'Unknown', // Fallback to prevent undefined
+      serialNumber: item.serialNumber,
       ariesId: item.ariesId || null,
     }));
   
