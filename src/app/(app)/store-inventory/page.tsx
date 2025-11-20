@@ -67,65 +67,65 @@ export default function StoreInventoryPage() {
     }, [inventoryItems]);
 
     const filteredItems = useMemo(() => {
-      const isPrivileged = user ? can.manage_inventory || user.role === 'Admin' : false;
+        return generalItems.filter(item => {
+            // Privileged users see all items matching the filter.
+            if (can.manage_inventory || user?.role === 'Admin') {
+                const { name, status, projectId, search, updatedDateRange } = filters;
+                if (name !== 'all' && item.name !== name) return false;
+                if (search && !(item.serialNumber?.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
+                    return false;
+                }
+                
+                if (projectId !== 'all' && item.projectId !== projectId) {
+                    return false;
+                }
+                
+                const now = new Date();
+                const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
+                const tpInspectionDueDate = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
 
-      return generalItems.filter(item => {
-        const { name, status, projectId, search, updatedDateRange } = filters;
-        if (name !== 'all' && item.name !== name) return false;
-        if (search && !(item.serialNumber?.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
+                const isItemExpired = (inspectionDueDate && isAfter(now, inspectionDueDate)) || (tpInspectionDueDate && isAfter(now, tpInspectionDueDate));
+                const itemEffectiveStatus = isItemExpired ? 'Expired' : item.status;
+
+                const inspectionExpired = inspectionDueDate && isAfter(now, inspectionDueDate);
+                const tpInspectionExpired = tpInspectionDueDate && isAfter(now, tpInspectionDueDate);
+
+                if (status !== 'all') {
+                    if (status === 'Expired') {
+                        if (itemEffectiveStatus !== 'Expired') return false;
+                    } else if (status === 'Inspection Expired') {
+                        if (!inspectionExpired) return false;
+                    } else if (status === 'TP Expired') {
+                        if (!tpInspectionExpired) return false;
+                    } else if (status === 'Not Verified') {
+                        if (!item.lastUpdated) return true; // Show items with no lastUpdated date
+                        const fifteenDaysAgo = subDays(now, 15);
+                        if (isBefore(parseISO(item.lastUpdated), fifteenDaysAgo)) return true; // Show items updated more than 15 days ago
+                        return false; // Hide items updated within the last 15 days
+                    } else {
+                        if (item.status !== status) return false;
+                    }
+                }
+                
+                if (updatedDateRange?.from) {
+                    if (!item.lastUpdated) return false;
+                    const updatedDate = parseISO(item.lastUpdated);
+                    const from = updatedDateRange.from;
+                    const to = updatedDateRange.to || from;
+                    if (!isWithinInterval(updatedDate, { start: from, end: to })) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // Non-privileged users see items from their assigned projects.
+            if (user?.projectIds && user.projectIds.length > 0) {
+                return user.projectIds.includes(item.projectId);
+            }
+            
             return false;
-        }
-        
-        if (projectId !== 'all') {
-            if (item.projectId !== projectId) return false;
-        }
-        
-        const now = new Date();
-        const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
-        const tpInspectionDueDate = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
-
-        const isItemExpired = (inspectionDueDate && isAfter(now, inspectionDueDate)) || (tpInspectionDueDate && isAfter(now, tpInspectionDueDate));
-        const itemEffectiveStatus = isItemExpired ? 'Expired' : item.status;
-
-        const inspectionExpired = inspectionDueDate && isAfter(now, inspectionDueDate);
-        const tpInspectionExpired = tpInspectionDueDate && isAfter(now, tpInspectionDueDate);
-
-        if (status !== 'all') {
-            if (status === 'Expired') {
-                if (itemEffectiveStatus !== 'Expired') return false;
-            } else if (status === 'Inspection Expired') {
-                if (!inspectionExpired) return false;
-            } else if (status === 'TP Expired') {
-                if (!tpInspectionExpired) return false;
-            } else if (status === 'Not Verified') {
-                if (!item.lastUpdated) return true; // Show items with no lastUpdated date
-                const fifteenDaysAgo = subDays(now, 15);
-                if (isBefore(parseISO(item.lastUpdated), fifteenDaysAgo)) return true; // Show items updated more than 15 days ago
-                return false; // Hide items updated within the last 15 days
-            } else {
-                if (item.status !== status) return false;
-            }
-        }
-        
-        if (updatedDateRange?.from) {
-            if (!item.lastUpdated) return false;
-            const updatedDate = parseISO(item.lastUpdated);
-            const from = updatedDateRange.from;
-            const to = updatedDateRange.to || from;
-            if (!isWithinInterval(updatedDate, { start: from, end: to })) {
-                return false;
-            }
-        }
-        
-        if (!isPrivileged && user?.projectIds && user.projectIds.length > 0) {
-            if (!user.projectIds.includes(item.projectId)) {
-                return false;
-            }
-        }
-
-
-        return true;
-      });
+        });
     }, [generalItems, filters, user, can.manage_inventory, projects]);
 
     const summaryData = useMemo(() => {

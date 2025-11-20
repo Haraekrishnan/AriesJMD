@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, FormProvider } from "react-hook-form";
@@ -58,7 +57,9 @@ const transferRequestSchema = z
   .object({
     fromProjectId: z.string().min(1, "Origin project is required"),
     toProjectId: z.string().min(1, "Destination project is required"),
-    reason: z.enum(TRANSFER_REASONS),
+    reason: z.enum(TRANSFER_REASONS, {
+        required_error: "A reason for the transfer is required.",
+    }),
     requestedById: z.string().optional(),
     remarks: z.string().optional(),
     items: z
@@ -78,19 +79,19 @@ const transferRequestSchema = z
           ariesId: z.string().optional(),
         })
       )
-      .min(1, "Please add at least one item to transfer"),
+      .min(1, "Please add at least one item to transfer."),
   })
   .refine((d) => d.fromProjectId !== d.toProjectId, {
     path: ["toProjectId"],
-    message: "Destination must be different from origin",
+    message: "Destination must be different from origin.",
   })
   .refine(
     (d) =>
       d.reason !== "Transfer to another project as requested by" ||
-      !!d.requestedById,
+      (!!d.requestedById && d.requestedById.length > 0),
     {
       path: ["requestedById"],
-      message: "Requested By is required for selected reason",
+      message: "Requested By is required for this reason.",
     }
   );
 
@@ -160,6 +161,7 @@ export default function NewInventoryTransferRequestDialog({
   ]);
 
   const availableItems = useMemo(() => {
+    if (!fromProjectId) return [];
     return allItems.filter(
       (it) =>
         it.projectId === fromProjectId &&
@@ -218,13 +220,15 @@ export default function NewInventoryTransferRequestDialog({
     setSearchTerm("");
   };
 
-  const handleOpen = (v: boolean) => {
-    if (!v) resetForm();
-    setIsOpen(v);
-  }
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      resetForm();
+    }
+    setIsOpen(open);
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <FormProvider {...form}>
         <DialogContent
             className="sm:max-w-3xl"
@@ -258,7 +262,7 @@ export default function NewInventoryTransferRequestDialog({
                     </Select>
                     )}
                 />
-                {form.formState.errors.fromProjectId && <p className="text-xs text-red-500">{form.formState.errors.fromProjectId.message}</p>}
+                {form.formState.errors.fromProjectId && <p className="text-xs text-red-500 mt-1">{form.formState.errors.fromProjectId.message}</p>}
                 </div>
 
                 <div>
@@ -286,7 +290,7 @@ export default function NewInventoryTransferRequestDialog({
                     )}
                 />
                 {form.formState.errors.toProjectId && (
-                    <p className="text-xs text-red-500">
+                    <p className="text-xs text-red-500 mt-1">
                     {form.formState.errors.toProjectId.message}
                     </p>
                 )}
@@ -315,7 +319,7 @@ export default function NewInventoryTransferRequestDialog({
                 )}
                 />
                 {form.formState.errors.reason && (
-                <p className="text-xs text-red-500">
+                <p className="text-xs text-red-500 mt-1">
                     {form.formState.errors.reason.message}
                 </p>
                 )}
@@ -346,7 +350,7 @@ export default function NewInventoryTransferRequestDialog({
                     )}
                 />
                 {form.formState.errors.requestedById && (
-                    <p className="text-xs text-red-500">
+                    <p className="text-xs text-red-500 mt-1">
                     {form.formState.errors.requestedById.message}
                     </p>
                 )}
@@ -399,7 +403,7 @@ export default function NewInventoryTransferRequestDialog({
                 <Label>Items to Transfer ({selectedItems.length})</Label>
                 <ScrollArea className="h-48 border rounded-md p-2">
                 {selectedItems.length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground">
+                    <p className="text-center text-sm text-muted-foreground pt-16">
                     No items added yet.
                     </p>
                 ) : (
@@ -425,7 +429,7 @@ export default function NewInventoryTransferRequestDialog({
                 )}
                 </ScrollArea>
                 {form.formState.errors.items && (
-                <p className="text-xs text-red-500">
+                <p className="text-xs text-red-500 mt-1">
                     {form.formState.errors.items.message}
                 </p>
                 )}
@@ -436,10 +440,7 @@ export default function NewInventoryTransferRequestDialog({
                 <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                    resetForm();
-                    setIsOpen(false);
-                }}
+                onClick={() => handleOpenChange(false)}
                 >
                 Cancel
                 </Button>
@@ -451,4 +452,3 @@ export default function NewInventoryTransferRequestDialog({
     </Dialog>
   );
 }
-
