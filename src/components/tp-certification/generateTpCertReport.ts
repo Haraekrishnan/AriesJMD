@@ -166,7 +166,7 @@ export async function generateTpCertExcel(
   });
 
   const imageId = workbook.addImage({ buffer: imageBuffer, extension: "png" });
-  worksheet.addImage(imageId, { tl: { col: 0, row: 0 }, br: { col: 8, row: 3 }, editAs: 'oneCell' });
+  worksheet.addImage(imageId, { tl: { col: 0, row: 0 }, br: { col: 9, row: 3 }, editAs: 'oneCell' });
 
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
@@ -225,24 +225,23 @@ export async function generateTpCertExcel(
 
   groupedItems.forEach(group => {
     const groupStartRow = currentRowIndex;
-    const groupSize = group.length;
-
-    group.forEach((item) => {
+    group.forEach((item, index) => {
       const rowData = [
-        srNo,
-        item.materialName,
+        index === 0 ? srNo : '',
+        index === 0 ? item.materialName : '',
         item.manufacturerSrNo,
         item.chestCrollNo || '',
-        getCapacity(item.materialName),
-        groupSize,
-        'OLD',
+        index === 0 ? getCapacity(item.materialName) : '',
+        index === 0 ? group.length : '',
+        index === 0 ? 'OLD' : '',
         '',
         ''
       ];
       worksheet.addRow(rowData);
     });
     
-    for (let i = 0; i < groupSize; i++) {
+    // Apply borders and alignment to all newly added rows for the group
+    for (let i = 0; i < group.length; i++) {
         const row = worksheet.getRow(groupStartRow + i);
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
@@ -250,17 +249,18 @@ export async function generateTpCertExcel(
         });
     }
 
-    if (groupSize > 1) {
-        worksheet.mergeCells(groupStartRow, 1, groupStartRow + groupSize - 1, 1); // SR No.
-        worksheet.mergeCells(groupStartRow, 2, groupStartRow + groupSize - 1, 2); // Material Name
-        worksheet.mergeCells(groupStartRow, 5, groupStartRow + groupSize - 1, 5); // Cap
-        worksheet.mergeCells(groupStartRow, 6, groupStartRow + groupSize - 1, 6); // Qty
-        worksheet.mergeCells(groupStartRow, 7, groupStartRow + groupSize - 1, 7); // New/Old
-        worksheet.mergeCells(groupStartRow, 8, groupStartRow + groupSize - 1, 8); // Valid Upto
-        worksheet.mergeCells(groupStartRow, 9, groupStartRow + groupSize - 1, 9); // Submit Report
+    // Vertical merge for common cells
+    if (group.length > 1) {
+        worksheet.mergeCells(groupStartRow, 1, groupStartRow + group.length - 1, 1);
+        worksheet.mergeCells(groupStartRow, 2, groupStartRow + group.length - 1, 2);
+        worksheet.mergeCells(groupStartRow, 5, groupStartRow + group.length - 1, 5);
+        worksheet.mergeCells(groupStartRow, 6, groupStartRow + group.length - 1, 6);
+        worksheet.mergeCells(groupStartRow, 7, groupStartRow + group.length - 1, 7);
+        worksheet.mergeCells(groupStartRow, 8, groupStartRow + group.length - 1, 8);
+        worksheet.mergeCells(groupStartRow, 9, groupStartRow + group.length - 1, 9);
     }
     
-    currentRowIndex += groupSize;
+    currentRowIndex += group.length;
     srNo++;
   });
 
@@ -308,7 +308,32 @@ export async function generateTpCertPdf(
   doc.setFont("helvetica", "normal");
   doc.text("Subject : Testing & Certification", 40, 155);
 
-  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const hasHarness = certItems.some(it => it.materialName.toLowerCase().includes('harness'));
+  
+  const headers = hasHarness 
+    ? [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ]
+    : [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+
+  const columnStyles: { [key: number]: any } = hasHarness ? {
+    0: { cellWidth: 25, halign: 'center' },  // SR. No.
+    1: { cellWidth: 60 },                   // Material Name
+    2: { cellWidth: 100, halign: 'center' },                  // Manufacturer Sr. No.
+    3: { cellWidth: 70, halign: 'center' },                   // Chest Croll No.
+    4: { cellWidth: 40, halign: 'center' },  // Cap. in MT
+    5: { cellWidth: 30, halign: 'center' },  // Qty in Nos
+    6: { cellWidth: 35, halign: 'center' },  // New or Old
+    7: { cellWidth: 50 },                   // Valid upto if Renewal
+    8: { cellWidth: 'auto' },                // Submit Last Testing Report
+  } : {
+    0: { cellWidth: 25, halign: 'center' },  // SR. No.
+    1: { cellWidth: 80 },                   // Material Name
+    2: { cellWidth: 150, halign: 'center' },                  // Manufacturer Sr. No. (Wider)
+    3: { cellWidth: 45, halign: 'center' },  // Cap. in MT
+    4: { cellWidth: 35, halign: 'center' },  // Qty in Nos
+    5: { cellWidth: 40, halign: 'center' },  // New or Old
+    6: { cellWidth: 55 },                   // Valid upto if Renewal
+    7: { cellWidth: 'auto' },                // Submit Last Testing Report
+  };
   
   const bodyRows: any[][] = [];
   const groupedItems = groupItemsForExport(certItems);
@@ -317,24 +342,26 @@ export async function generateTpCertPdf(
   groupedItems.forEach(group => {
     group.forEach((item, index) => {
         let rowData;
-        if (index === 0) {
+        if (index === 0) { // First row of the group gets all data
             rowData = [
                 { content: srNo, rowSpan: group.length },
                 { content: item.materialName, rowSpan: group.length },
                 item.manufacturerSrNo,
-                item.chestCrollNo || '',
+                // Conditionally add chest croll no
+                ...(hasHarness ? [item.chestCrollNo || ''] : []),
                 { content: getCapacity(item.materialName), rowSpan: group.length },
                 { content: group.length, rowSpan: group.length },
                 { content: 'OLD', rowSpan: group.length },
                 { content: '', rowSpan: group.length },
                 { content: '', rowSpan: group.length },
             ];
-        } else {
+        } else { // Subsequent rows only get unique data
             rowData = [
                 // Skipped due to rowspan
                 // Skipped due to rowspan
                 item.manufacturerSrNo,
-                item.chestCrollNo || '',
+                // Conditionally add chest croll no
+                ...(hasHarness ? [item.chestCrollNo || ''] : []),
                 // Skipped due to rowspan
                 // Skipped due to rowspan
                 // Skipped due to rowspan
@@ -347,18 +374,6 @@ export async function generateTpCertPdf(
     srNo++;
   });
   
-  const columnStyles: {[key: number]: any} = {
-    0: { cellWidth: 25, halign: 'center' },
-    1: { cellWidth: 60 },
-    2: { cellWidth: 80 },
-    3: { cellWidth: 70 },
-    4: { cellWidth: 40, halign: 'center' },
-    5: { cellWidth: 30, halign: 'center' },
-    6: { cellWidth: 35, halign: 'center' },
-    7: { cellWidth: 50 },
-    8: { cellWidth: 'auto' },
-  };
-
   (doc as any).autoTable({
       head: [headers],
       body: bodyRows,
@@ -391,10 +406,10 @@ export async function generateTpCertPdf(
 
 
 export async function generateChecklistPdf(
-  checklist: InspectionChecklist,
-  item: InventoryItem,
-  inspector: User,
-  reviewer: User
+  checklist: any,
+  item: any,
+  inspector: any,
+  reviewer: any
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
