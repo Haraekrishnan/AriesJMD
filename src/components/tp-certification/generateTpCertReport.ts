@@ -280,7 +280,6 @@ export async function generateTpCertExcel(
   }
 }
 
-
 export async function generateTpCertPdf(
   items: TpCertListItem[],
   allItems: FullItem[],
@@ -288,7 +287,7 @@ export async function generateTpCertPdf(
 ) {
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
-  
+
   const certItems = buildCertItems(items, allItems);
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -309,42 +308,65 @@ export async function generateTpCertPdf(
   doc.text("Subject : Testing & Certification", 40, 155);
 
   const hasHarness = certItems.some(it => it.materialName.toLowerCase().includes('harness'));
-  
-  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
-  
-  const columnStyles: { [key: number]: any } = {
-    0: { cellWidth: 25, halign: 'center' },  // SR. No.
-    1: { cellWidth: 60, halign: 'center' },  // Material Name (CENTERED)
-    2: { cellWidth: 150, halign: 'center' }, // Manufacturer Sr. No. (WIDER & CENTERED)
-    3: { cellWidth: 70, halign: 'center' },  // Chest Croll No.
-    4: { cellWidth: 40, halign: 'center' },  // Cap. in MT
-    5: { cellWidth: 30, halign: 'center' },  // Qty in Nos
-    6: { cellWidth: 35, halign: 'center' },  // New or Old
-    7: { cellWidth: 50, halign: 'center' },  // Valid upto if Renewal
-    8: { cellWidth: 'auto', halign: 'center' }, // Submit Last Testing Report
+
+  const headersWithHarness = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
+  const headersWithoutHarness = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
+
+  const columnStylesWithHarness: { [key: number]: any } = {
+    0: { cellWidth: 25, halign: 'center' },
+    1: { cellWidth: 60, halign: 'center' },
+    2: { cellWidth: 150, halign: 'center' },
+    3: { cellWidth: 70, halign: 'center' },
+    4: { cellWidth: 40, halign: 'center' },
+    5: { cellWidth: 30, halign: 'center' },
+    6: { cellWidth: 35, halign: 'center' },
+    7: { cellWidth: 50, halign: 'center' },
+    8: { cellWidth: 'auto', halign: 'center' },
   };
-  
+
+  const columnStylesWithoutHarness: { [key: number]: any } = {
+    0: { cellWidth: 25, halign: 'center' },
+    1: { cellWidth: 80, halign: 'center' },
+    2: { cellWidth: 180, halign: 'center' },
+    3: { cellWidth: 45, halign: 'center' },
+    4: { cellWidth: 35, halign: 'center' },
+    5: { cellWidth: 40, halign: 'center' },
+    6: { cellWidth: 55, halign: 'center' },
+    7: { cellWidth: 'auto', halign: 'center' },
+  };
+
+  const headers = hasHarness ? headersWithHarness : headersWithoutHarness;
+  const columnStyles = hasHarness ? columnStylesWithHarness : columnStylesWithoutHarness;
+
   const bodyRows: any[][] = [];
   const groupedItems = groupItemsForExport(certItems);
   let srNo = 1;
 
   groupedItems.forEach(group => {
-      group.forEach((item, index) => {
-          const isHarness = item.materialName.toLowerCase().includes('harness');
-          const rowData = [
-              index === 0 ? { content: srNo, rowSpan: group.length } : '',
-              index === 0 ? { content: item.materialName, rowSpan: group.length } : '',
-              item.manufacturerSrNo,
-              isHarness ? item.chestCrollNo || '' : '',
-              index === 0 ? { content: getCapacity(item.materialName), rowSpan: group.length } : '',
-              index === 0 ? { content: group.length, rowSpan: group.length } : '',
-              index === 0 ? { content: 'OLD', rowSpan: group.length } : '',
-              index === 0 ? { content: '', rowSpan: group.length } : '',
-              index === 0 ? { content: '', rowSpan: group.length } : '',
-          ];
-          bodyRows.push(rowData.filter(cell => cell !== ''));
-      });
-      srNo++;
+    group.forEach((item, index) => {
+      const isHarnessItemInGroup = item.materialName.toLowerCase().includes('harness');
+      
+      let rowData = [
+        index === 0 ? { content: srNo, rowSpan: group.length } : '',
+        index === 0 ? { content: item.materialName, rowSpan: group.length } : '',
+        item.manufacturerSrNo,
+      ];
+
+      if (hasHarness) {
+        rowData.push(isHarnessItemInGroup ? item.chestCrollNo || '' : '');
+      }
+      
+      rowData.push(
+        index === 0 ? { content: getCapacity(item.materialName), rowSpan: group.length } : '',
+        index === 0 ? { content: group.length, rowSpan: group.length } : '',
+        index === 0 ? { content: 'OLD', rowSpan: group.length } : '',
+        index === 0 ? { content: '', rowSpan: group.length } : '',
+        index === 0 ? { content: '', rowSpan: group.length } : ''
+      );
+
+      bodyRows.push(rowData.filter(cell => cell !== ''));
+    });
+    srNo++;
   });
   
   (doc as any).autoTable({
