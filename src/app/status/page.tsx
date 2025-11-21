@@ -7,24 +7,35 @@ import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.status !== 'locked') {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, router]);
+  if (loading) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                </div>
+            </div>
+        </div>
+    );
+  }
+
+  if (!user) {
+    router.replace('/login');
+    return null; 
+  }
   
-  if (loading || !user || user.status !== 'locked') {
-    return null; // Render nothing while loading or redirecting
+  if (user.status === 'active') {
+      router.replace('/dashboard');
+      return null;
   }
 
   const handleUnlockRequest = () => {

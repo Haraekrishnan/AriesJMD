@@ -14,12 +14,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user && pathname !== '/login') {
       router.replace('/login');
+    } else if (user && user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
+    } else if (user && user.status === 'active' && (pathname === '/login' || pathname === '/status')) {
+      router.replace('/dashboard');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || (!user && pathname !== '/login')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -31,11 +37,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  if (user.status === 'locked') {
-    router.replace('/status');
-    return null;
   }
   
   if (pathname === '/login' || pathname === '/status') {

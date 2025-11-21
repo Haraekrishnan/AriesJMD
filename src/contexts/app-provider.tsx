@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem, TpCertList, InventoryTransferRequest, TRANSFER_REASONS, DownloadableDocument, LogbookRequest, InspectionChecklist } from '../lib/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore, isToday, isFuture, endOfWeek, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
@@ -150,7 +150,7 @@ type AppContextType = {
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
-  addProject: (projectName: string) => void;
+  addProject: (projectName: string, isPlant: boolean) => void;
   updateProject: (project: Project) => void;
   deleteProject: (projectId: string) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
@@ -190,7 +190,7 @@ type AppContextType = {
   resolveInternalRequestDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
   updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => void;
-  addInternalRequestComment: (requestId: string, commentText: string) => void;
+  addInternalRequestComment: (requestId: string, commentText: string, notify?: boolean) => void;
   deleteInternalRequest: (requestId: string) => void;
   forceDeleteInternalRequest: (requestId: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
@@ -217,8 +217,8 @@ type AppContextType = {
   updateInventoryItem: (item: InventoryItem) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
-  deleteInventoryItem: (itemId: string) => void;
-  deleteInventoryItemGroup: (itemName: string) => void;
+  deleteInventoryItem: (itemId: string) => Promise<void>;
+  deleteInventoryItemGroup: (itemName: string) => Promise<void>;
   renameInventoryItemGroup: (oldName: string, newName: string) => void;
   addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => void;
   deleteInventoryTransferRequest: (requestId: string) => void;
@@ -498,18 +498,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
-            setLoading(false);
+            
+            // Do not set user directly, let the effect handle it.
+            // This prevents race conditions with layout effects.
+            
             if (foundUser.status === 'locked') {
                 router.replace('/status');
             } else {
                 router.replace('/dashboard');
             }
+            // setLoading(false) is handled by the useEffect that watches storedUserId
             return { success: true, user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+}, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -765,7 +769,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
@@ -778,7 +782,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`internalRequests/${requestId}/viewedByRequester`] = false;
 
     update(ref(rtdb), updates);
-  }, [user, internalRequestsById]);
+
+    if (notify) {
+      const requester = users.find(u => u.id === request.requesterId);
+      if (requester?.email && request.requesterId !== user.id) {
+          createAndSendNotification(
+              requester.email,
+              `New Query on your Internal Store Request #${request.id.slice(-6)}`,
+              `Query from ${user.name}`,
+              { 'Query': commentText },
+              `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+              'Reply to Query'
+          );
+      }
+    }
+  }, [user, internalRequestsById, users]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
@@ -1327,9 +1345,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `roles/${roleId}`));
   }, []);
   
-  const addProject = useCallback((projectName: string) => {
+  const addProject = useCallback((projectName: string, isPlant: boolean = false) => {
     const newRef = push(ref(rtdb, 'projects'));
-    set(newRef, { name: projectName, isPlant: false });
+    set(newRef, { name: projectName, isPlant });
   }, []);
 
   const updateProject = useCallback((project: Project) => {
@@ -2022,7 +2040,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const { id, ...data } = request;
     const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== undefined)
+        Object.entries(data).filter(([, v]) => v !== undefined)
     );
     update(ref(rtdb, `ppeRequests/${id}`), cleanData);
     addActivityLog(user.id, 'PPE Request Updated', `Request ID: ${id}`);
@@ -3295,11 +3313,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `vendors/${vendorId}`));
   }, []);
 
-  const addPayment = useCallback((payment: Omit<Payment, 'id'|'requesterId'|'status'|'approverId'|'date'|'comments'>) => {
-    if(!user) return;
+  const addPayment = useCallback((paymentData: Omit<Payment, 'id'|'requesterId'|'status'|'approverId'|'date'|'comments'>) => {
+    if (!user) return;
     const newRef = push(ref(rtdb, 'payments'));
     const newPayment: Omit<Payment, 'id'> = {
-        ...payment,
+        ...paymentData,
         requesterId: user.id,
         status: 'Paid',
         date: new Date().toISOString(),
@@ -3778,7 +3796,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDismissedPendingUpdatesById(snapshot.val() || {});
     });
   
-    setLoading(false);
+    // setLoading(false) is now handled in the user state effect
   
     return () => {
       listeners.forEach(unsubscribe => unsubscribe());
@@ -3828,12 +3846,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
                 setUser(userWithDismissed);
             }
+            // Only set loading to false when user object is confirmed
+            if(loading) setLoading(false); 
         }
+        // If user is not found in usersById, it might still be loading, so we don't set loading to false yet.
     } else {
-        setUser(null);
-    }
-    if(!loading && !storedUserId) {
-      setLoading(false);
+      setUser(null);
+      setLoading(false); // If no storedUserId, we're not loading a user.
     }
   }, [storedUserId, usersById, dismissedPendingUpdatesById, user, loading]);
 
@@ -3843,19 +3862,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userRef = ref(rtdb, `users/${user.id}`);
         const unsubscribe = onValue(userRef, (snapshot) => {
             if (!snapshot.exists()) {
-                setStoredUserId(null);
-                setUser(null);
-                router.replace('/login');
+                // User was deleted from DB, log them out.
+                logout();
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
             if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                  setUser(updatedUser);
             }
+            // Redirect if status changes to locked while they are logged in
+            if(updatedUser.status === 'locked') {
+              router.replace('/status');
+            }
         });
         return () => unsubscribe();
     }
-  }, [user, setStoredUserId, router]);
+  }, [user?.id, logout, router]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3867,4 +3889,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
