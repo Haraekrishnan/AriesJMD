@@ -1,5 +1,6 @@
 
 
+'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -270,9 +271,9 @@ export async function generateTpCertExcel(
 
 
 export async function generateTpCertPdf(
-    items: TpCertListItem[],
-    allItems: FullItem[],
-    listDate?: Date | string
+  items: TpCertListItem[],
+  allItems: FullItem[],
+  listDate?: Date | string
 ) {
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
@@ -298,10 +299,7 @@ export async function generateTpCertPdf(
   doc.setFont("helvetica", "normal");
   doc.text("Subject : Testing & Certification", 40, 155);
 
-  const baseHeaders = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
-  const tableColumn = isAnyItemHarness 
-    ? [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ]
-    : baseHeaders;
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
   
   const groupedItems = groupItemsForExport(certItems);
   const tableRows: any[][] = [];
@@ -312,53 +310,45 @@ export async function generateTpCertPdf(
     const isHarnessGroup = group[0].materialName.toLowerCase() === 'harness';
 
     group.forEach((item, index) => {
-        let rowData: any[] = [
-            { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
-            { content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
-            item.manufacturerSrNo || '',
-            { content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? groupSize : 1 },
-            { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
-            { content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 },
-            { content: '', rowSpan: index === 0 ? groupSize : 1 },
-            { content: '', rowSpan: index === 0 ? groupSize : 1 }
-        ];
+      const rowData = [];
+      // SR. No.
+      rowData.push({ content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 });
+      // Material Name
+      rowData.push({ content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? groupSize : 1 });
+      // Manufacturer Sr. No.
+      rowData.push(item.manufacturerSrNo || '');
+      // Chest Scroll No.
+      rowData.push(isHarnessGroup ? (item.chestCrollNo || '') : '');
+      // Cap. in MT
+      rowData.push({ content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? groupSize : 1 });
+      // Qty in Nos
+      rowData.push({ content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 });
+      // New or Old
+      rowData.push({ content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 });
+      // Valid upto if Renewal
+      rowData.push({ content: '', rowSpan: index === 0 ? groupSize : 1 });
+      // Submit Last Testing Report
+      rowData.push({ content: '', rowSpan: index === 0 ? groupSize : 1 });
 
-        if (isAnyItemHarness) {
-            rowData.splice(3, 0, isHarnessGroup ? (item.chestCrollNo || '') : '');
-        } else {
-            // If no harness is in the entire list, we merge the serial number column
-            if(index === 0) {
-              const serialCell = rowData[2] as any;
-              if (typeof serialCell === 'object' && serialCell !== null) serialCell.colSpan = 2;
-              else rowData[2] = { content: serialCell, colSpan: 2 };
-            }
+      const filteredRow = rowData.filter((_, cellIndex) => {
+        if (index > 0) { // If it's not the first item in the group
+          return cellIndex === 2 || cellIndex === 3; // only keep Manufacturer Sr No and Chest Scroll No
         }
-        
-        const filteredRow = rowData.filter((_, cellIndex) => {
-            if (index > 0) {
-              const serialIndex = 2;
-              const chestCrollIndex = 3;
-              if(isAnyItemHarness && isHarnessGroup) return cellIndex === serialIndex || cellIndex === chestCrollIndex;
-              return cellIndex === serialIndex;
-            }
-            return true;
-        });
-
-        tableRows.push(filteredRow);
+        return true; // Keep all cells for the first item
+      });
+      
+      tableRows.push(filteredRow);
     });
     srNo++;
   });
   
-  const columnStyles = isAnyItemHarness ? {
+  const columnStyles = {
     0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 120 }, 3: { cellWidth: 80 }, 4: { cellWidth: 40 },
     5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
-  } : {
-    0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 200 }, 3: { cellWidth: 40 },
-    4: { cellWidth: 30 }, 5: { cellWidth: 35 }, 6: { cellWidth: 50 }, 7: { cellWidth: 'auto' },
   };
 
   (doc as any).autoTable({
-      head: [tableColumn],
+      head: [headers],
       body: tableRows,
       startY: 170,
       theme: "grid",
@@ -368,7 +358,6 @@ export async function generateTpCertPdf(
       didParseCell: (data: any) => {
         if (typeof data.cell.raw === 'object' && data.cell.raw !== null) {
             if (data.cell.raw.rowSpan > 1) data.cell.rowSpan = data.cell.raw.rowSpan;
-            if (data.cell.raw.colSpan > 1) data.cell.colSpan = data.cell.raw.colSpan;
             if (data.cell.raw.content !== undefined) data.cell.content = data.cell.raw.content;
         }
       }
