@@ -499,21 +499,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
             
-            // Do not set user directly, let the effect handle it.
-            // This prevents race conditions with layout effects.
-            
-            if (foundUser.status === 'locked') {
-                router.replace('/status');
-            } else {
-                router.replace('/dashboard');
-            }
-            // setLoading(false) is handled by the useEffect that watches storedUserId
+            // Let the useEffect triggered by setStoredUserId handle setting user and loading state
             return { success: true, user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-}, [setStoredUserId, addActivityLog, router]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -3718,17 +3710,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (!storedUserId) {
       setLoading(false);
-      // Clear all state when user logs out
-      const clearState = (setter: Dispatch<SetStateAction<any>>) => setter({});
-      clearState(setUsersById); clearState(setRolesById); clearState(setTasksById); clearState(setProjectsById); clearState(setJobRecordPlantsById); clearState(setJobCodesById); clearState(setPlannerEventsById);
-      clearState(setDailyPlannerCommentsById); clearState(setAchievementsById); clearState(setActivityLogsById);
-      clearState(setVehiclesById); clearState(setDriversById); clearState(setIncidentReportsById); clearState(setManpowerLogsById); clearState(setManpowerProfilesById); clearState(setInternalRequestsById); clearState(setManagementRequestsById); clearState(setInventoryItemsById); clearState(setInventoryTransferRequestsById); clearState(setUtMachinesById); clearState(setDftMachinesById); clearState(setMobileSimsById); clearState(setLaptopsDesktopsById); clearState(setDigitalCamerasById); clearState(setAnemometersById); clearState(setOtherEquipmentsById); clearState(setMachineLogsById); clearState(setCertificateRequestsById); clearState(setAnnouncementsById); clearState(setBroadcastsById); clearState(setBuildingsById); clearState(setJobSchedulesById); clearState(setJobRecordsById); clearState(setPpeRequestsById); clearState(setPaymentsById); clearState(setVendorsById); clearState(setPurchaseRegistersById); clearState(setPasswordResetRequestsById); clearState(setIgpOgpRecordsById); clearState(setFeedbackById); 
-      clearState(setPpeStockById); clearState(setPpeInwardHistoryById);
-      clearState(setUnlockRequestsById);
-      clearState(setTpCertListsById);
-      clearState(setDownloadableDocumentsById);
-      clearState(setLogbookRequestsById);
-      clearState(setInspectionChecklistsById);
       return;
     }
   
@@ -3839,45 +3820,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, activityLogs, broadcasts]);
   
   useEffect(() => {
-    if (storedUserId) {
+    if (storedUserId && Object.keys(usersById).length > 0) {
         const foundUser = usersById[storedUserId];
         if (foundUser) {
             const userWithDismissed = { ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById };
             if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
                 setUser(userWithDismissed);
             }
-            // Only set loading to false when user object is confirmed
             if(loading) setLoading(false); 
+        } else {
+             setStoredUserId(null);
+             setUser(null);
+             setLoading(false);
         }
-        // If user is not found in usersById, it might still be loading, so we don't set loading to false yet.
-    } else {
-      setUser(null);
-      setLoading(false); // If no storedUserId, we're not loading a user.
+    } else if (!storedUserId) {
+        setUser(null);
+        setLoading(false);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById, user, loading]);
-
-  // Listen for status changes on the current user
-  useEffect(() => {
-    if (user?.id) {
-        const userRef = ref(rtdb, `users/${user.id}`);
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (!snapshot.exists()) {
-                // User was deleted from DB, log them out.
-                logout();
-                return;
-            }
-            const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                 setUser(updatedUser);
-            }
-            // Redirect if status changes to locked while they are logged in
-            if(updatedUser.status === 'locked') {
-              router.replace('/status');
-            }
-        });
-        return () => unsubscribe();
-    }
-  }, [user?.id, logout, router]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, setStoredUserId, user]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3889,3 +3849,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+

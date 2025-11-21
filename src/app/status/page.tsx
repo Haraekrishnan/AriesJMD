@@ -14,7 +14,16 @@ export default function StatusPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) {
+        router.replace('/login');
+    } else if (!loading && user && user.status !== 'locked') {
+        router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
+
+
+  if (loading || !user || user.status !== 'locked') {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">
@@ -26,16 +35,6 @@ export default function StatusPage() {
             </div>
         </div>
     );
-  }
-
-  if (!user) {
-    router.replace('/login');
-    return null; 
-  }
-  
-  if (user.status === 'active') {
-      router.replace('/dashboard');
-      return null;
   }
 
   const handleUnlockRequest = () => {
