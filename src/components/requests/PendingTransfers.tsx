@@ -18,12 +18,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, inventoryItems, utMachines, dftMachines, disputeInventoryTransfer, acknowledgeTransfer } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [editingTpList, setEditingTpList] = useState<Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> | null>(null);
+  
+    const allItems = useMemo(() => [
+      ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
+      ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+    ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
 
   const { forApproval, myActiveRequests, allCompletedRequests } = useMemo(() => {
     if (!user) return { forApproval: [], myActiveRequests: [], allCompletedRequests: [] };
@@ -140,9 +145,13 @@ export default function PendingTransfers() {
                     {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
                     <p className="font-medium mt-2">Items:</p>
                     <ul className="list-disc list-inside text-xs text-muted-foreground">
-                      {req.items.map(item => (
-                        <li key={item.itemId}>{item.name} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
-                      ))}
+                      {req.items.map(item => {
+                        const fullItem = allItems.find(i => i.id === item.itemId);
+                        const itemName = item.name || fullItem?.name || fullItem?.machineName || `${fullItem?.make} ${fullItem?.model}` || 'Unknown';
+                        return (
+                           <li key={item.itemId}>{itemName} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
+                        )
+                      })}
                     </ul>
                   </div>
                 </div>
@@ -154,44 +163,33 @@ export default function PendingTransfers() {
         {myActiveRequests.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">My Active Transfers</h4>
-            {myActiveRequests.map(req => {
-                const toProject = projects.find(p => p.id === req.toProjectId);
-                const fromProject = projects.find(p => p.id === req.fromProjectId);
-                const statusVariant = req.status === 'Disputed' || req.status === 'Rejected' ? 'destructive' : req.status === 'Approved' ? 'default' : 'secondary';
-                const canAcknowledge = req.status === 'Approved' && (user?.projectIds?.includes(req.toProjectId) || user?.role === 'Admin');
-              return (
-                <div key={req.id} className="p-4 border rounded-lg bg-muted/50">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-semibold">Transfer to {toProject?.name}</p>
-                            <p className="text-xs text-muted-foreground">From: {fromProject?.name} &middot; Submitted {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {canAcknowledge && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button size="sm">
-                                            <UserCheck className="mr-2 h-4 w-4"/> Acknowledge Receipt
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                     <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Acknowledge Receipt?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will confirm you have received the items and complete the transfer. This action is final.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => acknowledgeTransfer(req.id)}>Confirm Receipt</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-                            <Badge variant={statusVariant}>{req.status}</Badge>
-                        </div>
-                    </div>
-                </div>
-              );
-            })}
+            <Accordion type="multiple" className="w-full space-y-2">
+                {myActiveRequests.map(req => {
+                    const toProject = projects.find(p => p.id === req.toProjectId);
+                    const fromProject = projects.find(p => p.id === req.fromProjectId);
+                    const statusVariant = req.status === 'Disputed' || req.status === 'Rejected' ? 'destructive' : req.status === 'Approved' ? 'default' : 'secondary';
+                return (
+                    <AccordionItem value={req.id} key={req.id} className="border rounded-lg bg-muted/50">
+                        <AccordionTrigger className="p-4 hover:no-underline">
+                            <div className="flex justify-between items-start w-full">
+                                <div>
+                                    <p className="font-semibold text-left">Transfer to {toProject?.name}</p>
+                                    <p className="text-xs text-muted-foreground text-left">From: {fromProject?.name} &middot; {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}</p>
+                                </div>
+                                <Badge variant={statusVariant}>{req.status}</Badge>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                            <ul className="list-disc list-inside text-xs text-muted-foreground bg-background p-2 rounded-md">
+                                {req.items.map(item => (
+                                    <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                                ))}
+                            </ul>
+                        </AccordionContent>
+                    </AccordionItem>
+                );
+                })}
+            </Accordion>
           </div>
         )}
 

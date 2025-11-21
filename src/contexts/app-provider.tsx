@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -500,12 +499,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             addActivityLog(foundUser.id, 'User Logged In');
             // User state will be set by the useEffect that watches storedUserId
             setLoading(false);
+            if (foundUser.status === 'locked') {
+                router.replace('/status');
+            }
             return { success: true, user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -2474,16 +2476,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     
     const sanitizedItems = requestData.items.map(item => {
-      let name = item.name;
-      if (!name) {
-          const fullItem = allItems.find(i => i.id === item.itemId);
-          if (fullItem) {
-              name = fullItem.name || fullItem.machineName || fullItem.equipmentName || `${fullItem.make} ${fullItem.model}`;
-          }
-      }
+      const fullItem = allItems.find(i => i.id === item.itemId);
+      const name = item.name || fullItem?.name || fullItem?.machineName || fullItem?.equipmentName || `${fullItem?.make} ${fullItem?.model}` || 'Unknown';
       return {
           ...item,
-          name: name || 'Unknown',
+          name,
           ariesId: item.ariesId || null,
       }
     });
@@ -2526,12 +2523,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
   
     const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
+    updates[`inventoryTransferRequests/${request.id}/status`] = 'Completed';
     updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
     updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
   
+    // Immediately move items upon approval
+    request.items.forEach(item => {
+        let itemPath: string;
+        switch (item.itemType) {
+            case 'Inventory': itemPath = 'inventoryItems'; break;
+            case 'UTMachine': itemPath = 'utMachines'; break;
+            case 'DftMachine': itemPath = 'dftMachines'; break;
+            case 'DigitalCamera': itemPath = 'digitalCameras'; break;
+            case 'Anemometer': itemPath = 'anemometers'; break;
+            case 'OtherEquipment': itemPath = 'otherEquipments'; break;
+            default: return;
+        }
+        updates[`${itemPath}/${item.itemId}/projectId`] = request.toProjectId;
+    });
+
+    if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
+      const newListData = {
+        name: `From Transfer ${request.id.slice(-6)}`,
+        date: new Date().toISOString().split('T')[0],
+        items: request.items.map(item => ({
+          materialName: item.name,
+          manufacturerSrNo: item.serialNumber,
+          itemId: item.itemId,
+          itemType: item.itemType,
+          ariesId: item.ariesId || null,
+          chestCrollNo: (item as any).chestCrollNo || null,
+        })),
+      };
+      addTpCertList(newListData);
+    }
+  
     update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
+    addActivityLog(user.id, 'Inventory Transfer Approved & Completed', `Request ID: ${request.id}`);
 
     const requester = users.find(u => u.id === request.requesterId);
     
@@ -2540,14 +2568,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
         createAndSendNotification(
             requester.email,
-            `Inventory Transfer Approved: #${request.id.slice(-6)}`,
-            'Inventory Transfer Request Approved',
+            `Inventory Transfer Completed: #${request.id.slice(-6)}`,
+            'Inventory Transfer Completed',
             {
                 'Request ID': `#${request.id.slice(-6)}`,
                 'From': fromProjectName || 'Unknown',
                 'To': toProjectName || 'Unknown',
                 'Approved By': user.name,
-                'Info': 'The request has been approved. Awaiting acknowledgement from the receiving project supervisor to complete the transfer.'
+                'Info': 'The transfer has been approved and the items are now reflected in the new project.'
             },
             `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
             'View Transfers'
@@ -3830,6 +3858,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
-
