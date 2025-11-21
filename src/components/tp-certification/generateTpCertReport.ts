@@ -187,7 +187,7 @@ export async function generateTpCertExcel(
   worksheet.getCell(`A${startRow + 3}`).alignment = { horizontal: 'left' };
 
   const headerRowIndex = startRow + 5;
-  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
   const hr = worksheet.getRow(headerRowIndex);
   hr.values = headers;
   hr.eachCell(cell => {
@@ -201,7 +201,7 @@ export async function generateTpCertExcel(
     { width: 8 },   // SR. No.
     { width: 25 },  // Material Name
     { width: 45 },  // Manufacturer Sr. No.
-    { width: 35 },  // Chest Scroll No.
+    { width: 35 },  // Chest Croll No.
     { width: 15 },  // Cap. in MT
     { width: 10 },  // Qty in Nos
     { width: 15 },  // New or Old
@@ -280,7 +280,6 @@ export async function generateTpCertPdf(
   
   const certItems = buildCertItems(items, allItems);
   const isAnyItemHarness = certItems.some(item => item.materialName.toLowerCase() === 'harness');
-
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -299,10 +298,10 @@ export async function generateTpCertPdf(
   doc.setFont("helvetica", "normal");
   doc.text("Subject : Testing & Certification", 40, 155);
 
-  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
   
   const groupedItems = groupItemsForExport(certItems);
-  const tableRows: any[][] = [];
+  let tableRows: any[][] = [];
   let srNo = 1;
 
   groupedItems.forEach(group => {
@@ -315,10 +314,14 @@ export async function generateTpCertPdf(
       rowData.push({ content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 });
       // Material Name
       rowData.push({ content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? groupSize : 1 });
-      // Manufacturer Sr. No.
-      rowData.push(item.manufacturerSrNo || '');
-      // Chest Scroll No.
-      rowData.push(isHarnessGroup ? (item.chestCrollNo || '') : '');
+      // Manufacturer Sr. No. & Chest Croll No (handle colspan logic here)
+      if (isHarnessGroup) {
+        rowData.push(item.manufacturerSrNo || '');
+        rowData.push(item.chestCrollNo || '');
+      } else {
+        rowData.push({ content: item.manufacturerSrNo || '', colSpan: 2 });
+        rowData.push(''); // Placeholder for the merged cell
+      }
       // Cap. in MT
       rowData.push({ content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? groupSize : 1 });
       // Qty in Nos
@@ -329,23 +332,21 @@ export async function generateTpCertPdf(
       rowData.push({ content: '', rowSpan: index === 0 ? groupSize : 1 });
       // Submit Last Testing Report
       rowData.push({ content: '', rowSpan: index === 0 ? groupSize : 1 });
-
-      const filteredRow = rowData.filter((_, cellIndex) => {
-        if (index > 0) { // If it's not the first item in the group
-          return cellIndex === 2 || cellIndex === 3; // only keep Manufacturer Sr No and Chest Scroll No
-        }
-        return true; // Keep all cells for the first item
-      });
       
-      tableRows.push(filteredRow);
+      tableRows.push(rowData);
     });
     srNo++;
   });
   
-  const columnStyles = {
-    0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 120 }, 3: { cellWidth: 80 }, 4: { cellWidth: 40 },
-    5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
-  };
+  const columnStyles = isAnyItemHarness 
+    ? {
+        0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 120 }, 3: { cellWidth: 80 }, 4: { cellWidth: 40 },
+        5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
+      }
+    : { // No harness in list
+        0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 200 }, 3: { cellWidth: 0 }, 4: { cellWidth: 40 },
+        5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
+    };
 
   (doc as any).autoTable({
       head: [headers],
@@ -358,6 +359,7 @@ export async function generateTpCertPdf(
       didParseCell: (data: any) => {
         if (typeof data.cell.raw === 'object' && data.cell.raw !== null) {
             if (data.cell.raw.rowSpan > 1) data.cell.rowSpan = data.cell.raw.rowSpan;
+            if (data.cell.raw.colSpan > 1) data.cell.colSpan = data.cell.raw.colSpan;
             if (data.cell.raw.content !== undefined) data.cell.content = data.cell.raw.content;
         }
       }
