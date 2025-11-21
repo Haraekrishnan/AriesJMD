@@ -281,6 +281,8 @@ export async function generateTpCertPdf(
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
 
   const certItems = buildCertItems(items, allItems);
+  const groupedItems = groupItemsForExport(certItems);
+
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -301,51 +303,55 @@ export async function generateTpCertPdf(
 
   const headers = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
   const columnStyles = {
-    0: { cellWidth: 25, halign: 'center' },
-    1: { cellWidth: 60, halign: 'center' },
-    2: { cellWidth: 150, halign: 'center' },
-    3: { cellWidth: 70, halign: 'center' },
-    4: { cellWidth: 40, halign: 'center' },
-    5: { cellWidth: 30, halign: 'center' },
-    6: { cellWidth: 35, halign: 'center' },
-    7: { cellWidth: 50, halign: 'center' },
-    8: { cellWidth: 'auto', halign: 'center' },
+    0: { cellWidth: 25, halign: 'center', valign: 'middle' },
+    1: { cellWidth: 60, halign: 'center', valign: 'middle' },
+    2: { cellWidth: 150, halign: 'center', valign: 'middle' },
+    3: { cellWidth: 70, halign: 'center', valign: 'middle' },
+    4: { cellWidth: 40, halign: 'center', valign: 'middle' },
+    5: { cellWidth: 30, halign: 'center', valign: 'middle' },
+    6: { cellWidth: 35, halign: 'center', valign: 'middle' },
+    7: { cellWidth: 50, halign: 'center', valign: 'middle' },
+    8: { cellWidth: 'auto', halign: 'center', valign: 'middle' },
   };
 
   const bodyRows: any[][] = [];
-  const groupedItems = groupItemsForExport(certItems);
   let srNo = 1;
 
   groupedItems.forEach(group => {
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
-      let rowData;
-      if (index === 0) {
-        rowData = [
-          { content: srNo, rowSpan: group.length, styles: { valign: 'middle' } },
+      const row = [
+        { content: index === 0 ? srNo.toString() : '', rowSpan: index === 0 ? group.length : 1 },
+        { content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? group.length : 1 },
+        item.manufacturerSrNo,
+        isHarness ? (item.chestCrollNo || '') : '',
+        { content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? group.length : 1 },
+        { content: index === 0 ? group.length.toString() : '', rowSpan: index === 0 ? group.length : 1 },
+        { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle' } },
+        { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
+        { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
+      ];
+      
+      // For jspdf-autotable, you only add the cell data for the first row of a rowspan group.
+      // For subsequent rows, you just don't add the cell at all for that column.
+      if (index > 0) {
+        bodyRows.push([
+          item.manufacturerSrNo, 
+          isHarness ? (item.chestCrollNo || '') : ''
+        ]);
+      } else {
+        bodyRows.push([
+          { content: srNo.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           item.manufacturerSrNo,
           isHarness ? (item.chestCrollNo || '') : '',
-          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle' } },
-          { content: group.length, rowSpan: group.length, styles: { valign: 'middle' } },
-          { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle' } },
+          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: group.length.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
           { content: '', rowSpan: group.length, styles: { valign: 'middle' } }
-        ];
-      } else {
-        rowData = [
-          '',
-          '',
-          item.manufacturerSrNo,
-          isHarness ? (item.chestCrollNo || '') : '',
-          '',
-          '',
-          '',
-          '',
-          ''
-        ];
+        ]);
       }
-      bodyRows.push(rowData);
     });
     srNo++;
   });
