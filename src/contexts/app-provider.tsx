@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, Vehicle, Driver, IncidentReport, ManpowerLog, ManpowerProfile, InternalRequest, ManagementRequest, InventoryItem, UTMachine, CertificateRequest, CertificateRequestStatus, DftMachine, MobileSim, LaptopDesktop, MachineLog, Announcement, InventoryItemStatus, CertificateRequestType, Comment, InternalRequestStatus, ManagementRequestStatus, Frequency, DailyPlannerComment, ApprovalState, Permission, ALL_PERMISSIONS, Building, Room, Bed, Role, DigitalCamera, Anemometer, OtherEquipment, JobSchedule, LeaveRecord, MemoRecord, PpeRequest, PpeRequestStatus, PpeHistoryRecord, PpeStock, Payment, Vendor, PaymentStatus, PurchaseRegister, PasswordResetRequest, IgpOgpRecord, Feedback, Subtask, UnlockRequest, PpeInwardRecord, Broadcast, JobRecord, JobRecordPlant, JobCode, InternalRequestItem, TpCertList, InventoryTransferRequest, TRANSFER_REASONS, DownloadableDocument, LogbookRequest, InspectionChecklist } from '../lib/types';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, getDay, isSaturday, isSunday, getDate, isPast, add, sub, isAfter, startOfDay, parse, isValid, parseISO, isBefore, isToday, isFuture, endOfWeek, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { rtdb } from '@/lib/rtdb';
@@ -455,6 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
@@ -499,7 +500,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
             
-            // Let the useEffect triggered by setStoredUserId handle setting user and loading state
+            // The useEffect that watches storedUserId will handle setting user and loading state
             return { success: true, user: foundUser };
         }
     }
@@ -513,8 +514,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setStoredUserId(null);
     setUser(null);
-    router.push('/login');
-  }, [user, setStoredUserId, router, addActivityLog]);
+    if(pathname !== '/login') {
+      router.replace('/login');
+    }
+  }, [user, setStoredUserId, router, addActivityLog, pathname]);
   
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -1443,7 +1446,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     participants.add(incident.reporterId);
     participants.forEach(pId => {
         if (pId !== user.id) {
-            updates[`incidentReports/${incidentId}/viewedBy/${pId}`] = false;
+            updates[`incidentReports/${id}/viewedBy/${pId}`] = false;
         }
     });
 
@@ -2480,13 +2483,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
-    
+
     const allItems: any[] = [
         ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
     ];
 
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
-    
+
     const sanitizedItems = requestData.items.map(item => {
         const fullItem = allItems.find(i => i.id === item.itemId);
         const name = item.name || fullItem?.name || fullItem?.machineName || fullItem?.equipmentName || `${fullItem?.make} ${fullItem?.model}` || 'Unknown';
@@ -2510,30 +2513,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
-  
-    const approvers = users.filter(u => can.approve_store_requests);
+
+    const approvers = users.filter(u => can.approve_store_requests && u.projectIds?.includes(requestData.toProjectId));
     const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
     const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-  
+
     approvers.forEach(approver => {
-      if (approver.email) {
-        createAndSendNotification(
-          approver.email,
-          `Inventory Transfer Request from ${user.name}`,
-          'New Inventory Transfer Request',
-          {
-            'Requester': user.name,
-            'From': fromProjectName || 'Unknown',
-            'To': toProjectName || 'Unknown',
-            'Reason': requestData.reason,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-          'Review Request'
-        );
-      }
+        if (approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `Inventory Transfer Request from ${user.name}`,
+                'New Inventory Transfer Request',
+                {
+                    'Requester': user.name,
+                    'From': fromProjectName || 'Unknown',
+                    'To': toProjectName || 'Unknown',
+                    'Reason': requestData.reason,
+                    'Item Count': requestData.items.length.toString(),
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+                'Review Request'
+            );
+        }
     });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
+}, [user, addActivityLog, users, can.approve_store_requests, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
   
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
@@ -3829,15 +3832,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             if(loading) setLoading(false); 
         } else {
-             setStoredUserId(null);
-             setUser(null);
-             setLoading(false);
+             logout();
         }
     } else if (!storedUserId) {
         setUser(null);
         setLoading(false);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, setStoredUserId, user]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, user, logout]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3849,4 +3850,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
