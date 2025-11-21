@@ -279,7 +279,6 @@ export async function generateTpCertPdf(
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems = buildCertItems(items, allItems);
-  const isAnyItemHarness = certItems.some(item => item.materialName.toLowerCase() === 'harness');
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -307,46 +306,50 @@ export async function generateTpCertPdf(
   groupedItems.forEach(group => {
     const groupSize = group.length;
     const isHarnessGroup = group[0].materialName.toLowerCase() === 'harness';
-
+    
     group.forEach((item, index) => {
-      const rowData = [];
-      // SR. No.
-      rowData.push({ content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 });
-      // Material Name
-      rowData.push({ content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? groupSize : 1 });
-      // Manufacturer Sr. No. & Chest Croll No (handle colspan logic here)
-      if (isHarnessGroup) {
-        rowData.push(item.manufacturerSrNo || '');
-        rowData.push(item.chestCrollNo || '');
+      let row: any[] = [];
+      if (index === 0) {
+        row = [
+          { content: srNo, rowSpan: groupSize },
+          { content: item.materialName, rowSpan: groupSize },
+          item.manufacturerSrNo || '',
+          item.chestCrollNo || '',
+          { content: getCapacity(item.materialName), rowSpan: groupSize },
+          { content: groupSize, rowSpan: groupSize },
+          { content: 'OLD', rowSpan: groupSize },
+          { content: '', rowSpan: groupSize },
+          { content: '', rowSpan: groupSize }
+        ];
       } else {
-        rowData.push({ content: item.manufacturerSrNo || '', colSpan: 2 });
-        rowData.push(''); // Placeholder for the merged cell
+        row = [
+          '', // Placeholder for SR No.
+          '', // Placeholder for Material Name
+          item.manufacturerSrNo || '',
+          item.chestCrollNo || '',
+          '', // Placeholder for Cap.
+          '', // Placeholder for Qty
+          '', // Placeholder for New/Old
+          '', // Placeholder for Valid
+          ''  // Placeholder for Submit
+        ];
       }
-      // Cap. in MT
-      rowData.push({ content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? groupSize : 1 });
-      // Qty in Nos
-      rowData.push({ content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 });
-      // New or Old
-      rowData.push({ content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 });
-      // Valid upto if Renewal
-      rowData.push({ content: '', rowSpan: index === 0 ? groupSize : 1 });
-      // Submit Last Testing Report
-      rowData.push({ content: '', rowSpan: index === 0 ? groupSize : 1 });
-      
-      tableRows.push(rowData);
+      tableRows.push(row);
     });
     srNo++;
   });
   
-  const columnStyles = isAnyItemHarness 
-    ? {
-        0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 120 }, 3: { cellWidth: 80 }, 4: { cellWidth: 40 },
-        5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
-      }
-    : { // No harness in list
-        0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 200 }, 3: { cellWidth: 0 }, 4: { cellWidth: 40 },
-        5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
-    };
+  const columnStyles = {
+    0: { cellWidth: 25 },
+    1: { cellWidth: 60 },
+    2: { cellWidth: 120 },
+    3: { cellWidth: 80 },
+    4: { cellWidth: 40 },
+    5: { cellWidth: 30 },
+    6: { cellWidth: 35 },
+    7: { cellWidth: 50 },
+    8: { cellWidth: 'auto' },
+  };
 
   (doc as any).autoTable({
       head: [headers],
@@ -357,11 +360,7 @@ export async function generateTpCertPdf(
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
       columnStyles: columnStyles,
       didParseCell: (data: any) => {
-        if (typeof data.cell.raw === 'object' && data.cell.raw !== null) {
-            if (data.cell.raw.rowSpan > 1) data.cell.rowSpan = data.cell.raw.rowSpan;
-            if (data.cell.raw.colSpan > 1) data.cell.colSpan = data.cell.raw.colSpan;
-            if (data.cell.raw.content !== undefined) data.cell.content = data.cell.raw.content;
-        }
+          // This hook is used to handle row spans correctly by the library
       }
   });
 
