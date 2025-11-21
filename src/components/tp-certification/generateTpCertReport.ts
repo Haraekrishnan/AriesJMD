@@ -15,6 +15,7 @@ import type {
   LaptopDesktop,
   MobileSim,
   InspectionChecklist,
+  User,
 } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -170,7 +171,7 @@ export async function generateTpCertExcel(
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
   const dateRow = worksheet.getRow(4);
-  worksheet.mergeCells('A4:H4');
+  worksheet.mergeCells('A4:I4');
   const dateCell = dateRow.getCell('A');
   dateCell.value = `Date: ${format(dateToUse, 'dd-MM-yyyy')}`;
   dateCell.alignment = { horizontal: 'right' };
@@ -178,19 +179,19 @@ export async function generateTpCertExcel(
   
   const startRow = 5;
 
-  worksheet.mergeCells(`A${startRow}:H${startRow}`);
+  worksheet.mergeCells(`A${startRow}:I${startRow}`);
   const titleCell1 = worksheet.getCell(`A${startRow}`);
   titleCell1.value = "Trivedi & Associates Technical Services (P.) Ltd.";
   titleCell1.font = { bold: true, size: 12 };
   titleCell1.alignment = { horizontal: 'center' };
 
-  worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`);
+  worksheet.mergeCells(`A${startRow + 1}:I${startRow + 1}`);
   const titleCell2 = worksheet.getCell(`A${startRow + 1}`);
   titleCell2.value = "Jamnagar.";
   titleCell2.font = { bold: true, size: 12 };
   titleCell2.alignment = { horizontal: 'center' };
 
-  worksheet.mergeCells(`A${startRow + 3}:H${startRow + 3}`);
+  worksheet.mergeCells(`A${startRow + 3}:I${startRow + 3}`);
   const subjectCell = worksheet.getCell(`A${startRow + 3}`);
   subjectCell.value = "Subject : Testing & Certification";
   subjectCell.font = { bold: true, size: 12 };
@@ -206,7 +207,6 @@ export async function generateTpCertExcel(
     cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
   });
   
-  // Set column widths
   worksheet.columns = [
     { width: 8 },   // SR. No.
     { width: 25 },  // Material Name
@@ -226,15 +226,13 @@ export async function generateTpCertExcel(
   groupedItems.forEach(group => {
     const groupStartRow = currentRowIndex;
     const groupSize = group.length;
-    const isHarness = group[0].materialName.toLowerCase() === 'harness';
 
-    // Add all rows for the group first
-    group.forEach(item => {
+    group.forEach((item) => {
       const rowData = [
         srNo,
         item.materialName,
         item.manufacturerSrNo,
-        isHarness ? item.chestCrollNo || '' : '',
+        item.chestCrollNo || '',
         getCapacity(item.materialName),
         groupSize,
         'OLD',
@@ -244,12 +242,8 @@ export async function generateTpCertExcel(
       worksheet.addRow(rowData);
     });
     
-    // Now apply formatting and merging
     for (let i = 0; i < groupSize; i++) {
         const row = worksheet.getRow(groupStartRow + i);
-        if (!isHarness) {
-            worksheet.mergeCells(row.number, 3, row.number, 4);
-        }
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -315,36 +309,40 @@ export async function generateTpCertPdf(
   doc.text("Subject : Testing & Certification", 40, 155);
 
   const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  
   const bodyRows: any[][] = [];
   const groupedItems = groupItemsForExport(certItems);
   let srNo = 1;
 
   groupedItems.forEach(group => {
-    const groupSize = group.length;
-
     group.forEach((item, index) => {
-      let row;
-      if (index === 0) {
-        row = [
-          { content: srNo, rowSpan: groupSize },
-          { content: item.materialName, rowSpan: groupSize },
-          item.manufacturerSrNo,
-          item.chestCrollNo || '',
-          { content: getCapacity(item.materialName), rowSpan: groupSize },
-          { content: groupSize, rowSpan: groupSize },
-          { content: 'OLD', rowSpan: groupSize },
-          { content: '', rowSpan: groupSize },
-          { content: '', rowSpan: groupSize }
-        ];
-      } else {
-        row = [
-          '', '', // Placeholders for spanned cells
-          item.manufacturerSrNo,
-          item.chestCrollNo || '',
-          '', '', '', '', '' // Placeholders
-        ];
-      }
-      bodyRows.push(row);
+        let rowData;
+        if (index === 0) {
+            rowData = [
+                { content: srNo, rowSpan: group.length },
+                { content: item.materialName, rowSpan: group.length },
+                item.manufacturerSrNo,
+                item.chestCrollNo || '',
+                { content: getCapacity(item.materialName), rowSpan: group.length },
+                { content: group.length, rowSpan: group.length },
+                { content: 'OLD', rowSpan: group.length },
+                { content: '', rowSpan: group.length },
+                { content: '', rowSpan: group.length },
+            ];
+        } else {
+            rowData = [
+                // Skipped due to rowspan
+                // Skipped due to rowspan
+                item.manufacturerSrNo,
+                item.chestCrollNo || '',
+                // Skipped due to rowspan
+                // Skipped due to rowspan
+                // Skipped due to rowspan
+                // Skipped due to rowspan
+                // Skipped due to rowspan
+            ];
+        }
+        bodyRows.push(rowData);
     });
     srNo++;
   });
@@ -361,13 +359,6 @@ export async function generateTpCertPdf(
     8: { cellWidth: 'auto' },
   };
 
-  const hasHarness = certItems.some(item => item.materialName.toLowerCase() === 'harness');
-  if (!hasHarness) {
-    // If no harness, merge the serial number and chest croll number columns
-    columnStyles[2] = { cellWidth: 150 }; // Make Manufacturer Sr. No. wider
-    columnStyles[3] = { cellWidth: 0 }; // Effectively hide Chest Croll No.
-  }
-  
   (doc as any).autoTable({
       head: [headers],
       body: bodyRows,
@@ -376,20 +367,6 @@ export async function generateTpCertPdf(
       styles: { fontSize: 7, valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
       columnStyles: columnStyles,
-      didParseCell: (data: any) => {
-        if (!hasHarness) {
-          // If the cell is for Manufacturer Sr. No. in the body, span it
-          if (data.column.index === 2 && data.row.section === 'body') {
-            data.cell.colSpan = 2;
-          }
-          // Hide the Chest Croll No. column header and its data cells
-          if (data.column.index === 3) {
-            data.cell.styles.cellWidth = 0;
-            data.cell.styles.minCellWidth = 0;
-            data.cell.text = ''; // Clear text to be safe
-          }
-        }
-      }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
@@ -416,8 +393,8 @@ export async function generateTpCertPdf(
 export async function generateChecklistPdf(
   checklist: InspectionChecklist,
   item: InventoryItem,
-  inspector: any,
-  reviewer: any
+  inspector: User,
+  reviewer: User
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
