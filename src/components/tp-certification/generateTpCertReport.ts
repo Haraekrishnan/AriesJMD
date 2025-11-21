@@ -278,6 +278,7 @@ export async function generateTpCertPdf(
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems = buildCertItems(items, allItems);
+  const isAnyItemHarness = certItems.some(item => item.materialName.toLowerCase() === 'harness');
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -297,7 +298,10 @@ export async function generateTpCertPdf(
   doc.setFont("helvetica", "normal");
   doc.text("Subject : Testing & Certification", 40, 155);
 
-  const tableColumn = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const baseHeaders = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const tableColumn = isAnyItemHarness 
+    ? [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Scroll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ]
+    : baseHeaders;
   
   const groupedItems = groupItemsForExport(certItems);
   const tableRows: any[][] = [];
@@ -305,14 +309,13 @@ export async function generateTpCertPdf(
 
   groupedItems.forEach(group => {
     const groupSize = group.length;
-    const isHarness = group[0].materialName.toLowerCase() === 'harness';
+    const isHarnessGroup = group[0].materialName.toLowerCase() === 'harness';
 
     group.forEach((item, index) => {
-        const rowData = [
+        let rowData: any[] = [
             { content: index === 0 ? srNo : '', rowSpan: index === 0 ? groupSize : 1 },
             { content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? groupSize : 1 },
             item.manufacturerSrNo || '',
-            isHarness ? (item.chestCrollNo || '') : '',
             { content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? groupSize : 1 },
             { content: index === 0 ? groupSize : '', rowSpan: index === 0 ? groupSize : 1 },
             { content: index === 0 ? 'OLD' : '', rowSpan: index === 0 ? groupSize : 1 },
@@ -320,57 +323,42 @@ export async function generateTpCertPdf(
             { content: '', rowSpan: index === 0 ? groupSize : 1 }
         ];
 
-        if (!isHarness) {
-            rowData.splice(3, 1);
-            const serialCell = rowData[2] as any;
-            if(typeof serialCell === 'object' && serialCell !== null) serialCell.colSpan = 2;
-            else rowData[2] = { content: serialCell, colSpan: 2 };
+        if (isAnyItemHarness) {
+            rowData.splice(3, 0, isHarnessGroup ? (item.chestCrollNo || '') : '');
+        } else {
+            // If no harness is in the entire list, we merge the serial number column
+            if(index === 0) {
+              const serialCell = rowData[2] as any;
+              if (typeof serialCell === 'object' && serialCell !== null) serialCell.colSpan = 2;
+              else rowData[2] = { content: serialCell, colSpan: 2 };
+            }
         }
-
+        
         const filteredRow = rowData.filter((_, cellIndex) => {
             if (index > 0) {
-                const serialIndex = 2;
-                const chestCrollIndex = 3;
-                if (isHarness) return cellIndex === serialIndex || cellIndex === chestCrollIndex;
-                else return cellIndex === serialIndex;
+              const serialIndex = 2;
+              const chestCrollIndex = 3;
+              if(isAnyItemHarness && isHarnessGroup) return cellIndex === serialIndex || cellIndex === chestCrollIndex;
+              return cellIndex === serialIndex;
             }
             return true;
         });
+
         tableRows.push(filteredRow);
     });
     srNo++;
   });
   
-  const isAnyHarness = items.some(i => i.materialName.toLowerCase() === 'harness');
-  const finalTableColumns = isAnyHarness ? tableColumn : tableColumn.filter(header => header !== "Chest Scroll No.");
-  const columnStyles = {
-    0: { cellWidth: 25 },
-    1: { cellWidth: 60 },
-    2: { cellWidth: 120 }, // Manufacturer Sr. No.
-    3: { cellWidth: 80 }, // Chest Scroll No.
-    4: { cellWidth: 40 }, // Cap
-    5: { cellWidth: 30 }, // Qty
-    6: { cellWidth: 35 }, // New/Old
-    7: { cellWidth: 50 }, // Valid
-    8: { cellWidth: 'auto' }, // Last column
+  const columnStyles = isAnyItemHarness ? {
+    0: { cellWidth: 25 }, 1: { cellWidth: 60 }, 2: { cellWidth: 120 }, 3: { cellWidth: 80 }, 4: { cellWidth: 40 },
+    5: { cellWidth: 30 }, 6: { cellWidth: 35 }, 7: { cellWidth: 50 }, 8: { cellWidth: 'auto' },
+  } : {
+    0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 200 }, 3: { cellWidth: 40 },
+    4: { cellWidth: 30 }, 5: { cellWidth: 35 }, 6: { cellWidth: 50 }, 7: { cellWidth: 'auto' },
   };
 
-  if(!isAnyHarness) {
-    columnStyles[2].cellWidth = 200; // Merge manufacturer and chest croll widths
-    delete (columnStyles as any)[3];
-    // Shift subsequent column styles
-    const keys = Object.keys(columnStyles).map(Number).sort((a, b) => a - b);
-    for (let i = 0; i < keys.length; i++) {
-        if(keys[i] > 2) {
-            (columnStyles as any)[keys[i] - 1] = (columnStyles as any)[keys[i]];
-            delete (columnStyles as any)[keys[i]];
-        }
-    }
-  }
-
-
   (doc as any).autoTable({
-      head: [finalTableColumns],
+      head: [tableColumn],
       body: tableRows,
       startY: 170,
       theme: "grid",
