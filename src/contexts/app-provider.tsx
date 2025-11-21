@@ -509,8 +509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-}, [setStoredUserId, addActivityLog, router]);
-
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
