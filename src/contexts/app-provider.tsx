@@ -498,7 +498,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
-            // User state will be set by the useEffect that watches storedUserId
             setLoading(false);
             if (foundUser.status === 'locked') {
                 router.replace('/status');
@@ -510,7 +509,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+}, [setStoredUserId, addActivityLog, router]);
+
 
   const logout = useCallback(() => {
     if (user) {
@@ -2471,25 +2471,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
-
+    
     const allItems: any[] = [
-      ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+        ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
     ];
 
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     
     const sanitizedItems = requestData.items.map(item => {
-      const fullItem = allItems.find(i => i.id === item.itemId);
-      const name = item.name || fullItem?.name || fullItem?.machineName || fullItem?.equipmentName || `${fullItem?.make} ${fullItem?.model}` || 'Unknown';
-      return {
-          ...item,
-          name,
-          ariesId: item.ariesId || null,
-      }
+        const fullItem = allItems.find(i => i.id === item.itemId);
+        const name = item.name || fullItem?.name || fullItem?.machineName || fullItem?.equipmentName || `${fullItem?.make} ${fullItem?.model}` || 'Unknown';
+        return {
+            ...item,
+            name,
+            ariesId: item.ariesId || null,
+        }
     });
-  
+
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-        ...requestData,
+        fromProjectId: requestData.fromProjectId,
+        toProjectId: requestData.toProjectId,
+        reason: requestData.reason,
+        requestedById: requestData.requestedById || null,
+        remarks: requestData.remarks || '',
         items: sanitizedItems,
         requesterId: user.id,
         requestDate: new Date().toISOString(),
@@ -2713,7 +2717,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
     }
   }, [user, inventoryTransferRequests]);
-  
+
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -3106,14 +3110,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateRoom = useCallback((buildingId: string, room: Room) => {
-    const building = buildings.find(b => b.id === buildingId);
-    if (!building || !building.rooms) return;
+      const building = buildings.find(b => b.id === buildingId);
+      if (!building || !building.rooms) return;
 
-    const roomKey = Object.keys(building.rooms).find(key => (building.rooms as any)[key]?.id === room.id);
-    if (roomKey) {
-        const path = `buildings/${buildingId}/rooms/${roomKey}`;
-        update(ref(rtdb, path), room);
-    }
+      const roomKey = Object.keys(building.rooms).find(key => (building.rooms as any)[key]?.id === room.id);
+      if (roomKey) {
+          const path = `buildings/${buildingId}/rooms/${roomKey}`;
+          update(ref(rtdb, path), room);
+      }
   }, [buildings]);
 
   const addBed = useCallback((buildingId: string, roomId: string) => {
@@ -3829,7 +3833,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
         setUser(null);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById, user]);
+    if(!loading && !storedUserId) {
+      setLoading(false);
+    }
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, user, loading]);
 
   // Listen for status changes on the current user
   useEffect(() => {
