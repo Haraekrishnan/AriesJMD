@@ -310,29 +310,18 @@ export async function generateTpCertPdf(
 
   const hasHarness = certItems.some(it => it.materialName.toLowerCase().includes('harness'));
   
-  const headers = hasHarness 
-    ? [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ]
-    : [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
-
-  const columnStyles: { [key: number]: any } = hasHarness ? {
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  
+  const columnStyles: { [key: number]: any } = {
     0: { cellWidth: 25, halign: 'center' },  // SR. No.
-    1: { cellWidth: 60 },                   // Material Name
-    2: { cellWidth: 100, halign: 'center' },                  // Manufacturer Sr. No.
-    3: { cellWidth: 70, halign: 'center' },                   // Chest Croll No.
+    1: { cellWidth: 60, halign: 'center' },  // Material Name (CENTERED)
+    2: { cellWidth: 150, halign: 'center' }, // Manufacturer Sr. No. (WIDER & CENTERED)
+    3: { cellWidth: 70, halign: 'center' },  // Chest Croll No.
     4: { cellWidth: 40, halign: 'center' },  // Cap. in MT
     5: { cellWidth: 30, halign: 'center' },  // Qty in Nos
     6: { cellWidth: 35, halign: 'center' },  // New or Old
-    7: { cellWidth: 50 },                   // Valid upto if Renewal
-    8: { cellWidth: 'auto' },                // Submit Last Testing Report
-  } : {
-    0: { cellWidth: 25, halign: 'center' },  // SR. No.
-    1: { cellWidth: 80 },                   // Material Name
-    2: { cellWidth: 150, halign: 'center' },                  // Manufacturer Sr. No. (Wider)
-    3: { cellWidth: 45, halign: 'center' },  // Cap. in MT
-    4: { cellWidth: 35, halign: 'center' },  // Qty in Nos
-    5: { cellWidth: 40, halign: 'center' },  // New or Old
-    6: { cellWidth: 55 },                   // Valid upto if Renewal
-    7: { cellWidth: 'auto' },                // Submit Last Testing Report
+    7: { cellWidth: 50, halign: 'center' },  // Valid upto if Renewal
+    8: { cellWidth: 'auto', halign: 'center' }, // Submit Last Testing Report
   };
   
   const bodyRows: any[][] = [];
@@ -340,38 +329,22 @@ export async function generateTpCertPdf(
   let srNo = 1;
 
   groupedItems.forEach(group => {
-    group.forEach((item, index) => {
-        let rowData;
-        if (index === 0) { // First row of the group gets all data
-            rowData = [
-                { content: srNo, rowSpan: group.length },
-                { content: item.materialName, rowSpan: group.length },
-                item.manufacturerSrNo,
-                // Conditionally add chest croll no
-                ...(hasHarness ? [item.chestCrollNo || ''] : []),
-                { content: getCapacity(item.materialName), rowSpan: group.length },
-                { content: group.length, rowSpan: group.length },
-                { content: 'OLD', rowSpan: group.length },
-                { content: '', rowSpan: group.length },
-                { content: '', rowSpan: group.length },
-            ];
-        } else { // Subsequent rows only get unique data
-            rowData = [
-                // Skipped due to rowspan
-                // Skipped due to rowspan
-                item.manufacturerSrNo,
-                // Conditionally add chest croll no
-                ...(hasHarness ? [item.chestCrollNo || ''] : []),
-                // Skipped due to rowspan
-                // Skipped due to rowspan
-                // Skipped due to rowspan
-                // Skipped due to rowspan
-                // Skipped due to rowspan
-            ];
-        }
-        bodyRows.push(rowData);
-    });
-    srNo++;
+      group.forEach((item, index) => {
+          const isHarness = item.materialName.toLowerCase().includes('harness');
+          const rowData = [
+              index === 0 ? { content: srNo, rowSpan: group.length } : '',
+              index === 0 ? { content: item.materialName, rowSpan: group.length } : '',
+              item.manufacturerSrNo,
+              isHarness ? item.chestCrollNo || '' : '',
+              index === 0 ? { content: getCapacity(item.materialName), rowSpan: group.length } : '',
+              index === 0 ? { content: group.length, rowSpan: group.length } : '',
+              index === 0 ? { content: 'OLD', rowSpan: group.length } : '',
+              index === 0 ? { content: '', rowSpan: group.length } : '',
+              index === 0 ? { content: '', rowSpan: group.length } : '',
+          ];
+          bodyRows.push(rowData.filter(cell => cell !== ''));
+      });
+      srNo++;
   });
   
   (doc as any).autoTable({
