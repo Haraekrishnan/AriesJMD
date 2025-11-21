@@ -14,6 +14,7 @@ import type {
   OtherEquipment,
   LaptopDesktop,
   MobileSim,
+  InspectionChecklist,
 } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -227,7 +228,8 @@ export async function generateTpCertExcel(
     const groupSize = group.length;
     const isHarness = group[0].materialName.toLowerCase() === 'harness';
 
-    group.forEach((item, index) => {
+    // Add all rows for the group first
+    group.forEach(item => {
       const rowData = [
         srNo,
         item.materialName,
@@ -239,26 +241,32 @@ export async function generateTpCertExcel(
         '',
         ''
       ];
-      const row = worksheet.addRow(rowData);
-      
-      if (!isHarness) {
-        worksheet.mergeCells(row.number, 3, row.number, 4);
-      }
-
-      row.eachCell((cell, colNumber) => {
-        cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-        
-        // Don't merge the first item of a group that will be merged
-        if (index > 0 && [1, 2, 5, 6, 7, 8, 9].includes(colNumber)) return;
-        
-        if (index === 0 && groupSize > 1) {
-            worksheet.mergeCells(groupStartRow, colNumber, groupStartRow + groupSize - 1, colNumber);
-        }
-      });
-      currentRowIndex++;
+      worksheet.addRow(rowData);
     });
+    
+    // Now apply formatting and merging
+    for (let i = 0; i < groupSize; i++) {
+        const row = worksheet.getRow(groupStartRow + i);
+        if (!isHarness) {
+            worksheet.mergeCells(row.number, 3, row.number, 4);
+        }
+        row.eachCell({ includeEmpty: true }, (cell) => {
+            cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+    }
 
+    if (groupSize > 1) {
+        worksheet.mergeCells(groupStartRow, 1, groupStartRow + groupSize - 1, 1); // SR No.
+        worksheet.mergeCells(groupStartRow, 2, groupStartRow + groupSize - 1, 2); // Material Name
+        worksheet.mergeCells(groupStartRow, 5, groupStartRow + groupSize - 1, 5); // Cap
+        worksheet.mergeCells(groupStartRow, 6, groupStartRow + groupSize - 1, 6); // Qty
+        worksheet.mergeCells(groupStartRow, 7, groupStartRow + groupSize - 1, 7); // New/Old
+        worksheet.mergeCells(groupStartRow, 8, groupStartRow + groupSize - 1, 8); // Valid Upto
+        worksheet.mergeCells(groupStartRow, 9, groupStartRow + groupSize - 1, 9); // Submit Report
+    }
+    
+    currentRowIndex += groupSize;
     srNo++;
   });
 
@@ -313,7 +321,6 @@ export async function generateTpCertPdf(
 
   groupedItems.forEach(group => {
     const groupSize = group.length;
-    const isHarnessGroup = group[0].materialName.toLowerCase() === 'harness';
 
     group.forEach((item, index) => {
       let row;
@@ -345,6 +352,8 @@ export async function generateTpCertPdf(
   const columnStyles: {[key: number]: any} = {
     0: { cellWidth: 25, halign: 'center' },
     1: { cellWidth: 60 },
+    2: { cellWidth: 80 },
+    3: { cellWidth: 70 },
     4: { cellWidth: 40, halign: 'center' },
     5: { cellWidth: 30, halign: 'center' },
     6: { cellWidth: 35, halign: 'center' },
@@ -353,14 +362,10 @@ export async function generateTpCertPdf(
   };
 
   const hasHarness = certItems.some(item => item.materialName.toLowerCase() === 'harness');
-  if (hasHarness) {
-    columnStyles[2] = { cellWidth: 80 };
-    columnStyles[3] = { cellWidth: 70 };
-  } else {
+  if (!hasHarness) {
     // If no harness, merge the serial number and chest croll number columns
-    // The library handles this via colSpan in the didParseCell hook
-    columnStyles[2] = { cellWidth: 150 };
-    columnStyles[3] = { cellWidth: 0 }; // Hide this column effectively
+    columnStyles[2] = { cellWidth: 150 }; // Make Manufacturer Sr. No. wider
+    columnStyles[3] = { cellWidth: 0 }; // Effectively hide Chest Croll No.
   }
   
   (doc as any).autoTable({
@@ -373,15 +378,15 @@ export async function generateTpCertPdf(
       columnStyles: columnStyles,
       didParseCell: (data: any) => {
         if (!hasHarness) {
-          // If the cell is for Manufacturer Sr. No., span it across two columns.
-          if (data.column.index === 2) {
+          // If the cell is for Manufacturer Sr. No. in the body, span it
+          if (data.column.index === 2 && data.row.section === 'body') {
             data.cell.colSpan = 2;
           }
-          // Hide the Chest Croll No. column header and data cells.
+          // Hide the Chest Croll No. column header and its data cells
           if (data.column.index === 3) {
             data.cell.styles.cellWidth = 0;
             data.cell.styles.minCellWidth = 0;
-            data.cell.text = ''; // Clear text just in case
+            data.cell.text = ''; // Clear text to be safe
           }
         }
       }
@@ -409,12 +414,115 @@ export async function generateTpCertPdf(
 
 
 export async function generateChecklistPdf(
-  checklist: any,
-  item: any,
+  checklist: InspectionChecklist,
+  item: InventoryItem,
   inspector: any,
   reviewer: any
 ) {
-  // Implementation for checklist PDF generation
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  const contentWidth = pageWidth - margin * 2;
+  
+  // Header
+  const headerImagePath = '/images/aries-header.png';
+  const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
+  doc.addImage(imgDataUrl, "PNG", margin, 20, contentWidth, 60);
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('HARNESS INSPECTION CHECKLIST', pageWidth / 2, 100, { align: 'center' });
+
+  // Details Table
+  const detailsBody = [
+    ['Product Name', item.name, 'Date of Purchase', checklist.purchaseDate ? format(parseISO(checklist.purchaseDate), 'dd-MM-yyyy') : ''],
+    ['Model', item.name, 'Date of First Use', checklist.firstUseDate ? format(parseISO(checklist.firstUseDate), 'dd-MM-yyyy') : ''],
+    ['Serial No.', item.serialNumber, 'Year of Manufacture', checklist.yearOfManufacture || ''],
+    ['ARIES ID', item.ariesId || '', 'Procedure Ref. No', 'ARIES-RAOP-001 [Rev 07]'],
+    ['Known Product History', { content: checklist.knownHistory || '', colSpan: 3 }],
+  ];
+  doc.autoTable({
+    startY: 120,
+    body: detailsBody,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fontStyle: 'bold' },
+    columnStyles: { 0: { fontStyle: 'bold' }, 2: { fontStyle: 'bold' } },
+    didDrawCell: (data) => {
+      if (data.row.index > 3) data.cell.styles.fontStyle = 'bold';
+    }
+  });
+
+  // Inspection Criteria Table
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Inspection Result", margin, finalY);
+  finalY += 5;
+
+  const inspectionBody = [
+      ['Preliminary Observation', checklist.findings?.preliminaryObservation || 'N/A'],
+      ['Condition of the straps', checklist.findings?.straps || 'N/A'],
+      ['Condition of Core', checklist.findings?.conditionCore || 'N/A'],
+      ['Checking the attachment points', checklist.findings?.attachmentPoints || 'N/A'],
+      ['Checking the condition of the adjustment buckles', checklist.findings?.adjustmentBuckles || 'N/A'],
+      ['Checking the condition of the comfort parts', checklist.findings?.comfortParts || 'N/A'],
+      ['Checking the condition of the chest/seat harness connector (if any)', checklist.findings?.harnessConnector || 'N/A'],
+      ['Checking the condition of the CROLL rope clamp (if any)', checklist.findings?.crollClamp || 'N/A'],
+      ['Checking the condition of the frame', checklist.findings?.frame || 'N/A'],
+      ['Checking the cam', checklist.findings?.cam || 'N/A'],
+      ['Checking the safety catch', checklist.findings?.safetyCatch || 'N/A'],
+      ['Function check', checklist.findings?.functionCheck || 'N/A'],
+  ];
+
+  doc.autoTable({
+      head: [['Points to be checked', 'Condition (G/TM/TR/R/NA)']],
+      body: inspectionBody,
+      startY: finalY,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fontStyle: 'bold', fillColor: [230, 230, 230] },
+      columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'center' } },
+  });
+  finalY = (doc as any).lastAutoTable.finalY + 15;
+  
+  doc.text('Comments (if any):', margin, finalY);
+  finalY += 5;
+  doc.setDrawColor(0);
+  doc.rect(margin, finalY, contentWidth, 30);
+  doc.text(checklist.comments || '', margin + 5, finalY + 10, { maxWidth: contentWidth - 10 });
+  finalY += 40;
+
+  doc.text('Remarks:', margin, finalY);
+  finalY += 5;
+  doc.rect(margin, finalY, contentWidth, 30);
+  doc.text(checklist.remarks || '', margin + 5, finalY + 10, { maxWidth: contentWidth - 10 });
+  finalY += 40;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Verdict:', margin, finalY);
+  finalY += 5;
+  doc.rect(margin, finalY, contentWidth, 30);
+  doc.text(checklist.verdict || '', margin + 5, finalY + 10, { maxWidth: contentWidth - 10 });
+  finalY += 45;
+
+  doc.autoTable({
+    startY: finalY,
+    body: [
+      [
+        `Inspected by:\nName: ${inspector.name}\nDesignation: ${inspector.role}`,
+        `Reviewed by:\nName: ${reviewer.name}\nDesignation: ${reviewer.role}`
+      ]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 10 },
+  });
+  finalY = (doc as any).lastAutoTable.finalY + 15;
+
+  doc.text('Next Semi-Annual Inspection Due Date:', margin, finalY);
+  doc.text(format(parseISO(checklist.nextDueDate), 'dd-MM-yyyy'), margin + 200, finalY);
+
+  doc.save(`Inspection_Checklist_${item.serialNumber}.pdf`);
 }
 
 export async function generateChecklistExcel(
