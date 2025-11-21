@@ -220,41 +220,39 @@ export async function generateTpCertExcel(
 
   groupedItems.forEach(group => {
     const groupStartRow = currentRowIndex;
-    group.forEach((item, index) => {
-      const isHarnessItem = item.materialName.toLowerCase().includes('harness');
-      const rowData = [
-        index === 0 ? srNo : '',
-        index === 0 ? item.materialName : '',
-        item.manufacturerSrNo,
-        isHarnessItem ? item.chestCrollNo || '' : '',
-        index === 0 ? getCapacity(item.materialName) : '',
-        index === 0 ? group.length : '',
-        index === 0 ? 'OLD' : '',
-        '',
-        ''
-      ];
-      worksheet.addRow(rowData);
-    });
-    
-    for (let i = 0; i < group.length; i++) {
-        const row = worksheet.getRow(groupStartRow + i);
-        row.eachCell({ includeEmpty: true }, (cell) => {
+    group.forEach(item => {
+        const isHarness = item.materialName.toLowerCase().includes('harness');
+        const row = worksheet.addRow([
+            '', // SR NO
+            '', // Material Name
+            item.manufacturerSrNo,
+            isHarness ? (item.chestCrollNo || '') : '',
+            '', // Cap
+            '', // Qty
+            '', // New/Old
+            '', // Valid
+            '' // Report
+        ]);
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
             cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         });
+        currentRowIndex++;
+    });
+
+    const groupSize = group.length;
+    worksheet.getCell(groupStartRow, 1).value = srNo;
+    worksheet.getCell(groupStartRow, 2).value = group[0].materialName;
+    worksheet.getCell(groupStartRow, 5).value = getCapacity(group[0].materialName);
+    worksheet.getCell(groupStartRow, 6).value = groupSize;
+    worksheet.getCell(groupStartRow, 7).value = 'OLD';
+
+    if (groupSize > 1) {
+        [1, 2, 5, 6, 7, 8, 9].forEach(col => {
+            worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
+        });
     }
 
-    if (group.length > 1) {
-        worksheet.mergeCells(groupStartRow, 1, groupStartRow + group.length - 1, 1);
-        worksheet.mergeCells(groupStartRow, 2, groupStartRow + group.length - 1, 2);
-        worksheet.mergeCells(groupStartRow, 5, groupStartRow + group.length - 1, 5);
-        worksheet.mergeCells(groupStartRow, 6, groupStartRow + group.length - 1, 6);
-        worksheet.mergeCells(groupStartRow, 7, groupStartRow + group.length - 1, 7);
-        worksheet.mergeCells(groupStartRow, 8, groupStartRow + group.length - 1, 8);
-        worksheet.mergeCells(groupStartRow, 9, groupStartRow + group.length - 1, 9);
-    }
-    
-    currentRowIndex += group.length;
     srNo++;
   });
 
@@ -320,18 +318,33 @@ export async function generateTpCertPdf(
 
   groupedItems.forEach(group => {
     group.forEach((item, index) => {
-      const isHarnessItem = item.materialName.toLowerCase().includes('harness');
-      const rowData = [
-        index === 0 ? { content: srNo, rowSpan: group.length, styles: { valign: 'middle' } } : '',
-        index === 0 ? { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle' } } : '',
-        item.manufacturerSrNo,
-        isHarnessItem ? item.chestCrollNo || '' : '',
-        index === 0 ? { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle' } } : '',
-        index === 0 ? { content: group.length, rowSpan: group.length, styles: { valign: 'middle' } } : '',
-        index === 0 ? { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle' } } : '',
-        index === 0 ? { content: '', rowSpan: group.length, styles: { valign: 'middle' } } : '',
-        index === 0 ? { content: '', rowSpan: group.length, styles: { valign: 'middle' } } : ''
-      ];
+      const isHarness = item.materialName.toLowerCase().includes('harness');
+      let rowData;
+      if (index === 0) {
+        rowData = [
+          { content: srNo, rowSpan: group.length, styles: { valign: 'middle' } },
+          { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          item.manufacturerSrNo,
+          isHarness ? (item.chestCrollNo || '') : '',
+          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle' } },
+          { content: group.length, rowSpan: group.length, styles: { valign: 'middle' } },
+          { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle' } },
+          { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
+          { content: '', rowSpan: group.length, styles: { valign: 'middle' } }
+        ];
+      } else {
+        rowData = [
+          '',
+          '',
+          item.manufacturerSrNo,
+          isHarness ? (item.chestCrollNo || '') : '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ];
+      }
       bodyRows.push(rowData);
     });
     srNo++;
