@@ -38,7 +38,7 @@ export default function PendingTransfers() {
     const completed: InventoryTransferRequest[] = [];
 
     inventoryTransferRequests.forEach(req => {
-      if (can.approve_store_requests && (req.status === 'Pending' || req.status === 'Disputed')) {
+      if (can.approve_store_requests && req.status === 'Pending') {
         forApproval.push(req);
       }
       
@@ -53,7 +53,7 @@ export default function PendingTransfers() {
         if (!existing) myActiveRequests.push(req);
       }
 
-      if (req.status === 'Completed' || req.status === 'Rejected') {
+      if (req.status === 'Completed' || req.status === 'Rejected' || req.status === 'Disputed') {
           completed.push(req);
       }
     });
@@ -74,6 +74,22 @@ export default function PendingTransfers() {
         </Card>
     );
   }
+
+  const handleCreateTpList = (request: InventoryTransferRequest) => {
+    const listData = {
+      name: `From Transfer ${request.id.slice(-6)}`,
+      date: new Date().toISOString().split('T')[0],
+      items: request.items.map(item => ({
+        materialName: item.name,
+        manufacturerSrNo: item.serialNumber,
+        itemId: item.itemId,
+        itemType: item.itemType,
+        ariesId: item.ariesId || null,
+        chestCrollNo: (item as any).chestCrollNo || null,
+      })),
+    };
+    setEditingTpList(listData);
+  };
   
   const handleReject = () => {
     if (rejectionRequestId && comment) {
@@ -239,6 +255,7 @@ export default function PendingTransfers() {
                     const fromProject = projects.find(p => p.id === req.fromProjectId);
                     const toProject = projects.find(p => p.id === req.toProjectId);
                     const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
+                    const showTpOption = (req.reason === 'For TP certification' || req.reason === 'Expired materials') && req.status === 'Completed';
                     return (
                         <div key={req.id} className="p-2 border rounded-sm flex justify-between items-center">
                             <div>
@@ -251,6 +268,11 @@ export default function PendingTransfers() {
                             </div>
                            <div className="flex items-center gap-2">
                              <Badge variant={statusVariant}>{req.status}</Badge>
+                             {showTpOption && (
+                                <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
+                                    <FilePlus className="mr-2 h-3 w-3" /> Create TP List
+                                </Button>
+                             )}
                              {user?.role === 'Admin' && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -279,7 +301,7 @@ export default function PendingTransfers() {
       <GenerateTpCertDialog 
         isOpen={!!editingTpList}
         setIsOpen={() => setEditingTpList(null)}
-        existingList={null}
+        existingList={editingTpList}
       />
     )}
     </>
