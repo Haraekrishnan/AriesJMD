@@ -61,7 +61,7 @@ export default function PendingTransfers() {
     return { 
         forApproval, 
         myActiveRequests: myActiveRequests.sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime()),
-        allCompletedRequests: completed.sort((a,b) => parseISO(b.approvalDate || b.requestDate).getTime() - parseISO(a.approvalDate || a.requestDate).getTime()),
+        allCompletedRequests: completed.sort((a,b) => parseISO(a.approvalDate || a.requestDate).getTime() - parseISO(a.approvalDate || a.requestDate).getTime()),
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
 
@@ -249,49 +249,62 @@ export default function PendingTransfers() {
               <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-sm">
                 Transfer History ({allCompletedRequests.length})
               </AccordionTrigger>
-              <AccordionContent className="p-4">
-                <div className="space-y-2">
-                  {allCompletedRequests.map(req => {
-                    const fromProject = projects.find(p => p.id === req.fromProjectId);
-                    const toProject = projects.find(p => p.id === req.toProjectId);
-                    const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
-                    const showTpOption = (req.reason === 'For TP certification' || req.reason === 'Expired materials') && req.status === 'Completed';
-                    return (
-                        <div key={req.id} className="p-2 border rounded-sm flex justify-between items-center">
-                            <div>
-                                <p className="text-sm">
-                                    Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {format(parseISO(req.requestDate), 'dd MMM, yyyy')}
-                                </p>
-                            </div>
-                           <div className="flex items-center gap-2">
-                             <Badge variant={statusVariant}>{req.status}</Badge>
-                             {showTpOption && (
-                                <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
-                                    <FilePlus className="mr-2 h-3 w-3" /> Create TP List
-                                </Button>
-                             )}
-                             {user?.role === 'Admin' && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Delete this transfer record?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                             )}
+              <AccordionContent className="p-4 space-y-2">
+                {allCompletedRequests.map(req => {
+                  const fromProject = projects.find(p => p.id === req.fromProjectId);
+                  const toProject = projects.find(p => p.id === req.toProjectId);
+                  const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
+                  const showTpOption = (req.reason === 'For TP certification' || req.reason === 'Expired materials') && req.status === 'Completed';
+                  return (
+                    <Accordion key={req.id} type="single" collapsible>
+                        <AccordionItem value={req.id} className="border rounded-sm">
+                           <div className="flex justify-between items-center p-2">
+                                <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                    <div className="flex items-center gap-4">
+                                        <div>
+                                            <p className="text-sm">
+                                                Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {format(parseISO(req.requestDate), 'dd MMM, yyyy')}
+                                            </p>
+                                        </div>
+                                        <Badge variant={statusVariant}>{req.status}</Badge>
+                                    </div>
+                                </AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                    {showTpOption && (
+                                        <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
+                                            <FilePlus className="mr-2 h-3 w-3" /> Create TP List
+                                        </Button>
+                                    )}
+                                    {user?.role === 'Admin' && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader><AlertDialogTitle>Delete this transfer record?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </div>
                            </div>
-                        </div>
-                    );
-                  })}
-                </div>
+                           <AccordionContent className="p-4 pt-0">
+                             <ul className="list-disc list-inside text-xs text-muted-foreground bg-muted p-2 rounded-md">
+                                {req.items.map(item => (
+                                    <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                                ))}
+                            </ul>
+                           </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                  );
+                })}
               </AccordionContent>
             </AccordionItem>
           </Accordion>
