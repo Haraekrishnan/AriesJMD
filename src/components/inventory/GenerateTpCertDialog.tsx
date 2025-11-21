@@ -35,11 +35,12 @@ interface GenerateTpCertDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   existingList?: TpCertList | null;
+  listToCreate?: Partial<TpCertList> | null;
 }
 
 type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
 
-export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null }: GenerateTpCertDialogProps) {
+export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null, listToCreate = null }: GenerateTpCertDialogProps) {
   const { 
       inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
       addTpCertList, updateTpCertList 
@@ -72,17 +73,21 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
             return {
                 ...listItem,
                 ariesId: fullItem?.ariesId || listItem.ariesId, // Use fullItem's ariesId
-                // Ensure the serial number is the most current one from the source
-                manufacturerSrNo: (fullItem as any)?.serialNumber || listItem.manufacturerSrNo, // Use fullItem's serialNumber
+                manufacturerSrNo: (fullItem as any)?.serialNumber || listItem.manufacturerSrNo,
             };
           });
           setSelectedItems(enrichedItems);
           const parsedDate = parseISO(existingList.date);
           setListDate(isValid(parsedDate) ? parsedDate : new Date());
+        } else if (listToCreate) {
+          setListName(listToCreate.name || '');
+          setSelectedItems(listToCreate.items || []);
+          const parsedDate = listToCreate.date ? parseISO(listToCreate.date) : new Date();
+          setListDate(isValid(parsedDate) ? parsedDate : new Date());
         } else {
             setListDate(new Date());
         }
-      }, [existingList, isOpen, allSearchableItems]);
+      }, [existingList, listToCreate, isOpen, allSearchableItems]);
 
       const uniqueItemNames = useMemo(() => {
         const names = new Set<string>();

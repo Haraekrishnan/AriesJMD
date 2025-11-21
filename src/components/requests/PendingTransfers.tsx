@@ -23,7 +23,7 @@ export default function PendingTransfers() {
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
-  const [editingTpList, setEditingTpList] = useState<Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'> | null>(null);
+  const [editingTpList, setEditingTpList] = useState<Partial<TpCertList> | null>(null);
   
     const allItems = useMemo(() => [
       ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
@@ -61,7 +61,7 @@ export default function PendingTransfers() {
     return { 
         forApproval, 
         myActiveRequests: myActiveRequests.sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime()),
-        allCompletedRequests: completed.sort((a,b) => parseISO(a.approvalDate || a.requestDate).getTime() - parseISO(a.approvalDate || a.requestDate).getTime()),
+        allCompletedRequests: completed.sort((a,b) => (b.approvalDate || b.requestDate).localeCompare(a.approvalDate || a.requestDate)),
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
 
@@ -314,7 +314,7 @@ export default function PendingTransfers() {
       <GenerateTpCertDialog 
         isOpen={!!editingTpList}
         setIsOpen={() => setEditingTpList(null)}
-        existingList={editingTpList}
+        listToCreate={editingTpList}
       />
     )}
     </>
