@@ -112,7 +112,6 @@ export default function PendingTransfers() {
               const fromProject = projects.find(p => p.id === req.fromProjectId);
               const toProject = projects.find(p => p.id === req.toProjectId);
               const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
-              const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
               const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
 
               return (
@@ -128,16 +127,37 @@ export default function PendingTransfers() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        {showTpOption && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, false)}>Approve Transfer Only</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, true)}>Approve & Create TP List</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                        {!showTpOption && (
+                            <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
+                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+                            </Button>
+                        )}
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button size="sm" variant="destructive" onClick={() => setRejectionRequestId(req.id)}>
                                     <ThumbsDown className="mr-2 h-4 w-4" /> Reject
                                 </Button>
                             </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Reject Transfer?</AlertDialogTitle><AlertDialogDescription>Please provide a reason for rejecting this transfer request.</AlertDialogDescription></AlertDialogHeader>
+                                <div className="py-2"><Label htmlFor="rejection-comment">Comment</Label><Textarea id="rejection-comment" value={comment} onChange={e => setComment(e.target.value)} /></div>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleReject}>Confirm Rejection</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
                         </AlertDialog>
-                        <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
-                            <ThumbsUp className="mr-2 h-4 w-4" /> Approve
-                        </Button>
                     </div>
                   </div>
                   <div className="mt-2 text-sm">
@@ -146,8 +166,7 @@ export default function PendingTransfers() {
                     <p className="font-medium mt-2">Items:</p>
                     <ul className="list-disc list-inside text-xs text-muted-foreground">
                       {req.items.map(item => {
-                        const fullItem = allItems.find(i => i.id === item.itemId);
-                        const itemName = item.name || fullItem?.name || fullItem?.machineName || `${fullItem?.make} ${fullItem?.model}` || 'Unknown';
+                        const itemName = item.name || allItems.find(i => i.id === item.itemId)?.name || 'Unknown';
                         return (
                            <li key={item.itemId}>{itemName} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
                         )
@@ -170,15 +189,31 @@ export default function PendingTransfers() {
                     const statusVariant = req.status === 'Disputed' || req.status === 'Rejected' ? 'destructive' : req.status === 'Approved' ? 'default' : 'secondary';
                 return (
                     <AccordionItem value={req.id} key={req.id} className="border rounded-lg bg-muted/50">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                            <div className="flex justify-between items-start w-full">
-                                <div>
-                                    <p className="font-semibold text-left">Transfer to {toProject?.name}</p>
-                                    <p className="text-xs text-muted-foreground text-left">From: {fromProject?.name} &middot; {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}</p>
+                        <div className="flex justify-between items-center p-4">
+                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                <div className="flex justify-between items-center w-full">
+                                    <div>
+                                        <p className="font-semibold text-left">Transfer to {toProject?.name}</p>
+                                        <p className="text-xs text-muted-foreground text-left">From: {fromProject?.name} &middot; {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}</p>
+                                    </div>
+                                    <Badge variant={statusVariant}>{req.status}</Badge>
                                 </div>
-                                <Badge variant={statusVariant}>{req.status}</Badge>
-                            </div>
-                        </AccordionTrigger>
+                            </AccordionTrigger>
+                            {user?.role === 'Admin' && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive ml-2"><Trash2 className="h-4 w-4"/></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Delete this transfer request?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                        </div>
                         <AccordionContent className="p-4 pt-0">
                             <ul className="list-disc list-inside text-xs text-muted-foreground bg-background p-2 rounded-md">
                                 {req.items.map(item => (
@@ -206,12 +241,31 @@ export default function PendingTransfers() {
                     const toProject = projects.find(p => p.id === req.toProjectId);
                     const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
                     return (
-                        <div key={req.id} className="p-2 border rounded-sm">
-                           <div className="flex justify-between items-center">
+                        <div key={req.id} className="p-2 border rounded-sm flex justify-between items-center">
+                            <div>
                                 <p className="text-sm">
                                     Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
                                 </p>
-                                <Badge variant={statusVariant}>{req.status}</Badge>
+                                <p className="text-xs text-muted-foreground">
+                                    {format(parseISO(req.requestDate), 'dd MMM, yyyy')}
+                                </p>
+                            </div>
+                           <div className="flex items-center gap-2">
+                             <Badge variant={statusVariant}>{req.status}</Badge>
+                             {user?.role === 'Admin' && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Delete this transfer record?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                             )}
                            </div>
                         </div>
                     );
@@ -222,22 +276,13 @@ export default function PendingTransfers() {
           </Accordion>
         )}
     </CardContent>
-    <AlertDialog open={!!rejectionRequestId} onOpenChange={() => setRejectionRequestId(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Reject Transfer?</AlertDialogTitle>
-                <AlertDialogDescription>Please provide a reason for rejecting this transfer request.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="py-2">
-                <Label htmlFor="rejection-comment">Comment</Label>
-                <Textarea id="rejection-comment" value={comment} onChange={e => setComment(e.target.value)} />
-            </div>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleReject}>Confirm Rejection</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+    {editingTpList && (
+      <GenerateTpCertDialog 
+        isOpen={!!editingTpList}
+        setIsOpen={() => setEditingTpList(null)}
+        existingList={null}
+      />
+    )}
     </>
   );
 }
