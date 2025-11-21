@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -76,7 +77,7 @@ type AppContextType = {
   onLeaveManpowerCount: number;
 
   // Auth
-  login: (email: string, pass: string) => Promise<{ success: boolean; status?: User['status']; user?: User }>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
@@ -484,7 +485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(logRef, newLog);
   }, []);
 
-  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; status?: User['status']; user?: User }> => {
+  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean, user?: User }> => {
     setLoading(true);
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
     const snapshot = await get(usersRef);
@@ -495,22 +496,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const foundUser = { id: userId, ...usersData[userId] };
 
         if (foundUser.password === pass) {
-            if (foundUser.status === 'locked') {
-                setStoredUserId(foundUser.id);
-                router.replace('/status');
-                setLoading(false);
-                return { success: true, status: 'locked', user: foundUser };
-            }
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
+            // User state will be set by the useEffect that watches storedUserId
             setLoading(false);
-            router.replace('/dashboard');
-            return { success: true, status: foundUser.status || 'active', user: foundUser };
+            return { success: true, user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-}, [setStoredUserId, addActivityLog, router]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -1995,8 +1990,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const stockItem = ppeStock.find(s => s.id === (requestData.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'));
     const stockInfo = requestData.ppeType === 'Coverall' && stockItem && 'sizes' in stockItem && stockItem.sizes
-      ? `${stockItem.sizes[requestData.size] || 0} in stock`
-      : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
+        ? `${stockItem.sizes[requestData.size] || 0} in stock`
+        : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
 
     const emailData = {
         requesterName: user.name,
@@ -2471,6 +2466,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
+
+    const allItems: any[] = [
+      ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+    ];
+
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     
     const sanitizedItems = requestData.items.map(item => {
@@ -2478,7 +2478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!name) {
           const fullItem = allItems.find(i => i.id === item.itemId);
           if (fullItem) {
-              name = (fullItem as any).name || (fullItem as any).machineName || (fullItem as any).equipmentName || `${(fullItem as any).make} ${(fullItem as any).model}`;
+              name = fullItem.name || fullItem.machineName || fullItem.equipmentName || `${fullItem.make} ${fullItem.model}`;
           }
       }
       return {
@@ -2520,7 +2520,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       }
     });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects, allItems]);
+  }, [user, addActivityLog, users, can.approve_store_requests, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
   
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
     if (!user) return;
@@ -3281,9 +3281,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePaymentStatus = useCallback((paymentId: string, status: PaymentStatus, comment: string) => {
-    if(!user) return;
+    if (!user) return;
     const payment = payments.find(p => p.id === paymentId);
-    if(!payment) return;
+    if (!payment) return;
     
     const newCommentRef = push(ref(rtdb, `payments/${paymentId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}: ${comment}`, date: new Date().toISOString(), eventId: paymentId };
@@ -3311,7 +3311,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, payments, users, vendors]);
 
   const deletePayment = useCallback((paymentId: string) => {
-    if(!user || user.role !== 'Admin') return;
+    if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `payments/${paymentId}`));
   }, [user]);
   
@@ -3790,12 +3790,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (storedUserId) {
         const foundUser = usersById[storedUserId];
         if (foundUser) {
-            setUser({ ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById });
+            const userWithDismissed = { ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById };
+            if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
+                setUser(userWithDismissed);
+            }
         }
     } else {
         setUser(null);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, user]);
 
   // Listen for status changes on the current user
   useEffect(() => {
@@ -3809,9 +3812,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
-            // A race condition can occur where the local user state is updated before the DB listener fires,
-            // causing an unnecessary re-render or state-flicker. Comparing JSON strings is a simple way
-            // to check for deep equality and prevent this.
             if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                  setUser(updatedUser);
             }
@@ -3830,5 +3830,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
