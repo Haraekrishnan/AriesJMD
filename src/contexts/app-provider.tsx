@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -496,21 +495,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const foundUser = { id: userId, ...usersData[userId] };
 
         if (foundUser.password === pass) {
+            if (foundUser.status === 'locked') {
+                setStoredUserId(foundUser.id);
+                router.replace('/status');
+                setLoading(false);
+                return { success: true, status: 'locked', user: foundUser };
+            }
             setStoredUserId(foundUser.id);
-            //setUser(foundUser); // setUser is now handled by useEffect on storedUserId
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
-            if (foundUser.status === 'locked') {
-                router.replace('/status');
-            } else {
-                router.replace('/dashboard');
-            }
+            router.replace('/dashboard');
             return { success: true, status: foundUser.status || 'active', user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+}, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -2176,45 +2176,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPpeInwardRecord = useCallback((recordData: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => {
       if(!user) return;
       const newRef = push(ref(rtdb, 'ppeInwardHistory'));
-      const newRecord = { ...recordData, date: recordData.date.toISOString(), addedByUserId: user.id, id: newRef.key! };
-      set(newRef, newRecord);
+      set(newRef, { ...recordData, date: recordData.date.toISOString(), addedByUserId: user.id });
 
-      const updates: { [key: string]: any } = {};
-      if (newRecord.ppeType === 'Coverall' && newRecord.sizes) {
-          const stock = ppeStock.find(s => s.id === 'coveralls');
-          const currentSizes = stock && 'sizes' in stock ? stock.sizes || {} : {};
-          for (const size in newRecord.sizes) {
-              updates[`ppeStock/coveralls/sizes/${size}`] = (currentSizes[size] || 0) + (newRecord.sizes[size] || 0);
-          }
-      } else if (newRecord.ppeType === 'Safety Shoes' && newRecord.quantity) {
-          const stock = ppeStock.find(s => s.id === 'safetyShoes');
-          const currentQuantity = stock && 'quantity' in stock ? stock.quantity || 0 : 0;
-          updates['ppeStock/safetyShoes/quantity'] = currentQuantity + newRecord.quantity;
-      }
-      update(ref(rtdb), updates);
-
-      addActivityLog(user.id, 'PPE Inward Registered', `Type: ${newRecord.ppeType}`);
+      const { ppeType, sizes, quantity } = recordData;
+      const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
       
-      const rolesToNotify: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-      const usersToNotify = users.filter(u => rolesToNotify.includes(u.role));
-      usersToNotify.forEach(u => {
-          if(u.email) {
-              createAndSendNotification(
-                  u.email,
-                  `New PPE Inward Stock Registered`,
-                  'PPE Stock Updated',
-                  {
-                      'Type': newRecord.ppeType,
-                      'Details': newRecord.ppeType === 'Coverall' ? JSON.stringify(newRecord.sizes) : `Quantity: ${newRecord.quantity}`,
-                      'Registered By': user.name,
-                  },
-                  `${process.env.NEXT_PUBLIC_APP_URL}/ppe-stock`,
-                  'View PPE Stock'
-              );
+      get(ref(rtdb, stockPath)).then(snapshot => {
+          const stockData = snapshot.val();
+          if (ppeType === 'Coverall' && sizes) {
+              const currentSizes = stockData?.sizes || {};
+              Object.keys(sizes).forEach(size => {
+                  currentSizes[size] = (currentSizes[size] || 0) + (sizes[size] || 0);
+              });
+              update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
+          } else if (ppeType === 'Safety Shoes' && quantity) {
+              update(ref(rtdb, stockPath), { quantity: (stockData?.quantity || 0) + quantity });
           }
       });
-
-  }, [user, users, ppeStock, addActivityLog]);
+  }, [user]);
 
   const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
       if(!user || user.role !== 'Admin') return;
@@ -2262,18 +2241,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updates[`ppeInwardHistory/${record.id}`] = null;
   
     if (record.ppeType === 'Coverall' && record.sizes) {
+      const stockPath = 'ppeStock/coveralls/sizes';
       const stock = ppeStock.find(s => s.id === 'coveralls');
       const currentSizes = stock && 'sizes' in stock ? stock.sizes || {} : {};
       const newSizes = { ...currentSizes };
       for (const size in record.sizes) {
         newSizes[size] = Math.max(0, (newSizes[size] || 0) - (record.sizes[size] || 0));
       }
-      updates['ppeStock/coveralls/sizes'] = newSizes;
+      updates[stockPath] = newSizes;
       updates['ppeStock/coveralls/lastUpdated'] = new Date().toISOString();
     } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
+      const stockPath = 'ppeStock/safetyShoes/quantity';
       const stock = ppeStock.find(s => s.id === 'safetyShoes');
       const currentQuantity = stock && 'quantity' in stock ? stock.quantity || 0 : 0;
-      updates['ppeStock/safetyShoes/quantity'] = Math.max(0, currentQuantity - record.quantity);
+      updates[stockPath] = Math.max(0, currentQuantity - record.quantity);
       updates['ppeStock/safetyShoes/lastUpdated'] = new Date().toISOString();
     }
   
@@ -2454,7 +2435,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const sanitizedItems = listData.items.map(item => ({
       ...item,
       ariesId: item.ariesId || null,
-      chestCrollNo: item.chestCrollNo || null,
+      chestCrollNo: (item as any).chestCrollNo || null,
     }));
     const newList: Omit<TpCertList, 'id'> = {
         ...listData,
@@ -2488,50 +2469,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'TP Certification List Deleted', `List ID: ${listId}`);
   }, [user, addActivityLog]);
   
-  const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
-    if (!user) return;
-  
-    const updates: { [key: string]: any } = {};
-    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
-    updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
-    updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
-  
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    
-    if(requester && requester.email) {
-        const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
-        const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
-        createAndSendNotification(
-            requester.email,
-            `Inventory Transfer Approved: #${request.id.slice(-6)}`,
-            'Inventory Transfer Request Approved',
-            {
-                'Request ID': `#${request.id.slice(-6)}`,
-                'From': fromProjectName || 'Unknown',
-                'To': toProjectName || 'Unknown',
-                'Approved By': user.name,
-                'Info': 'The request has been approved. Awaiting acknowledgement from the receiving project supervisor to complete the transfer.'
-            },
-            `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-            'View Transfers'
-        );
-    }
-  }, [user, addActivityLog, addTpCertList, users, projects]);
-  
   const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
     
-    const sanitizedItems = requestData.items.map(item => ({
-      itemId: item.itemId,
-      itemType: item.itemType,
-      name: (item as any).name || 'Unknown', // Fallback to prevent undefined
-      serialNumber: item.serialNumber,
-      ariesId: item.ariesId || null,
-    }));
+    const sanitizedItems = requestData.items.map(item => {
+      let name = item.name;
+      if (!name) {
+          const fullItem = allItems.find(i => i.id === item.itemId);
+          if (fullItem) {
+              name = (fullItem as any).name || (fullItem as any).machineName || (fullItem as any).equipmentName || `${(fullItem as any).make} ${(fullItem as any).model}`;
+          }
+      }
+      return {
+          ...item,
+          name: name || 'Unknown',
+          ariesId: item.ariesId || null,
+      }
+    });
   
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
         ...requestData,
@@ -2565,7 +2520,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       }
     });
-  }, [user, addActivityLog, users, can.approve_store_requests, projects, approveInventoryTransferRequest]);
+  }, [user, addActivityLog, users, can.approve_store_requests, projects, allItems]);
+  
+  const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
+    if (!user) return;
+  
+    const updates: { [key: string]: any } = {};
+    updates[`inventoryTransferRequests/${request.id}/status`] = 'Approved';
+    updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
+    updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
+  
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ${request.id}`);
+
+    const requester = users.find(u => u.id === request.requesterId);
+    
+    if(requester && requester.email) {
+        const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
+        const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
+        createAndSendNotification(
+            requester.email,
+            `Inventory Transfer Approved: #${request.id.slice(-6)}`,
+            'Inventory Transfer Request Approved',
+            {
+                'Request ID': `#${request.id.slice(-6)}`,
+                'From': fromProjectName || 'Unknown',
+                'To': toProjectName || 'Unknown',
+                'Approved By': user.name,
+                'Info': 'The request has been approved. Awaiting acknowledgement from the receiving project supervisor to complete the transfer.'
+            },
+            `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+            'View Transfers'
+        );
+    }
+  }, [user, addActivityLog, addTpCertList, users, projects]);
   
   const deleteInventoryTransferRequest = useCallback((requestId: string) => {
     if (!user || user.role !== 'Admin') {
@@ -3842,4 +3830,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
