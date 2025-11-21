@@ -1,5 +1,4 @@
 
-
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -171,20 +170,30 @@ export async function generateTpCertExcel(
 
   const dateRow = worksheet.getRow(4);
   worksheet.mergeCells('A4:H4');
-  dateRow.getCell('H').value = `Date: ${format(dateToUse, 'dd-MM-yyyy')}`;
-  dateRow.getCell('H').alignment = { horizontal: 'right' };
-  dateRow.getCell('H').font = { bold: true };
-
+  const dateCell = dateRow.getCell('A');
+  dateCell.value = `Date: ${format(dateToUse, 'dd-MM-yyyy')}`;
+  dateCell.alignment = { horizontal: 'right' };
+  dateCell.font = { bold: true };
+  
   const startRow = 5;
-  worksheet.mergeCells(`A${startRow}:H${startRow}`).value = "Trivedi & Associates Technical Services (P.) Ltd.";
-  worksheet.getCell(`A${startRow}`).font = { bold: true, size: 12 };
-  worksheet.getCell(`A${startRow}`).alignment = { horizontal: 'center' };
-  worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`).value = "Jamnagar.";
-  worksheet.getCell(`A${startRow + 1}`).font = { bold: true, size: 12 };
-  worksheet.getCell(`A${startRow + 1}`).alignment = { horizontal: 'center' };
-  worksheet.mergeCells(`A${startRow + 3}:H${startRow + 3}`).value = "Subject : Testing & Certification";
-  worksheet.getCell(`A${startRow + 3}`).font = { bold: true, size: 12 };
-  worksheet.getCell(`A${startRow + 3}`).alignment = { horizontal: 'left' };
+
+  worksheet.mergeCells(`A${startRow}:H${startRow}`);
+  const titleCell1 = worksheet.getCell(`A${startRow}`);
+  titleCell1.value = "Trivedi & Associates Technical Services (P.) Ltd.";
+  titleCell1.font = { bold: true, size: 12 };
+  titleCell1.alignment = { horizontal: 'center' };
+
+  worksheet.mergeCells(`A${startRow + 1}:H${startRow + 1}`);
+  const titleCell2 = worksheet.getCell(`A${startRow + 1}`);
+  titleCell2.value = "Jamnagar.";
+  titleCell2.font = { bold: true, size: 12 };
+  titleCell2.alignment = { horizontal: 'center' };
+
+  worksheet.mergeCells(`A${startRow + 3}:H${startRow + 3}`);
+  const subjectCell = worksheet.getCell(`A${startRow + 3}`);
+  subjectCell.value = "Subject : Testing & Certification";
+  subjectCell.font = { bold: true, size: 12 };
+  subjectCell.alignment = { horizontal: 'left' };
 
   const headerRowIndex = startRow + 5;
   const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
@@ -298,22 +307,21 @@ export async function generateTpCertPdf(
   doc.text("Subject : Testing & Certification", 40, 155);
 
   const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
-  
+  const bodyRows: any[][] = [];
   const groupedItems = groupItemsForExport(certItems);
-  let tableRows: any[][] = [];
   let srNo = 1;
 
   groupedItems.forEach(group => {
     const groupSize = group.length;
     const isHarnessGroup = group[0].materialName.toLowerCase() === 'harness';
-    
+
     group.forEach((item, index) => {
-      let row: any[] = [];
+      let row;
       if (index === 0) {
         row = [
           { content: srNo, rowSpan: groupSize },
           { content: item.materialName, rowSpan: groupSize },
-          item.manufacturerSrNo || '',
+          item.manufacturerSrNo,
           item.chestCrollNo || '',
           { content: getCapacity(item.materialName), rowSpan: groupSize },
           { content: groupSize, rowSpan: groupSize },
@@ -323,44 +331,59 @@ export async function generateTpCertPdf(
         ];
       } else {
         row = [
-          '', // Placeholder for SR No.
-          '', // Placeholder for Material Name
-          item.manufacturerSrNo || '',
+          '', '', // Placeholders for spanned cells
+          item.manufacturerSrNo,
           item.chestCrollNo || '',
-          '', // Placeholder for Cap.
-          '', // Placeholder for Qty
-          '', // Placeholder for New/Old
-          '', // Placeholder for Valid
-          ''  // Placeholder for Submit
+          '', '', '', '', '' // Placeholders
         ];
       }
-      tableRows.push(row);
+      bodyRows.push(row);
     });
     srNo++;
   });
   
-  const columnStyles = {
-    0: { cellWidth: 25 },
+  const columnStyles: {[key: number]: any} = {
+    0: { cellWidth: 25, halign: 'center' },
     1: { cellWidth: 60 },
-    2: { cellWidth: 120 },
-    3: { cellWidth: 80 },
-    4: { cellWidth: 40 },
-    5: { cellWidth: 30 },
-    6: { cellWidth: 35 },
+    4: { cellWidth: 40, halign: 'center' },
+    5: { cellWidth: 30, halign: 'center' },
+    6: { cellWidth: 35, halign: 'center' },
     7: { cellWidth: 50 },
     8: { cellWidth: 'auto' },
   };
 
+  const hasHarness = certItems.some(item => item.materialName.toLowerCase() === 'harness');
+  if (hasHarness) {
+    columnStyles[2] = { cellWidth: 80 };
+    columnStyles[3] = { cellWidth: 70 };
+  } else {
+    // If no harness, merge the serial number and chest croll number columns
+    // The library handles this via colSpan in the didParseCell hook
+    columnStyles[2] = { cellWidth: 150 };
+    columnStyles[3] = { cellWidth: 0 }; // Hide this column effectively
+  }
+  
   (doc as any).autoTable({
       head: [headers],
-      body: tableRows,
+      body: bodyRows,
       startY: 170,
       theme: "grid",
-      styles: { fontSize: 7, halign: 'center', valign: 'middle' },
-      headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
+      styles: { fontSize: 7, valign: 'middle' },
+      headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
       columnStyles: columnStyles,
       didParseCell: (data: any) => {
-          // This hook is used to handle row spans correctly by the library
+        if (!hasHarness) {
+          // If the cell is for Manufacturer Sr. No., span it across two columns.
+          if (data.column.index === 2) {
+            data.cell.colSpan = 2;
+          }
+          // Hide the Chest Croll No. column header and data cells.
+          if (data.column.index === 3) {
+            data.cell.styles.cellWidth = 0;
+            data.cell.styles.minCellWidth = 0;
+            data.cell.text = ''; // Clear text just in case
+          }
+        }
       }
   });
 
