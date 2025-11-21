@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -484,7 +485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(logRef, newLog);
   }, []);
 
-  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean, user?: User }> => {
+  const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; user?: User }> => {
     setLoading(true);
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
     const snapshot = await get(usersRef);
@@ -501,6 +502,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setLoading(false);
             if (foundUser.status === 'locked') {
                 router.replace('/status');
+            } else {
+                router.replace('/dashboard');
             }
             return { success: true, user: foundUser };
         }
@@ -1327,7 +1330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addProject = useCallback((projectName: string) => {
     const newRef = push(ref(rtdb, 'projects'));
-    set(newRef, { name: projectName });
+    set(newRef, { name: projectName, isPlant: false });
   }, []);
 
   const updateProject = useCallback((project: Project) => {
@@ -3858,3 +3861,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+

@@ -60,10 +60,10 @@ export default function PendingTransfers() {
 
     return { 
         forApproval, 
-        myActiveRequests,
+        myActiveRequests: myActiveRequests.sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime()),
         allCompletedRequests: completed.sort((a,b) => parseISO(b.approvalDate || b.requestDate).getTime() - parseISO(a.approvalDate || a.requestDate).getTime()),
     };
-  }, [inventoryTransferRequests, user, can.approve_store_requests]);
+  }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
 
   if (forApproval.length === 0 && myActiveRequests.length === 0 && allCompletedRequests.length === 0) {
     return (
@@ -127,7 +127,7 @@ export default function PendingTransfers() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {showTpOption && (
+                        {showTpOption ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button size="sm"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
@@ -137,8 +137,7 @@ export default function PendingTransfers() {
                                     <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, true)}>Approve & Create TP List</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                        )}
-                        {!showTpOption && (
+                        ) : (
                             <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
                                 <ThumbsUp className="mr-2 h-4 w-4" /> Approve
                             </Button>
