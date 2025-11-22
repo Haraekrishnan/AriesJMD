@@ -86,7 +86,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const handleAddComment = () => {
         if (!newComment.trim() || !user) return;
-        addInternalRequestComment(req.id, newComment);
+        addInternalRequestComment(req.id, newComment, true);
         setNewComment('');
     };
 
@@ -115,7 +115,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
 
-    const canAddComments = user?.role === 'Admin' || canApprove;
+    const canAddComments = user?.role === 'Admin' || canApprove || isRequester;
 
     return (
         <>
@@ -167,7 +167,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 <AccordionContent className="pt-2 text-muted-foreground">
                                 <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                                 <div className="space-y-2">
-                                    {commentsArray.length > 0 ? commentsArray.map((c, i) => {
+                                    {commentsArray.length > 0 ? commentsArray.map((c,i) => {
                                         const commentUser = users.find(u => u.id === c.userId);
                                         return (
                                             <div key={i} className="flex items-start gap-2">
@@ -185,11 +185,11 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         </Accordion>
                     </ScrollArea>
                 </CardContent>
-                <CardFooter className="p-2 bg-muted/50 flex flex-col items-stretch gap-2">
-                    {canApprove && (
+                <CardFooter className="p-2 bg-muted/50 flex flex-col items-stretch gap-2 mt-auto">
+                    {canAddComments && (
                         <div className="relative px-2 pb-2">
                             <Textarea
-                                placeholder="Add a comment..."
+                                placeholder="Add a comment or reply..."
                                 className="text-xs pr-10 bg-background"
                                 value={newComment}
                                 onChange={e => setNewComment(e.target.value)}
