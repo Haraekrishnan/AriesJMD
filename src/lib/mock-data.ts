@@ -52,6 +52,14 @@ export const ROLES: RoleDefinition[] = [
     ],
     isEditable: false,
   },
+   {
+    id: 'role-ndt-supervisor',
+    name: 'NDT Supervisor',
+    permissions: [
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'manage_equipment_status'
+    ],
+    isEditable: true,
+  },
   {
     id: 'role-hse',
     name: 'Senior Safety Supervisor',

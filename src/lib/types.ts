@@ -629,8 +629,11 @@ export type UTMachine = {
   unit: string;
   calibrationDueDate: string; // ISO String
   tpInspectionDueDate?: string; // ISO String
-  probeDetails: string;
-  cableDetails: string;
+  probeDetails?: string;
+  probeStatus?: string;
+  cableDetails?: string;
+  cableStatus?: string;
+  remarks?: string;
   status: string;
   certificateUrl?: string;
   movedToProjectId?: string;

@@ -15,6 +15,7 @@ import { Label } from '../ui/label';
 import type { UTMachine } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { ScrollArea } from '../ui/scroll-area';
+import { Textarea } from '../ui/textarea';
 
 const machineSchema = z.object({
   machineName: z.string().min(1, 'Machine name is required'),
@@ -24,12 +25,16 @@ const machineSchema = z.object({
   unit: z.string().min(1, 'Unit is required'),
   calibrationDueDate: z.date({ required_error: 'Calibration due date is required' }),
   tpInspectionDueDate: z.date().optional().nullable(),
-  probeDetails: z.string().min(1, 'Probe details are required'),
-  cableDetails: z.string().min(1, 'Cable details are required'),
+  probeDetails: z.string().optional(),
+  probeStatus: z.string().optional(),
+  cableDetails: z.string().optional(),
+  cableStatus: z.string().optional(),
   status: z.string().min(1, 'Status is required'),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   movedToProjectId: z.string().optional(),
+  remarks: z.string().optional(),
 });
+
 
 type MachineFormValues = z.infer<typeof machineSchema>;
 
@@ -40,6 +45,7 @@ interface EditUTMachineDialogProps {
 }
 
 const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service", "Moved to another project"];
+const componentStatusOptions = ["Good", "Damaged", "Not Applicable"];
 
 export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: EditUTMachineDialogProps) {
   const { projects, updateUTMachine } = useAppContext();
@@ -81,7 +87,7 @@ export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: Edit
           <DialogDescription>Update details for {machine.machineName} (SN: {machine.serialNumber}).</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <ScrollArea className="h-96 pr-6">
+          <ScrollArea className="h-[60vh] pr-6">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Machine Name</Label><Input {...form.register('machineName')} />{form.formState.errors.machineName && <p className="text-xs text-destructive">{form.formState.errors.machineName.message}</p>}</div>
@@ -97,10 +103,16 @@ export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: Edit
               </div>
               <div><Label>Calibration Due Date</Label><Controller name="calibrationDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.calibrationDueDate && <p className="text-xs text-destructive">{form.formState.errors.calibrationDueDate.message}</p>}</div>
               <div><Label>TP Inspection Due Date (Optional)</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+              
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>Probe Details</Label><Input {...form.register('probeDetails')} />{form.formState.errors.probeDetails && <p className="text-xs text-destructive">{form.formState.errors.probeDetails.message}</p>}</div>
-                <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} />{form.formState.errors.cableDetails && <p className="text-xs text-destructive">{form.formState.errors.cableDetails.message}</p>}</div>
+                <div><Label>Probe Details</Label><Input {...form.register('probeDetails')} /></div>
+                <div><Label>Probe Status</Label><Controller control={form.control} name="probeStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>} /></div>
               </div>
+               <div className="grid grid-cols-2 gap-4">
+                <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} /></div>
+                <div><Label>Cable Status</Label><Controller control={form.control} name="cableStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>} /></div>
+              </div>
+              
               <div>
                 <Label>Certificate URL</Label>
                 <Input {...form.register('certificateUrl')} placeholder="https://..." />
@@ -123,6 +135,10 @@ export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: Edit
                         <Input {...form.register('movedToProjectId')} placeholder="Enter destination project..." />
                     </div>
                 )}
+                 <div>
+                    <Label>Remarks</Label>
+                    <Textarea {...form.register('remarks')} />
+                </div>
             </div>
           </ScrollArea>
           <DialogFooter className="pt-4">

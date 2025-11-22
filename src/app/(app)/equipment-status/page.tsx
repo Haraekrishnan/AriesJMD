@@ -106,7 +106,7 @@ export default function EquipmentStatusPage() {
 
     const canAddEquipment = useMemo(() => {
         if (!user) return false;
-        const addRoles: Role[] = ['Store in Charge', 'Document Controller', 'Admin', 'Project Coordinator'];
+        const addRoles: Role[] = ['Store in Charge', 'Document Controller', 'Admin', 'Project Coordinator', 'NDT Supervisor'];
         return addRoles.includes(user.role);
     }, [user]);
 
@@ -573,31 +573,30 @@ export default function EquipmentStatusPage() {
             </Tabs>
 
             {canAddEquipment && <AddUTMachineDialog isOpen={isAddUTMachineOpen} setIsOpen={setIsAddUTMachineOpen} />}
-            {selectedUTMachine && can.manage_equipment_status && (<EditUTMachineDialog isOpen={isEditUTMachineOpen} setIsOpen={setIsEditUTMachineOpen} machine={selectedUTMachine}/>)}
+            {selectedUTMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditUTMachineDialog isOpen={isEditUTMachineOpen} setIsOpen={setIsEditUTMachineOpen} machine={selectedUTMachine}/>)}
             {selectedUTMachine && (<UTMachineLogManagerDialog isOpen={isUTLogManagerOpen} setIsOpen={setIsUTLogManagerOpen} machine={selectedUTMachine}/>)}
 
             {canAddEquipment && <AddDftMachineDialog isOpen={isAddDftMachineOpen} setIsOpen={setIsAddDftMachineOpen} />}
-            {selectedDftMachine && can.manage_equipment_status && (<EditDftMachineDialog isOpen={isEditDftMachineOpen} setIsOpen={setIsEditDftMachineOpen} machine={selectedDftMachine} />)}
+            {selectedDftMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditDftMachineDialog isOpen={isEditDftMachineOpen} setIsOpen={setIsEditDftMachineOpen} machine={selectedDftMachine} />)}
             {selectedDftMachine && (<DftMachineLogManagerDialog isOpen={isDftLogManagerOpen} setIsOpen={setIsDftLogManagerOpen} machine={selectedDftMachine} />)}
 
             {canAddEquipment && <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />}
-            {selectedMobileSim && can.manage_equipment_status && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
+            {selectedMobileSim && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
         
             {canAddEquipment && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
-            {selectedLaptopDesktop && can.manage_equipment_status && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
+            {selectedLaptopDesktop && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
             
             {canAddEquipment && <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />}
-            {selectedDigitalCamera && can.manage_equipment_status && <EditDigitalCameraDialog isOpen={isEditDigitalCameraOpen} setIsOpen={setIsEditDigitalCameraOpen} item={selectedDigitalCamera} />}
+            {selectedDigitalCamera && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditDigitalCameraDialog isOpen={isEditDigitalCameraOpen} setIsOpen={setIsEditDigitalCameraOpen} item={selectedDigitalCamera} />}
 
             {canAddEquipment && <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />}
-            {selectedAnemometer && can.manage_equipment_status && <EditAnemometerDialog isOpen={isEditAnemometerOpen} setIsOpen={setIsEditAnemometerOpen} item={selectedAnemometer} />}
+            {selectedAnemometer && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditAnemometerDialog isOpen={isEditAnemometerOpen} setIsOpen={setIsEditAnemometerOpen} item={selectedAnemometer} />}
 
             {canAddEquipment && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
-            {selectedOtherEquipment && can.manage_equipment_status && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
+            {selectedOtherEquipment && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
 
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
 }
-
