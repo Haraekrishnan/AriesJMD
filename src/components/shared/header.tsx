@@ -145,7 +145,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
       { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
       { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
-      { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: can.manage_inventory },
+      { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
     ];
   
     return (
