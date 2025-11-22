@@ -548,40 +548,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, updateUser, toast]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(usersRef);
-    if (!snapshot.exists()) {
-        return false;
+  const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+  const snapshot = await get(usersRef);
+  if (!snapshot.exists()) {
+    return false;
+  }
+
+  const userData = snapshot.val();
+  const userId = Object.keys(userData)[0];
+  const targetUser: User = { id: userId, ...userData[userId] };
+
+  const newRequest: Omit<PasswordResetRequest, 'id'> = {
+    userId: targetUser.id,
+    email: targetUser.email,
+    date: new Date().toISOString(),
+    status: 'pending',
+  };
+
+  const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+  await set(newRequestRef, newRequest);
+
+  const admins = users.filter(u => u.role === 'Admin');
+  admins.forEach(admin => {
+    if (admin.email) {
+      createAndSendNotification(
+        admin.email,
+        `Password Reset Request from ${targetUser.email}`,
+        'Password Reset Request',
+        { 'User Email': targetUser.email },
+        `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+        'View Requests'
+      );
     }
-    const userData = snapshot.val();
-    const userId = Object.keys(userData)[0];
-    const targetUser = { id: userId, ...userData[userId] };
-    
-    const newRequest: Omit<PasswordResetRequest, 'id'> = {
-      userId: targetUser.id,
-      email: targetUser.email,
-      date: new Date().toISOString(),
-      status: 'pending',
-    };
-    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
-    await set(newRequestRef, newRequest);
+  });
 
-    const admins = users.filter(u => u.role === 'Admin');
-    admins.forEach(admin => {
-        if (admin.email) {
-            createAndSendNotification(
-                admin.email,
-                `Password Reset Request from ${targetUser.email}`,
-                'Password Reset Request',
-                { 'User Email': targetUser.email },
-                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-                'View Requests'
-            );
-        }
-    });
-
-    return true;
-  }, [users]);
+  return true;
+}, [users]);
   
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -848,8 +850,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
     
     const updates: { [key: string]: any } = {};
-    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = {
+  ...newComment,
+  id: newCommentRef.key,
+};
+updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+
   
     update(ref(rtdb), updates);
   }, [user, certificateRequestsById]);
@@ -1234,7 +1240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         date: new Date().toISOString(),
         eventId: eventId,
     };
-    set(newCommentRef, { ...newComment, id: newCommentRef.key });
+      set(newCommentRef, { ...newComment, id: newCommentRef.key });
     update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
       lastUpdated: new Date().toISOString(),
       id: dayCommentId,
@@ -1532,10 +1538,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [manpowerLogs, user]);
 
   const addManpowerProfile = useCallback(async (profileData: Omit<ManpowerProfile, 'id'>) => {
-    const newRef = push(ref(rtdb, 'manpowerProfiles'));
-    const profileWithId = { ...profileData, id: newRef.key };
-    await set(newRef, profileWithId);
-  }, []);
+  const newRef = push(ref(rtdb, 'manpowerProfiles'));
+  const profileWithId: ManpowerProfile = { ...profileData, id: newRef.key as string };
+  await set(newRef, profileWithId);
+}, []);
   
   const addMultipleManpowerProfiles = useCallback((profilesData: any[]): number => {
     if (!user) return 0;
@@ -1554,8 +1560,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         if (!name || !eic) return;
         
-        const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); // Assuming File No is in column U (index 20)
+        const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); 
 
+        // --- FIXED FUNCTION BELOW ---
         const parseDateExcel = (date: any): string | null => {
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
@@ -1565,13 +1572,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 if (isValid(parsed)) return parsed.toISOString();
             }
             if (typeof date === 'number') {
-                // Excel serial date number
-                const excelEpoch = new Date(1899, 11, 30);
-                const jsDate = new Date(excelEpoch.getTime() + date * 86400000);
-                if(isValid(jsDate)) return jsDate.toISOString();
+                // Excel incorrectly treats 1900 as a leap year.
+                const excelEpoch = new Date(Date.UTC(1899, 11, 31)); 
+                const serial = date > 59 ? date - 1 : date; 
+
+                const jsDate = new Date(excelEpoch.getTime() + serial * 86400000);
+                if (isValid(jsDate)) return jsDate.toISOString();
             }
             return null;
-        }
+        }; // <--- THIS CLOSING BRACE AND SEMICOLON WERE MISSING
+        // ----------------------------
 
         const profileData = {
           name: name?.trim(),
@@ -1747,23 +1757,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
     
     // Ensure `inventoryItemId` is null if it's undefined
-    const sanitizedItems = requestData.items.map(item => ({
-        ...item,
-        inventoryItemId: item.inventoryItemId || null,
-    }));
+      const sanitizedItems = requestData.items.map(item => ({
+  ...item,    // ✅ THREE DOTS — this is VALID SPREAD SYNTAX
+  inventoryItemId: item.inventoryItemId || null,
+}));
 
-    const newRequest: Omit<InternalRequest, 'id'> = {
-        ...requestData,
-        items: sanitizedItems,
-        requesterId: user.id,
-        date: new Date().toISOString(),
-        status: 'Pending',
-        comments: [{ id: `comm-init`, text: 'Request Created', userId: user.id, date: new Date().toISOString(), eventId: newRequestRef.key! }],
-        viewedByRequester: true,
-        acknowledgedByRequester: false,
-    };
+const newRequest: Omit<InternalRequest, 'id'> = {
+  ...requestData,
+  items: sanitizedItems,
+  requesterId: user.id,
+  date: new Date().toISOString(),
+  status: 'Pending',
+  comments: [],
+  viewedByRequester: true,
+  acknowledgedByRequester: false,
+};
 
-    set(newRequestRef, newRequest);
+set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
 
     const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
@@ -2074,8 +2084,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           approverId: request.approverId,
         };
         const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
-        updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = { ...ppeHistoryRecord, id: ppeHistoryRef.key };
-        
+updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = {
+  ...ppeHistoryRecord,
+  id: ppeHistoryRef.key,
+};
+     
         if (request.ppeType === 'Coverall') {
             const stock = ppeStock.find(s => s.id === 'coveralls');
             if (stock && 'sizes' in stock && stock.sizes) {
@@ -2272,17 +2285,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, ppeStock, addActivityLog]);
   
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-    if(!user) return;
-    const newRef = push(ref(rtdb, 'inventoryItems'));
-    const dataToSave = { 
-      ...itemData,
-      chestCrollNo: itemData.chestCrollNo || null,
-      lastUpdated: new Date().toISOString(),
-      movedToProjectId: itemData.movedToProjectId || null,
-    };
-    set(newRef, dataToSave);
-    addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
-  }, [user, addActivityLog]);
+  if (!user) return;
+  const newRef = push(ref(rtdb, 'inventoryItems'));
+
+  const dataToSave: InventoryItem = {
+    ...(itemData as InventoryItem),
+    chestCrollNo: itemData.chestCrollNo || null,
+    lastUpdated: new Date().toISOString(),
+    movedToProjectId: itemData.movedToProjectId || null,
+  };
+
+  set(newRef, dataToSave);
+  addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
+}, [user, addActivityLog]);
 
   const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
     let importedCount = 0;
@@ -3024,9 +3039,9 @@ approvers.forEach(approver => {
   }, [user, usersById, toast]);
 
   const updateAnnouncement = useCallback((announcement: Announcement) => {
-    const { id, ...data } = announcement;
-    update(ref(rtdb, `announcements/${id}`), data);
-  }, []);
+  const { id, ...data } = announcement;
+  update(ref(rtdb, `announcements/${id}`), data);
+}, []);
   
   const approveAnnouncement = useCallback((announcementId: string) => {
     if(!user) return;
@@ -3703,103 +3718,106 @@ approvers.forEach(approver => {
 
   // SECTION: useEffect for Initialization and Data Listening
   useEffect(() => {
-    if (!rtdb) {
-      console.error("Firebase Realtime Database is not initialized.");
-      setLoading(false);
-      return;
-    }
-  
-    // Seed initial data if it doesn't exist
-    const seedData = async () => {
-        const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
-        if (!jobCodesSnapshot.exists()) {
-            const updates: { [key: string]: any } = {};
-            INITIAL_JOB_CODES.forEach(jc => {
-                const newRef = push(ref(rtdb, 'jobCodes'));
-                updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
-            });
-            await update(ref(rtdb), updates);
-        }
-    };
-    seedData();
+  if (!rtdb) {
+    console.error("Firebase Realtime Database is not initialized.");
+    setLoading(false);
+    return;
+  }
 
-    if (!storedUserId) {
-      setLoading(false);
-      return;
+  // Seed initial data if needed
+  const seedData = async () => {
+    const jobCodesSnapshot = await get(ref(rtdb, 'jobCodes'));
+    if (!jobCodesSnapshot.exists()) {
+      const updates: { [key: string]: any } = {};
+      INITIAL_JOB_CODES.forEach(jc => {
+        const newRef = push(ref(rtdb, 'jobCodes'));
+        updates[`/jobCodes/${newRef.key}`] = { ...jc, id: newRef.key };
+      });
+      await update(ref(rtdb), updates);
     }
-  
-    const listeners = [
-      createDataListener('users', setUsersById),
-      createDataListener('roles', setRolesById),
-      createDataListener('tasks', setTasksById),
-      createDataListener('projects', setProjectsById),
-      createDataListener('jobRecordPlants', setJobRecordPlantsById),
-      createDataListener('jobCodes', setJobCodesById),
-      createDataListener('plannerEvents', setPlannerEventsById),
-      createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
-      createDataListener('achievements', setAchievementsById),
-      createDataListener('activityLogs', setActivityLogsById),
-      createDataListener('vehicles', setVehiclesById),
-      createDataListener('drivers', setDriversById),
-      createDataListener('incidentReports', setIncidentReportsById),
-      createDataListener('manpowerLogs', setManpowerLogsById),
-      createDataListener('manpowerProfiles', setManpowerProfilesById),
-      createDataListener('internalRequests', setInternalRequestsById),
-      createDataListener('managementRequests', setManagementRequestsById),
-      createDataListener('inventoryItems', setInventoryItemsById),
-      createDataListener('inventoryTransferRequests', setInventoryTransferRequestsById),
-      createDataListener('utMachines', setUtMachinesById),
-      createDataListener('dftMachines', setDftMachinesById),
-      createDataListener('mobileSims', setMobileSimsById),
-      createDataListener('laptopsDesktops', setLaptopsDesktopsById),
-      createDataListener('digitalCameras', setDigitalCamerasById),
-      createDataListener('anemometers', setAnemometersById),
-      createDataListener('otherEquipments', setOtherEquipmentsById),
-      createDataListener('machineLogs', setMachineLogsById),
-      createDataListener('certificateRequests', setCertificateRequestsById),
-      createDataListener('announcements', setAnnouncementsById),
-      createDataListener('broadcasts', setBroadcastsById),
-      createDataListener('buildings', setBuildingsById),
-      createDataListener('jobSchedules', setJobSchedulesById),
-      createDataListener('jobRecords', setJobRecordsById),
-      createDataListener('ppeRequests', setPpeRequestsById),
-      createDataListener('ppeStock', setPpeStockById),
-      createDataListener('ppeInwardHistory', setPpeInwardHistoryById),
-      createDataListener('payments', setPaymentsById),
-      createDataListener('vendors', setVendorsById),
-      createDataListener('purchaseRegisters', setPurchaseRegistersById),
-      createDataListener('passwordResetRequests', setPasswordResetRequestsById),
-      createDataListener('igpOgpRecords', setIgpOgpRecordsById),
-      createDataListener('feedback', setFeedbackById),
-      createDataListener('unlockRequests', setUnlockRequestsById),
-      createDataListener('tpCertLists', setTpCertListsById),
-      createDataListener('downloadableDocuments', setDownloadableDocumentsById),
-      createDataListener('logbookRequests', setLogbookRequestsById),
-      createDataListener('inspectionChecklists', setInspectionChecklistsById),
-    ];
-  
-    const brandingRef = ref(rtdb, 'branding');
-    const brandingListener = onValue(brandingRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setAppName(data.appName || 'Aries Marine');
-        setAppLogo(data.appLogo || null);
-      }
-    });
+  };
 
-    const dismissedRef = ref(rtdb, `users/${storedUserId}/dismissedPendingUpdates`);
-    const dismissedListener = onValue(dismissedRef, (snapshot) => {
-        setDismissedPendingUpdatesById(snapshot.val() || {});
-    });
-  
-    // setLoading(false) is now handled in the user state effect
-  
-    return () => {
-      listeners.forEach(unsubscribe => unsubscribe());
-      brandingListener();
-      dismissedListener();
-    };
-  }, [storedUserId]);
+  seedData();
+
+  if (!storedUserId) {
+    setLoading(false);
+    return;
+  }
+
+  // Realtime DB listeners
+  const listeners = [
+    createDataListener('users', setUsersById),
+    createDataListener('roles', setRolesById),
+    createDataListener('tasks', setTasksById),
+    createDataListener('projects', setProjectsById),
+    createDataListener('jobRecordPlants', setJobRecordPlantsById),
+    createDataListener('jobCodes', setJobCodesById),
+    createDataListener('plannerEvents', setPlannerEventsById),
+    createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
+    createDataListener('achievements', setAchievementsById),
+    createDataListener('activityLogs', setActivityLogsById),
+    createDataListener('vehicles', setVehiclesById),
+    createDataListener('drivers', setDriversById),
+    createDataListener('incidentReports', setIncidentReportsById),
+    createDataListener('manpowerLogs', setManpowerLogsById),
+    createDataListener('manpowerProfiles', setManpowerProfilesById),
+    createDataListener('internalRequests', setInternalRequestsById),
+    createDataListener('managementRequests', setManagementRequestsById),
+    createDataListener('inventoryItems', setInventoryItemsById),
+    createDataListener('inventoryTransferRequests', setInventoryTransferRequestsById),
+    createDataListener('utMachines', setUtMachinesById),
+    createDataListener('dftMachines', setDftMachinesById),
+    createDataListener('mobileSims', setMobileSimsById),
+    createDataListener('laptopsDesktops', setLaptopsDesktopsById),
+    createDataListener('digitalCameras', setDigitalCamerasById),
+    createDataListener('anemometers', setAnemometersById),
+    createDataListener('otherEquipments', setOtherEquipmentsById),
+    createDataListener('machineLogs', setMachineLogsById),
+    createDataListener('certificateRequests', setCertificateRequestsById),
+    createDataListener('announcements', setAnnouncementsById),
+    createDataListener('broadcasts', setBroadcastsById),
+    createDataListener('buildings', setBuildingsById),
+    createDataListener('jobSchedules', setJobSchedulesById),
+    createDataListener('jobRecords', setJobRecordsById),
+    createDataListener('ppeRequests', setPpeRequestsById),
+    createDataListener('ppeStock', setPpeStockById),
+    createDataListener('ppeInwardHistory', setPpeInwardHistoryById),
+    createDataListener('payments', setPaymentsById),
+    createDataListener('vendors', setVendorsById),
+    createDataListener('purchaseRegisters', setPurchaseRegistersById),
+    createDataListener('passwordResetRequests', setPasswordResetRequestsById),
+    createDataListener('igpOgpRecords', setIgpOgpRecordsById),
+    createDataListener('feedback', setFeedbackById),
+    createDataListener('unlockRequests', setUnlockRequestsById),
+    createDataListener('tpCertLists', setTpCertListsById),
+    createDataListener('downloadableDocuments', setDownloadableDocumentsById),
+    createDataListener('logbookRequests', setLogbookRequestsById),
+    createDataListener('inspectionChecklists', setInspectionChecklistsById),
+  ];
+
+  // Branding listener
+  const brandingRef = ref(rtdb, 'branding');
+  const brandingListener = onValue(brandingRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      setAppName(data.appName || 'Aries Marine');
+      setAppLogo(data.appLogo || null);
+    }
+  });
+
+  // Dismissed pending updates listener
+  const dismissedRef = ref(rtdb, `users/${storedUserId}/dismissedPendingUpdates`);
+  const dismissedListener = onValue(dismissedRef, (snapshot) => {
+    setDismissedPendingUpdatesById(snapshot.val() || {});
+  });
+
+  return () => {
+    listeners.forEach(unsub => unsub && unsub());
+    brandingListener();
+    dismissedListener();
+  };
+}, [storedUserId]);
+
 
   // Effect for cleaning up old activity logs and broadcasts
   useEffect(() => {
@@ -3864,3 +3882,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
