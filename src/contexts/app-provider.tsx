@@ -771,14 +771,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
     const isRequester = request.requesterId === user.id;
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-  
+    
     const newCommentData = {
       id: newCommentRef.key,
       userId: user.id,
       text: commentText,
       date: new Date().toISOString(),
       eventId: requestId,
-      viewedBy: { [user.id]: true } // The commenter has viewed it.
+      viewedBy: { [user.id]: true }
     };
   
     const updates: { [key: string]: any } = {};
@@ -799,7 +799,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
         }
       });
-    } else { // Is Approver
+    } else {
       updates[`internalRequests/${requestId}/viewedByRequester`] = false;
       const requester = users.find(u => u.id === request.requesterId);
       if (notify && requester?.email) {
@@ -875,10 +875,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
     
     const updates: { [key: string]: any } = {};
-    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = {
-      ...newComment,
-      id: newCommentRef.key,
-    };
+    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
     updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     
     update(ref(rtdb), updates);
@@ -1800,7 +1797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
 
-    const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
+    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge' || u.role === 'Admin');
     storePersonnel.forEach(p => {
         if(p.email) {
             createAndSendNotification(
@@ -3659,14 +3656,15 @@ approvers.forEach(approver => {
     });
     
     const plannerNotificationCount = unreadCommentsForUser.length;
-
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => {
-      if (!(r.status === 'Pending' || r.status === 'Partially Approved')) return false;
-      const commentsArray = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
-      const hasUnreadCommentForApprover = commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
-      return hasUnreadCommentForApprover;
-    }).length : 0;
     
+    const pendingInternalRequestCount = isStoreManager
+    ? internalRequests.filter(r => {
+        if (r.status !== 'Pending' && r.status !== 'Partially Approved') return false;
+        const comments = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
+        // True if no comments, or if there is an unread comment.
+        return comments.length === 0 || comments.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
+      }).length
+    : 0;
 
     const updatedInternalRequestCount = internalRequests.filter(r => {
         const isMyRequest = r.requesterId === user.id;
@@ -3675,7 +3673,7 @@ approvers.forEach(approver => {
         const commentsArray = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
         const hasUnreadComment = commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
         if(hasUnreadComment) return true;
-
+        
         const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
         const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
         
@@ -3950,5 +3948,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
