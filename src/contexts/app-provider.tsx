@@ -783,27 +783,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = newCommentData;
     
+    // Logic for notifications
     if (isRequester) {
-      // Find approvers (Store In Charge) and notify them
+      // Find approvers and mark as unread for them
+      const approvers = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+      approvers.forEach(approver => {
+          updates[`internalRequests/${requestId}/comments/${newCommentRef.key}/viewedBy/${approver.id}`] = false;
+          if (notify && approver.email) {
+            createAndSendNotification(
+                approver.email,
+                `New reply on Internal Store Request #${request.id.slice(-6)}`,
+                `Reply from ${user.name}`,
+                { 'Comment': commentText },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'View Request'
+            );
+          }
+      });
     } else { // Is Approver
       updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+      if (notify) {
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email) {
+            createAndSendNotification(
+                requester.email,
+                `New Query on your Internal Store Request #${request.id.slice(-6)}`,
+                `Query from ${user.name}`,
+                { 'Query': commentText },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'Reply to Query'
+            );
+        }
+      }
     }
   
     update(ref(rtdb), updates);
   
-    if (notify && !isRequester) {
-      const requester = users.find(u => u.id === request.requesterId);
-      if (requester?.email) {
-        createAndSendNotification(
-          requester.email,
-          `New Query on your Internal Store Request #${request.id.slice(-6)}`,
-          `Query from ${user.name}`,
-          { 'Query': commentText },
-          `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-          'Reply to Query'
-        );
-      }
-    }
   }, [user, internalRequests, users]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
@@ -2987,7 +3002,7 @@ approvers.forEach(approver => {
     const newRef = push(ref(rtdb, 'machineLogs'));
     const newLog: Omit<MachineLog, 'id'> = { ...log, machineId, loggedByUserId: user.id };
     set(newRef, newLog);
-    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+    const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
     storePersonnel.forEach(p => {
         if(p.email) {
             createAndSendNotification(
@@ -3649,19 +3664,22 @@ approvers.forEach(approver => {
     
     const plannerNotificationCount = unreadCommentsForUser.length;
 
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
-    
+    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => {
+      const isPending = r.status === 'Pending' || r.status === 'Partially Approved';
+      if (!isPending) return false;
+      const commentsArray = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
+      const hasUnreadCommentForApprover = commentsArray.some(c => c && !c.viewedBy?.[user.id]);
+      return isPending || hasUnreadCommentForApprover;
+    }).length : 0;
+
     const updatedInternalRequestCount = internalRequests.filter(r => {
       const isMyRequest = r.requesterId === user.id;
       if (!isMyRequest) return false;
-  
       const commentsArray = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
       const hasUnreadComment = commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
       if (hasUnreadComment) return true;
-  
       const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
       const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-      
       return isRejectedButActive || isStandardUpdate;
     }).length;
 

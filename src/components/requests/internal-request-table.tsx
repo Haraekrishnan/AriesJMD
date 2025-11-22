@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2 } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem, InternalRequestItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -60,15 +60,20 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     const isRequester = req.requesterId === user?.id;
     
-    const hasUnreadComment = useMemo(() => {
-        if (!user || !req.comments) return false;
-        const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments);
-        return commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
-    }, [req.comments, user]);
-
-    const hasUpdate = (isRequester && !req.viewedByRequester) || hasUnreadComment;
-
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
+
+    const hasUnreadCommentForApprover = useMemo(() => {
+        if (!canApprove) return false;
+        return commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
+    }, [commentsArray, canApprove, user]);
+
+    const hasUnreadCommentForRequester = useMemo(() => {
+      if (!isRequester) return false;
+      return commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
+    }, [commentsArray, isRequester, user]);
+    
+    const hasUpdate = (isRequester && !req.viewedByRequester) || hasUnreadCommentForRequester;
+
     const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
     const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
     const canDispute = isRequester && req.status === 'Issued';
@@ -115,7 +120,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
 
     const handleAccordionToggle = (openValue: string) => {
-        if (openValue === req.id && user?.id === req.requesterId && !req.viewedByRequester) {
+        if (openValue === req.id) {
             markInternalRequestAsViewed(req.id);
         }
     };
@@ -173,7 +178,12 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                         </div>
                         <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
                             <AccordionItem value={req.id} className="border-none">
-                                <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
+                                <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">
+                                    <div className="flex items-center gap-1">
+                                        <MessageSquare className="h-3 w-3" /> Comments ({commentsArray.length})
+                                        {hasUnreadCommentForApprover && <div className="h-2 w-2 rounded-full bg-blue-500" title="Unread comment"></div>}
+                                    </div>
+                                </AccordionTrigger>
                                 <AccordionContent className="pt-2 text-muted-foreground">
                                 <h4 className="font-semibold text-xs mb-2">Comment History</h4>
                                 <div className="space-y-2">
@@ -357,4 +367,3 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
-
