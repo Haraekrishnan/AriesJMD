@@ -59,7 +59,15 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     }, [user, roles]);
 
     const isRequester = req.requesterId === user?.id;
-    const hasUpdate = isRequester && !req.viewedByRequester;
+    
+    const hasUnreadComment = useMemo(() => {
+        if (!user || !req.comments) return false;
+        const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments);
+        return commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
+    }, [req.comments, user]);
+
+    const hasUpdate = (isRequester && !req.viewedByRequester) || hasUnreadComment;
+
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
     const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
@@ -349,3 +357,4 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+

@@ -499,13 +499,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
             
-            // Let the useEffect triggered by setStoredUserId handle setting user and loading state
+            // The useEffect that watches storedUserId will handle setting the user and loading state.
             return { success: true, user: foundUser };
         }
     }
     setLoading(false);
     return { success: false };
   }, [setStoredUserId, addActivityLog]);
+
 
   const logout = useCallback(() => {
     if (user) {
@@ -763,9 +764,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify: boolean = false) => {
     if (!user) return;
-    const request = internalRequestsById[requestId];
+    const request = internalRequests.find(r => r.id === requestId);
     if (!request) return;
 
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
@@ -790,7 +791,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
       }
     }
-  }, [user, internalRequestsById, users]);
+  }, [user, internalRequests, users]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
@@ -1909,10 +1910,22 @@ set(newRequestRef, newRequest);
 
   const markInternalRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;
-    const request = internalRequestsById[requestId];
+    const request = internalRequests.find(r => r.id === requestId);
     if (!request || request.requesterId !== user.id) return;
-    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
-  }, [user, internalRequestsById]);
+
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/viewedByRequester`] = true;
+    
+    // Also mark comments as read
+    const commentUpdates = (request.comments || []).reduce((acc, comment) => {
+      if (comment.userId !== user.id) {
+        acc[`internalRequests/${requestId}/comments/${comment.id}/viewedBy/${user.id}`] = true;
+      }
+      return acc;
+    }, {} as {[key:string]:any});
+
+    update(ref(rtdb), { ...updates, ...commentUpdates });
+  }, [user, internalRequests]);
 
   const acknowledgeInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -1980,8 +1993,21 @@ set(newRequestRef, newRequest);
 
   const markManagementRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;
-    update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
-  }, [user]);
+    const request = managementRequests.find(r => r.id === requestId);
+    if (request?.requesterId === user.id) {
+        const updates: { [key: string]: any } = {};
+        updates[`managementRequests/${requestId}/viewedByRequester`] = true;
+        
+        const commentUpdates = (request.comments || []).reduce((acc, c) => {
+            if (c.userId !== user.id) {
+                acc[`managementRequests/${requestId}/comments/${c.id}/viewedBy/${user.id}`] = true;
+            }
+            return acc;
+        }, {} as Record<string, boolean>);
+        
+        update(ref(rtdb), { ...updates, ...commentUpdates });
+    }
+  }, [user, managementRequests]);
   
   const addPpeRequest = useCallback(async (requestData: Omit<PpeRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
     if (!user) return;
@@ -2181,7 +2207,7 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
   }, [user, toast]);
 
   const markPpeRequestAsViewed = useCallback((requestId: string) => {
-    if (!user) return;
+    if(!user) return;
     const request = ppeRequests.find(r => r.id === requestId);
     if(request?.requesterId === user.id) {
         update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
@@ -2513,11 +2539,7 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
     });
 
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-        fromProjectId: requestData.fromProjectId,
-        toProjectId: requestData.toProjectId,
-        reason: requestData.reason,
-        requestedById: requestData.requestedById || null,
-        remarks: requestData.remarks || '',
+        ...requestData,
         items: sanitizedItems,
         requesterId: user.id,
         requestDate: new Date().toISOString(),
@@ -2526,11 +2548,10 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
   
-    // Instead of checking for approve_store_requests permission,
-// send only to Store Incharge and Assistant Store Incharge
-const approvers = users.filter(u => 
-    (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge') && u.projectIds?.includes(requestData.toProjectId)
-);
+    // Send only to Store Incharge and Assistant Store Incharge in the destination project
+    const approvers = users.filter(u => 
+        (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge') && u.projectIds?.includes(requestData.toProjectId)
+    );
 
 const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
 const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
@@ -3017,7 +3038,7 @@ approvers.forEach(approver => {
         approverId,
         status: 'pending',
         createdAt: new Date().toISOString(),
-        comments: [{ userId: user.id, text: 'Announcement created', date: new Date().toISOString(), eventId: newRef.key! }],
+        comments: [{ userId: user.id, text: 'Announcement created', date: new Date().toISOString(), eventId: newRequestRef.key! }],
         notifyAll: data.notifyAll || false,
     };
     set(newRef, newAnnouncement);
@@ -3621,6 +3642,9 @@ approvers.forEach(approver => {
     const updatedInternalRequestCount = internalRequests.filter(r => {
         const isMyRequest = r.requesterId === user.id;
         if (!isMyRequest) return false;
+
+        const hasUnreadComment = (r.comments || []).some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
+        if (hasUnreadComment) return true;
     
         const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
         const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
@@ -3882,4 +3906,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
