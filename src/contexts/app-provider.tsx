@@ -549,42 +549,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, updateUser, toast]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-  const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-  const snapshot = await get(usersRef);
-  if (!snapshot.exists()) {
-    return false;
-  }
-
-  const userData = snapshot.val();
-  const userId = Object.keys(userData)[0];
-  const targetUser: User = { id: userId, ...userData[userId] };
-
-  const newRequest: Omit<PasswordResetRequest, 'id'> = {
-    userId: targetUser.id,
-    email: targetUser.email,
-    date: new Date().toISOString(),
-    status: 'pending',
-  };
-
-  const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
-  await set(newRequestRef, newRequest);
-
-  const admins = users.filter(u => u.role === 'Admin');
-  admins.forEach(admin => {
-    if (admin.email) {
-      createAndSendNotification(
-        admin.email,
-        `Password Reset Request from ${targetUser.email}`,
-        'Password Reset Request',
-        { 'User Email': targetUser.email },
-        `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-        'View Requests'
-      );
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) {
+        return false;
     }
-  });
-
-  return true;
-}, [users]);
+    const userData = snapshot.val();
+    const userId = Object.keys(userData)[0];
+    const targetUser: User = { id: userId, ...userData[userId] };
+  
+    const newRequest: Omit<PasswordResetRequest, 'id'> = {
+      userId: targetUser.id,
+      email: targetUser.email,
+      date: new Date().toISOString(),
+      status: 'pending',
+    };
+  
+    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+    await set(newRequestRef, newRequest);
+  
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+      if (admin.email) {
+        createAndSendNotification(
+          admin.email,
+          `Password Reset Request from ${targetUser.email}`,
+          'Password Reset Request',
+          { 'User Email': targetUser.email },
+          `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+          'View Requests'
+        );
+      }
+    });
+  
+    return true;
+  }, [users]);
   
   const generateResetCode = useCallback((requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
@@ -768,30 +767,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const request = internalRequests.find(r => r.id === requestId);
     if (!request) return;
-
+  
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
-    
+    const newCommentData = {
+      userId: user.id,
+      text: commentText,
+      date: new Date().toISOString(),
+      id: newCommentRef.key,
+      eventId: requestId,
+    };
+  
     const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = newCommentData;
+    
+    // Mark as unread for the other party
+    if (isRequester) {
+      // Logic to find approvers and mark unread for them
+    } else {
+      updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    }
+  
+    // Add viewedBy for the current user
+    if (newCommentData.id) {
+      updates[`internalRequests/${requestId}/comments/${newCommentData.id}/viewedBy/${user.id}`] = true;
+    }
+  
     update(ref(rtdb), updates);
-
+  
     if (notify) {
       const requester = users.find(u => u.id === request.requesterId);
       if (requester?.email && request.requesterId !== user.id) {
-          createAndSendNotification(
-              requester.email,
-              `New Query on your Internal Store Request #${request.id.slice(-6)}`,
-              `Query from ${user.name}`,
-              { 'Query': commentText },
-              `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-              'Reply to Query'
-          );
+        createAndSendNotification(
+          requester.email,
+          `New Query on your Internal Store Request #${request.id.slice(-6)}`,
+          `Query from ${user.name}`,
+          { 'Query': commentText },
+          `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+          'Reply to Query'
+        );
       }
     }
-  }, [user, internalRequests, users]);
+  }, [user, internalRequests, users, addActivityLog]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
@@ -851,13 +867,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
     
     const updates: { [key: string]: any } = {};
-updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = {
-  ...newComment,
-  id: newCommentRef.key,
-};
-updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
-
-  
+    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = {
+      ...newComment,
+      id: newCommentRef.key,
+    };
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+    
     update(ref(rtdb), updates);
   }, [user, certificateRequestsById]);
   
@@ -1241,22 +1256,24 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         date: new Date().toISOString(),
         eventId: eventId,
     };
-      set(newCommentRef, { ...newComment, id: newCommentRef.key });
-    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
-      lastUpdated: new Date().toISOString(),
-      id: dayCommentId,
-      day: day,
-      plannerUserId: plannerUserId
-    });
+    const commentWithId = { ...newComment, id: newCommentRef.key! };
     
-    // Send Notification
+    const updates: { [key: string]: any } = {};
+    updates[`dailyPlannerComments/${dayCommentId}/comments/${newCommentRef.key}`] = commentWithId;
+    updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+    updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
+    updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
+    updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
+    
     const event = plannerEvents.find(e => e.id === eventId);
     if (event) {
         const participants = new Set([event.creatorId, event.userId]);
         participants.forEach(participantId => {
             if (participantId !== user.id) {
                 const participant = users.find(u => u.id === participantId);
-                if (participant && participant.email) {
+                if (participant) {
+                  updates[`dailyPlannerComments/${dayCommentId}/comments/${newCommentRef.key}/viewedBy/${participantId}`] = false;
+                  if (participant.email) {
                     createAndSendNotification(
                         participant.email,
                         `New comment on planner for ${format(parseISO(day), 'PPP')}`,
@@ -1264,12 +1281,14 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
                         { 'Comment': text }, `${process.env.NEXT_PUBLIC_APP_URL}/schedule?userId=${plannerUserId}&date=${day}`,
                         'View Comment'
                     );
+                  }
                 }
             }
         });
     }
 
-  }, [user, users, plannerEvents]);
+    update(ref(rtdb), updates);
+}, [user, users, plannerEvents]);
 
   const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
     if (!user) return;
@@ -1563,7 +1582,6 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         
         const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); 
 
-        // --- FIXED FUNCTION BELOW ---
         const parseDateExcel = (date: any): string | null => {
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
@@ -1573,7 +1591,6 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
                 if (isValid(parsed)) return parsed.toISOString();
             }
             if (typeof date === 'number') {
-                // Excel incorrectly treats 1900 as a leap year.
                 const excelEpoch = new Date(Date.UTC(1899, 11, 31)); 
                 const serial = date > 59 ? date - 1 : date; 
 
@@ -1581,8 +1598,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
                 if (isValid(jsDate)) return jsDate.toISOString();
             }
             return null;
-        }; // <--- THIS CLOSING BRACE AND SEMICOLON WERE MISSING
-        // ----------------------------
+        };
 
         const profileData = {
           name: name?.trim(),
@@ -1759,22 +1775,21 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     
     // Ensure `inventoryItemId` is null if it's undefined
       const sanitizedItems = requestData.items.map(item => ({
-  ...item,    // ✅ THREE DOTS — this is VALID SPREAD SYNTAX
-  inventoryItemId: item.inventoryItemId || null,
-}));
+        ...item,
+        inventoryItemId: item.inventoryItemId || null,
+      }));
 
-const newRequest: Omit<InternalRequest, 'id'> = {
-  ...requestData,
-  items: sanitizedItems,
-  requesterId: user.id,
-  date: new Date().toISOString(),
-  status: 'Pending',
-  comments: [],
-  viewedByRequester: true,
-  acknowledgedByRequester: false,
-};
+    const newRequest: Omit<InternalRequest, 'id'> = {
+      ...requestData,
+      items: sanitizedItems,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      viewedByRequester: true,
+      acknowledgedByRequester: false,
+    };
 
-set(newRequestRef, newRequest);
+    set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
 
     const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
@@ -1916,16 +1931,15 @@ set(newRequestRef, newRequest);
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/viewedByRequester`] = true;
     
-    // Also mark comments as read
-    const commentUpdates = (request.comments || []).reduce((acc, comment) => {
+    const commentsArray = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+    commentsArray.forEach(comment => {
       if (comment.userId !== user.id) {
-        acc[`internalRequests/${requestId}/comments/${comment.id}/viewedBy/${user.id}`] = true;
+        updates[`internalRequests/${requestId}/comments/${comment.id}/viewedBy/${user.id}`] = true;
       }
-      return acc;
-    }, {} as {[key:string]:any});
+    });
 
-    update(ref(rtdb), { ...updates, ...commentUpdates });
-  }, [user, internalRequests]);
+    update(ref(rtdb), updates);
+}, [user, internalRequests]);
 
   const acknowledgeInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -1998,14 +2012,14 @@ set(newRequestRef, newRequest);
         const updates: { [key: string]: any } = {};
         updates[`managementRequests/${requestId}/viewedByRequester`] = true;
         
-        const commentUpdates = (request.comments || []).reduce((acc, c) => {
+        const commentsArray = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+        commentsArray.forEach(c => {
             if (c.userId !== user.id) {
-                acc[`managementRequests/${requestId}/comments/${c.id}/viewedBy/${user.id}`] = true;
+                updates[`managementRequests/${requestId}/comments/${c.id}/viewedBy/${user.id}`] = true;
             }
-            return acc;
-        }, {} as Record<string, boolean>);
+        });
         
-        update(ref(rtdb), { ...updates, ...commentUpdates });
+        update(ref(rtdb), updates);
     }
   }, [user, managementRequests]);
   
@@ -2110,10 +2124,10 @@ set(newRequestRef, newRequest);
           approverId: request.approverId,
         };
         const ppeHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
-updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = {
-  ...ppeHistoryRecord,
-  id: ppeHistoryRef.key,
-};
+        updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`] = {
+          ...ppeHistoryRecord,
+          id: ppeHistoryRef.key,
+        };
      
         if (request.ppeType === 'Coverall') {
             const stock = ppeStock.find(s => s.id === 'coveralls');
@@ -2311,19 +2325,19 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
   }, [user, ppeStock, addActivityLog]);
   
   const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-  if (!user) return;
-  const newRef = push(ref(rtdb, 'inventoryItems'));
-
-  const dataToSave: InventoryItem = {
-    ...(itemData as InventoryItem),
-    chestCrollNo: itemData.chestCrollNo || null,
-    lastUpdated: new Date().toISOString(),
-    movedToProjectId: itemData.movedToProjectId || null,
-  };
-
-  set(newRef, dataToSave);
-  addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
-}, [user, addActivityLog]);
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'inventoryItems'));
+  
+    const dataToSave: Partial<InventoryItem> = {
+      ...itemData,
+      chestCrollNo: itemData.chestCrollNo || null,
+      lastUpdated: new Date().toISOString(),
+      movedToProjectId: itemData.movedToProjectId || null,
+    };
+  
+    set(newRef, dataToSave);
+    addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
+  }, [user, addActivityLog]);
 
   const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
     let importedCount = 0;
@@ -2550,7 +2564,7 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
   
     // Send only to Store Incharge and Assistant Store Incharge in the destination project
     const approvers = users.filter(u => 
-        (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge') && u.projectIds?.includes(requestData.toProjectId)
+        (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge')
     );
 
 const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
@@ -3640,16 +3654,16 @@ approvers.forEach(approver => {
     const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
     
     const updatedInternalRequestCount = internalRequests.filter(r => {
-        const isMyRequest = r.requesterId === user.id;
-        if (!isMyRequest) return false;
-
-        const hasUnreadComment = (r.comments || []).some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
-        if (hasUnreadComment) return true;
-    
-        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
-        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-        
-        return isRejectedButActive || isStandardUpdate;
+      const isMyRequest = r.requesterId === user.id;
+      if (!isMyRequest) return false;
+      const commentsArray = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
+      const hasUnreadComment = commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
+      if (hasUnreadComment) return true;
+  
+      const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
+      const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+      
+      return isRejectedButActive || isStandardUpdate;
     }).length;
 
     const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
@@ -3906,5 +3920,6 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
 
 
