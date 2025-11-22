@@ -46,7 +46,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment, inventoryItems, resolveInternalRequestDispute } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
-    const [action, setAction] = useState<InternalRequestStatus | null>(null);
+    const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
     const [itemAction, setItemAction] = useState<{ item: InternalRequestItem, status: InternalRequestItemStatus } | null>(null);
     const [comment, setComment] = useState('');
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
@@ -108,7 +108,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const handleAddComment = () => {
         if (!newComment.trim() || !user) return;
-        addInternalRequestComment(req.id, newComment);
+        const shouldNotify = isRequester ? canApprove : true;
+        addInternalRequestComment(req.id, newComment, shouldNotify);
         setNewComment('');
     };
 
@@ -129,9 +130,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const requester = users.find(u => u.id === req.requesterId);
     const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
     const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
-    const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
-
-    const canAddComments = user?.role === 'Admin' || canApprove || isRequester;
+    const canEdit = user?.role === 'Admin' || (isRequester && req.status === 'Pending');
 
     return (
         <>

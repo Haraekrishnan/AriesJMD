@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -190,7 +189,7 @@ type AppContextType = {
   resolveInternalRequestDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment: string) => void;
   updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => void;
-  addInternalRequestComment: (requestId: string, commentText: string) => void;
+  addInternalRequestComment: (requestId: string, commentText: string, notify?: boolean) => void;
   deleteInternalRequest: (requestId: string) => void;
   forceDeleteInternalRequest: (requestId: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
@@ -455,6 +454,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
@@ -763,13 +763,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string) => {
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
-
+  
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    
+  
     const newCommentData: Comment = {
       id: newCommentRef.key!,
       userId: user.id,
@@ -778,29 +778,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       eventId: requestId,
       viewedBy: { [user.id]: true }
     };
-
+  
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = newCommentData;
-
-    // Determine who to notify
-    const isRequester = request.requesterId === user.id;
-    if (isRequester) {
-      // Requester is commenting, notify all approvers.
-      const approverRole = roles.find(r => r.name === 'Store in Charge');
-      if (approverRole) {
-        const approverIds = users.filter(u => u.role === approverRole.name).map(u => u.id);
-        approverIds.forEach(id => {
-          if (id !== user.id) {
-            updates[`internalRequests/${requestId}/comments/${newCommentRef.key}/viewedBy/${id}`] = false;
-          }
-        });
-      }
-    } else {
-      // Approver is commenting, notify the requester.
+  
+    // Set viewedByRequester to false if the commenter is NOT the requester
+    if (request.requesterId !== user.id) {
       updates[`internalRequests/${requestId}/viewedByRequester`] = false;
     }
     
     update(ref(rtdb), updates);
+  
+    if (notify) {
+        if (request.requesterId === user.id) { // Requester is commenting, notify approvers
+            const approvers = users.filter(u => {
+                const userRole = roles.find(r => r.name === u.role);
+                return userRole?.permissions.includes('approve_store_requests');
+            });
+            approvers.forEach(approver => {
+                if (approver.email) {
+                    createAndSendNotification(
+                        approver.email,
+                        `New Comment on Store Request #${request.id.slice(-6)}`,
+                        'New Comment on Store Request',
+                        { 'Requester': user.name, 'Comment': commentText },
+                        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`, 'View Request'
+                    );
+                }
+            });
+        } else { // Approver is commenting, notify requester
+            const requester = users.find(u => u.id === request.requesterId);
+            if (requester?.email) {
+                 createAndSendNotification(
+                    requester.email,
+                    `New Query on your Store Request #${request.id.slice(-6)}`,
+                    `Query from ${user.name}`,
+                    { 'Query': commentText },
+                    `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`, 'Reply to Query'
+                );
+            }
+        }
+    }
   }, [user, internalRequestsById, users, roles]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
@@ -1573,26 +1591,22 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         
         const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); 
 
-        // --- FIXED FUNCTION BELOW ---
         const parseDateExcel = (date: any): string | null => {
-            if (date instanceof Date && isValid(date)) {
-                return date.toISOString();
-            }
-            if (typeof date === 'string') {
-                const parsed = parse(date, 'yyyy-MM-dd', new Date());
-                if (isValid(parsed)) return parsed.toISOString();
-            }
-            if (typeof date === 'number') {
-                // Excel incorrectly treats 1900 as a leap year.
-                const excelEpoch = new Date(Date.UTC(1899, 11, 31)); 
-                const serial = date > 59 ? date - 1 : date; 
-
-                const jsDate = new Date(excelEpoch.getTime() + serial * 86400000);
-                if (isValid(jsDate)) return jsDate.toISOString();
-            }
-            return null;
-        }; // <--- THIS CLOSING BRACE AND SEMICOLON WERE MISSING
-        // ----------------------------
+          if (!date) return null;
+          if (date instanceof Date) {
+            return isValid(date) ? date.toISOString() : null;
+          }
+          if (typeof date === 'number') { // Excel date serial number
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const jsDate = new Date(excelEpoch.getTime() + (date - (date > 59 ? 1 : 0)) * 86400000);
+            return isValid(jsDate) ? jsDate.toISOString() : null;
+          }
+          if (typeof date === 'string') {
+            const parsed = parse(date, 'yyyy-MM-dd', new Date());
+            return isValid(parsed) ? parsed.toISOString() : null;
+          }
+          return null;
+        };
 
         const profileData = {
           name: name?.trim(),
@@ -1767,32 +1781,33 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
     
-    const sanitizedItems = requestData.items.map(item => ({
-      ...item,
-      inventoryItemId: item.inventoryItemId || null,
-    }));
+    // Ensure `inventoryItemId` is null if it's undefined
+      const sanitizedItems = requestData.items.map(item => ({
+  ...item,    // ✅ THREE DOTS — this is VALID SPREAD SYNTAX
+  inventoryItemId: item.inventoryItemId || null,
+}));
 
-    const newRequest: Omit<InternalRequest, 'id'> = {
-      ...requestData,
-      items: sanitizedItems,
-      requesterId: user.id,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      comments: [],
-      viewedByRequester: true,
-      acknowledgedByRequester: false,
-    };
+const newRequest: Omit<InternalRequest, 'id'> = {
+  ...requestData,
+  items: sanitizedItems,
+  requesterId: user.id,
+  date: new Date().toISOString(),
+  status: 'Pending',
+  comments: [],
+  viewedByRequester: true,
+  acknowledgedByRequester: false,
+};
 
-    set(newRequestRef, newRequest);
+set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
 
     const approvers = users.filter(u => {
         const userRole = roles.find(r => r.name === u.role);
         return userRole?.permissions.includes('approve_store_requests');
     });
-
+    
     approvers.forEach(approver => {
-        if(approver.email) {
+        if (approver.email) {
             createAndSendNotification(
                 approver.email,
                 `New Internal Store Request from ${user.name}`,
@@ -1818,7 +1833,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     const itemIndex = request.items.findIndex(i => i.id === item.id);
     if (itemIndex > -1) {
         updates[`internalRequests/${requestId}/items/${itemIndex}`] = item;
-        addInternalRequestComment(requestId, `Item "${originalItem.description}" updated to "${item.description}" (Qty: ${item.quantity}).`);
+        addInternalRequestComment(requestId, `Item "${originalItem.description}" updated to "${item.description}" (Qty: ${item.quantity}).`, true);
     }
 
     update(ref(rtdb), updates);
@@ -1829,7 +1844,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     const request = internalRequestsById[requestId];
     if (!request || request.status !== 'Disputed') return;
   
-    addInternalRequestComment(requestId, `Dispute resolved by ${user.name}: ${resolution}. Comment: ${comment}`);
+    addInternalRequestComment(requestId, `Dispute resolved by ${user.name}: ${resolution}. Comment: ${comment}`, true);
   
     const updates: { [key: string]: any } = {};
   
@@ -1859,7 +1874,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     updates[`internalRequests/${requestId}/status`] = status;
     updates[`internalRequests/${requestId}/approverId`] = user.id;
 
-    if (comment) addInternalRequestComment(requestId, comment);
+    if (comment) addInternalRequestComment(requestId, comment, true);
 
     const allItemsArePending = request.items.every(item => item.status === 'Pending');
     if (allItemsArePending) {
@@ -1868,30 +1883,16 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     }
 
     update(ref(rtdb), updates);
-    const requester = users.find(u => u.id === request.requesterId);
-    if(requester?.email) {
-      createAndSendNotification(
-        requester.email,
-        `Update on your Store Request #${requestId.slice(-6)}`,
-        `Your request status is now: ${status}`,
-        {
-          'Request ID': `#${requestId.slice(-6)}`,
-          'Updated By': user.name,
-          'Comment': comment || 'Status updated.',
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      )
-    }
-
-  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users]);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
     
-    addInternalRequestComment(requestId, `Item "${request.items.find(i => i.id === itemId)?.description}" status changed to ${status}. Reason: ${comment}`);
+    const itemDescription = request.items.find(i => i.id === itemId)?.description;
+    const commentText = `Item "${itemDescription}" status changed to ${status}. Reason: ${comment}`;
+    addInternalRequestComment(requestId, commentText, true);
 
     const updates: { [key: string]: any } = {};
     const itemIndex = request.items.findIndex(i => i.id === itemId);
@@ -1941,7 +1942,22 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     if (!user) return;
     const request = internalRequestsById[requestId];
     if (!request || request.requesterId !== user.id) return;
-    update(ref(rtdb, `internalRequests/${requestId}/viewedByRequester`), true);
+    update(ref(rtdb, `internalRequests/${requestId}`), { viewedByRequester: true });
+    
+    // Also mark comments as read for the user
+    const comments = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+    const updates: { [key: string]: any } = {};
+    comments.forEach((comment, index) => {
+        if(comment.userId !== user.id) {
+            const commentKey = Object.keys(request.comments || {}).find(key => (request.comments as any)[key].id === comment.id);
+            if (commentKey) {
+                 updates[`internalRequests/${requestId}/comments/${commentKey}/viewedBy/${user.id}`] = true;
+            }
+        }
+    });
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
   }, [user, internalRequestsById]);
 
   const acknowledgeInternalRequest = useCallback((requestId: string) => {
@@ -2559,7 +2575,7 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
     // Instead of checking for approve_store_requests permission,
 // send only to Store Incharge and Assistant Store Incharge
 const approvers = users.filter(
-  u => (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge')
+  u => (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge') && u.projectIds?.includes(requestData.toProjectId)
 );
 
 const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
@@ -2985,7 +3001,7 @@ approvers.forEach(approver => {
     const newRef = push(ref(rtdb, 'machineLogs'));
     const newLog: Omit<MachineLog, 'id'> = { ...log, machineId, loggedByUserId: user.id };
     set(newRef, newLog);
-    const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
+    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
     storePersonnel.forEach(p => {
         if(p.email) {
             createAndSendNotification(
@@ -3914,6 +3930,21 @@ approvers.forEach(approver => {
     }
   }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, setStoredUserId, user]);
 
+   useEffect(() => {
+    if (!user) {
+        if (pathname !== '/login') {
+            router.replace('/login');
+        }
+        return;
+    }
+    if (user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
+    } else if (user.status === 'active' && pathname === '/status') {
+      router.replace('/dashboard');
+    }
+
+  }, [user, pathname, router]);
+
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
 
@@ -3924,4 +3955,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
