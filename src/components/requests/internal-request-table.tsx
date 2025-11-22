@@ -44,12 +44,13 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
 
 const RequestCard = ({ req }: { req: InternalRequest }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment, inventoryItems, resolveInternalRequestDispute } = useAppContext();
+    const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
+    const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     const [action, setAction] = useState<InternalRequestStatus | null>(null);
     const [itemAction, setItemAction] = useState<{ item: InternalRequestItem, status: InternalRequestItemStatus } | null>(null);
     const [comment, setComment] = useState('');
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [newComment, setNewComment] = useState('');
-    const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     const { toast } = useToast();
     
     const canApprove = useMemo(() => {
@@ -63,12 +64,12 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
 
     const hasUnreadCommentForApprover = useMemo(() => {
-        if (!canApprove) return false;
-        return commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
-    }, [commentsArray, canApprove, user]);
-
+        if (!canApprove || !user) return false;
+        return commentsArray.some(c => c && c.userId === req.requesterId && !c.viewedBy?.[user.id]);
+    }, [commentsArray, canApprove, user, req.requesterId]);
+    
     const hasUnreadCommentForRequester = useMemo(() => {
-      if (!isRequester) return false;
+      if (!isRequester || !user) return false;
       return commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
     }, [commentsArray, isRequester, user]);
     
@@ -107,7 +108,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     
     const handleAddComment = () => {
         if (!newComment.trim() || !user) return;
-        addInternalRequestComment(req.id, newComment, true);
+        addInternalRequestComment(req.id, newComment);
         setNewComment('');
     };
 
@@ -134,8 +135,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     return (
         <>
-            <Card className={cn("relative flex flex-col", hasUpdate && "border-blue-500")}>
-                {hasUpdate && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
+            <Card className={cn("relative flex flex-col", (hasUpdate || hasUnreadCommentForApprover) && "border-blue-500")}>
+                {(hasUpdate || hasUnreadCommentForApprover) && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
                 <CardHeader className="p-4">
                     <div className="flex justify-between items-start">
                         <div>
