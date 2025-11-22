@@ -62,7 +62,7 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
     addUTMachine({
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
-      tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : undefined,
+      tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : null,
       movedToProjectId: data.movedToProjectId
     });
     toast({ title: 'Machine Added', description: `${data.machineName} has been added.` });
@@ -141,8 +141,4 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Add Machine</Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        

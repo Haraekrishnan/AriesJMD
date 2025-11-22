@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -72,7 +70,7 @@ export default function EditUTMachineDialog({ isOpen, setIsOpen, machine }: Edit
       ...machine,
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
-      tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : undefined,
+      tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : null,
       movedToProjectId: data.movedToProjectId
     });
     toast({ title: 'Machine Updated', description: `${data.machineName} has been updated.` });
