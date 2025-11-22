@@ -132,6 +132,8 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
     const canEdit = user?.role === 'Admin' || (isRequester && req.status === 'Pending');
 
+    const canAddComments = user?.role === 'Admin' || canApprove || isRequester;
+
     return (
         <>
             <Card className={cn("relative flex flex-col", (hasUpdate || hasUnreadCommentForApprover) && "border-blue-500")}>
@@ -237,10 +239,10 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 <Button size="sm" variant="outline" onClick={() => resolveInternalRequestDispute(req.id, 'reverse', 'Dispute rejected. Items confirmed as issued.')}>Confirm Issued</Button>
                             </div>
                         )}
-                        {canDelete && (
-                            <AlertDialog>
+                        {(user?.role === 'Admin' || (isRequester && req.status === 'Pending')) && (
+                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4"/></Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
@@ -326,7 +328,9 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
   useEffect(() => {
     if (isCompletedOpen && user) {
         completedRequests.forEach(req => {
-            if (req.requesterId === user.id && !req.viewedByRequester) {
+            const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+            const hasUnread = comments.some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
+            if (req.requesterId === user.id && (!req.viewedByRequester || hasUnread)) {
                 markInternalRequestAsViewed(req.id);
             }
         });
@@ -367,3 +371,5 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+
+    
