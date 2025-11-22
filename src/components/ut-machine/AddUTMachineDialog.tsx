@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -141,4 +140,8 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Add Machine</Button>
           </DialogFooter>
-        
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
