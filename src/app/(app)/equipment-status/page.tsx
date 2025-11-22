@@ -10,7 +10,7 @@ import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
-import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay, isAfter } from 'date-fns';
+import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay, isAfter, parseISO } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,10 +47,12 @@ import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTabl
 import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function EquipmentStatusPage() {
-    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs } = useAppContext();
+    const { can, user, users, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, certificateRequests, inventoryItems, machineLogs, projects } = useAppContext();
+    const { toast } = useToast();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -238,7 +240,7 @@ export default function EquipmentStatusPage() {
         const { from, to = from } = activeDaysDateRange;
         
         const logsInRange = machineLogs.filter(log => {
-            const logDate = new Date(log.date);
+            const logDate = parseISO(log.date);
             return machinesToReport.some(m => m.id === log.machineId) && isSameDay(logDate, from) || (isAfter(logDate, from) && isBefore(logDate, to));
         });
 
@@ -268,6 +270,60 @@ export default function EquipmentStatusPage() {
         XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Log Report');
     
         XLSX.writeFile(workbook, 'Machine_Usage_Report.xlsx');
+    };
+
+    const handleExportUT = () => {
+        if (utMachines.length === 0) {
+            toast({ title: "No UT Machines to export.", variant: 'destructive' });
+            return;
+        }
+        const dataToExport = utMachines.map(m => ({
+            'Machine Name': m.machineName,
+            'Aries ID': m.ariesId || 'N/A',
+            'Serial No.': m.serialNumber,
+            'Location': projects.find(p => p.id === m.projectId)?.name || 'N/A',
+            'Unit': m.unit,
+            'Calibration Due': m.calibrationDueDate ? format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
+            'TP Insp. Due': m.tpInspectionDueDate ? format(parseISO(m.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A',
+            'Status': m.status,
+            'Probe Details': m.probeDetails || 'N/A',
+            'Probe Status': m.probeStatus || 'N/A',
+            'Cable Details': m.cableDetails || 'N/A',
+            'Cable Status': m.cableStatus || 'N/A',
+            'Remarks': m.remarks || 'N/A',
+            'Certificate Link': m.certificateUrl || 'N/A',
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'UT Machines');
+        XLSX.writeFile(workbook, 'UT_Machines_Report.xlsx');
+    };
+
+    const handleExportDFT = () => {
+        if (dftMachines.length === 0) {
+            toast({ title: "No DFT Machines to export.", variant: 'destructive' });
+            return;
+        }
+        const dataToExport = dftMachines.map(m => ({
+            'Machine Name': m.machineName,
+            'Aries ID': m.ariesId || 'N/A',
+            'Serial No.': m.serialNumber,
+            'Location': projects.find(p => p.id === m.projectId)?.name || 'N/A',
+            'Unit': m.unit,
+            'Calibration Due': m.calibrationDueDate ? format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
+            'TP Insp. Due': m.tpInspectionDueDate ? format(parseISO(m.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A',
+            'Status': m.status,
+            'Probe Details': m.probeDetails || 'N/A',
+            'Cable Details': m.cableDetails || 'N/A',
+            'Remarks': (m as any).remarks || 'N/A',
+            'Certificate Link': m.certificateUrl || 'N/A',
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'DFT Machines');
+        XLSX.writeFile(workbook, 'DFT_Machines_Report.xlsx');
     };
 
     return (
@@ -399,6 +455,9 @@ export default function EquipmentStatusPage() {
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
+                        <Button onClick={handleExportUT} variant="outline">
+                            <FileDown className="mr-2 h-4 w-4"/> Export Excel
+                        </Button>
                         {canAddEquipment && (
                             <Button onClick={handleAddUT}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -488,6 +547,9 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                 <TabsContent value="dft-machines" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
+                        <Button onClick={handleExportDFT} variant="outline">
+                            <FileDown className="mr-2 h-4 w-4"/> Export Excel
+                        </Button>
                         {canAddEquipment && (
                             <Button onClick={handleAddDft}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
