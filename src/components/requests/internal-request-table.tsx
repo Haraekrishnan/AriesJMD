@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -57,6 +58,13 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
         return userRole?.permissions.includes('approve_store_requests');
     }, [user, roles]);
 
+    const isRequester = req.requesterId === user?.id;
+    const hasUpdate = isRequester && !req.viewedByRequester;
+    const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
+    const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
+    const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
+    const canDispute = isRequester && req.status === 'Issued';
+    
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
         const needsComment = status === 'Rejected';
         if (needsComment) {
@@ -105,12 +113,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     };
     
     const requester = users.find(u => u.id === req.requesterId);
-    const hasUpdate = user?.id === req.requesterId && !req.viewedByRequester;
-    const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
-    const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
-    const canDispute = user?.id === req.requesterId && req.status === 'Issued';
-    
-    const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
     const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
     const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
     const canDelete = user?.role === 'Admin' || (user?.id === req.requesterId && ['Pending', 'Rejected'].includes(req.status));
@@ -193,6 +195,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 className="text-xs pr-10 bg-background"
                                 value={newComment}
                                 onChange={e => setNewComment(e.target.value)}
+                                rows={1}
                             />
                             <Button
                                 type="button"
