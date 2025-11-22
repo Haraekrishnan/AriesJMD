@@ -271,9 +271,9 @@ type AppContextType = {
   deleteBuilding: (buildingId: string) => void;
   addRoom: (buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => void;
   updateRoom: (buildingId: string, room: Room) => void;
+  updateBed: (buildingId: string, roomId: string, bed: Bed) => void;
   deleteRoom: (buildingId: string, roomId: string) => void;
   addBed: (buildingId: string, roomId: string) => void;
-  updateBed: (buildingId: string, roomId: string, bed: Bed) => void;
   deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
@@ -455,6 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
@@ -768,6 +769,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const request = internalRequests.find(r => r.id === requestId);
     if (!request) return;
   
+    const isRequester = request.requesterId === user.id;
+
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
     const newCommentData = {
       userId: user.id,
@@ -780,23 +783,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = newCommentData;
     
-    // Mark as unread for the other party
     if (isRequester) {
-      // Logic to find approvers and mark unread for them
-    } else {
+      // Find approvers (Store In Charge) and notify them
+    } else { // Is Approver
       updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-    }
-  
-    // Add viewedBy for the current user
-    if (newCommentData.id) {
-      updates[`internalRequests/${requestId}/comments/${newCommentData.id}/viewedBy/${user.id}`] = true;
     }
   
     update(ref(rtdb), updates);
   
-    if (notify) {
+    if (notify && !isRequester) {
       const requester = users.find(u => u.id === request.requesterId);
-      if (requester?.email && request.requesterId !== user.id) {
+      if (requester?.email) {
         createAndSendNotification(
           requester.email,
           `New Query on your Internal Store Request #${request.id.slice(-6)}`,
@@ -807,7 +804,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       }
     }
-  }, [user, internalRequests, users, addActivityLog]);
+  }, [user, internalRequests, users]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
@@ -1582,7 +1579,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); 
 
-        const parseDateExcel = (date: any): string | null => {
+        const parseExcelDate = (date: any): string | null => {
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
             }
@@ -1607,15 +1604,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           workOrderNumber: String(workOrderNumber || ''),
           labourLicenseNo: String(labourLicenseNo || ''),
           eic: eic?.trim(),
-          workOrderExpiryDate: parseDateExcel(workOrderExpiryDate),
-          labourLicenseExpiryDate: parseDateExcel(labourLicenseExpiryDate),
-          joiningDate: parseDateExcel(joiningDate),
+          workOrderExpiryDate: parseExcelDate(workOrderExpiryDate),
+          labourLicenseExpiryDate: parseExcelDate(labourLicenseExpiryDate),
+          joiningDate: parseExcelDate(joiningDate),
           epNumber: String(epNumber || ''),
           aadharNumber: String(aadharNumber || ''),
-          dob: parseDateExcel(dob),
+          dob: parseExcelDate(dob),
           uanNumber: String(uanNumber || ''),
           wcPolicyNumber: String(wcPolicyNumber || ''),
-          wcPolicyExpiryDate: parseDateExcel(wcPolicyExpiryDate),
+          wcPolicyExpiryDate: parseExcelDate(wcPolicyExpiryDate),
           cardCategory: cardCategory,
           cardType: cardType,
           status: 'Working',
@@ -2562,9 +2559,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
   
-    // Send only to Store Incharge and Assistant Store Incharge in the destination project
+    // Send only to Store staff responsible for the DESTINATION project
     const approvers = users.filter(u => 
-        (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge')
+        (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge') && u.projectIds?.includes(requestData.toProjectId)
     );
 
 const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
@@ -2807,7 +2804,7 @@ approvers.forEach(approver => {
     
     addActivityLog(user.id, "Certificate Request Created");
 
-    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Document Controller');
+    const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Document Controller');
     storePersonnel.forEach(p => {
         if(p.email) {
             createAndSendNotification(
@@ -3045,6 +3042,7 @@ approvers.forEach(approver => {
         toast({ title: 'No approver found', description: 'Cannot submit announcement.', variant: 'destructive'});
         return;
     }
+    const newRequestRef = push(ref(rtdb));
     const newAnnouncement: Omit<Announcement, 'id'> = {
         title: data.title!,
         content: data.content!,
@@ -3656,6 +3654,7 @@ approvers.forEach(approver => {
     const updatedInternalRequestCount = internalRequests.filter(r => {
       const isMyRequest = r.requesterId === user.id;
       if (!isMyRequest) return false;
+  
       const commentsArray = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
       const hasUnreadComment = commentsArray.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
       if (hasUnreadComment) return true;
@@ -3892,23 +3891,37 @@ approvers.forEach(approver => {
   
   useEffect(() => {
     if (storedUserId && Object.keys(usersById).length > 0) {
-        const foundUser = usersById[storedUserId];
-        if (foundUser) {
-            const userWithDismissed = { ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById };
-            if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
-                setUser(userWithDismissed);
-            }
-            if(loading) setLoading(false); 
-        } else {
-             setStoredUserId(null);
-             setUser(null);
-             setLoading(false);
-        }
-    } else if (!storedUserId) {
-        setUser(null);
+      const foundUser = usersById[storedUserId];
+      if (foundUser) {
+          const userWithDismissed = { ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById };
+          if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
+              setUser(userWithDismissed);
+          }
+          if(loading) setLoading(false);
+      } else {
+        logout();
+      }
+    } else if (!storedUserId && pathname !== '/login') {
+        setLoading(false);
+        router.push('/login');
+    } else {
         setLoading(false);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, setStoredUserId, user]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, user, logout, pathname, router]);
+
+  useEffect(() => {
+    if (user?.id) {
+        const userStatusRef = ref(rtdb, `users/${user.id}/status`);
+        const unsubscribe = onValue(userStatusRef, (snapshot) => {
+            const newStatus = snapshot.val();
+            if (user.status !== newStatus) {
+                setUser(prevUser => prevUser ? { ...prevUser, status: newStatus } : null);
+            }
+        });
+        return () => unsubscribe();
+    }
+}, [user?.id, user?.status]);
+
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3920,6 +3933,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
-
 
