@@ -62,7 +62,7 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
       tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : null,
-      movedToProjectId: data.movedToProjectId
+      movedToProjectId: data.movedToProjectId || null,
     });
     toast({ title: 'Machine Added', description: `${data.machineName} has been added.` });
     setIsOpen(false);

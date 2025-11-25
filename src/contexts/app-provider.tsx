@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -455,7 +454,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname();
 
   // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
@@ -766,28 +764,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request) return;
   
     const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = {
+  
+    // Construct the new comment object with an embedded viewedBy property
+    const newCommentData = {
+      id: newCommentRef.key,
       userId: user.id,
       text: commentText,
       date: new Date().toISOString(),
       eventId: requestId,
-      viewedBy: { [user.id]: true }
+      viewedBy: { [user.id]: true } // The commenter has viewed it
     };
-    
+  
     const updates: { [key: string]: any } = {};
-    updates[`/internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`/internalRequests/${requestId}/viewedByRequester`] = false; // Always notify requester
+    
+    // Set the entire new comment object at its path
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = newCommentData;
+  
+    const isRequester = request.requesterId === user.id;
+  
+    if (isRequester) {
+      // If requester comments, notify approvers by setting their viewed status to false
+      const approvers = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
+      approvers.forEach(approver => {
+        updates[`internalRequests/${requestId}/comments/${newCommentRef.key}/viewedBy/${approver.id}`] = false;
+      });
+    } else {
+      // If approver comments, notify requester
+      updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+    }
   
     update(ref(rtdb), updates);
-  
-    if (notify) {
-        // ... (notification logic)
-    }
-  }, [user, internalRequests, users]);
+  }, [user, internalRequestsById, users]);
   
   const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
@@ -1753,48 +1764,42 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'internalRequests'));
     
-    // Ensure `inventoryItemId` is null if it's undefined
-      const sanitizedItems = requestData.items.map(item => ({
-  ...item,    // ✅ THREE DOTS — this is VALID SPREAD SYNTAX
-  inventoryItemId: item.inventoryItemId || null,
-}));
-
-const newRequest: Omit<InternalRequest, 'id'> = {
-  ...requestData,
-  items: sanitizedItems,
-  requesterId: user.id,
-  date: new Date().toISOString(),
-  status: 'Pending',
-  comments: [],
-  viewedByRequester: true,
-  acknowledgedByRequester: false,
-};
-
-set(newRequestRef, newRequest);
+    const sanitizedItems = requestData.items.map(item => ({
+      ...item,
+      inventoryItemId: item.inventoryItemId || null,
+    }));
+  
+    const newRequest: Omit<InternalRequest, 'id'> = {
+      ...requestData,
+      items: sanitizedItems,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      comments: [],
+      viewedByRequester: true,
+      acknowledgedByRequester: false,
+    };
+  
+    set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
-
-    const approvers = users.filter(u => {
-        const userRole = roles.find(r => r.name === u.role);
-        return userRole?.permissions.includes('approve_store_requests');
+  
+    const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge'].includes(u.role));
+    storePersonnel.forEach(p => {
+      if (p.email) {
+        createAndSendNotification(
+          p.email,
+          `New Internal Store Request from ${user.name}`,
+          'New Store Request for Approval',
+          {
+            'Requested By': user.name,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+          'View Request'
+        );
+      }
     });
-    
-    approvers.forEach(approver => {
-        if (approver.email) {
-            createAndSendNotification(
-                approver.email,
-                `New Internal Store Request from ${user.name}`,
-                'New Store Request for Approval',
-                {
-                    'Requested By': user.name,
-                    'Item Count': requestData.items.length.toString(),
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-                'View Request'
-            );
-        }
-    });
-
-  }, [user, users, roles, addActivityLog]);
+  }, [user, users, addActivityLog]);
   
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
@@ -1838,10 +1843,11 @@ set(newRequestRef, newRequest);
 
   const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request) return;
     
     const updates: { [key: string]: any } = {};
+    
     updates[`internalRequests/${requestId}/status`] = status;
     updates[`internalRequests/${requestId}/approverId`] = user.id;
 
@@ -1869,11 +1875,11 @@ set(newRequestRef, newRequest);
         'View Request'
       );
     }
-  }, [user, can.approve_store_requests, internalRequests, addInternalRequestComment, users]);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request) return;
     
     addInternalRequestComment(requestId, `Item "${request.items.find(i => i.id === itemId)?.description}" status changed to ${status}. Reason: ${comment}`, true);
@@ -1900,7 +1906,7 @@ set(newRequestRef, newRequest);
     updates[`internalRequests/${requestId}/status`] = overallStatus;
 
     update(ref(rtdb), updates);
-  }, [user, can.approve_store_requests, internalRequests, addInternalRequestComment]);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
 
   const deleteInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -1926,23 +1932,24 @@ set(newRequestRef, newRequest);
 
   const markInternalRequestAsViewed = useCallback((requestId: string) => {
     if (!user) return;
-    const request = internalRequests.find(r => r.id === requestId);
+    const request = internalRequestsById[requestId];
     if (!request || request.requesterId !== user.id) return;
-  
+    
     const updates: { [key: string]: any } = {};
     updates[`internalRequests/${requestId}/viewedByRequester`] = true;
-  
-    // Also mark unread comments as read
-    const comments = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
-    comments.forEach((comment) => {
-      const commentKey = Object.keys(request.comments || {}).find(key => (request.comments as any)[key].id === comment.id);
-      if (commentKey && comment.userId !== user.id && !comment.viewedBy?.[user.id]) {
-        updates[`internalRequests/${requestId}/comments/${commentKey}/viewedBy/${user.id}`] = true;
-      }
+
+    const comments = request.comments ? (Array.isArray(request.comments) ? request.comments : Object.values(request.comments)) : [];
+    comments.forEach(comment => {
+        const commentId = Object.keys(request.comments || {}).find(key => request.comments?.[key]?.id === comment.id);
+        if (commentId && comment.userId !== user.id && !comment.viewedBy?.[user.id]) {
+            updates[`internalRequests/${requestId}/comments/${commentId}/viewedBy/${user.id}`] = true;
+        }
     });
-  
-    update(ref(rtdb), updates);
-  }, [user, internalRequests]);
+
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
+  }, [user, internalRequestsById]);
 
   const acknowledgeInternalRequest = useCallback((requestId: string) => {
     if (!user) return;
@@ -3650,20 +3657,20 @@ approvers.forEach(approver => {
     const pendingInternalRequestCount = isStoreManager 
       ? internalRequests.filter(r => {
           if (r.status !== 'Pending' && r.status !== 'Partially Approved') return false;
-          // Check for unread comments from the requester
+          // Also count if there is a new comment from the requester
           const comments = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
-          const hasUnreadComment = comments.some(c => c.userId === r.requesterId && !c.viewedBy?.[user.id]);
-          return r.status === 'Pending' || hasUnreadComment;
+          const hasUnreadRequesterComment = comments.some(c => c.userId === r.requesterId && !c.viewedBy?.[user.id]);
+          return r.status === 'Pending' || hasUnreadRequesterComment;
         }).length
       : 0;
-
+    
     const updatedInternalRequestCount = internalRequests.filter(r => {
         const isMyRequest = r.requesterId === user.id;
         if (!isMyRequest) return false;
 
         const comments = Array.isArray(r.comments) ? r.comments : Object.values(r.comments || {});
         const hasUnreadComment = comments.some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
-        if (hasUnreadComment) return true;
+        if(hasUnreadComment) return true;
     
         const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
         const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
