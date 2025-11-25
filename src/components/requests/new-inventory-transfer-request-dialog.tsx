@@ -153,7 +153,9 @@ export default function NewInventoryTransferRequestDialog({
   }, [user]);
 
   const fromProjectOptions = useMemo(() => {
-    if (canTransferFromAll) return projects;
+    if (canTransferFromAll) {
+      return [{ id: 'all', name: 'All Projects' }, ...projects];
+    }
     return projects.filter(p => user?.projectIds?.includes(p.id));
   }, [projects, user, canTransferFromAll]);
 
@@ -187,7 +189,10 @@ export default function NewInventoryTransferRequestDialog({
 
   const availableItems = useMemo(() => {
     if (!fromProjectId) return [];
-    const sourceItems = canTransferFromAll || fromProjectId !== 'all' ? allItems.filter(it => it.projectId === fromProjectId) : allItems;
+    
+    const sourceItems = (fromProjectId === 'all' && canTransferFromAll) 
+      ? allItems 
+      : allItems.filter(it => it.projectId === fromProjectId);
     
     return sourceItems.filter(
       (it) =>
