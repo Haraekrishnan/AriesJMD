@@ -44,7 +44,8 @@ import type {
   OtherEquipment,
   LaptopDesktop,
   MobileSim,
-  TransferReason
+  TransferReason,
+  Role,
 } from "@/lib/types";
 
 import { TRANSFER_REASONS } from "@/lib/types";
@@ -144,6 +145,17 @@ export default function NewInventoryTransferRequestDialog({
   const fromProjectId = form.watch("fromProjectId");
   const selectedItems = form.watch("items");
   const reason = form.watch("reason");
+  
+  const canTransferFromAll = useMemo(() => {
+    if (!user) return false;
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge', 'Document Controller'];
+    return privilegedRoles.includes(user.role);
+  }, [user]);
+
+  const fromProjectOptions = useMemo(() => {
+    if (canTransferFromAll) return projects;
+    return projects.filter(p => user?.projectIds?.includes(p.id));
+  }, [projects, user, canTransferFromAll]);
 
   const allItems = useMemo(() => {
     const arr: SearchableItem[] = [];
@@ -175,9 +187,10 @@ export default function NewInventoryTransferRequestDialog({
 
   const availableItems = useMemo(() => {
     if (!fromProjectId) return [];
-    return allItems.filter(
+    const sourceItems = canTransferFromAll || fromProjectId !== 'all' ? allItems.filter(it => it.projectId === fromProjectId) : allItems;
+    
+    return sourceItems.filter(
       (it) =>
-        it.projectId === fromProjectId &&
         !selectedItems.some(
           (s) => s.itemId === it.id && s.itemType === it.itemType
         ) &&
@@ -190,7 +203,7 @@ export default function NewInventoryTransferRequestDialog({
             `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(searchTerm.toLowerCase())
           : true)
     );
-  }, [allItems, fromProjectId, selectedItems, searchTerm]);
+  }, [allItems, fromProjectId, selectedItems, searchTerm, canTransferFromAll]);
 
   const handleAdd = (item: SearchableItem) => {
     let name = (item as any).name || (item as any).machineName || (item as any).equipmentName;
@@ -268,7 +281,7 @@ export default function NewInventoryTransferRequestDialog({
                         <SelectValue placeholder="Select origin..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {projects.map((p) => (
+                        {fromProjectOptions.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name}
                           </SelectItem>
