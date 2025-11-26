@@ -42,7 +42,7 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
                 
                 const importedCount = addMultipleInventoryItems(json);
 
-                toast({ title: 'Import Complete', description: `${importedCount} of ${json.length} items were successfully imported/updated.` });
+                toast({ title: 'Import Complete', description: `${importedCount} new items were successfully added. Existing items were ignored.` });
                 setIsOpen(false);
             } catch (error) {
                 console.error("Import error:", error);
@@ -58,7 +58,7 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
             <DialogHeader>
                 <DialogTitle>Import Items from Excel</DialogTitle>
                 <DialogDescription>
-                    Upload an Excel file to add or update multiple items. Items with existing serial numbers will be updated; new serial numbers will be added.
+                    Upload an Excel file to add additional items in bulk. Items with existing serial numbers will be ignored.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -90,4 +90,5 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
         </Dialog>
     );
 }
+
 

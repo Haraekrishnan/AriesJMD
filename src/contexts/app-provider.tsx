@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -454,6 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   // SECTION: PERMISSIONS
   const can: PermissionsObject = useMemo(() => {
@@ -1570,7 +1572,6 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         
         const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); 
 
-        // --- FIXED FUNCTION BELOW ---
         const parseDateExcel = (date: any): string | null => {
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
@@ -1580,7 +1581,6 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
                 if (isValid(parsed)) return parsed.toISOString();
             }
             if (typeof date === 'number') {
-                // Excel incorrectly treats 1900 as a leap year.
                 const excelEpoch = new Date(Date.UTC(1899, 11, 31)); 
                 const serial = date > 59 ? date - 1 : date; 
 
@@ -1588,9 +1588,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
                 if (isValid(jsDate)) return jsDate.toISOString();
             }
             return null;
-        }; // <--- THIS CLOSING BRACE AND SEMICOLON WERE MISSING
-        // ----------------------------
-
+        };
         const profileData = {
           name: name?.trim(),
           mobileNumber: String(mobileNumber || ''),
@@ -1783,22 +1781,23 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Internal Store Request Created', `Request ID: ${newRequestRef.key}`);
   
-    const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge'].includes(u.role));
+    const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
     storePersonnel.forEach(p => {
-      if (p.email) {
-        createAndSendNotification(
-          p.email,
-          `New Internal Store Request from ${user.name}`,
-          'New Store Request for Approval',
-          {
-            'Requested By': user.name,
-            'Item Count': requestData.items.length.toString(),
-          },
-          `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-          'View Request'
-        );
-      }
+        if(p.email) {
+            createAndSendNotification(
+                p.email,
+                `New Internal Store Request from ${user.name}`,
+                'New Store Request',
+                {
+                    'Requested By': user.name,
+                    'Item Count': requestData.items.length.toString(),
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'View Request'
+            );
+        }
     });
+
   }, [user, users, addActivityLog]);
   
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
@@ -1826,12 +1825,10 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     const updates: { [key: string]: any } = {};
   
     if (resolution === 'reissue') {
-      // Set all items back to approved to be re-issued
       const newItems = request.items.map(item => ({ ...item, status: 'Approved' as InternalRequestItemStatus }));
       updates[`internalRequests/${requestId}/items`] = newItems;
       updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-    } else { // reverse
-      // Confirm all items as issued
+    } else { 
       const newItems = request.items.map(item => ({ ...item, status: 'Issued' as InternalRequestItemStatus }));
       updates[`internalRequests/${requestId}/items`] = newItems;
       updates[`internalRequests/${requestId}/status`] = 'Issued';
@@ -1860,22 +1857,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     }
 
     update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email) {
-      createAndSendNotification(
-        requester.email,
-        `Update on your Store Request #${request.id.slice(-6)}`,
-        `Your request status is now: ${status}`,
-        {
-          'Updated By': user.name,
-          'Comment': comment || 'No comment provided.',
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users]);
+  }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
   
   const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
     if (!user || !can.approve_store_requests) return;
@@ -2339,13 +2321,14 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
   const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
+    const existingSerialNumbers = new Set(inventoryItems.map(i => i.serialNumber));
 
     itemsData.forEach(item => {
         const serialNumber = item['SERIAL NUMBER']?.toString().trim();
-        if (!serialNumber) return;
+        if (!serialNumber || existingSerialNumbers.has(serialNumber)) {
+            return; // Skip if serial number is missing or already exists
+        }
 
-        const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
-        
         const parseExcelDate = (date: any): string | null => {
             if (!date) return null;
             if (date instanceof Date && isValid(date)) {
@@ -2353,43 +2336,39 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
             }
             return null;
         };
-        
+
         const projectName = item['PROJECT']?.trim();
         const project = projects.find(p => p.name.toLowerCase() === projectName?.toLowerCase());
-        
-        const itemData: Partial<InventoryItem> = {
-            name: item['ITEM NAME'] || null,
-            serialNumber: serialNumber || null,
+
+        const newRef = push(ref(rtdb, 'inventoryItems'));
+        const itemData: Omit<InventoryItem, 'id'> = {
+            name: item['ITEM NAME'] || 'Unknown Item',
+            serialNumber: serialNumber,
             chestCrollNo: item['CHEST CROLL NO']?.toString() || null,
-            ariesId: item['ARIES ID']?.toString() || null,
+            ariesId: item['ARIES ID']?.toString() || '',
             inspectionDate: parseExcelDate(item['INSPECTION DATE']),
             inspectionDueDate: parseExcelDate(item['INSPECTION DUE DATE']),
             tpInspectionDueDate: parseExcelDate(item['TP INSPECTION DUE DATE']),
-            status: item['STATUS'] || null,
-            projectId: project?.id || projects.find(p => p.name === 'Unassigned')?.id || null,
+            status: item['STATUS'] || 'In Store',
+            projectId: project?.id || projects.find(p => p.name === 'Unassigned')?.id || '',
             lastUpdated: new Date().toISOString(),
         };
-        
-        const itemId = existingItem ? existingItem.id : push(ref(rtdb)).key;
-        if (!itemId) return;
 
-        const finalData = existingItem ? { ...existingItem, ...itemData } : itemData;
-        
-        Object.keys(finalData).forEach(key => {
-            if (finalData[key as keyof typeof finalData] === undefined) {
-                finalData[key as keyof typeof finalData] = null;
+        Object.keys(itemData).forEach(key => {
+            if (itemData[key as keyof typeof itemData] === undefined) {
+                (itemData as any)[key] = null;
             }
         });
 
-        updates[`inventoryItems/${itemId}`] = finalData;
+        updates[`inventoryItems/${newRef.key}`] = itemData;
         importedCount++;
     });
 
     if (Object.keys(updates).length > 0) {
-      update(ref(rtdb), updates);
-      if (user) addActivityLog(user.id, 'Bulk Inventory Import', `Imported/updated ${importedCount} items.`);
+        update(ref(rtdb), updates);
+        if (user) addActivityLog(user.id, 'Bulk Inventory Added', `Added ${importedCount} new items.`);
     }
-    
+
     return importedCount;
 }, [user, inventoryItems, projects, addActivityLog]);
   
@@ -2886,7 +2865,12 @@ approvers.forEach(approver => {
   
   const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
     const newRef = push(ref(rtdb, 'utMachines'));
-    set(newRef, machine);
+    const machineData = {
+      ...machine,
+      movedToProjectId: machine.movedToProjectId || null,
+      tpInspectionDueDate: machine.tpInspectionDueDate || null,
+    };
+    set(newRef, machineData);
   }, []);
 
   const updateUTMachine = useCallback((machine: UTMachine) => {
@@ -2901,12 +2885,18 @@ approvers.forEach(approver => {
   
   const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
     const newRef = push(ref(rtdb, 'dftMachines'));
-    set(newRef, machine);
+    const machineData = {
+        ...machine,
+        movedToProjectId: machine.movedToProjectId || null,
+        tpInspectionDueDate: machine.tpInspectionDueDate || null,
+    };
+    set(newRef, machineData);
   }, []);
 
   const updateDftMachine = useCallback((machine: DftMachine) => {
     const { id, ...data } = machine;
-    update(ref(rtdb, `dftMachines/${id}`), data);
+    const sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => (value === undefined ? null : value)));
+    update(ref(rtdb, `dftMachines/${id}`), sanitizedData);
   }, []);
 
   const deleteDftMachine = useCallback((machineId: string) => {
@@ -3904,23 +3894,24 @@ approvers.forEach(approver => {
   
   useEffect(() => {
     if (storedUserId && Object.keys(usersById).length > 0) {
-        const foundUser = usersById[storedUserId];
-        if (foundUser) {
-            const userWithDismissed = { ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById };
-            if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
-                setUser(userWithDismissed);
-            }
-            if(loading) setLoading(false); 
-        } else {
-             setStoredUserId(null);
-             setUser(null);
-             setLoading(false);
+      const foundUser = usersById[storedUserId];
+      if (foundUser) {
+        const userWithDismissed = { ...foundUser, dismissedPendingUpdates: dismissedPendingUpdatesById };
+        if (JSON.stringify(user) !== JSON.stringify(userWithDismissed)) {
+          setUser(userWithDismissed);
         }
-    } else if (!storedUserId) {
+        if (loading) setLoading(false);
+      } else {
+        setStoredUserId(null);
         setUser(null);
         setLoading(false);
+      }
+    } else if (!storedUserId) {
+      setUser(null);
+      setLoading(false);
     }
-  }, [storedUserId, usersById, dismissedPendingUpdatesById, loading, setStoredUserId, user]);
+  }, [storedUserId, usersById, dismissedPendingUpdatesById, user, loading, setStoredUserId, router, pathname]);
+
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -3932,3 +3923,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
