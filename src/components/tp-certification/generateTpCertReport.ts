@@ -320,37 +320,27 @@ export async function generateTpCertPdf(
   groupedItems.forEach(group => {
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
-      const row = [
-        { content: index === 0 ? srNo.toString() : '', rowSpan: index === 0 ? group.length : 1 },
-        { content: index === 0 ? item.materialName : '', rowSpan: index === 0 ? group.length : 1 },
+      
+      const rowData = [
         item.manufacturerSrNo,
         isHarness ? (item.chestCrollNo || '') : '',
-        { content: index === 0 ? getCapacity(item.materialName) : '', rowSpan: index === 0 ? group.length : 1 },
-        { content: index === 0 ? group.length.toString() : '', rowSpan: index === 0 ? group.length : 1 },
-        { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle' } },
-        { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
-        { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
       ];
-      
-      // For jspdf-autotable, you only add the cell data for the first row of a rowspan group.
-      // For subsequent rows, you just don't add the cell at all for that column.
-      if (index > 0) {
-        bodyRows.push([
-          item.manufacturerSrNo, 
-          isHarness ? (item.chestCrollNo || '') : ''
-        ]);
-      } else {
+
+      if (index === 0) {
+        // First row of the group gets the merged cells
         bodyRows.push([
           { content: srNo.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          item.manufacturerSrNo,
-          isHarness ? (item.chestCrollNo || '') : '',
+          ...rowData,
           { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: group.length.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
           { content: '', rowSpan: group.length, styles: { valign: 'middle' } }
         ]);
+      } else {
+        // Subsequent rows only get the un-merged cells
+        bodyRows.push(rowData);
       }
     });
     srNo++;
