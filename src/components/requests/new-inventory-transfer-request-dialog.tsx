@@ -188,25 +188,25 @@ export default function NewInventoryTransferRequestDialog({
   ]);
 
   const availableItems = useMemo(() => {
-    if (!fromProjectId) return [];
-    
-    const sourceItems = (fromProjectId === 'all' && canTransferFromAll) 
-      ? allItems 
+    if (!fromProjectId || !searchTerm) return []; // Don't filter if no search term
+
+    const sourceItems = (fromProjectId === 'all' && canTransferFromAll)
+      ? allItems
       : allItems.filter(it => it.projectId === fromProjectId);
-    
+
     return sourceItems.filter(
       (it) =>
         !selectedItems.some(
           (s) => s.itemId === it.id && s.itemType === it.itemType
         ) &&
-        (searchTerm
-          ? it.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (
+            it.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             it.ariesId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (it as any).name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (it as any).machineName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (it as any).equipmentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(searchTerm.toLowerCase())
-          : true)
+        )
     );
   }, [allItems, fromProjectId, selectedItems, searchTerm, canTransferFromAll]);
 
@@ -406,7 +406,7 @@ export default function NewInventoryTransferRequestDialog({
                 />
                 <ScrollArea className="h-40">
                   <CommandList>
-                    <CommandEmpty>No items match.</CommandEmpty>
+                    <CommandEmpty>No items match your search.</CommandEmpty>
                     <CommandGroup>
                       {availableItems.map((item) => (
                         <CommandItem
@@ -488,3 +488,4 @@ export default function NewInventoryTransferRequestDialog({
     </Dialog>
   );
 }
+
