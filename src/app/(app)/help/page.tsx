@@ -40,14 +40,31 @@ const faqs = [
       answer: "Go to the 'My Requests' page and select the 'Internal Store Requests' tab. Click 'New Store Request', fill out the items you need, and submit. The request will be sent to the store in-charge for approval."
     },
     {
-      question: "What is the difference between Job Schedule and the Planner?",
-      answer: "'Job Schedule' is for planning daily work for specific projects, including assigning manpower and vehicles. The 'Planner' is a monthly calendar for organizing personal or team events, meetings, and daily notes."
+      question: "How do I assign an employee to a bed?",
+      answer: "Navigate to the 'Accommodation' page. Find the building and room you wish to modify. Click the 'Assign' button on an available bed and select an employee from the list. Only employees not currently assigned to a bed will appear."
+    },
+    {
+      question: "How do I track equipment calibration due dates?",
+      answer: "Go to the 'Equipment' page. Any equipment with calibration expiring within the next 30 days will be highlighted in the 'Expiring Calibrations' card at the top. You can also see the due date for each machine in its respective table (e.g., UT Machines, DFT Machines)."
+    },
+    {
+      question: "Where can I see which vehicle documents are expiring?",
+      answer: "On the 'Fleet Management' page, an 'Expiring Documents' card will appear if any vehicle or driver has documentation (like VAP, insurance, license, etc.) that is due to expire within 30 days."
+    },
+    {
+      question: "How do I request a certificate for an inventory item?",
+      answer: "Go to the 'Store Inventory' page. Find the item you need a certificate for in the table. In the 'Actions' column, click the menu button (...) and select 'Request Certificate'. Fill out the form and submit it."
+    },
+    {
+        question: "What is the difference between Job Schedule and the Planner?",
+        answer: "'Job Schedule' is for planning daily work for specific projects, including assigning manpower and vehicles. The 'Planner' is a monthly calendar for organizing personal or team events, meetings, and daily notes."
     },
     {
         question: "How do I update my profile information?",
         answer: "Go to the 'Account' page. You can edit your name, email, and upload a new profile picture. You can also change your password here."
     }
 ];
+
 
 export default function HelpPage() {
   const { toast } = useToast();
