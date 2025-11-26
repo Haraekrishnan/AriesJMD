@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -62,6 +63,7 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
       <TableHeader>
         <TableRow>
           <TableHead>Vehicle No.</TableHead>
+          <TableHead>VAP Number</TableHead>
           <TableHead>Driver</TableHead>
           <TableHead>Vendor</TableHead>
           <TableHead>VAP Access</TableHead>
@@ -77,6 +79,7 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
         {vehicles.map(vehicle => (
           <TableRow key={vehicle.id}>
             <TableCell className="font-medium">{vehicle.vehicleNumber}</TableCell>
+            <TableCell>{vehicle.vapNumber || 'N/A'}</TableCell>
             <TableCell>{getDriverName(vehicle.driverId)}</TableCell>
             <TableCell>{vehicle.vendorName || 'N/A'}</TableCell>
             <TableCell>

@@ -320,6 +320,7 @@ export type Vehicle = {
   vehicleNumber: string;
   driverId: string;
   vendorName?: string;
+  vapNumber?: string;
   seatingCapacity: number;
   vapAccess?: string[];
   vapValidity?: string; // YYYY-MM-DD
@@ -628,7 +629,7 @@ export type UTMachine = {
   projectId: string;
   unit: string;
   calibrationDueDate: string; // ISO String
-  tpInspectionDueDate?: string; // ISO String
+  tpInspectionDueDate?: string | null; // ISO String
   probeDetails?: string;
   probeStatus?: string;
   cableDetails?: string;

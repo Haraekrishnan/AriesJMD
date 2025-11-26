@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +23,7 @@ const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
   driverId: z.string().min(1, 'Please select a driver'),
   vendorName: z.string().optional(),
+  vapNumber: z.string().optional(),
   seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
   vapAccess: z.array(z.string()).optional(),
   vapValidity: z.date().optional(),
@@ -95,10 +97,16 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
               {form.formState.errors.seatingCapacity && <p className="text-xs text-destructive">{form.formState.errors.seatingCapacity.message}</p>}
             </div>
           </div>
-           <div className="space-y-2">
-              <Label htmlFor="vendorName">Vendor Name</Label>
-              <Input id="vendorName" {...form.register('vendorName')} />
+           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="vendorName">Vendor Name</Label>
+                <Input id="vendorName" {...form.register('vendorName')} />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="vapNumber">VAP Number</Label>
+              <Input id="vapNumber" {...form.register('vapNumber')} />
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>Driver</Label>
             <Controller
