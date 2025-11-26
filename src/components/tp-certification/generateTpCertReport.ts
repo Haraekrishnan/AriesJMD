@@ -318,30 +318,36 @@ export async function generateTpCertPdf(
   let srNo = 1;
 
   groupedItems.forEach(group => {
-    group.forEach((item, index) => {
+    const capacity = getCapacity(group[0].materialName);
+    const groupSize = group.length;
+
+    // Header-like row for the group
+    bodyRows.push([
+      { content: srNo.toString(), styles: { fontStyle: 'bold' } },
+      { content: group[0].materialName, styles: { fontStyle: 'bold' } },
+      { content: '' }, // Empty cell for serial number column in header row
+      { content: '' }, // Empty cell for chest croll no
+      { content: capacity, styles: { fontStyle: 'bold', halign: 'center' } },
+      { content: groupSize.toString(), styles: { fontStyle: 'bold', halign: 'center' } },
+      { content: 'OLD', styles: { fontStyle: 'bold', halign: 'center' } },
+      { content: '' },
+      { content: '' }
+    ]);
+    
+    // Individual item rows
+    group.forEach(item => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
-      
-      const rowData = [
+      bodyRows.push([
+        '', // Empty for Sr No
+        '', // Empty for Material Name
         item.manufacturerSrNo,
         isHarness ? (item.chestCrollNo || '') : '',
-      ];
-
-      if (index === 0) {
-        // First row of the group gets the merged cells
-        bodyRows.push([
-          { content: srNo.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          ...rowData,
-          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: group.length.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
-          { content: '', rowSpan: group.length, styles: { valign: 'middle' } }
-        ]);
-      } else {
-        // Subsequent rows only get the un-merged cells
-        bodyRows.push(rowData);
-      }
+        '', // Empty for Cap
+        '', // Empty for Qty
+        '', // Empty for New/Old
+        '',
+        ''
+      ]);
     });
     srNo++;
   });
@@ -354,6 +360,19 @@ export async function generateTpCertPdf(
       styles: { fontSize: 7, valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
       columnStyles: columnStyles,
+      didParseCell: function (data: any) {
+        // This hook allows us to merge cells. We'll identify the group header rows.
+        if (data.cell.raw.styles?.fontStyle === 'bold') {
+          // This is a header row for a group.
+          if (data.column.index === 2 || data.column.index === 3 || data.column.index > 6) {
+            data.cell.colSpan = 1; // Prevent spanning for these columns
+          }
+          if (data.column.index < 2 || (data.column.index >= 4 && data.column.index <= 6)) {
+             // These are the cells we want to appear once per group
+             data.cell.styles.fillColor = [245, 245, 245];
+          }
+        }
+      }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
