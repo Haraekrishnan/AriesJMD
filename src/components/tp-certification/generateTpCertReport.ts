@@ -288,94 +288,154 @@ export async function generateTpCertPdf(
 
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
-  doc.addImage(imgDataUrl, 'PNG', 40, 20, pageWidth - 80, 60);
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Trivedi & Associates Technical Services (P.) Ltd.', pageWidth / 2, 110, { align: 'center' });
-  doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
-  doc.text('Subject : Testing & Certification', 40, 155);
-
   const head = [["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"]];
   const body: any[][] = [];
   let srNo = 1;
+  let currentGroupName = "";
 
-  groupedItems.forEach(group => {
+  groupedItems.forEach((group) => {
     const capacity = getCapacity(group[0].materialName);
     const groupSize = group.length;
 
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
+      let rowData;
       if (index === 0) {
-        body.push([
-          { content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-          { content: item.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-          item.manufacturerSrNo,
-          isHarness ? (item.chestCrollNo || '') : '',
-          { content: capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-          { content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-          { content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-          { content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-          { content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
-        ]);
+        rowData = [
+          { content: srNo },
+          { content: item.materialName },
+          { content: item.manufacturerSrNo },
+          { content: isHarness ? (item.chestCrollNo || '') : '' },
+          { content: capacity },
+          { content: groupSize },
+          { content: 'OLD' },
+          { content: '' },
+          { content: '' },
+        ];
       } else {
-        body.push([
-          // These cells are skipped due to rowSpan
+        rowData = [
+          '',
+          '',
           item.manufacturerSrNo,
           isHarness ? (item.chestCrollNo || '') : '',
-        ]);
+          '',
+          '',
+          '',
+          '',
+          '',
+        ];
       }
+      body.push(rowData);
     });
     srNo++;
   });
 
+
   doc.autoTable({
-    head,
-    body,
+    head: head,
+    body: body,
     startY: 170,
     theme: 'grid',
-    styles: { fontSize: 7, valign: 'middle' },
+    styles: { fontSize: 7, valign: 'middle', halign: 'center' },
     headStyles: { fontStyle: 'bold', halign: 'center', fillColor: [230, 230, 230], textColor: 20 },
     columnStyles: {
-      0: { cellWidth: 35, halign: 'center' },
-      1: { cellWidth: 80, halign: 'center' },
-      2: { cellWidth: 100, halign: 'center' },
-      3: { cellWidth: 70, halign: 'center' },
-      4: { cellWidth: 50, halign: 'center' },
-      5: { cellWidth: 30, halign: 'center' },
-      6: { cellWidth: 35, halign: 'center' },
-      7: { cellWidth: 60, halign: 'center' },
-      8: { cellWidth: 'auto', halign: 'center' },
+      0: { cellWidth: 35 }, 1: { cellWidth: 80 }, 2: { cellWidth: 100 },
+      3: { cellWidth: 70 }, 4: { cellWidth: 50 }, 5: { cellWidth: 30 },
+      6: { cellWidth: 35 }, 7: { cellWidth: 60 }, 8: { cellWidth: 'auto' },
     },
+    didParseCell: (data) => {
+      // This logic merges cells manually based on content.
+      if (data.cell.section === 'body') {
+        const currentItem = groupedItems.flat()[data.row.index];
+        const isFirstInGroup = data.row.index === 0 || body[data.row.index][1] !== '';
+
+        if (!isFirstInGroup) {
+          if (data.column.index === 0 || data.column.index === 1 || data.column.index >= 4) {
+            data.cell.text = ''; // Clear text for subsequent rows in a group
+          }
+        }
+      }
+    },
+    didDrawPage: (data) => {
+      // Header
+      doc.addImage(imgDataUrl, 'PNG', 40, 20, pageWidth - 80, 60);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
+      doc.setFontSize(12);
+      doc.text('Trivedi & Associates Technical Services (P.) Ltd.', pageWidth / 2, 110, { align: 'center' });
+      doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
+      doc.text('Subject : Testing & Certification', 40, 155);
+
+      // Footer
+      const finalY = (doc as any).internal.pageSize.getHeight() - 70;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const footerX = 40;
+      let footerY = finalY;
+      doc.setFont('helvetica', 'bold');
+      doc.text("Company Authorised Contact Person", footerX, footerY);
+      footerY += 15;
+      doc.setFont('helvetica', 'normal');
+      doc.text("Name : VIJAY SAI", footerX, footerY);
+      footerY += 15;
+      doc.text("Contact Number : 919662095558", footerX, footerY);
+      footerY += 15;
+      doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
+      footerY += 15;
+      doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
+    },
+    willDrawCell: (data) => {
+        // Find which group this row belongs to
+        let rowIndex = data.row.index;
+        let groupIndex = -1;
+        let itemIndexInGroup = -1;
+        
+        for (let i = 0; i < groupedItems.length; i++) {
+            if (rowIndex < groupedItems[i].length) {
+                groupIndex = i;
+                itemIndexInGroup = rowIndex;
+                break;
+            }
+            rowIndex -= groupedItems[i].length;
+        }
+
+        if (groupIndex !== -1 && itemIndexInGroup > 0) {
+             // These columns should be 'merged' down
+            if ([0, 1, 4, 5, 6, 7, 8].includes(data.column.index)) {
+                // By not drawing the cell content, we simulate a rowspan
+                data.cell.text = '';
+            }
+        }
+    },
+    // Add this hook
+    didDrawCell: (data) => {
+        // We need to handle the rowspan drawing manually
+        if (data.cell.section === 'body') {
+            const group = groupedItems.find(g => g.some(item => body[data.row.index][2] === item.manufacturerSrNo));
+            const isFirstRowOfGroup = group && body[data.row.index][2] === group[0].manufacturerSrNo;
+
+            if (isFirstRowOfGroup) {
+                const groupSize = group.length;
+                // For each column that needs to be spanned, draw a rectangle over the borders
+                [0, 1, 4, 5, 6, 7, 8].forEach(colIndex => {
+                    const startCell = data.row.cells[colIndex];
+                    if (startCell) {
+                        const endRowIndex = data.row.index + groupSize - 1;
+                        if (endRowIndex < data.table.body.length) {
+                           const endCell = data.table.body[endRowIndex].cells[colIndex];
+                           // This is a simplified approach, a more robust one would calculate exact heights
+                           // but for now, we just ensure the text is in the first cell
+                        }
+                    }
+                });
+            }
+        }
+    }
   });
-
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const footerX = 40;
-  let footerY = finalY;
-
-  doc.setFont('helvetica', 'bold');
-  doc.text("Company Authorised Contact Person", footerX, footerY);
-  footerY += 15;
-  doc.setFont('helvetica', 'normal');
-  doc.text("Name : VIJAY SAI", footerX, footerY);
-  footerY += 15;
-  doc.text("Contact Number : 919662095558", footerX, footerY);
-  footerY += 15;
-  doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
-  footerY += 15;
-  doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
-  footerY += 20;
-  doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', footerX, footerY);
 
   doc.save("TP_Certification_List.pdf");
 }
-
 
 export async function generateChecklistPdf(
   checklist: any,
