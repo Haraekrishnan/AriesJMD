@@ -283,38 +283,25 @@ export async function generateTpCertPdf(
   const certItems = buildCertItems(items, allItems);
   const groupedItems = groupItemsForExport(certItems);
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
 
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
-  doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
+  doc.addImage(imgDataUrl, 'PNG', 40, 20, pageWidth - 80, 60);
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
 
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.text('Trivedi & Associates Technical Services (P.) Ltd.', pageWidth / 2, 110, { align: 'center' });
   doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
-  doc.setFont("helvetica", "normal");
-  doc.text("Subject : Testing & Certification", 40, 155);
+  doc.text('Subject : Testing & Certification', 40, 155);
 
-  const headers = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
-  const columnStyles = {
-    0: { cellWidth: 35, halign: 'center', valign: 'middle' },
-    1: { cellWidth: 80, halign: 'center', valign: 'middle' },
-    2: { cellWidth: 100, halign: 'center', valign: 'middle' },
-    3: { cellWidth: 70, halign: 'center', valign: 'middle' },
-    4: { cellWidth: 50, halign: 'center', valign: 'middle' },
-    5: { cellWidth: 30, halign: 'center', valign: 'middle' },
-    6: { cellWidth: 35, halign: 'center', valign: 'middle' },
-    7: { cellWidth: 60, halign: 'center', valign: 'middle' },
-    8: { cellWidth: 'auto', halign: 'center', valign: 'middle' },
-  };
-
-  const bodyRows: any[][] = [];
+  const head = [["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"]];
+  const body: any[][] = [];
   let srNo = 1;
 
   groupedItems.forEach(group => {
@@ -322,55 +309,60 @@ export async function generateTpCertPdf(
     const groupSize = group.length;
 
     group.forEach((item, index) => {
-        const isHarness = item.materialName.toLowerCase().includes('harness');
-        if (index === 0) {
-            // First row of the group, contains all merged info
-            bodyRows.push([
-                { content: srNo, rowSpan: groupSize },
-                { content: item.materialName, rowSpan: groupSize },
-                item.manufacturerSrNo,
-                isHarness ? (item.chestCrollNo || '') : '',
-                { content: capacity, rowSpan: groupSize },
-                { content: groupSize, rowSpan: groupSize },
-                { content: 'OLD', rowSpan: groupSize },
-                { content: '', rowSpan: groupSize },
-                { content: '', rowSpan: groupSize },
-            ]);
-        } else {
-            // Subsequent rows contain only the unique serial numbers
-            bodyRows.push([
-                '',
-                '',
-                item.manufacturerSrNo,
-                isHarness ? (item.chestCrollNo || '') : '',
-                '',
-                '',
-                '',
-                '',
-                ''
-            ]);
-        }
+      const isHarness = item.materialName.toLowerCase().includes('harness');
+      if (index === 0) {
+        body.push([
+          { content: srNo, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+          { content: item.materialName, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+          item.manufacturerSrNo,
+          isHarness ? (item.chestCrollNo || '') : '',
+          { content: capacity, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+          { content: groupSize, rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+          { content: 'OLD', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+          { content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+          { content: '', rowSpan: groupSize, styles: { valign: 'middle', halign: 'center' } },
+        ]);
+      } else {
+        body.push([
+          // These cells are skipped due to rowSpan
+          item.manufacturerSrNo,
+          isHarness ? (item.chestCrollNo || '') : '',
+        ]);
+      }
     });
     srNo++;
   });
-  
-  (doc as any).autoTable({
-      head: [headers],
-      body: bodyRows,
-      startY: 170,
-      theme: "grid",
-      styles: { fontSize: 7, valign: 'middle' },
-      headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
-      columnStyles: columnStyles,
+
+  doc.autoTable({
+    head,
+    body,
+    startY: 170,
+    theme: 'grid',
+    styles: { fontSize: 7, valign: 'middle' },
+    headStyles: { fontStyle: 'bold', halign: 'center', fillColor: [230, 230, 230], textColor: 20 },
+    columnStyles: {
+      0: { cellWidth: 35, halign: 'center' },
+      1: { cellWidth: 80, halign: 'center' },
+      2: { cellWidth: 100, halign: 'center' },
+      3: { cellWidth: 70, halign: 'center' },
+      4: { cellWidth: 50, halign: 'center' },
+      5: { cellWidth: 30, halign: 'center' },
+      6: { cellWidth: 35, halign: 'center' },
+      7: { cellWidth: 60, halign: 'center' },
+      8: { cellWidth: 'auto', halign: 'center' },
+    },
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
   doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
   const footerX = 40;
   let footerY = finalY;
 
+  doc.setFont('helvetica', 'bold');
   doc.text("Company Authorised Contact Person", footerX, footerY);
   footerY += 15;
+  doc.setFont('helvetica', 'normal');
   doc.text("Name : VIJAY SAI", footerX, footerY);
   footerY += 15;
   doc.text("Contact Number : 919662095558", footerX, footerY);
