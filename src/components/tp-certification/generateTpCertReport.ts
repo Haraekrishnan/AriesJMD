@@ -285,13 +285,12 @@ export async function generateTpCertPdf(
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
-
+  
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
-  const head = [["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"]];
-  const body: any[][] = [];
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const bodyRows: any[][] = [];
   let srNo = 1;
-  let currentGroupName = "";
 
   groupedItems.forEach((group) => {
     const capacity = getCapacity(group[0].materialName);
@@ -302,38 +301,33 @@ export async function generateTpCertPdf(
       let rowData;
       if (index === 0) {
         rowData = [
-          { content: srNo },
-          { content: item.materialName },
+          { content: srNo, rowSpan: groupSize },
+          { content: item.materialName, rowSpan: groupSize },
           { content: item.manufacturerSrNo },
           { content: isHarness ? (item.chestCrollNo || '') : '' },
-          { content: capacity },
-          { content: groupSize },
-          { content: 'OLD' },
-          { content: '' },
-          { content: '' },
+          { content: capacity, rowSpan: groupSize },
+          { content: groupSize, rowSpan: groupSize },
+          { content: 'OLD', rowSpan: groupSize },
+          { content: '', rowSpan: groupSize },
+          { content: '', rowSpan: groupSize },
         ];
       } else {
         rowData = [
-          '',
-          '',
+          '', '', // These cells are spanned
           item.manufacturerSrNo,
           isHarness ? (item.chestCrollNo || '') : '',
-          '',
-          '',
-          '',
-          '',
-          '',
+          '', '', '', '', '' // Spanned cells
         ];
       }
-      body.push(rowData);
+      bodyRows.push(rowData);
     });
     srNo++;
   });
 
 
   doc.autoTable({
-    head: head,
-    body: body,
+    head: [headers],
+    body: bodyRows,
     startY: 170,
     theme: 'grid',
     styles: { fontSize: 7, valign: 'middle', halign: 'center' },
@@ -342,19 +336,6 @@ export async function generateTpCertPdf(
       0: { cellWidth: 35 }, 1: { cellWidth: 80 }, 2: { cellWidth: 100 },
       3: { cellWidth: 70 }, 4: { cellWidth: 50 }, 5: { cellWidth: 30 },
       6: { cellWidth: 35 }, 7: { cellWidth: 60 }, 8: { cellWidth: 'auto' },
-    },
-    didParseCell: (data) => {
-      // This logic merges cells manually based on content.
-      if (data.cell.section === 'body') {
-        const currentItem = groupedItems.flat()[data.row.index];
-        const isFirstInGroup = data.row.index === 0 || body[data.row.index][1] !== '';
-
-        if (!isFirstInGroup) {
-          if (data.column.index === 0 || data.column.index === 1 || data.column.index >= 4) {
-            data.cell.text = ''; // Clear text for subsequent rows in a group
-          }
-        }
-      }
     },
     didDrawPage: (data) => {
       // Header
@@ -384,53 +365,6 @@ export async function generateTpCertPdf(
       doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
       footerY += 15;
       doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
-    },
-    willDrawCell: (data) => {
-        // Find which group this row belongs to
-        let rowIndex = data.row.index;
-        let groupIndex = -1;
-        let itemIndexInGroup = -1;
-        
-        for (let i = 0; i < groupedItems.length; i++) {
-            if (rowIndex < groupedItems[i].length) {
-                groupIndex = i;
-                itemIndexInGroup = rowIndex;
-                break;
-            }
-            rowIndex -= groupedItems[i].length;
-        }
-
-        if (groupIndex !== -1 && itemIndexInGroup > 0) {
-             // These columns should be 'merged' down
-            if ([0, 1, 4, 5, 6, 7, 8].includes(data.column.index)) {
-                // By not drawing the cell content, we simulate a rowspan
-                data.cell.text = '';
-            }
-        }
-    },
-    // Add this hook
-    didDrawCell: (data) => {
-        // We need to handle the rowspan drawing manually
-        if (data.cell.section === 'body') {
-            const group = groupedItems.find(g => g.some(item => body[data.row.index][2] === item.manufacturerSrNo));
-            const isFirstRowOfGroup = group && body[data.row.index][2] === group[0].manufacturerSrNo;
-
-            if (isFirstRowOfGroup) {
-                const groupSize = group.length;
-                // For each column that needs to be spanned, draw a rectangle over the borders
-                [0, 1, 4, 5, 6, 7, 8].forEach(colIndex => {
-                    const startCell = data.row.cells[colIndex];
-                    if (startCell) {
-                        const endRowIndex = data.row.index + groupSize - 1;
-                        if (endRowIndex < data.table.body.length) {
-                           const endCell = data.table.body[endRowIndex].cells[colIndex];
-                           // This is a simplified approach, a more robust one would calculate exact heights
-                           // but for now, we just ensure the text is in the first cell
-                        }
-                    }
-                });
-            }
-        }
     }
   });
 
