@@ -303,14 +303,14 @@ export async function generateTpCertPdf(
 
   const headers = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
   const columnStyles = {
-    0: { cellWidth: 25, halign: 'center', valign: 'middle' },
-    1: { cellWidth: 60, halign: 'center', valign: 'middle' },
-    2: { cellWidth: 150, halign: 'center', valign: 'middle' },
+    0: { cellWidth: 35, halign: 'center', valign: 'middle' },
+    1: { cellWidth: 80, halign: 'center', valign: 'middle' },
+    2: { cellWidth: 100, halign: 'center', valign: 'middle' },
     3: { cellWidth: 70, halign: 'center', valign: 'middle' },
-    4: { cellWidth: 40, halign: 'center', valign: 'middle' },
+    4: { cellWidth: 50, halign: 'center', valign: 'middle' },
     5: { cellWidth: 30, halign: 'center', valign: 'middle' },
     6: { cellWidth: 35, halign: 'center', valign: 'middle' },
-    7: { cellWidth: 50, halign: 'center', valign: 'middle' },
+    7: { cellWidth: 60, halign: 'center', valign: 'middle' },
     8: { cellWidth: 'auto', halign: 'center', valign: 'middle' },
   };
 
@@ -321,33 +321,35 @@ export async function generateTpCertPdf(
     const capacity = getCapacity(group[0].materialName);
     const groupSize = group.length;
 
-    // Header-like row for the group
-    bodyRows.push([
-      { content: srNo.toString(), styles: { fontStyle: 'bold' } },
-      { content: group[0].materialName, styles: { fontStyle: 'bold' } },
-      { content: '' }, // Empty cell for serial number column in header row
-      { content: '' }, // Empty cell for chest croll no
-      { content: capacity, styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: groupSize.toString(), styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: 'OLD', styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: '' },
-      { content: '' }
-    ]);
-    
-    // Individual item rows
-    group.forEach(item => {
-      const isHarness = item.materialName.toLowerCase().includes('harness');
-      bodyRows.push([
-        '', // Empty for Sr No
-        '', // Empty for Material Name
-        item.manufacturerSrNo,
-        isHarness ? (item.chestCrollNo || '') : '',
-        '', // Empty for Cap
-        '', // Empty for Qty
-        '', // Empty for New/Old
-        '',
-        ''
-      ]);
+    group.forEach((item, index) => {
+        const isHarness = item.materialName.toLowerCase().includes('harness');
+        if (index === 0) {
+            // First row of the group, contains all merged info
+            bodyRows.push([
+                { content: srNo, rowSpan: groupSize },
+                { content: item.materialName, rowSpan: groupSize },
+                item.manufacturerSrNo,
+                isHarness ? (item.chestCrollNo || '') : '',
+                { content: capacity, rowSpan: groupSize },
+                { content: groupSize, rowSpan: groupSize },
+                { content: 'OLD', rowSpan: groupSize },
+                { content: '', rowSpan: groupSize },
+                { content: '', rowSpan: groupSize },
+            ]);
+        } else {
+            // Subsequent rows contain only the unique serial numbers
+            bodyRows.push([
+                '',
+                '',
+                item.manufacturerSrNo,
+                isHarness ? (item.chestCrollNo || '') : '',
+                '',
+                '',
+                '',
+                '',
+                ''
+            ]);
+        }
     });
     srNo++;
   });
@@ -360,19 +362,6 @@ export async function generateTpCertPdf(
       styles: { fontSize: 7, valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
       columnStyles: columnStyles,
-      didParseCell: function (data: any) {
-        // This hook allows us to merge cells. We'll identify the group header rows.
-        if (data.cell.raw.styles?.fontStyle === 'bold') {
-          // This is a header row for a group.
-          if (data.column.index === 2 || data.column.index === 3 || data.column.index > 6) {
-            data.cell.colSpan = 1; // Prevent spanning for these columns
-          }
-          if (data.column.index < 2 || (data.column.index >= 4 && data.column.index <= 6)) {
-             // These are the cells we want to appear once per group
-             data.cell.styles.fillColor = [245, 245, 245];
-          }
-        }
-      }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
