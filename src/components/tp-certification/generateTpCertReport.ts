@@ -128,8 +128,8 @@ const groupItemsForExport = (items: CertItem[]) => {
 async function fetchImageAsBufferAndBase64(
   imgPath: string,
 ): Promise<{ buffer: ArrayBuffer; base64: string }> {
-  // Use the root-relative path directly, which works for files in the /public directory
-  const resp = await fetch(imgPath);
+  const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
+  const resp = await fetch(url);
   if (!resp.ok) throw new Error('Failed to fetch header image');
   const buffer = await resp.arrayBuffer();
 
@@ -288,28 +288,27 @@ export async function generateTpCertPdf(
 
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
-  const drawHeader = () => {
+  const drawHeaderAndFooter = (data: any) => {
+    // Header
     doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
-
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, {
-      align: 'right',
-    });
-
+    doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
     doc.setFontSize(12);
-    doc.text(
-      'Trivedi & Associates Technical Services (P.) Ltd.',
-      pageWidth / 2,
-      110,
-      { align: 'center' },
-    );
+    doc.text('Trivedi & Associates Technical Services (P.) Ltd.', pageWidth / 2, 110, { align: 'center' });
     doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
     doc.setFont("helvetica", "normal");
     doc.text("Subject : Testing & Certification", 40, 155);
+
+    // Footer
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const footerY = pageHeight - 60;
+    doc.setFontSize(10);
+    doc.text("Company Authorised Contact Person", 40, footerY);
+    doc.text("Name : VIJAY SAI", 40, footerY + 15);
+    doc.text("Contact Number : 919662095558", 40, footerY + 30);
   };
 
-  drawHeader();
 
   const headers = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
   const columnStyles = {
@@ -330,7 +329,7 @@ export async function generateTpCertPdf(
   groupedItems.forEach(group => {
     const first = group[0];
     const isHarnessGroup = first.materialName.toLowerCase().includes('harness');
-    const rows: any[][] = [];
+    const rows = [];
   
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
@@ -349,9 +348,15 @@ export async function generateTpCertPdf(
         ]);
       } else {
         rows.push([
-          // These cells are skipped because of rowspan
+          "",                  // SR No (skipped)
+          "",                  // Material name (skipped)
           item.manufacturerSrNo,
           isHarness ? (item.chestCrollNo || '') : '',
+          "",                  // cap skip
+          "",                  // qty skip
+          "",                  // old skip
+          "",                  // valid skip
+          ""                   // report skip
         ]);
       }
     });
@@ -368,29 +373,8 @@ export async function generateTpCertPdf(
       styles: { fontSize: 7, valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
       columnStyles: columnStyles,
-      didDrawPage: (data: any) => {
-          if (data.pageNumber > 1) {
-              drawHeader();
-          }
-      }
+      didDrawPage: drawHeaderAndFooter,
   });
-
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
-  doc.setFontSize(10);
-  const footerX = 40;
-  let footerY = finalY;
-
-  doc.text("Company Authorised Contact Person", footerX, footerY);
-  footerY += 15;
-  doc.text("Name : VIJAY SAI", footerX, footerY);
-  footerY += 15;
-  doc.text("Contact Number : 919662095558", footerX, footerY);
-  footerY += 15;
-  doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
-  footerY += 15;
-  doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
-  footerY += 20;
-  doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', footerX, footerY);
 
   doc.save("TP_Certification_List.pdf");
 }
@@ -503,7 +487,9 @@ export async function generateChecklistPdf(
   finalY = (doc as any).lastAutoTable.finalY + 15;
 
   doc.text('Next Semi-Annual Inspection Due Date:', margin, finalY);
-  doc.text(format(parseISO(checklist.nextDueDate), 'dd-MM-yyyy'), margin + 200, finalY);
+  if (checklist.nextDueDate) {
+    doc.text(format(parseISO(checklist.nextDueDate), 'dd-MM-yyyy'), margin + 200, finalY);
+  }
 
   doc.save(`Inspection_Checklist_${item.serialNumber}.pdf`);
 }
@@ -516,5 +502,3 @@ export async function generateChecklistExcel(
 ) {
   // Implementation for checklist Excel generation
 }
-
-    
