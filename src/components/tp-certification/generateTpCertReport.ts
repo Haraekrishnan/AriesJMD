@@ -376,65 +376,42 @@ export async function generateTpCertPdf(
   let srNo = 1;
 
   groupedItems.forEach(group => {
-    const first = group[0];
-    const isHarnessGroup = first.materialName.toLowerCase().includes('harness');
-    const rows: any[] = [];
-
+    const rows: any[][] = [];
+  
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
-
+  
       if (index === 0) {
         rows.push([
-          {
-            content: srNo.toString(),
-            rowSpan: group.length,
-            styles: { valign: 'middle', halign: 'center' },
-          },
-          {
-            content: first.materialName,
-            rowSpan: group.length,
-            styles: { valign: 'middle', halign: 'center' },
-          },
+          { content: srNo.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           item.manufacturerSrNo,
-          isHarness ? item.chestCrollNo || '' : '',
-          {
-            content: getCapacity(first.materialName),
-            rowSpan: group.length,
-            styles: { valign: 'middle', halign: 'center' },
-          },
-          {
-            content: group.length.toString(),
-            rowSpan: group.length,
-            styles: { valign: 'middle', halign: 'center' },
-          },
-          {
-            content: 'OLD',
-            rowSpan: group.length,
-            styles: { valign: 'middle', halign: 'center' },
-          },
-          { content: '', rowSpan: group.length },
-          { content: '', rowSpan: group.length },
+          isHarness ? (item.chestCrollNo || '') : '',
+          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: group.length.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: "OLD", rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: "", rowSpan: group.length },
+          { content: "", rowSpan: group.length }
         ]);
       } else {
         rows.push([
-          '', // SR No (skipped)
-          '', // Material name (skipped)
+          "",                  // SR No (skipped)
+          "",                  // Material name (skipped)
           item.manufacturerSrNo,
-          isHarness ? item.chestCrollNo || '' : '',
-          '', // cap skip
-          '', // qty skip
-          '', // old skip
-          '', // valid skip
-          '', // report skip
+          isHarness ? (item.chestCrollNo || '') : '',
+          "",                  // cap skip
+          "",                  // qty skip
+          "",                  // old skip
+          "",                  // valid skip
+          ""                   // report skip
         ]);
       }
     });
-
+  
     bodyRows.push(...rows);
     srNo++;
   });
-
-
+  
   (doc as any).autoTable({
     head: [headers],
     body: bodyRows,
@@ -474,6 +451,7 @@ export async function generateTpCertPdf(
   doc.save('TP_Certification_List.pdf');
 }
 
+
 export async function generateChecklistPdf(
   checklist: any,
   item: any,
@@ -484,11 +462,11 @@ export async function generateChecklistPdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
   const contentWidth = pageWidth - margin * 2;
-
+  
   // Header
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
-  doc.addImage(imgDataUrl, 'PNG', margin, 20, contentWidth, 60);
+  doc.addImage(imgDataUrl, "PNG", margin, 20, contentWidth, 60);
 
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
@@ -496,18 +474,8 @@ export async function generateChecklistPdf(
 
   // Details Table
   const detailsBody = [
-    [
-      'Product Name',
-      item.name,
-      'Date of Purchase',
-      checklist.purchaseDate ? format(parseISO(checklist.purchaseDate), 'dd-MM-yyyy') : '',
-    ],
-    [
-      'Model',
-      item.name,
-      'Date of First Use',
-      checklist.firstUseDate ? format(parseISO(checklist.firstUseDate), 'dd-MM-yyyy') : '',
-    ],
+    ['Product Name', item.name, 'Date of Purchase', checklist.purchaseDate ? format(parseISO(checklist.purchaseDate), 'dd-MM-yyyy') : ''],
+    ['Model', item.name, 'Date of First Use', checklist.firstUseDate ? format(parseISO(checklist.firstUseDate), 'dd-MM-yyyy') : ''],
     ['Serial No.', item.serialNumber, 'Year of Manufacture', checklist.yearOfManufacture || ''],
     ['ARIES ID', item.ariesId || '', 'Procedure Ref. No', 'ARIES-RAOP-001 [Rev 07]'],
     ['Known Product History', { content: checklist.knownHistory || '', colSpan: 3 }],
@@ -528,47 +496,35 @@ export async function generateChecklistPdf(
   let finalY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Inspection Result', margin, finalY);
+  doc.text("Inspection Result", margin, finalY);
   finalY += 5;
 
   const inspectionBody = [
-    ['Preliminary Observation', checklist.findings?.preliminaryObservation || 'N/A'],
-    ['Condition of the straps', checklist.findings?.straps || 'N/A'],
-    ['Condition of Core', checklist.findings?.conditionCore || 'N/A'],
-    ['Checking the attachment points', checklist.findings?.attachmentPoints || 'N/A'],
-    [
-      'Checking the condition of the adjustment buckles',
-      checklist.findings?.adjustmentBuckles || 'N/A',
-    ],
-    [
-      'Checking the condition of the comfort parts',
-      checklist.findings?.comfortParts || 'N/A',
-    ],
-    [
-      'Checking the condition of the chest/seat harness connector (if any)',
-      checklist.findings?.harnessConnector || 'N/A',
-    ],
-    [
-      'Checking the condition of the CROLL rope clamp (if any)',
-      checklist.findings?.crollClamp || 'N/A',
-    ],
-    ['Checking the condition of the frame', checklist.findings?.frame || 'N/A'],
-    ['Checking the cam', checklist.findings?.cam || 'N/A'],
-    ['Checking the safety catch', checklist.findings?.safetyCatch || 'N/A'],
-    ['Function check', checklist.findings?.functionCheck || 'N/A'],
+      ['Preliminary Observation', checklist.findings?.preliminaryObservation || 'N/A'],
+      ['Condition of the straps', checklist.findings?.straps || 'N/A'],
+      ['Condition of Core', checklist.findings?.conditionCore || 'N/A'],
+      ['Checking the attachment points', checklist.findings?.attachmentPoints || 'N/A'],
+      ['Checking the condition of the adjustment buckles', checklist.findings?.adjustmentBuckles || 'N/A'],
+      ['Checking the condition of the comfort parts', checklist.findings?.comfortParts || 'N/A'],
+      ['Checking the condition of the chest/seat harness connector (if any)', checklist.findings?.harnessConnector || 'N/A'],
+      ['Checking the condition of the CROLL rope clamp (if any)', checklist.findings?.crollClamp || 'N/A'],
+      ['Checking the condition of the frame', checklist.findings?.frame || 'N/A'],
+      ['Checking the cam', checklist.findings?.cam || 'N/A'],
+      ['Checking the safety catch', checklist.findings?.safetyCatch || 'N/A'],
+      ['Function check', checklist.findings?.functionCheck || 'N/A'],
   ];
 
   (doc as any).autoTable({
-    head: [['Points to be checked', 'Condition (G/TM/TR/R/NA)']],
-    body: inspectionBody,
-    startY: finalY,
-    theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 3 },
-    headStyles: { fontStyle: 'bold', fillColor: [230, 230, 230] },
-    columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'center' } },
+      head: [['Points to be checked', 'Condition (G/TM/TR/R/NA)']],
+      body: inspectionBody,
+      startY: finalY,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fontStyle: 'bold', fillColor: [230, 230, 230] },
+      columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'center' } },
   });
   finalY = (doc as any).lastAutoTable.finalY + 15;
-
+  
   doc.text('Comments (if any):', margin, finalY);
   finalY += 5;
   doc.setDrawColor(0);
@@ -581,7 +537,7 @@ export async function generateChecklistPdf(
   doc.rect(margin, finalY, contentWidth, 30);
   doc.text(checklist.remarks || '', margin + 5, finalY + 10, { maxWidth: contentWidth - 10 });
   finalY += 40;
-
+  
   doc.setFont('helvetica', 'bold');
   doc.text('Verdict:', margin, finalY);
   finalY += 5;
@@ -594,8 +550,8 @@ export async function generateChecklistPdf(
     body: [
       [
         `Inspected by:\nName: ${inspector.name}\nDesignation: ${inspector.role}`,
-        `Reviewed by:\nName: ${reviewer.name}\nDesignation: ${reviewer.role}`,
-      ],
+        `Reviewed by:\nName: ${reviewer.name}\nDesignation: ${reviewer.role}`
+      ]
     ],
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 10 },
