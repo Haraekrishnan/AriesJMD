@@ -1,3 +1,4 @@
+
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -127,8 +128,8 @@ const groupItemsForExport = (items: CertItem[]) => {
 async function fetchImageAsBufferAndBase64(
   imgPath: string,
 ): Promise<{ buffer: ArrayBuffer; base64: string }> {
-  const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
-  const resp = await fetch(url);
+  // Use the root-relative path directly, which works for files in the /public directory
+  const resp = await fetch(imgPath);
   if (!resp.ok) throw new Error('Failed to fetch header image');
   const buffer = await resp.arrayBuffer();
 
@@ -287,18 +288,28 @@ export async function generateTpCertPdf(
 
   const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
 
-  doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
+  const drawHeader = () => {
+    doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
 
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, {
+      align: 'right',
+    });
 
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text('Trivedi & Associates Technical Services (P.) Ltd.', pageWidth / 2, 110, { align: 'center' });
-  doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
-  doc.setFont("helvetica", "normal");
-  doc.text("Subject : Testing & Certification", 40, 155);
+    doc.setFontSize(12);
+    doc.text(
+      'Trivedi & Associates Technical Services (P.) Ltd.',
+      pageWidth / 2,
+      110,
+      { align: 'center' },
+    );
+    doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
+    doc.setFont("helvetica", "normal");
+    doc.text("Subject : Testing & Certification", 40, 155);
+  };
+
+  drawHeader();
 
   const headers = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
   const columnStyles = {
@@ -311,14 +322,15 @@ export async function generateTpCertPdf(
     6: { cellWidth: 35, halign: 'center', valign: 'middle' },
     7: { cellWidth: 50, halign: 'center', valign: 'middle' },
     8: { cellWidth: 'auto', halign: 'center', valign: 'middle' },
-  } as any;
+  };
 
   const bodyRows: any[][] = [];
   let srNo = 1;
 
   groupedItems.forEach(group => {
+    const first = group[0];
+    const isHarnessGroup = first.materialName.toLowerCase().includes('harness');
     const rows: any[][] = [];
-    const isHarnessGroup = group[0].materialName.toLowerCase().includes('harness');
   
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
@@ -326,21 +338,21 @@ export async function generateTpCertPdf(
       if (index === 0) {
         rows.push([
           { content: srNo.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: first.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           item.manufacturerSrNo,
           isHarness ? (item.chestCrollNo || '') : '',
-          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: getCapacity(first.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: group.length.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: "OLD", rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           { content: "", rowSpan: group.length },
           { content: "", rowSpan: group.length }
         ]);
       } else {
-        const newRow = [];
-        // These columns have rowspan, so for subsequent rows, we just push the non-spanned cells
-        newRow.push(item.manufacturerSrNo);
-        newRow.push(isHarness ? (item.chestCrollNo || '') : '');
-        rows.push(newRow);
+        rows.push([
+          // These cells are skipped because of rowspan
+          item.manufacturerSrNo,
+          isHarness ? (item.chestCrollNo || '') : '',
+        ]);
       }
     });
   
@@ -356,6 +368,11 @@ export async function generateTpCertPdf(
       styles: { fontSize: 7, valign: 'middle' },
       headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
       columnStyles: columnStyles,
+      didDrawPage: (data: any) => {
+          if (data.pageNumber > 1) {
+              drawHeader();
+          }
+      }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
@@ -407,14 +424,14 @@ export async function generateChecklistPdf(
     ['ARIES ID', item.ariesId || '', 'Procedure Ref. No', 'ARIES-RAOP-001 [Rev 07]'],
     ['Known Product History', { content: checklist.knownHistory || '', colSpan: 3 }],
   ];
-  doc.autoTable({
+  (doc as any).autoTable({
     startY: 120,
     body: detailsBody,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fontStyle: 'bold' },
     columnStyles: { 0: { fontStyle: 'bold' }, 2: { fontStyle: 'bold' } },
-    didDrawCell: (data) => {
+    didDrawCell: (data: any) => {
       if (data.row.index > 3) data.cell.styles.fontStyle = 'bold';
     }
   });
@@ -441,7 +458,7 @@ export async function generateChecklistPdf(
       ['Function check', checklist.findings?.functionCheck || 'N/A'],
   ];
 
-  doc.autoTable({
+  (doc as any).autoTable({
       head: [['Points to be checked', 'Condition (G/TM/TR/R/NA)']],
       body: inspectionBody,
       startY: finalY,
@@ -472,7 +489,7 @@ export async function generateChecklistPdf(
   doc.text(checklist.verdict || '', margin + 5, finalY + 10, { maxWidth: contentWidth - 10 });
   finalY += 45;
 
-  doc.autoTable({
+  (doc as any).autoTable({
     startY: finalY,
     body: [
       [
@@ -499,3 +516,5 @@ export async function generateChecklistExcel(
 ) {
   // Implementation for checklist Excel generation
 }
+
+    
