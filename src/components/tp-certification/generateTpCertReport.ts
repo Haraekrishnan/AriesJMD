@@ -292,38 +292,44 @@ export async function generateTpCertPdf(
   const bodyRows: any[][] = [];
   let srNo = 1;
 
-  groupedItems.forEach((group) => {
-    const capacity = getCapacity(group[0].materialName);
-    const groupSize = group.length;
-
+  groupedItems.forEach(group => {
+    const first = group[0];
+    const isHarnessGroup = first.materialName.toLowerCase().includes('harness');
+    const rows: any[] = [];
+  
     group.forEach((item, index) => {
       const isHarness = item.materialName.toLowerCase().includes('harness');
-      let rowData;
+  
       if (index === 0) {
-        rowData = [
-          { content: srNo, rowSpan: groupSize },
-          { content: item.materialName, rowSpan: groupSize },
-          { content: item.manufacturerSrNo },
-          { content: isHarness ? (item.chestCrollNo || '') : '' },
-          { content: capacity, rowSpan: groupSize },
-          { content: groupSize, rowSpan: groupSize },
-          { content: 'OLD', rowSpan: groupSize },
-          { content: '', rowSpan: groupSize },
-          { content: '', rowSpan: groupSize },
-        ];
-      } else {
-        rowData = [
-          '', '', // These cells are spanned
+        rows.push([
+          { content: srNo.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: first.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
           item.manufacturerSrNo,
           isHarness ? (item.chestCrollNo || '') : '',
-          '', '', '', '', '' // Spanned cells
-        ];
+          { content: getCapacity(first.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: group.length.toString(), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: "OLD", rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
+          { content: "", rowSpan: group.length },
+          { content: "", rowSpan: group.length }
+        ]);
+      } else {
+        rows.push([
+          "",                  // SR No (skipped)
+          "",                  // Material name (skipped)
+          item.manufacturerSrNo,
+          isHarness ? (item.chestCrollNo || '') : '',
+          "",                  // cap skip
+          "",                  // qty skip
+          "",                  // old skip
+          "",                  // valid skip
+          ""                   // report skip
+        ]);
       }
-      bodyRows.push(rowData);
     });
+  
+    bodyRows.push(...rows);
     srNo++;
   });
-
 
   doc.autoTable({
     head: [headers],
