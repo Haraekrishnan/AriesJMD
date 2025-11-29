@@ -42,7 +42,7 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
     Rejected: 'destructive',
 };
 
-const RequestCard = ({ req }: { req: InternalRequest }) => {
+const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest; isCompletedSection?: boolean }) => {
     const { user, users, roles, updateInternalRequestStatus, updateInternalRequestItemStatus, markInternalRequestAsViewed, deleteInternalRequest, forceDeleteInternalRequest, acknowledgeInternalRequest, addInternalRequestComment, inventoryItems, resolveInternalRequestDispute } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
@@ -77,7 +77,6 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     const canMarkAsCompleted = useMemo(() => {
         if (!canApprove) return false;
-        // The button should appear if there are no items that are still in a "waiting" state.
         const unresolvedStatuses: InternalRequestItemStatus[] = ['Pending', 'Approved'];
         return !req.items.some(item => unresolvedStatuses.includes(item.status));
     }, [canApprove, req.items]);
@@ -280,7 +279,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 </AlertDialogContent>
                             </AlertDialog>
                         )}
-                        {canMarkAsCompleted && (
+                        {canMarkAsCompleted && !isCompletedSection && (
                             <Button size="sm" onClick={() => updateInternalRequestStatus(req.id, 'Issued', 'Request manually completed as all items were handled.')}><CheckCheck className="mr-2 h-4 w-4"/>Mark as Completed</Button>
                         )}
                     </div>
@@ -372,7 +371,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
