@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -500,7 +499,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setStoredUserId(foundUser.id);
             addActivityLog(foundUser.id, 'User Logged In');
             
-            // Let the useEffect triggered by setStoredUserId handle setting user and loading state
+            // The loading state will be set to false in the useEffect that watches storedUserId
             return { success: true, user: foundUser };
         }
     }
@@ -2072,7 +2071,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         rejoiningDate: 'N/A', // This needs logic to find last rejoin date
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility,
+        eligibility: requestData.eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
@@ -2565,34 +2564,28 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
     set(newRequestRef, newRequest);
     addActivityLog(user.id, 'Inventory Transfer Request Created');
   
-    // Instead of checking for approve_store_requests permission,
-// send only to Store Incharge and Assistant Store Incharge
-const approvers = users.filter(u => 
-    (u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge') && u.projectIds?.includes(requestData.toProjectId)
-);
-
-const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-
-approvers.forEach(approver => {
-  if (approver.email) {
-    createAndSendNotification(
-      approver.email,
-      `Inventory Transfer Request from ${user.name}`,
-      'New Inventory Transfer Request',
-      {
-        'Requester': user.name,
-        'From': fromProjectName || 'Unknown',
-        'To': toProjectName || 'Unknown',
-        'Reason': requestData.reason,
-        'Item Count': requestData.items.length.toString(),
-      },
-      `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
-      'Review Request'
-    );
-  }
-});
-
+    const approvers = users.filter(u => can.approve_store_requests);
+    const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+    const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+  
+    approvers.forEach(approver => {
+      if (approver.email) {
+        createAndSendNotification(
+          approver.email,
+          `Inventory Transfer Request from ${user.name}`,
+          'New Inventory Transfer Request',
+          {
+            'Requester': user.name,
+            'From': fromProjectName || 'Unknown',
+            'To': toProjectName || 'Unknown',
+            'Reason': requestData.reason,
+            'Item Count': requestData.items.length.toString(),
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/store-inventory`,
+          'Review Request'
+        );
+      }
+    });
   }, [user, addActivityLog, users, can.approve_store_requests, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
   
   const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
@@ -3946,4 +3939,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
