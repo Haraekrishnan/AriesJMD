@@ -498,14 +498,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (foundUser.password === pass) {
             setStoredUserId(foundUser.id);
-            // Don't call setLoading(false) here, let the useEffect for storedUserId handle it
             addActivityLog(foundUser.id, 'User Logged In');
+            // Don't call setUser or setLoading here, let the effects handle it.
             return { success: true, user: foundUser, status: foundUser.status || 'active' };
         }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -761,53 +761,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [user, tasksById, users]);
   
-  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-
-    if (notify) {
-        const requester = users.find(u => u.id === request.requesterId);
-        if(requester && requester.email) {
-            createAndSendNotification(
-                requester.email,
-                `New comment on your store request #${request.id.slice(-6)}`,
-                `New comment from ${user.name}`,
-                {
-                    'Request ID': `#${request.id.slice(-6)}`,
-                    'Comment': commentText
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-                'View Request'
-            );
-        }
-    }
-  }, [user, internalRequestsById, users]);
-  
-  const addManagementRequestComment = useCallback((requestId: string, commentText: string) => {
-    if (!user) return;
-    const request = managementRequestsById[requestId];
-    if (!request) return;
-
-    const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`managementRequests/${requestId}/viewedByRequester`] = false;
-
-    update(ref(rtdb), updates);
-  }, [user, managementRequestsById]);
-
   const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
     if (!user) return;
 
@@ -967,7 +920,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const task = tasksById[taskId];
     if (!task) return;
 
-    const updates: {[key: string]: any} = {};
+    const updates: { [key: string]: any } = {};
     updates[`/tasks/${taskId}/subtasks/${user.id}/status`] = newStatus;
     updates[`/tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
     
@@ -1701,6 +1654,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, "Internal Request Created");
   }, [user, addActivityLog]);
   
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`internalRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+
+    if (notify) {
+        const requester = users.find(u => u.id === request.requesterId);
+        if(requester && requester.email) {
+            createAndSendNotification(
+                requester.email,
+                `New comment on your store request #${request.id.slice(-6)}`,
+                `New comment from ${user.name}`,
+                {
+                    'Request ID': `#${request.id.slice(-6)}`,
+                    'Comment': commentText
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
+                'View Request'
+            );
+        }
+    }
+  }, [user, internalRequestsById, users]);
+  
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -1853,6 +1838,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     set(newRef, newRequest);
   }, [user]);
 
+  const addManagementRequestComment = useCallback((requestId: string, commentText: string) => {
+    if (!user) return;
+    const request = managementRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`managementRequests/${requestId}/viewedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+  }, [user, managementRequestsById]);
+  
   const updateManagementRequest = useCallback((request: ManagementRequest) => {
     const { id, ...data } = request;
     update(ref(rtdb, `managementRequests/${id}`), data);
@@ -2446,6 +2446,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     });
   }, [user, users, addActivityLog]);
+  
+  const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = certificateRequestsById[requestId];
+    if (!request) return;
+  
+    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+  
+    update(ref(rtdb), updates);
+  }, [user, certificateRequestsById]);
   
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
@@ -3403,3 +3418,5 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
+
