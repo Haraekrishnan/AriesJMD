@@ -77,6 +77,7 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
 
     const canMarkAsCompleted = useMemo(() => {
         if (!canApprove) return false;
+        // The button should appear if there are no items that are still in a "waiting" state.
         const unresolvedStatuses: InternalRequestItemStatus[] = ['Pending', 'Approved'];
         return !req.items.some(item => unresolvedStatuses.includes(item.status));
     }, [canApprove, req.items]);
@@ -380,4 +381,3 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
-
