@@ -607,7 +607,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             );
         }
     });
-  }, [passwordResetRequestsById, createAndSendNotification]);
+  }, [passwordResetRequestsById]);
 
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
@@ -1590,7 +1590,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         
         const existingProfile = manpowerProfiles.find(p => p.hardCopyFileNo === row[20]); 
 
-        const parseDateExcel = (date: any): string | null => {
+        const parseExcelDate = (date: any): string | null => {
             if (date instanceof Date && isValid(date)) {
                 return date.toISOString();
             }
@@ -1614,15 +1614,15 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
           workOrderNumber: String(workOrderNumber || ''),
           labourLicenseNo: String(labourLicenseNo || ''),
           eic: eic?.trim(),
-          workOrderExpiryDate: parseDateExcel(workOrderExpiryDate),
-          labourLicenseExpiryDate: parseDateExcel(labourLicenseExpiryDate),
-          joiningDate: parseDateExcel(joiningDate),
+          workOrderExpiryDate: parseExcelDate(workOrderExpiryDate),
+          labourLicenseExpiryDate: parseExcelDate(labourLicenseExpiryDate),
+          joiningDate: parseExcelDate(joiningDate),
           epNumber: String(epNumber || ''),
           aadharNumber: String(aadharNumber || ''),
-          dob: parseDateExcel(dob),
+          dob: parseExcelDate(dob),
           uanNumber: String(uanNumber || ''),
           wcPolicyNumber: String(wcPolicyNumber || ''),
-          wcPolicyExpiryDate: parseDateExcel(wcPolicyExpiryDate),
+          wcPolicyExpiryDate: parseExcelDate(wcPolicyExpiryDate),
           cardCategory: cardCategory,
           cardType: cardType,
           status: 'Working',
@@ -1981,7 +1981,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     if (!user) return;
     const request = managementRequests.find(r => r.id === requestId);
     if (!request) return;
-
+    
     const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
     const newComment: Omit<Comment, 'id'> = { userId: user.id, text: `Status changed to ${status}: ${comment}`, date: new Date().toISOString(), eventId: requestId };
     
@@ -3941,4 +3941,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
