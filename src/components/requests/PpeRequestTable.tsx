@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -32,6 +33,13 @@ const statusVariant: Record<PpeRequestStatus, 'default' | 'secondary' | 'destruc
   Issued: 'success',
   Rejected: 'destructive',
   Disputed: 'destructive',
+};
+
+const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondary' | 'destructive' | 'success'> = {
+    Pending: 'secondary',
+    Approved: 'default',
+    Issued: 'success',
+    Rejected: 'destructive',
 };
 
 const RequestCard = ({ req }: { req: PpeRequest }) => {
@@ -344,7 +352,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                             <AlertDialogDescription>Please review the details before confirming.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="space-y-4 text-sm">
-                            <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 p-2 border rounded-md">
+                             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 p-2 border rounded-md">
                                 <div className="font-semibold">Employee:</div>
                                 <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
 
@@ -366,6 +374,14 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                         {selectedRequest.requestType}
                                     </Badge>
                                 </div>
+                                {selectedRequest.eligibility && (
+                                    <>
+                                        <div className="font-semibold">Eligibility:</div>
+                                        <div className={cn(selectedRequest.eligibility.eligible ? "text-green-600" : "text-destructive")}>
+                                            {selectedRequest.eligibility.reason}
+                                        </div>
+                                    </>
+                                )}
 
                                 <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
                                 <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks || 'Nil'}</div>
@@ -391,7 +407,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                            {action !== 'Rejected' && (
                             <Button variant="destructive" onClick={() => handleConfirmAction('Rejected')}>Reject</Button>
                            )}
-                           <Button onClick={() => handleConfirmAction()}>Confirm {action}</Button>
+                           <Button onClick={() => handleConfirmAction()} disabled={action === 'Issued' && stockInfo.startsWith('0')}>{action === 'Issued' ? 'Confirm Issued' : `Confirm ${action}`}</Button>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
