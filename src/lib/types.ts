@@ -596,7 +596,7 @@ export type PpeRequest = {
 };
 
 
-export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired' | 'Moved to another project';
+export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired' | 'Moved to another project' | 'Quarantine';
 export type InventoryCategory = 'General' | 'Daily Consumable' | 'Job Consumable';
 
 export type InventoryItem = {
@@ -770,6 +770,15 @@ export type Announcement = {
   }[];
   dismissedBy?: string[];
   notifyAll?: boolean;
+};
+
+export type DailyPlannerComment = {
+  id: string;
+  plannerUserId: string; // The user whose planner this comment belongs to
+  day: string; // YYYY-MM-DD
+  comments: Comment[];
+  lastUpdated: string;
+  viewedBy: string[];
 };
 
 export type Bed = {

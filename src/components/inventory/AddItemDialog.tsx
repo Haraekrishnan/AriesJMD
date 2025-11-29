@@ -22,7 +22,7 @@ const itemSchema = z.object({
   serialNumber: z.string().optional(),
   ariesId: z.string().optional(),
   chestCrollNo: z.string().optional(),
-  status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project']),
+  status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine']),
   projectId: z.string().min(1, 'Location is required'),
   movedToProjectId: z.string().optional(),
   plantUnit: z.string().optional(),
@@ -53,7 +53,7 @@ interface AddItemDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project'];
+const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 const categoryOptions: InventoryCategory[] = ['General', 'Daily Consumable', 'Job Consumable'];
 const excludedLocations = ['Store', 'Office', 'Kitchen Duty'];
 

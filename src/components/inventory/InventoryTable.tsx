@@ -45,7 +45,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
     const now = new Date();
     const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
     const displayStatus = isExpired ? 'Expired' : item.status;
-    const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' ? 'destructive' : 'secondary';
+    const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' || displayStatus === 'Quarantine' ? 'destructive' : 'secondary';
 
     return (
         <div className="border-t p-4 space-y-3">
@@ -356,7 +356,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                 const now = new Date();
                                                 const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
                                                 const displayStatus = isExpired ? 'Expired' : item.status;
-                                                const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' ? 'destructive' : 'secondary';
+                                                const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' || displayStatus === 'Quarantine' ? 'destructive' : 'secondary';
                                                 return (
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.serialNumber}</TableCell>
