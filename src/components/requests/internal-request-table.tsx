@@ -77,8 +77,8 @@ const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest
 
     const canMarkAsCompleted = useMemo(() => {
         if (!canApprove) return false;
-        const unresolvedStatuses: InternalRequestItemStatus[] = ['Pending', 'Approved'];
-        return !req.items.some(item => unresolvedStatuses.includes(item.status));
+        // Check if there are NO items in 'Pending' or 'Approved' status
+        return !req.items.some(item => item.status === 'Pending' || item.status === 'Approved');
     }, [canApprove, req.items]);
 
     const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
@@ -167,7 +167,7 @@ const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest
                                         {item.remarks && <p className="text-xs italic text-muted-foreground">"{item.remarks}"</p>}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <Badge variant={itemStatusVariant[item.status] || 'secondary'} className="h-5">{item.status}</Badge>
+                                        <Badge variant={itemStatusVariant[item.status] || 'secondary'} className="h-5">{item.status || 'Pending'}</Badge>
                                         {canApprove && (
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger>
@@ -380,3 +380,4 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
     </div>
   );
 }
+
