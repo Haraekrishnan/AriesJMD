@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -362,7 +361,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
 
                                 <div className="font-semibold">Request Type:</div>
-                                <div><Badge variant={selectedRequest.requestType === 'Replacement' ? 'destructive' : 'success'}>{selectedRequest.requestType}</Badge></div>
+                                <div>
+                                    <Badge variant={selectedRequest.requestType === 'Replacement' ? 'destructive' : 'success'}>
+                                        {selectedRequest.requestType}
+                                    </Badge>
+                                </div>
 
                                 <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
                                 <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks || 'Nil'}</div>
@@ -379,7 +382,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 )}
                             </div>
                             <div>
-                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' || action === 'Query' ? '(Required)' : '(Optional)'}</Label>
+                                <Label htmlFor="comment">Comment {action === 'Rejected' || action === 'Disputed' ? '(Required)' : '(Optional)'}</Label>
                                 <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                             </div>
                         </div>
