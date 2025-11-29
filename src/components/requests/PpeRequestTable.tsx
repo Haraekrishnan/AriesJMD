@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -68,10 +69,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
         setComment(act === 'Disputed' ? 'I have not received the issued item. Please investigate.' : '');
     };
 
-    const handleConfirmAction = () => {
-        if (!selectedRequest || !action) return;
+    const handleConfirmAction = (confirmedAction?: 'Approved' | 'Rejected' | 'Issued' | 'Disputed') => {
+        const finalAction = confirmedAction || action;
+        if (!selectedRequest || !finalAction) return;
 
-        if (action === 'Query') {
+        if (finalAction === 'Query') {
             if (!comment.trim()) {
                 toast({ title: 'Comment required for a query.', variant: 'destructive'});
                 return;
@@ -79,12 +81,12 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             addPpeRequestComment(selectedRequest.id, comment, true); // Send notification
             toast({ title: 'Query Sent' });
         } else {
-            if (!comment.trim() && (action === 'Rejected' || action === 'Disputed')) {
+            if (!comment.trim() && (finalAction === 'Rejected' || finalAction === 'Disputed')) {
                  toast({ title: 'Comment required', variant: 'destructive'});
                  return;
             }
-            updatePpeRequestStatus(selectedRequest.id, action, comment);
-            toast({ title: `Request ${action}` });
+            updatePpeRequestStatus(selectedRequest.id, finalAction, comment);
+            toast({ title: `Request ${finalAction}` });
         }
         
         setSelectedRequest(null);
@@ -360,7 +362,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
 
                                 <div className="font-semibold">Request Type:</div>
-                                <div><Badge variant={selectedRequest.requestType === 'Replacement' ? 'destructive' : 'secondary'}>{selectedRequest.requestType}</Badge></div>
+                                <div><Badge variant={selectedRequest.requestType === 'Replacement' ? 'destructive' : 'success'}>{selectedRequest.requestType}</Badge></div>
 
                                 <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
                                 <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks || 'Nil'}</div>
@@ -382,8 +384,11 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                             </div>
                         </div>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleConfirmAction()}>Confirm</AlertDialogAction>
+                           <Button variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
+                           {action !== 'Rejected' && (
+                            <Button variant="destructive" onClick={() => handleConfirmAction('Rejected')}>Reject</Button>
+                           )}
+                           <Button onClick={() => handleConfirmAction()}>Confirm {action}</Button>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
