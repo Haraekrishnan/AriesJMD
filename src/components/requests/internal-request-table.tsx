@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare, CheckCheck } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import type { InternalRequest, InternalRequestStatus, Comment, InternalRequestItem, InternalRequestItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -74,6 +74,12 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
     }, [commentsArray, isRequester, user]);
     
     const hasUpdate = (isRequester && !req.viewedByRequester) || hasUnreadCommentForRequester;
+
+    const canMarkAsCompleted = useMemo(() => {
+        if (!canApprove) return false;
+        const unresolvedStatuses: InternalRequestItemStatus[] = ['Pending', 'Approved'];
+        return !req.items.some(item => unresolvedStatuses.includes(item.status));
+    }, [canApprove, req.items]);
 
     const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
     const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
@@ -273,6 +279,9 @@ const RequestCard = ({ req }: { req: InternalRequest }) => {
                                 </AlertDialogContent>
                             </AlertDialog>
                         )}
+                        {canMarkAsCompleted && (
+                            <Button size="sm" onClick={() => updateInternalRequestStatus(req.id, 'Issued', 'Request manually completed as all items were handled.')}><CheckCheck className="mr-2 h-4 w-4"/>Mark as Completed</Button>
+                        )}
                     </div>
                 </CardFooter>
 
@@ -372,4 +381,3 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
   );
 }
 
-    
