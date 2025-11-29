@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -549,47 +548,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, updateUser, toast]);
   
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-  const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-  const snapshot = await get(usersRef);
-  if (!snapshot.exists()) {
-    return false;
-  }
-
-  const userData = snapshot.val();
-  const userId = Object.keys(userData)[0];
-  const targetUser: User = { id: userId, ...userData[userId] };
-
-  const newRequest: Omit<PasswordResetRequest, 'id'> = {
-    userId: targetUser.id,
-    email: targetUser.email,
-    date: new Date().toISOString(),
-    status: 'pending',
-  };
-
-  const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
-  await set(newRequestRef, newRequest);
-
-  const admins = users.filter(u => u.role === 'Admin');
-  admins.forEach(admin => {
-    if (admin.email) {
-      createAndSendNotification(
-        admin.email,
-        `Password Reset Request from ${targetUser.email}`,
-        'Password Reset Request',
-        { 'User Email': targetUser.email },
-        `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-        'View Requests'
-      );
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) {
+        return false;
     }
-  });
+    const userData = snapshot.val();
+    const userId = Object.keys(userData)[0];
+    const targetUser = { id: userId, ...userData[userId] };
+    
+    const newRequest: Omit<PasswordResetRequest, 'id'> = {
+      userId: targetUser.id,
+      email: targetUser.email,
+      date: new Date().toISOString(),
+      status: 'pending',
+    };
+    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+    await set(newRequestRef, newRequest);
 
-  return true;
-}, [users]);
+    const admins = users.filter(u => u.role === 'Admin');
+    admins.forEach(admin => {
+        if (admin.email) {
+            createAndSendNotification(
+                admin.email,
+                `Password Reset Request from ${targetUser.email}`,
+                'Password Reset Request',
+                { 'User Email': targetUser.email },
+                `${process.env.NEXT_PUBLIC_APP_URL}/account`,
+                'View Requests'
+            );
+        }
+    });
+
+    return true;
+  }, [users]);
   
   const generateResetCode = useCallback((requestId: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
-  }, []);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const request = passwordResetRequestsById[requestId];
+
+    if (!request) {
+      console.error("Password reset request not found");
+      return;
+    }
+
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code }).then(() => {
+        if (request.email) {
+            createAndSendNotification(
+                request.email,
+                'Your Password Reset Code',
+                'Password Reset Code',
+                {
+                    'Your one-time reset code is': code,
+                    'Instructions': 'Please enter this code on the login page to reset your password.'
+                },
+                `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+                'Reset Password'
+            );
+        }
+    });
+  }, [passwordResetRequestsById, createAndSendNotification]);
 
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
@@ -2049,7 +2067,7 @@ updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
         rejoiningDate: 'N/A', // This needs logic to find last rejoin date
         lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd MMM, yyyy') : 'N/A',
         stockInfo,
-        eligibility: requestData.eligibility,
+        eligibility,
         newRequestJustification: requestData.newRequestJustification,
     };
 
