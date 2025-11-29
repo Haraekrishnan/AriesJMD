@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -80,7 +81,7 @@ type AppContextType = {
   logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
-  generateResetCode: (requestId: string) => void;
+  generateResetCode: (requestId: string) => Promise<void>;
   resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
   lockUser: (userId: string) => void;
@@ -583,31 +584,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   }, [users]);
   
-  const generateResetCode = useCallback((requestId: string) => {
+  const generateResetCode = useCallback(async (requestId: string) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const request = passwordResetRequestsById[requestId];
-
-    if (!request) {
+  
+    // Fetch the latest request directly from Firebase
+    const requestSnap = await get(ref(rtdb, `passwordResetRequests/${requestId}`));
+    if (!requestSnap.exists()) {
       console.error("Password reset request not found");
       return;
     }
-
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code }).then(() => {
-        if (request.email) {
-            createAndSendNotification(
-                request.email,
-                'Your Password Reset Code',
-                'Password Reset Code',
-                {
-                    'Your one-time reset code is': code,
-                    'Instructions': 'Please enter this code on the login page to reset your password.'
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/login`,
-                'Reset Password'
-            );
-        }
-    });
-  }, [passwordResetRequestsById]);
+  
+    const request = requestSnap.val();
+  
+    // Save the reset code
+    await update(ref(rtdb, `passwordResetRequests/${requestId}`), { resetCode: code });
+  
+    // Now send email
+    createAndSendNotification(
+      request.email,
+      'Your Password Reset Code',
+      'Password Reset Code',
+      {
+        'Your one-time reset code is': code,
+        'Instructions': 'Enter this code on the login page to reset your password.'
+      },
+      `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+      'Reset Password'
+    );
+  
+  }, []);
 
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
@@ -2545,7 +2550,7 @@ updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${ppeHistoryRef.key}`
             ariesId: item.ariesId || null,
         }
     });
-
+  
     const newRequest: Omit<InventoryTransferRequest, 'id'> = {
         fromProjectId: requestData.fromProjectId,
         toProjectId: requestData.toProjectId,
@@ -3001,7 +3006,7 @@ approvers.forEach(approver => {
     const newRef = push(ref(rtdb, 'machineLogs'));
     const newLog: Omit<MachineLog, 'id'> = { ...log, machineId, loggedByUserId: user.id };
     set(newRef, newLog);
-    const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+    const storePersonnel = users.filter(u => u.role === 'Store Incharge' || u.role === 'Assistant Store Incharge');
     storePersonnel.forEach(p => {
         if(p.email) {
             createAndSendNotification(
@@ -3459,7 +3464,7 @@ approvers.forEach(approver => {
     if (!user || user.role !== 'Admin') return;
     remove(ref(rtdb, `purchaseRegisters/${id}`));
   }, [user]);
-
+  
   const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id'|'creatorId'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'igpOgpRecords'));
@@ -3941,3 +3946,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
