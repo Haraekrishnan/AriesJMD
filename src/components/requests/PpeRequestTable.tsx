@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment } from '@/lib/types';
+import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment, InternalRequestItemStatus } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -17,11 +17,11 @@ import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import EditPpeRequestDialog from './EditPpeRequestDialog';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Paperclip, Upload, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import Link from 'next/link';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -93,7 +93,6 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                  return;
             }
             updatePpeRequestStatus(selectedRequest.id, finalAction, comment);
-            toast({ title: `Request ${finalAction}` });
         }
         
         setSelectedRequest(null);
@@ -238,7 +237,14 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
             <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2 mt-auto">
                  {canApprove && req.status === 'Pending' && (
                     <>
-                        <Button size="sm" variant="outline" onClick={() => handleActionClick(req, 'Query')}><MessageSquare className="mr-2 h-4 w-4" /> Query</Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button size="icon" variant="ghost" onClick={() => handleActionClick(req, 'Query')}><MessageSquare className="h-4 w-4" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Query</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Rejected')}><XCircle className="mr-2 h-4 w-4" /> Reject</Button>
                         <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                     </>
@@ -485,3 +491,4 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
+
