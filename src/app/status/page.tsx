@@ -23,7 +23,7 @@ export default function StatusPage() {
   }, [user, loading, router]);
 
 
-  if (loading || !user || user.status !== 'locked') {
+  if (loading || !user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">
@@ -35,6 +35,10 @@ export default function StatusPage() {
             </div>
         </div>
     );
+  }
+
+  if (user.status !== 'locked') {
+    return null; // Don't render anything while redirecting
   }
 
   const handleUnlockRequest = () => {

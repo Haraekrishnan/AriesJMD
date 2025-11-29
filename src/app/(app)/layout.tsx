@@ -14,12 +14,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) {
+      return;
+    }
 
     if (!user) {
-      if (pathname !== '/login') {
-        router.replace('/login');
-      }
+      router.replace('/login');
       return;
     }
 
@@ -28,10 +28,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     } else if (user.status === 'active' && (pathname === '/login' || pathname === '/status')) {
       router.replace('/dashboard');
     }
-
   }, [user, loading, router, pathname]);
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -45,25 +44,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // These pages have their own layout and should not be wrapped by AppSidebar/Header
-  if (pathname === '/login' || pathname === '/status') {
+  if (user.status === 'locked' || pathname === '/login' || pathname === '/status') {
     return <>{children}</>;
-  }
-
-  // If we are not loading and there's no user, it means we're about to redirect.
-  // Render a loading state to prevent brief flashes of the layout.
-  if (!user) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-          <div className="flex items-center space-x-4">
-              <Skeleton className="h-12 w-12 rounded-full" />
-              <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
-              </div>
-          </div>
-        </div>
-    );
   }
 
   return (
