@@ -40,7 +40,10 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
     const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
     const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
     const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
+    const [itemAction, setItemAction] = useState<{ item: PpeRequest, status: PpeRequestStatus } | null>(null);
     const [comment, setComment] = useState('');
+    const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
+    const [newComment, setNewComment] = useState('');
     const { toast } = useToast();
     const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
@@ -345,6 +348,9 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 <div className="font-semibold">Employee:</div>
                                 <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
 
+                                <div className="font-semibold">Item:</div>
+                                <div>{selectedRequest.ppeType}</div>
+                                
                                 <div className="font-semibold">Size & Quantity:</div>
                                 <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
                                 
@@ -354,12 +360,12 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 <div className="font-semibold">Last Issue Date:</div>
                                 <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
 
-                                {(selectedRequest.newRequestJustification || selectedRequest.remarks) && (
-                                    <>
-                                     <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
-                                     <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks}</div>
-                                    </>
-                                )}
+                                <div className="font-semibold">Request Type:</div>
+                                <div>{selectedRequest.requestType}</div>
+
+                                <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
+                                <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks || 'Nil'}</div>
+
                                  {selectedRequest.attachmentUrl && (
                                     <>
                                         <div className="font-semibold">Attachment:</div>
