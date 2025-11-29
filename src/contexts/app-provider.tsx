@@ -505,7 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) {
@@ -760,8 +760,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     });
   }, [user, tasksById, users]);
+
+  const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'assigneeId' | 'approvalState' | 'isViewedByAssignee' | 'participants' | 'lastUpdated' | 'viewedBy' | 'viewedByApprover' | 'viewedByRequester'> & { assigneeIds: string[] }) => {
+    if (!user) return;
+
+    const newRef = push(ref(rtdb, 'tasks'));
+
+    const subtasks: { [userId: string]: Subtask } = {};
+    taskData.assigneeIds.forEach(id => {
+      subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
+    });
+
+    const newTask: Omit<Task, 'id'> = {
+      ...taskData,
+      creatorId: user.id,
+      assigneeId: taskData.assigneeIds[0], // Keep for backward compatibility/simplicity where needed
+      assigneeIds: taskData.assigneeIds,
+      status: 'To Do',
+      subtasks: subtasks,
+      comments: [],
+      participants: [user.id, ...taskData.assigneeIds],
+      lastUpdated: new Date().toISOString(),
+      approvalState: 'none',
+      isViewedByAssignee: false,
+      viewedBy: { [user.id]: true }
+    };
+    
+    set(newRef, newTask);
+    addActivityLog(user.id, 'Task Created', taskData.title);
+
+    taskData.assigneeIds.forEach(assigneeId => {
+      const assignee = users.find(u => u.id === assigneeId);
+      if (assignee && assignee.email) {
+        createAndSendNotification(
+          assignee.email,
+          `New Task Assigned: ${taskData.title}`,
+          'You have a new task!',
+          {
+            'Task': taskData.title,
+            'Assigned by': user.name,
+            'Due Date': format(new Date(taskData.dueDate), 'PPP'),
+            'Priority': taskData.priority,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+          'View Task'
+        );
+      }
+    });
+
+  }, [user, users, addActivityLog]);
   
-    const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
+  const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
     if (!request) return;
@@ -792,7 +841,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
   }, [user, internalRequestsById, users]);
-
+  
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -808,259 +857,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, internalRequestsById, addInternalRequestComment]);
   
-  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'internalRequests'));
-    
-    const newRequest: Omit<InternalRequest, 'id'> = {
-      ...requestData,
-      items: requestData.items.map(item => ({ ...item, status: 'Pending', inventoryItemId: item.inventoryItemId || null })),
-      requesterId: user.id,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      viewedByRequester: true,
-      acknowledgedByRequester: false
-    };
-
-    set(newRef, newRequest);
-    addActivityLog(user.id, "Internal Request Created");
-  }, [user, addActivityLog]);
-  
-  const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-    if (!user) return;
-    const request = internalRequestsById[requestId];
-    if (!request || request.status !== 'Disputed') return;
-  
-    addInternalRequestComment(requestId, `Dispute resolved by ${user.name}: ${resolution}. Comment: ${comment}`, true);
-  
-    const updates: { [key: string]: any } = {};
-  
-    if (resolution === 'reissue') {
-      // Set all items back to approved to be re-issued
-      const newItems = request.items.map(item => ({ ...item, status: 'Approved' as InternalRequestItemStatus }));
-      updates[`internalRequests/${requestId}/items`] = newItems;
-      updates[`internalRequests/${requestId}/status`] = 'Partially Approved';
-    } else { // reverse
-      // Confirm all items as issued
-      const newItems = request.items.map(item => ({ ...item, status: 'Issued' as InternalRequestItemStatus }));
-      updates[`internalRequests/${requestId}/items`] = newItems;
-      updates[`internalRequests/${requestId}/status`] = 'Issued';
-    }
-    
-    update(ref(rtdb), updates);
-  
-  }, [user, internalRequestsById, addInternalRequestComment]);
-
-  const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = internalRequests.find(r => r.id === requestId);
-    if (!request) return;
-    
-    const updates: { [key: string]: any } = {};
-    updates[`internalRequests/${requestId}/status`] = status;
-    updates[`internalRequests/${requestId}/approverId`] = user.id;
-
-    if (comment) addInternalRequestComment(requestId, comment, true);
-
-    const allItemsArePending = request.items.every(item => item.status === 'Pending');
-    if (allItemsArePending) {
-        const newItems = request.items.map(item => ({ ...item, status: status as InternalRequestItemStatus }));
-        updates[`internalRequests/${requestId}/items`] = newItems;
-    }
-
-    update(ref(rtdb), updates);
-
-    const requester = users.find(u => u.id === request.requesterId);
-    if (requester?.email) {
-      createAndSendNotification(
-        requester.email,
-        `Update on your Store Request #${request.id.slice(-6)}`,
-        `Your request status is now: ${status}`,
-        {
-          'Updated By': user.name,
-          'Comment': comment || 'No comment provided.',
-        },
-        `${process.env.NEXT_PUBLIC_APP_URL}/my-requests`,
-        'View Request'
-      );
-    }
-  }, [user, can.approve_store_requests, internalRequests, addInternalRequestComment, users]);
-  
-  const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment: string) => {
-    if (!user || !can.approve_store_requests) return;
-    const request = internalRequests.find(r => r.id === requestId);
-    if (!request) return;
-    
-    addInternalRequestComment(requestId, `Item "${request.items.find(i => i.id === itemId)?.description}" status changed to ${status}. Reason: ${comment}`, true);
-
-    const updates: { [key: string]: any } = {};
-    const itemIndex = request.items.findIndex(i => i.id === itemId);
-    if(itemIndex > -1) {
-        updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
-    }
-
-    // Determine the overall status
-    const newItems = [...request.items];
-    if (itemIndex > -1) newItems[itemIndex].status = status;
-
-    const allApproved = newItems.every(i => i.status === 'Approved');
-    const allIssued = newItems.every(i => i.status === 'Issued');
-    const allRejected = newItems.every(i => i.status === 'Rejected');
-    
-    let overallStatus: InternalRequestStatus = 'Partially Approved';
-    if (allIssued) overallStatus = 'Issued';
-    else if (allApproved) overallStatus = 'Approved';
-    else if (allRejected) overallStatus = 'Rejected';
-
-    updates[`internalRequests/${requestId}/status`] = overallStatus;
-
-    update(ref(rtdb), updates);
-  }, [user, can.approve_store_requests, internalRequests, addInternalRequestComment]);
-
-  // All other function definitions exist here...
-  // ... including login, logout, etc.
-
-  // SECTION: Computed Values (Memoized)
-  const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, lastManpowerUpdate, isManpowerUpdatedToday, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
-    if (!user) return {
-      pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, isManpowerUpdatedToday: false, lastManpowerUpdate: null, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [], pendingLogbookRequestCount: 0,
-    };
-    
-    const pendingTaskApprovalCount = tasks.filter(t => t.creatorId === user.id && t.statusRequest?.status === 'Pending').length;
-    const myNewTaskCount = tasks.filter(t => t.assigneeIds?.includes(user.id) && !t.viewedBy?.[user.id]).length;
-    const myPendingTaskRequestCount = tasks.filter(t => (t.statusRequest?.requestedBy === user.id && t.statusRequest?.status === 'Pending') || (t.approvalState === 'returned' && t.assigneeIds?.includes(user.id))).length;
-
-    const myFulfilledStoreCertRequestCount = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
-    const myFulfilledEquipmentCertRequests = certificateRequests.filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
-
-    const isStoreManager = can.approve_store_requests;
-    const pendingStoreCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && r.itemId).length : 0;
-    const pendingEquipmentCertRequestCount = isStoreManager ? certificateRequests.filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
-    
-    const unreadCommentsForUser = dailyPlannerComments.filter(dayComment => {
-      if (!dayComment || !dayComment.day || !dayComment.comments) return false;
-  
-      // Get all unique event IDs mentioned in this day's comments
-      const eventIdsInComments = new Set(Object.values(dayComment.comments).map(c => c?.eventId).filter(Boolean));
-  
-      // Check if the current user is a participant in any of these events
-      for (const eventId of eventIdsInComments) {
-          const event = plannerEvents.find(e => e.id === eventId);
-          if (!event) continue;
-  
-          const isParticipant = event.userId === user.id || event.creatorId === user.id;
-          if (!isParticipant) continue;
-  
-          // Now check if there's any unread comment from another user for this event on this day
-          const hasUnread = Object.values(dayComment.comments).some(c => 
-              c && 
-              c.eventId === eventId && 
-              c.userId !== user.id && 
-              !c.viewedBy?.[user.id]
-          );
-  
-          if (hasUnread) return true; // Found an unread comment for this user
-      }
-      return false;
-    });
-    
-    const plannerNotificationCount = unreadCommentsForUser.length;
-
-    const pendingInternalRequestCount = isStoreManager ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
-    
-    const updatedInternalRequestCount = internalRequests.filter(r => {
-        const isMyRequest = r.requesterId === user.id;
-        if (!isMyRequest) return false;
-    
-        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
-        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-        
-        return isRejectedButActive || isStandardUpdate;
-    }).length;
-
-    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
-    const pendingManagementRequestCount = managementRequests.filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
-    const updatedManagementRequestCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
-
-    const incidentNotificationCount = incidentReports.filter(i => {
-      const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
-      const isUnread = !i.viewedBy?.[user.id];
-      return isParticipant && isUnread;
-    }).length;
-    
-    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
-    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
-    
-    const pendingApproval = canApprovePpe ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
-    const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
-    const pendingDisputes = (canApprovePpe || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
-    
-    const myPpeRequests = ppeRequests.filter(r => r.requesterId === user.id);
-    const ppeQueries = myPpeRequests.filter(req => {
-      const comments = req.comments ? (Array.isArray(req.comments) ? req.comments : Object.values(req.comments)) : [];
-      const lastComment = comments[comments.length - 1];
-      return lastComment && lastComment.userId !== user.id && !req.viewedByRequester;
-    }).length;
-    
-    const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
-
-    const updatedPpeRequestCount = myPpeRequests.filter(r => (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length + ppeQueries;
-    
-    const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
-    const pendingPaymentApprovalCount = canApprovePayments ? payments.filter(p => p.status === 'Pending').length : 0;
-    const pendingPasswordResetRequestCount = can.manage_password_resets ? passwordResetRequests.filter(r => r.status === 'pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? feedback.filter(f => !f.viewedBy?.[user.id]).length : 0;
-    const pendingUnlockRequestCount = can.manage_user_lock_status ? unlockRequests.filter(r => r.status === 'pending').length : 0;
-
-    const canApproveTransfers = can.approve_store_requests; // Using this permission for now
-    const pendingInventoryTransferRequestCount = canApproveTransfers ? inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
-    
-    const pendingLogbookRequestCount = can.manage_logbook ? logbookRequests.filter(r => r.status === 'Pending').length : 0;
-
-    const allCompletedTransferRequests = (can.approve_store_requests && inventoryTransferRequests) ? inventoryTransferRequests.filter(r => r.status === 'Completed' || r.status === 'Rejected') : [];
-    
-    let totalWorking = 0;
-    let totalOnLeave = 0;
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-
-    const latestManpowerLog = manpowerLogs.length > 0 ? manpowerLogs.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] : null;
-    const isManpowerUpdatedToday = latestManpowerLog ? isToday(parseISO(latestManpowerLog.updatedAt)) : false;
-    
-    projects.forEach(project => {
-        const logsForProjectDay = manpowerLogs.filter(log => log.date === todayStr && log.projectId === project.id);
-        const latestLogForDay = logsForProjectDay.length > 0
-            ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
-            : null;
-
-        const previousLogs = manpowerLogs
-            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(new Date())))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
-        const mostRecentPreviousLog = previousLogs[0];
-        
-        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
-        const countIn = latestLogForDay?.countIn || 0;
-        const countOut = latestLogForDay?.countOut || 0;
-        const dayTotal = openingManpower + countIn - countOut;
-        const onLeave = latestLogForDay?.countOnLeave || 0;
-
-        totalWorking += dayTotal;
-        totalOnLeave += onLeave;
-    });
-
-    return {
-      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave, isManpowerUpdatedToday, lastManpowerUpdate: latestManpowerLog?.updatedAt || null, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount,
-    };
-  }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents, manpowerLogs, projects]);
-  
-  // All other function definitions exist here...
-  // ... including login, logout, etc.
-
-  // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
     can,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, workingManpowerCount, onLeaveManpowerCount, isManpowerUpdatedToday, lastManpowerUpdate, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount,
+    pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], workingManpowerCount: 0, onLeaveManpowerCount: 0, isManpowerUpdatedToday: false, lastManpowerUpdate: null, pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [], pendingLogbookRequestCount: 0,
     login, logout, updateProfile, requestPasswordReset, generateResetCode, resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, getVisibleUsers, getAssignableUsers, createTask, updateTask, deleteTask, updateTaskStatus, submitTaskForApproval, approveTask, returnTask, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment, getExpandedPlannerEvents, addPlannerEvent, updatePlannerEvent, deletePlannerEvent, addPlannerEventComment, markSinglePlannerCommentAsRead, dismissPendingUpdate, awardManualAchievement, updateManualAchievement, deleteManualAchievement, addUser, updateUser, updateUserPlanningScore, deleteUser, addRole, updateRole, deleteRole, addProject, updateProject, deleteProject, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed, addManpowerLog, updateManpowerLog, addManpowerProfile, addMultipleManpowerProfiles, updateManpowerProfile, deleteManpowerProfile, addLeaveForManpower, extendLeave, rejoinFromLeave, confirmManpowerLeave, cancelManpowerLeave, updateLeaveRecord, deleteLeaveRecord, addMemoOrWarning, updateMemoRecord, deleteMemoRecord, addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord, addPpeHistoryFromExcel, addInternalRequest, updateInternalRequestItem, resolveInternalRequestDispute, updateInternalRequestStatus, updateInternalRequestItemStatus, addInternalRequestComment, deleteInternalRequest, forceDeleteInternalRequest, markInternalRequestAsViewed, acknowledgeInternalRequest, addManagementRequest, updateManagementRequest, updateManagementRequestStatus, deleteManagementRequest, markManagementRequestAsViewed, addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed, updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord, addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory, addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, addUTMachine, updateUTMachine, deleteUTMachine, addDftMachine, updateDftMachine, deleteDftMachine, addMobileSim, updateMobileSim, deleteMobileSim, addLaptopDesktop, updateLaptopDesktop, deleteLaptopDesktop, addDigitalCamera, updateDigitalCamera, deleteDigitalCamera, addAnemometer, updateAnemometer, deleteAnemometer, addOtherEquipment, updateOtherEquipment, deleteOtherEquipment, addMachineLog, deleteMachineLog, getMachineLogs, updateBranding, addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissBroadcast, addBroadcast, dismissAnnouncement, addBuilding, updateBuilding, deleteBuilding, addRoom, updateRoom, updateBed, deleteRoom, addBed, deleteBed, assignOccupant, unassignOccupant, saveJobSchedule, addJobRecordPlant, deleteJobRecordPlant, addJobCode, updateJobCode, deleteJobCode, saveJobRecord, savePlantOrder, lockJobSchedule, unlockJobSchedule, lockJobRecordSheet, unlockJobRecordSheet, addVendor, updateVendor, deleteVendor, addPayment, updatePayment, updatePaymentStatus, deletePayment, addPurchaseRegister, updatePurchaseRegister, updatePurchaseRegisterPoNumber, deletePurchaseRegister, addIgpOgpRecord, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addTpCertList, updateTpCertList, deleteTpCertList, addDocument, updateDocument, deleteDocument, addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, deleteLogbookRecord, addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
   };
 
@@ -1227,17 +1027,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (!snapshot.exists()) {
                 setStoredUserId(null);
                 setUser(null);
-                router.replace('/login');
+                // The main AppLayout will handle the redirect.
                 return;
             }
             const updatedUser = { id: snapshot.key, ...snapshot.val() };
+            // Prevent infinite loop by only setting user if it has changed
             if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                  setUser(updatedUser);
             }
         });
         return () => unsubscribe();
     }
-  }, [user, setStoredUserId, router]);
+  }, [user?.id, setStoredUserId]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -1252,3 +1053,7 @@ export const useAppContext = (): AppContextType => {
 
 
 
+
+
+
+    
