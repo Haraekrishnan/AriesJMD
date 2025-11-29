@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -361,7 +360,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                 <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
 
                                 <div className="font-semibold">Request Type:</div>
-                                <div>{selectedRequest.requestType}</div>
+                                <div><Badge variant={selectedRequest.requestType === 'Replacement' ? 'destructive' : 'secondary'}>{selectedRequest.requestType}</Badge></div>
 
                                 <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
                                 <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks || 'Nil'}</div>
