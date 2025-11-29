@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -362,33 +361,30 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                              <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 p-2 border rounded-md">
                                 <div className="font-semibold">Employee:</div>
                                 <div>{employeeForSelectedRequest?.name || 'N/A'}</div>
-
+                                
                                 <div className="font-semibold">Item:</div>
                                 <div>{selectedRequest.ppeType}</div>
                                 
                                 <div className="font-semibold">Size & Quantity:</div>
                                 <div>{selectedRequest.size}, Qty: {selectedRequest.quantity}</div>
                                 
-                                <div className="font-semibold">Stock Availability:</div>
-                                <div>{stockInfo}</div>
-
-                                <div className="font-semibold">Last Issue Date:</div>
-                                <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
-
                                 <div className="font-semibold">Request Type:</div>
                                 <div>
                                     <Badge variant={selectedRequest.requestType === 'Replacement' ? 'destructive' : 'success'}>
                                         {selectedRequest.requestType}
                                     </Badge>
                                 </div>
-                                {selectedRequest.eligibility && (
-                                    <>
-                                        <div className="font-semibold">Eligibility:</div>
-                                        <div className={cn(selectedRequest.eligibility.eligible ? "text-green-600" : "text-destructive")}>
-                                            {selectedRequest.eligibility.reason}
-                                        </div>
-                                    </>
-                                )}
+                                
+                                <div className="font-semibold">Eligibility:</div>
+                                <div className={cn(selectedRequest.eligibility?.eligible ? "text-green-600" : "text-destructive")}>
+                                    {selectedRequest.eligibility?.reason || 'N/A'}
+                                </div>
+
+                                <div className="font-semibold">Stock Availability:</div>
+                                <div>{stockInfo}</div>
+
+                                <div className="font-semibold">Last Issue Date:</div>
+                                <div>{lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A'}</div>
 
                                 <div className="font-semibold col-span-2 mt-2">Justification / Remarks:</div>
                                 <div className="col-span-2 text-muted-foreground">{selectedRequest.newRequestJustification || selectedRequest.remarks || 'Nil'}</div>
@@ -412,9 +408,9 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                         <AlertDialogFooter>
                            <Button variant="outline" onClick={() => setSelectedRequest(null)}>Cancel</Button>
                            {action !== 'Rejected' && (
-                            <Button variant="destructive" onClick={() => handleConfirmAction('Rejected')}>Reject</Button>
+                               <Button variant="destructive" onClick={() => handleConfirmAction('Rejected')}>Reject</Button>
                            )}
-                           <Button onClick={() => handleConfirmAction()} disabled={action === 'Issued' && stockInfo.startsWith('0')}>{action === 'Issued' ? 'Confirm Issued' : `Confirm ${action}`}</Button>
+                           <Button onClick={() => handleConfirmAction()}>{action === 'Issued' ? 'Confirm Issued' : `Confirm ${action}`}</Button>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -492,3 +488,5 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
+
+    

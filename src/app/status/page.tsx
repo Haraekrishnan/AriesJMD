@@ -14,15 +14,11 @@ export default function StatusPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // This effect handles the case where a non-locked user might land here.
-  // The main layout also handles this, but this provides an extra layer of protection.
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
+    if (!loading && !user) {
         router.replace('/login');
-      } else if (user.status === 'active') {
+    } else if (!loading && user && user.status !== 'locked') {
         router.replace('/dashboard');
-      }
     }
   }, [user, loading, router]);
 
