@@ -22,6 +22,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Paperclip, Upload, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -491,4 +492,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
-
