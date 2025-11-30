@@ -919,45 +919,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const task = tasksById[taskId];
     if (!task) return;
-
+  
     const updates: { [key: string]: any } = {};
     updates[`/tasks/${taskId}/subtasks/${user.id}/status`] = newStatus;
     updates[`/tasks/${taskId}/subtasks/${user.id}/updatedAt`] = new Date().toISOString();
-    
+  
     const allSubtasksDone = Object.values(task.subtasks || {}).every(sub => (sub.userId === user.id ? newStatus === 'Done' : sub.status === 'Done'));
-
+  
     if (newStatus === 'Done' && allSubtasksDone) {
-        updates[`/tasks/${taskId}/statusRequest`] = {
-            requestedBy: user.id,
-            newStatus,
-            comment,
-            attachment: attachment || null,
-            date: new Date().toISOString(),
-            status: 'Pending'
-        };
-        updates[`/tasks/${taskId}/approvalState`] = 'status_pending';
-        addComment(taskId, comment);
-
-        const creator = users.find(u => u.id === task.creatorId);
-        if (creator && creator.email) {
-            createAndSendNotification(
-                creator.email,
-                `Task Ready for Approval: ${task.title}`,
-                `Task Completed by ${user.name}`,
-                {
-                    'Task': task.title,
-                    'Comment': comment,
-                },
-                `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
-                'Review Task'
-            );
-        }
+      updates[`/tasks/${taskId}/statusRequest`] = {
+        requestedBy: user.id,
+        newStatus,
+        comment,
+        attachment: attachment || null,
+        date: new Date().toISOString(),
+        status: 'Pending'
+      };
+      updates[`/tasks/${taskId}/approvalState`] = 'status_pending';
+      addComment(taskId, comment);
+  
+      const creator = users.find(u => u.id === task.creatorId);
+      if (creator && creator.email) {
+        createAndSendNotification(
+          creator.email,
+          `Task Ready for Approval: ${task.title}`,
+          `Task Completed by ${user.name}`,
+          {
+            'Task': task.title,
+            'Comment': comment,
+          },
+          `${process.env.NEXT_PUBLIC_APP_URL}/tasks`,
+          'Review Task'
+        );
+      }
     } else {
-        if(comment) addComment(taskId, comment);
+      // If just starting, update main task status immediately
+      if (newStatus === 'In Progress') {
+        updates[`/tasks/${taskId}/status`] = 'In Progress';
+      }
+      if(comment) addComment(taskId, comment);
     }
     
     await update(ref(rtdb), updates);
-
+  
   }, [user, tasksById, users, addComment]);
   
   const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
@@ -967,7 +971,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     addComment(taskId, comment);
     
-    const updates: { [key: string]: any } = {};
+    const updates: {[key: string]: any} = {};
     const newStatus = task.statusRequest.newStatus;
     
     updates[`/tasks/${taskId}/status`] = newStatus;
@@ -1638,22 +1642,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { importedCount, notFoundCount };
   }, [manpowerProfiles, user]);
   
-  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'internalRequests'));
-    const newRequest: Omit<InternalRequest, 'id'> = {
-      ...requestData,
-      requesterId: user.id,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      items: requestData.items.map(item => ({ ...item, status: 'Pending' })),
-      viewedByRequester: true,
-      acknowledgedByRequester: false
-    };
-    set(newRef, newRequest);
-    addActivityLog(user.id, "Internal Request Created");
-  }, [user, addActivityLog]);
-  
   const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
     if (!user) return;
     const request = internalRequestsById[requestId];
@@ -1685,6 +1673,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
   }, [user, internalRequestsById, users]);
+  
+  const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester' | 'acknowledgedByRequester'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'internalRequests'));
+    const newRequest: Omit<InternalRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      items: requestData.items.map(item => ({ ...item, status: 'Pending' })),
+      viewedByRequester: true,
+      acknowledgedByRequester: false
+    };
+    set(newRef, newRequest);
+    addActivityLog(user.id, "Internal Request Created");
+  }, [user, addActivityLog]);
   
   const updateInternalRequestItem = useCallback((requestId: string, item: InternalRequestItem, originalItem: InternalRequestItem) => {
     if (!user) return;
@@ -1824,20 +1828,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `internalRequests/${requestId}`), { acknowledgedByRequester: true });
   }, [user, internalRequestsById]);
 
-  const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'managementRequests'));
-    const newRequest: Omit<ManagementRequest, 'id'> = {
-      ...requestData,
-      requesterId: user.id,
-      date: new Date().toISOString(),
-      status: 'Pending',
-      comments: [{ id: 'comment-initial', text: 'Request created', userId: user.id, date: new Date().toISOString(), eventId: newRef.key! }],
-      viewedByRequester: true,
-    };
-    set(newRef, newRequest);
-  }, [user]);
-
   const addManagementRequestComment = useCallback((requestId: string, commentText: string) => {
     if (!user) return;
     const request = managementRequestsById[requestId];
@@ -1853,6 +1843,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
   }, [user, managementRequestsById]);
   
+  const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'managementRequests'));
+    const newRequest: Omit<ManagementRequest, 'id'> = {
+      ...requestData,
+      requesterId: user.id,
+      date: new Date().toISOString(),
+      status: 'Pending',
+      comments: [{ id: 'comment-initial', text: 'Request created', userId: user.id, date: new Date().toISOString(), eventId: newRef.key! }],
+      viewedByRequester: true,
+    };
+    set(newRef, newRequest);
+  }, [user]);
+
   const updateManagementRequest = useCallback((request: ManagementRequest) => {
     const { id, ...data } = request;
     update(ref(rtdb, `managementRequests/${id}`), data);
@@ -2413,6 +2417,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [inventoryTransferRequests]);
 
+  const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
+    if (!user) return;
+    const request = certificateRequestsById[requestId];
+    if (!request) return;
+  
+    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
+    
+    const updates: { [key: string]: any } = {};
+    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
+  
+    update(ref(rtdb), updates);
+  }, [user, certificateRequestsById]);
+
   const addCertificateRequest = useCallback((requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => {
     if (!user) return;
     const newRequestRef = push(ref(rtdb, 'certificateRequests'));
@@ -2446,21 +2465,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     });
   }, [user, users, addActivityLog]);
-  
-  const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
-    if (!user) return;
-    const request = certificateRequestsById[requestId];
-    if (!request) return;
-  
-    const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-    const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
-    
-    const updates: { [key: string]: any } = {};
-    updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
-    updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
-  
-    update(ref(rtdb), updates);
-  }, [user, certificateRequestsById]);
   
   const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
     if (!user) return;
@@ -3080,47 +3084,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `inspectionChecklists/${id}`));
   }, [user]);
 
-  // All other function definitions exist here...
-  
+  // ... (other function definitions)
+
   // SECTION: Computed Values (Memoized)
-  const { isManpowerUpdatedToday, lastManpowerUpdate, workingManpowerCount, onLeaveManpowerCount } = useMemo(() => {
-    if (manpowerLogs.length === 0) {
-        return { workingManpowerCount: 0, onLeaveManpowerCount: 0, isManpowerUpdatedToday: false, lastManpowerUpdate: null };
-    }
-    
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    let totalWorking = 0;
-    let totalOnLeave = 0;
-
-    const latestLog = [...manpowerLogs].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-    const lastUpdate = latestLog ? latestLog.updatedAt : null;
-    const isUpdatedToday = latestLog ? isToday(new Date(latestLog.updatedAt)) : false;
-
-    projects.forEach(project => {
-        const logsForProjectToday = manpowerLogs.filter(log => log.date === todayStr && log.projectId === project.id);
-        const latestLogForDay = logsForProjectToday.length > 0
-            ? logsForProjectToday.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
-            : null;
-
-        const previousLogs = manpowerLogs
-            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(new Date())))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
-        const mostRecentPreviousLog = previousLogs[0];
-        
-        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
-        const countIn = latestLogForDay?.countIn || 0;
-        const countOut = latestLogForDay?.countOut || 0;
-        const dayTotal = openingManpower + countIn - countOut;
-        const onLeave = latestLogForDay?.countOnLeave || 0;
-
-        totalWorking += dayTotal;
-        totalOnLeave += onLeave;
-    });
-
-    return { workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave, isManpowerUpdatedToday: isUpdatedToday, lastManpowerUpdate: lastUpdate };
-  }, [manpowerLogs, projects]);
-  
   const { pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount, myFulfilledStoreCertRequestCount, myFulfilledEquipmentCertRequests, pendingStoreCertRequestCount, pendingEquipmentCertRequestCount, plannerNotificationCount, pendingInternalRequestCount, updatedInternalRequestCount, pendingManagementRequestCount, updatedManagementRequestCount, incidentNotificationCount, pendingPpeRequestCount, updatedPpeRequestCount, pendingPaymentApprovalCount, pendingPasswordResetRequestCount, pendingFeedbackCount, pendingUnlockRequestCount, pendingInventoryTransferRequestCount, allCompletedTransferRequests, pendingLogbookRequestCount } = useMemo(() => {
     if (!user) return {
       pendingTaskApprovalCount: 0, myNewTaskCount: 0, myPendingTaskRequestCount: 0, myFulfilledStoreCertRequestCount: 0, myFulfilledEquipmentCertRequests: [], pendingStoreCertRequestCount: 0, pendingEquipmentCertRequestCount: 0, plannerNotificationCount: 0, pendingInternalRequestCount: 0, updatedInternalRequestCount: 0, pendingManagementRequestCount: 0, updatedManagementRequestCount: 0, incidentNotificationCount: 0, pendingPpeRequestCount: 0, updatedPpeRequestCount: 0, pendingPaymentApprovalCount: 0, pendingPasswordResetRequestCount: 0, pendingFeedbackCount: 0, pendingUnlockRequestCount: 0, pendingInventoryTransferRequestCount: 0, allCompletedTransferRequests: [], pendingLogbookRequestCount: 0,
@@ -3224,6 +3190,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [can, user, tasks, certificateRequests, dailyPlannerComments, internalRequests, managementRequests, incidentReports, ppeRequests, payments, passwordResetRequests, feedback, manpowerProfiles, unlockRequests, inventoryTransferRequests, logbookRequests, plannerEvents]);
   
+  const { isManpowerUpdatedToday, lastManpowerUpdate, workingManpowerCount, onLeaveManpowerCount } = useMemo(() => {
+    if (manpowerLogs.length === 0) {
+        return { workingManpowerCount: 0, onLeaveManpowerCount: 0, isManpowerUpdatedToday: false, lastManpowerUpdate: null };
+    }
+    
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    let totalWorking = 0;
+    let totalOnLeave = 0;
+
+    const latestLog = [...manpowerLogs].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+    const lastUpdate = latestLog ? latestLog.updatedAt : null;
+    const isUpdatedToday = latestLog ? isToday(new Date(latestLog.updatedAt)) : false;
+
+    projects.forEach(project => {
+        const logsForProjectToday = manpowerLogs.filter(log => log.date === todayStr && log.projectId === project.id);
+        const latestLogForDay = logsForProjectToday.length > 0
+            ? logsForProjectToday.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+            : null;
+
+        const previousLogs = manpowerLogs
+            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(new Date())))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+        const mostRecentPreviousLog = previousLogs[0];
+        
+        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
+        const countIn = latestLogForDay?.countIn || 0;
+        const countOut = latestLogForDay?.countOut || 0;
+        const dayTotal = openingManpower + countIn - countOut;
+        const onLeave = latestLogForDay?.countOnLeave || 0;
+
+        totalWorking += dayTotal;
+        totalOnLeave += onLeave;
+    });
+
+    return { workingManpowerCount: totalWorking, onLeaveManpowerCount: totalOnLeave, isManpowerUpdatedToday: isUpdatedToday, lastManpowerUpdate: lastUpdate };
+  }, [manpowerLogs, projects]);
+
   // SECTION: Context Value
   const contextValue: AppContextType = {
     user, loading, users, roles, tasks, projects, jobRecordPlants, jobCodes, JOB_CODE_COLORS, plannerEvents, dailyPlannerComments, achievements, activityLogs, vehicles, drivers, incidentReports, manpowerLogs, manpowerProfiles, internalRequests, managementRequests, inventoryItems, inventoryTransferRequests, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, announcements, broadcasts, buildings, jobSchedules, jobRecords, ppeRequests, ppeStock, ppeInwardHistory, payments, vendors, purchaseRegisters, passwordResetRequests, igpOgpRecords, feedback, unlockRequests, tpCertLists, downloadableDocuments, logbookRequests, inspectionChecklists, appName, appLogo,
@@ -3418,5 +3422,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-
 
