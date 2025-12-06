@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -945,7 +945,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
 
         update(ref(rtdb), updates);
-        addPpeRequestComment(requestId, comment || `Status changed to ${status}`);
+        addPpeRequestComment(requestId, comment || `Status changed to ${status}`, true);
     }, [user, ppeRequests, addPpeRequestComment]);
     
     const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
@@ -1425,4 +1425,5 @@ export const useInventory = (): InventoryContextType => {
     
 
     
+
 
