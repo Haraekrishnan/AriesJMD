@@ -1,0 +1,195 @@
+
+
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      ".indexOn": "email",
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "roles": {
+      ".read": true,
+      ".write": true
+    },
+    "tasks": {
+      ".read": true,
+      ".write": true
+    },
+    "projects": {
+      ".read": true,
+      ".write": true
+    },
+    "activityLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "plannerEvents": {
+      ".read": true,
+      ".write": true
+    },
+    "dailyPlannerComments": {
+      ".read": true,
+      ".write": true
+    },
+    "achievements": {
+      ".read": true,
+      ".write": true
+    },
+    "incidentReports": {
+      ".read": true,
+      ".write": true
+    },
+    "inventoryItems": {
+      ".read": true,
+      ".write": true
+    },
+    "utMachines": {
+      ".read": true,
+      ".write": true
+    },
+    "dftMachines": {
+      ".read": true,
+      ".write": true
+    },
+    "mobileSims": {
+      ".read": true,
+      ".write": true
+    },
+    "laptopsDesktops": {
+      ".read": true,
+      ".write": true
+    },
+    "digitalCameras": {
+      ".read": true,
+      ".write": true
+    },
+    "anemometers": {
+      ".read": true,
+      ".write": true
+    },
+    "otherEquipments": {
+      ".read": true,
+      ".write": true
+    },
+    "machineLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "certificateRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "announcements": {
+      ".read": true,
+      ".write": true
+    },
+    "broadcasts": {
+      ".read": true,
+      ".write": true
+    },
+    "buildings": {
+      ".read": true,
+      ".write": true
+    },
+    "manpowerLogs": {
+      ".read": true,
+      ".write": true
+    },
+    "manpowerProfiles": {
+      ".read": true,
+      ".write": true
+    },
+    "internalRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "managementRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "ppeRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "ppeStock": {
+      ".read": true,
+      ".write": true
+    },
+    "ppeInwardHistory": {
+      ".read": true,
+      ".write": true
+    },
+    "vehicles": {
+      ".read": true,
+      ".write": true
+    },
+    "drivers": {
+      ".read": true,
+      ".write": true
+    },
+    "branding": {
+      ".read": true,
+      ".write": true
+    },
+    "jobSchedules": {
+      ".read": true,
+      ".write": true
+    },
+    "jobRecords": {
+        ".read": true,
+        ".write": true
+    },
+    "jobRecordPlants": {
+        ".read": true,
+        ".write": true
+    },
+    "jobCodes": {
+        ".read": true,
+        ".write": true
+    },
+    "payments": {
+      ".read": true,
+      ".write": true
+    },
+    "vendors": {
+      ".read": true,
+      ".write": true
+    },
+    "purchaseRegisters": {
+      ".read": true,
+      ".write": true
+    },
+    "passwordResetRequests": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": "email"
+    },
+    "feedback": {
+        ".read": true,
+        ".write": "auth != null"
+    },
+    "unlockRequests": {
+        ".read": "auth != null",
+        ".write": true
+    },
+    "downloadableDocuments": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+    },
+    "logbookRequests": {
+        ".read": true,
+        ".write": true
+    },
+    "inspectionChecklists": {
+        ".read": true,
+        ".write": true
+    }
+  }
+}
+
+
+    
