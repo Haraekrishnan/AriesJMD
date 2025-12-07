@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -22,7 +21,7 @@ interface LogbookRegisterDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions: LogbookStatus[] = ['Pending', 'Received'];
+const statusOptions: LogbookStatus[] = ['Pending', 'Received', 'Sent back as requested', 'Not Received'];
 
 const getStatusVariant = (status?: LogbookStatus) => {
     switch (status) {
@@ -37,18 +36,23 @@ const getStatusVariant = (status?: LogbookStatus) => {
 };
 
 export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegisterDialogProps) {
-  const { manpowerProfiles, updateManpowerProfile, addLogbookHistoryRecord } = useAppContext();
+  const { manpowerProfiles, users, addLogbookHistoryRecord } = useAppContext();
   const { toast } = useToast();
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [status, setStatus] = useState<LogbookStatus | ''>('');
   const [inDate, setInDate] = useState<Date | undefined>();
   const [outDate, setOutDate] = useState<Date | undefined>();
   const [remarks, setRemarks] = useState('');
+  const [requestedById, setRequestedById] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredProfiles = useMemo(() => {
-    return manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return manpowerProfiles.filter(p => p.status === 'Working' && p.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [manpowerProfiles, searchTerm]);
+  
+  const possibleRequesters = useMemo(() => {
+    return users.filter(u => u.role !== 'Manager');
+  }, [users]);
 
   const handleUpdate = () => {
     if (selectedProfileIds.length === 0) {
@@ -59,6 +63,10 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
       toast({ title: 'Please select a status', variant: 'destructive' });
       return;
     }
+    if (status === 'Sent back as requested' && !requestedById) {
+      toast({ title: 'Please select who requested the logbook', variant: 'destructive' });
+      return;
+    }
 
     selectedProfileIds.forEach(profileId => {
       addLogbookHistoryRecord(profileId, {
@@ -66,6 +74,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
         inDate: inDate?.toISOString(),
         outDate: outDate?.toISOString(),
         remarks,
+        requestedById: status === 'Sent back as requested' ? requestedById : null,
       });
     });
 
@@ -75,6 +84,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
     setInDate(undefined);
     setOutDate(undefined);
     setRemarks('');
+    setRequestedById(null);
   };
   
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
@@ -93,7 +103,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
           <DialogDescription>Update logbook status for multiple employees.</DialogDescription>
         </DialogHeader>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-md">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 border rounded-md">
             <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as any)}>
@@ -103,6 +113,17 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
                     </SelectContent>
                 </Select>
             </div>
+            {status === 'Sent back as requested' && (
+                <div className="space-y-2">
+                    <Label>Requested By</Label>
+                    <Select value={requestedById || ''} onValueChange={setRequestedById}>
+                        <SelectTrigger><SelectValue placeholder="Select User" /></SelectTrigger>
+                        <SelectContent>
+                            {possibleRequesters.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
             <div className="space-y-2">
                 <Label>In Date</Label>
                 <DatePickerInput value={inDate} onChange={setInDate} />

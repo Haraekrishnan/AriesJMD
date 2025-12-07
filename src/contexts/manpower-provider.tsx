@@ -312,6 +312,7 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
             enteredById: user.id,
             outDate: recordData.outDate || null,
             inDate: recordData.inDate || null,
+            requestedById: recordData.requestedById || null,
         };
         set(newRef, { ...recordToWrite, id: newRef.key });
         
