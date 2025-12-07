@@ -71,11 +71,19 @@ export default function StoreInventoryPage() {
         
         return generalItems.filter(item => {
             // Project visibility filter
-            if (!userCanManage) {
-                if (!user?.projectIds || !user.projectIds.includes(item.projectId)) {
-                    return false;
-                }
-            }
+            // Project visibility — always restrict to user's allowed projects
+if (!userCanManage) {
+    if (!user?.projectIds || !user.projectIds.includes(item.projectId)) {
+        return false;
+    }
+}
+
+// Apply selected project filter for ALL users (both admin and non-admin)
+if (filters.projectId !== 'all') {
+    if (item.projectId !== filters.projectId) {
+        return false;
+    }
+}
 
             const { name, status, projectId, search, updatedDateRange } = filters;
             
