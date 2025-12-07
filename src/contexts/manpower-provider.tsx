@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { ManpowerProfile, LeaveRecord, ManpowerLog, MemoRecord, PpeHistoryRecord, LogbookRecord, LogbookStatus, LogbookRequest, Comment } from '@/lib/types';
+import { ManpowerProfile, LeaveRecord, ManpowerLog, MemoRecord, PpeHistoryRecord, LogbookRecord, LogbookStatus, LogbookRequest, Comment, Role } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -39,11 +38,8 @@ type ManpowerContextType = {
   isManpowerUpdatedToday: (projectId: string) => boolean;
   lastManpowerUpdate: string | null;
 
-  addLogbookRecord: (manpowerId: string, logbookData: Omit<LogbookRecord, 'id'>) => void;
-  updateLogbookStatus: (manpowerId: string, status: LogbookStatus, inDate?: Date, outDate?: Date) => void;
-  deleteLogbookRecord: (manpowerId: string, callback: () => void) => void;
+  deleteLogbookRecord: (manpowerId: string, recordId: string) => void;
   addLogbookHistoryRecord: (manpowerId: string, recordData: Partial<Omit<LogbookRecord, 'id'>>) => void;
-  updateLogbookHistory: (manpowerId: string, record: LogbookRecord) => void;
   deleteLogbookHistoryRecord: (manpowerId: string, recordId: string) => void;
   
   addLogbookRequest: (manpowerId: string, remarks?: string) => void;
@@ -291,57 +287,61 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
     const deletePpeHistoryRecord = (manpowerId: string, recordId: string) => {
         remove(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory/${recordId}`));
     };
-
-    const addLogbookRecord = (manpowerId: string, logbookData: Omit<LogbookRecord, 'id'>) => {
-        const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`));
-        set(newRef, { ...logbookData, id: newRef.key });
-    };
-
-    const updateLogbookStatus = (manpowerId: string, status: LogbookStatus, inDate?: Date, outDate?: Date) => {
-        if (!user) return;
+    
+    const deleteLogbookRecord = useCallback((manpowerId: string, recordId: string) => {
         const profile = manpowerProfilesById[manpowerId];
-        if (!profile || !profile.logbook) return;
-    
-        const updates: Partial<LogbookRecord> = { status };
-        if (inDate) updates.inDate = inDate.toISOString();
-        if (outDate) updates.outDate = outDate.toISOString();
+        if (!profile) return;
+        
+        remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbookHistory/${recordId}`));
 
-        update(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), updates);
-    };
-    
-    const deleteLogbookRecord = (manpowerId: string, callback: () => void) => {
-        set(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), null).then(callback);
-    };
+        // Find the new latest history record to update the root logbook status
+        const remainingHistory = Object.values(profile.logbookHistory || {}).filter(h => h.id !== recordId);
+        const newLatestRecord = remainingHistory.sort((a,b) => parseISO(b.entryDate!).getTime() - parseISO(a.entryDate!).getTime())[0];
+        
+        if (newLatestRecord) {
+            update(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), {
+                status: newLatestRecord.status,
+                inDate: newLatestRecord.inDate,
+                outDate: newLatestRecord.outDate,
+                remarks: newLatestRecord.remarks,
+            });
+        } else {
+            // If no history remains, clear the root logbook object
+            set(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), null);
+        }
+    }, [manpowerProfilesById]);
+
 
     const addLogbookHistoryRecord = useCallback((manpowerId: string, recordData: Partial<Omit<LogbookRecord, 'id'>>) => {
         if (!user) return;
         const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/logbookHistory`));
         const recordToWrite: Partial<LogbookRecord> = {
             ...recordData,
-            requestRemarks: recordData.remarks,
             entryDate: recordData.entryDate || new Date().toISOString(),
             enteredById: user.id,
             outDate: recordData.outDate || null,
             inDate: recordData.inDate || null,
             requestedById: recordData.requestedById || null,
         };
+
+        if (recordData.remarks) {
+            recordToWrite.requestRemarks = recordData.remarks;
+        }
+        
         set(newRef, { ...recordToWrite, id: newRef.key });
         
-        const updates: Partial<LogbookRecord> = {};
-        if (recordData.status) updates.status = recordData.status;
-        if (recordData.outDate) updates.outDate = recordData.outDate;
-        if (recordData.inDate) updates.inDate = recordData.inDate;
+        // Update the main logbook object on the profile
+        const rootUpdates: Partial<LogbookRecord> = {};
+        if (recordData.status) rootUpdates.status = recordData.status;
+        if (recordData.outDate) rootUpdates.outDate = recordData.outDate;
+        if (recordData.inDate) rootUpdates.inDate = recordData.inDate;
+        if (recordData.remarks) rootUpdates.remarks = recordData.remarks;
 
-        if (Object.keys(updates).length > 0) {
-            update(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), updates);
+        if (Object.keys(rootUpdates).length > 0) {
+            update(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), rootUpdates);
         }
     }, [user]);
 
-    const updateLogbookHistory = (manpowerId: string, record: LogbookRecord) => {
-        const { id, ...data } = record;
-        update(ref(rtdb, `manpowerProfiles/${manpowerId}/logbookHistory/${id}`), data);
-    };
-    
     const deleteLogbookHistoryRecord = (manpowerId: string, recordId: string) => {
         remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbookHistory/${recordId}`));
     };
@@ -371,7 +371,12 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         set(newCommentRef, newComment);
         
         const updates: {[key: string]: any} = {};
-        updates[`logbookRequests/${requestId}/viewedBy/${request.requesterId}`] = false;
+        // Mark as unread for the other party
+        const otherPartyId = request.requesterId === user.id ? request.approverId : request.requesterId;
+        if (otherPartyId) {
+            updates[`logbookRequests/${requestId}/viewedBy/${otherPartyId}`] = false;
+        }
+        
         update(ref(rtdb), updates);
 
     }, [user, logbookRequests]);
@@ -381,7 +386,7 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         const request = logbookRequests.find(r => r.id === requestId);
         if (!request) return;
 
-        update(ref(rtdb, `logbookRequests/${requestId}`), { status, approverId: user.id, approvalDate: new Date().toISOString(), viewedBy: { ...request.viewedBy, [request.requesterId]: false } });
+        update(ref(rtdb, `logbookRequests/${requestId}`), { status, approverId: user.id, approvalDate: new Date().toISOString() });
         addLogbookRequestComment(requestId, comment, true);
 
         if (status === 'Completed') {
@@ -405,8 +410,21 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
 
     const markLogbookRequestAsViewed = useCallback((requestId: string) => {
         if(!user) return;
-        update(ref(rtdb, `logbookRequests/${requestId}/viewedBy`), { [user.id]: true });
-    }, [user]);
+        const request = logbookRequests.find(r => r.id === requestId);
+        if (!request) return;
+    
+        const updates: { [key: string]: boolean } = {};
+        updates[`logbookRequests/${requestId}/viewedBy/${user.id}`] = true;
+    
+        const comments = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+        comments.forEach(c => {
+          if (c && c.userId !== user.id) {
+            updates[`logbookRequests/${requestId}/comments/${c.id}/viewedBy/${user.id}`] = true;
+          }
+        });
+    
+        update(ref(rtdb), updates);
+    }, [user, logbookRequests]);
 
     const deleteLogbookRequest = useCallback((requestId: string) => {
         remove(ref(rtdb, `logbookRequests/${requestId}`));
@@ -433,7 +451,7 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         addManpowerLog, updateManpowerLog, isManpowerUpdatedToday, lastManpowerUpdate,
         addMemoOrWarning, updateMemoRecord, deleteMemoRecord,
         addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord,
-        addLogbookRecord, updateLogbookStatus, deleteLogbookRecord, addLogbookHistoryRecord, updateLogbookHistory, deleteLogbookHistoryRecord,
+        deleteLogbookRecord, addLogbookHistoryRecord, deleteLogbookHistoryRecord,
         addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, markLogbookRequestAsViewed, deleteLogbookRequest, myLogbookRequestUpdates
     };
 
