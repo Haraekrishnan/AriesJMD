@@ -5,7 +5,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { Send, UserPlus, FileDown, Layers, Trash2 } from 'lucide-react';
 import type { IncidentReport, IncidentStatus, Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
@@ -247,11 +247,12 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
                   <div className="space-y-4">
                     {commentsArray.map((comment, index) => {
                       const commentUser = users.find(u => u.id === comment.userId);
+                      const date = comment.date ? parseISO(comment.date) : null;
                       return (
                         <div key={index} className="flex items-start gap-3">
                           <Avatar className="h-8 w-8"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                           <div className="bg-muted p-3 rounded-lg w-full">
-                            <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p></div>
+                            <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{date && isValid(date) ? formatDistanceToNow(date, { addSuffix: true }) : 'Invalid date'}</p></div>
                             <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
                           </div>
                         </div>
