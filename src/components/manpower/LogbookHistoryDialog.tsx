@@ -28,7 +28,6 @@ const getStatusVariant = (status?: LogbookStatus) => {
         case 'Received': return 'success';
         case 'Not Received': return 'destructive';
         case 'Sent back as requested': return 'warning';
-        case 'Requested': return 'default';
         case 'Pending':
         default:
             return 'secondary';
@@ -38,10 +37,14 @@ const getStatusVariant = (status?: LogbookStatus) => {
 const HistoryEntry = ({ label, value, isDateTime = false, isDate = false }: { label: string, value?: string | null, isDateTime?: boolean, isDate?: boolean }) => {
     if (!value) return null;
     let formattedValue = value;
-    if (isDateTime) {
-        formattedValue = format(parseISO(value), 'dd MMM, yyyy p');
-    } else if (isDate) {
-        formattedValue = format(parseISO(value), 'dd MMM, yyyy');
+    try {
+        if (isDateTime) {
+            formattedValue = format(parseISO(value), 'dd MMM, yyyy p');
+        } else if (isDate) {
+            formattedValue = format(parseISO(value), 'dd MMM, yyyy');
+        }
+    } catch (e) {
+        // Do nothing if date is invalid
     }
     return (
         <p><strong>{label}:</strong> {formattedValue}</p>
@@ -63,7 +66,7 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
     const history = Array.isArray(selectedProfile.logbookHistory) 
         ? selectedProfile.logbookHistory 
         : Object.values(selectedProfile.logbookHistory);
-    return history.sort((a,b) => parseISO(b.outDate || b.entryDate || '1970-01-01').getTime() - parseISO(a.outDate || a.entryDate || '1970-01-01').getTime());
+    return history.sort((a,b) => parseISO(b.entryDate || '1970-01-01').getTime() - parseISO(a.entryDate || '1970-01-01').getTime());
   }, [selectedProfile]);
 
   const handleOpenChange = (open: boolean) => {
@@ -131,6 +134,7 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                         <div className="space-y-3 text-sm">
                             {logbookHistory.map((record, index) => {
                                 const enteredBy = users.find(u => u.id === record.enteredById);
+                                const requestedBy = record.requestedById ? users.find(u => u.id === record.requestedById) : null;
                                 const comments = getRequestComments(record.requestId);
 
                                 return (
@@ -157,6 +161,8 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                                         <HistoryEntry label="Entered By" value={enteredBy?.name} />
                                         <HistoryEntry label="Out Date" value={record.outDate} isDate />
                                         <HistoryEntry label="In Date" value={record.inDate} isDate />
+                                        {requestedBy && <HistoryEntry label="Requested By" value={requestedBy.name} />}
+                                        {record.requestRemarks && <HistoryEntry label="Request Remarks" value={record.requestRemarks} />}
                                         
                                         {comments.length > 0 && (
                                             <Accordion type="single" collapsible className="w-full mt-2">

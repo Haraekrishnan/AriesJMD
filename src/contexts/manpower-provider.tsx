@@ -308,12 +308,15 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/logbookHistory`));
         const recordToWrite: Partial<LogbookRecord> = {
             ...recordData,
+            requestRemarks: recordData.remarks,
             entryDate: recordData.entryDate || new Date().toISOString(),
             enteredById: user.id,
             outDate: recordData.outDate || null,
             inDate: recordData.inDate || null,
             requestedById: recordData.requestedById || null,
         };
+        // remarks is used for manual entry, so clear it before saving to history from register.
+        delete recordToWrite.remarks;
         set(newRef, { ...recordToWrite, id: newRef.key });
         
         const updates: Partial<LogbookRecord> = {};
@@ -335,6 +338,15 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `manpowerProfiles/${manpowerId}/logbookHistory/${recordId}`));
     };
     
+    const addLogbookRequest = useCallback((manpowerId: string, remarks?: string) => {
+        if(!user) return;
+        const newRef = push(ref(rtdb, 'logbookRequests'));
+        set(newRef, {
+            manpowerId, requesterId: user.id, requestDate: new Date().toISOString(), status: 'Pending', remarks,
+            viewedBy: { [user.id]: true }
+        });
+    }, [user]);
+
     const addLogbookRequestComment = useCallback((requestId: string, text: string, notify?: boolean) => {
         if (!user) return;
         const request = logbookRequests.find(r => r.id === requestId);
@@ -380,15 +392,6 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         }
 
     }, [user, logbookRequests, addLogbookHistoryRecord, addLogbookRequestComment]);
-    
-    const addLogbookRequest = useCallback((manpowerId: string, remarks?: string) => {
-        if(!user) return;
-        const newRef = push(ref(rtdb, 'logbookRequests'));
-        set(newRef, {
-            manpowerId, requesterId: user.id, requestDate: new Date().toISOString(), status: 'Pending', remarks,
-            viewedBy: { [user.id]: true }
-        });
-    }, [user]);
 
 
     const markLogbookRequestAsViewed = useCallback((requestId: string) => {
