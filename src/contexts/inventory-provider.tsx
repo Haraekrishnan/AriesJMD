@@ -325,9 +325,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updateInventoryItem = useCallback((item: InventoryItem) => {
         const { id, ...data } = item;
         const updates = { 
-        ...data, 
-        lastUpdated: new Date().toISOString(),
-        movedToProjectId: data.movedToProjectId || null,
+            ...data, 
+            lastUpdated: new Date().toISOString(),
+            movedToProjectId: data.movedToProjectId || null,
+            chestCrollNo: data.chestCrollNo || null,
         };
         update(ref(rtdb, `inventoryItems/${id}`), updates);
     }, []);
@@ -1425,5 +1426,6 @@ export const useInventory = (): InventoryContextType => {
     
 
     
+
 
 
