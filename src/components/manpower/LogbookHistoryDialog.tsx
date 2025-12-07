@@ -162,7 +162,7 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                                         <HistoryEntry label="Out Date" value={record.outDate} isDate />
                                         <HistoryEntry label="In Date" value={record.inDate} isDate />
                                         {requestedBy && <HistoryEntry label="Requested By" value={requestedBy.name} />}
-                                        {record.requestRemarks && <HistoryEntry label="Request Remarks" value={record.requestRemarks} />}
+                                        {record.requestRemarks && <HistoryEntry label="Remarks" value={record.requestRemarks} />}
                                         
                                         {comments.length > 0 && (
                                             <Accordion type="single" collapsible className="w-full mt-2">
