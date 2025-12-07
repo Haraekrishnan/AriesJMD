@@ -43,6 +43,7 @@ type GeneralContextType = {
   dismissBroadcast: (broadcastId: string) => void;
   addIncidentReport: (incident: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => void;
   updateIncident: (incident: IncidentReport, comment: string) => void;
+  deleteIncidentReport: (incidentId: string) => void;
   addIncidentComment: (incidentId: string, text: string) => void;
   publishIncident: (incidentId: string, comment: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
@@ -365,6 +366,23 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
   }, [user]);
 
+  const deleteIncidentReport = useCallback((incidentId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only administrators can delete incident reports.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `incidentReports/${incidentId}`));
+    toast({
+      title: 'Incident Report Deleted',
+      variant: 'destructive',
+    });
+    addActivityLog(user.id, 'Incident Report Deleted', `Deleted report ID: ${incidentId}`);
+  }, [user, addActivityLog, toast]);
+
   const publishIncident = useCallback((incidentId: string, comment: string) => {
       if(!user || user.role !== 'Admin') return;
       const updates: { [key: string]: any } = {
@@ -630,7 +648,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode,
     addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement,
     addBroadcast, deleteBroadcast, dismissBroadcast,
-    addIncidentReport, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed,
+    addIncidentReport, updateIncident, deleteIncidentReport, addIncidentComment, publishIncident, addUsersToIncidentReport, markIncidentAsViewed,
     addDocument, updateDocument, deleteDocument,
     addVehicle, updateVehicle, deleteVehicle,
     addDriver, updateDriver, deleteDriver,

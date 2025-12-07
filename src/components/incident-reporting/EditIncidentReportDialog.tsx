@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Send, UserPlus, FileDown, Layers } from 'lucide-react';
+import { Send, UserPlus, FileDown, Layers, Trash2 } from 'lucide-react';
 import type { IncidentReport, IncidentStatus, Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -45,7 +45,7 @@ interface EditIncidentReportDialogProps {
 }
 
 export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId }: EditIncidentReportDialogProps) {
-  const { user, users, projects, incidentReports, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport } = useAppContext();
+  const { user, users, projects, incidentReports, updateIncident, addIncidentComment, publishIncident, addUsersToIncidentReport, deleteIncidentReport } = useAppContext();
   const { toast } = useToast();
   
   const [newComment, setNewComment] = useState('');
@@ -156,6 +156,11 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
     toast({ title: "Incident Published", description: "This incident is now visible to all users."});
   };
 
+  const handleDelete = () => {
+    deleteIncidentReport(incident.id);
+    setIsOpen(false);
+  };
+
   const commentsArray = Array.isArray(incident.comments) 
     ? incident.comments 
     : Object.values(incident.comments || {});
@@ -263,27 +268,46 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
           </div>
         </div>
         <DialogFooter className="justify-between">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-          <div className="flex gap-2">
-            {user?.role === 'Admin' && !incident.isPublished && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="secondary"><Layers className="mr-2 h-4 w-4"/> Publish Incident</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Publish Incident?</AlertDialogTitle>
-                    <AlertDialogDescription>This will make the incident visible to all users. This action cannot be undone.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handlePublish}>Publish</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <Button variant="secondary" onClick={handleGenerateReport}><FileDown className="mr-2 h-4 w-4" />Generate Report</Button>
-          </div>
+            <div className="flex gap-2">
+                {user?.role === 'Admin' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Report</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete this incident report. This action cannot be undone.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete}>Confirm Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+                {user?.role === 'Admin' && !incident.isPublished && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="secondary"><Layers className="mr-2 h-4 w-4"/> Publish Incident</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Publish Incident?</AlertDialogTitle>
+                        <AlertDialogDescription>This will make the incident visible to all users. This action cannot be undone.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handlePublish}>Publish</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={handleGenerateReport}><FileDown className="mr-2 h-4 w-4" />Generate Report</Button>
+              <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
