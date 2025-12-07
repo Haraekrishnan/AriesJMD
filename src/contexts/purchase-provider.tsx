@@ -53,7 +53,7 @@ const createDataListener = <T extends {}>(
 const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined);
 
 export function PurchaseProvider({ children }: { children: ReactNode }) {
-    const { user, users, addActivityLog } = useAuth();
+    const { user, addActivityLog } = useAuth();
     const { toast } = useToast();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
@@ -98,7 +98,12 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const updatePayment = useCallback((paymentId: string, data: Partial<Payment>) => {
-        update(ref(rtdb, `payments/${paymentId}`), data);
+        const updateData = { ...data };
+        // Prevent critical fields from being overwritten
+        delete (updateData as Partial<Payment>).requesterId;
+        delete (updateData as Partial<Payment>).date;
+    
+        update(ref(rtdb, `payments/${paymentId}`), updateData);
     }, []);
 
     const deletePayment = useCallback((paymentId: string) => {
