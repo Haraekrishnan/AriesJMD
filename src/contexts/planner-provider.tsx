@@ -114,13 +114,16 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const dayCommentId = `${day}_${plannerUserId}`;
         const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-        const newComment: Omit<Comment, 'id'> = {
+        const newComment: Comment = {
+          id: newCommentRef.key!,
           userId: user.id,
           text,
           date: new Date().toISOString(),
           eventId,
+          viewedBy: { [user.id]: true }
         };
-        set(newCommentRef, { ...newComment, id: newCommentRef.key });
+        set(newCommentRef, newComment);
+
         update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
             id: dayCommentId,
             plannerUserId,
@@ -134,7 +137,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             const participants = new Set([event.creatorId, event.userId]);
             participants.forEach(pId => {
                 if (pId !== user.id) {
-                    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/viewedBy`), { [pId]: false });
+                    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments/${newCommentRef.key}/viewedBy`), { [pId]: false });
                 }
             });
         }
@@ -148,7 +151,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
     const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
       if(!user) return;
-      const path = `plannerEvents/${eventId}/dismissedBy/${user.id}_${day}`;
+      const path = `users/${user.id}/dismissedPendingUpdates/${eventId}_${day}`;
       set(ref(rtdb, path), true);
     }, [user]);
 
