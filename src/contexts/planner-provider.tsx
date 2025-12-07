@@ -6,7 +6,7 @@ import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleIte
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay, isBefore, subMonths } from 'date-fns';
 
 type PlannerContextType = {
   plannerEvents: PlannerEvent[];
@@ -114,14 +114,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const dayCommentId = `${day}_${plannerUserId}`;
         const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-        const newComment: Comment = {
-          id: newCommentRef.key!,
+        const newComment: Omit<Comment, 'id'> = {
           userId: user.id,
           text,
           date: new Date().toISOString(),
           eventId,
         };
-        set(newCommentRef, newComment);
+        set(newCommentRef, { ...newComment, id: newCommentRef.key });
         update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
             id: dayCommentId,
             plannerUserId,
@@ -149,7 +148,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
     const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
       if(!user) return;
-      const path = `users/${user.id}/dismissedPendingUpdates/${eventId}_${day}`;
+      const path = `plannerEvents/${eventId}/dismissedBy/${user.id}_${day}`;
       set(ref(rtdb, path), true);
     }, [user]);
 
@@ -227,7 +226,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             createDataListener('jobSchedules', setJobSchedulesById),
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
-                setJobRecords(snapshot.val() || {});
+                const data = snapshot.val() || {};
+                const monthRecords = Object.fromEntries(
+                    Object.entries(data).filter(([key]) => /^\d{4}-\d{2}$/.test(key))
+                );
+                setJobRecords(monthRecords);
             }),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
