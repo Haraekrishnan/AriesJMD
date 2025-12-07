@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -112,25 +111,34 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, [plannerEvents]);
 
     const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
-      if (!user) return;
-      const dayCommentId = `${day}_${plannerUserId}`;
-      const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-      const newComment: Omit<Comment, 'id'> = { userId: user.id, text, date: new Date().toISOString(), eventId };
-      set(newCommentRef, { ...newComment, id: newCommentRef.key });
-      update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
-        id: dayCommentId, plannerUserId, day, lastUpdated: new Date().toISOString()
-      });
-
-      // Mark as unread for other participants
-      const event = plannerEvents.find(e => e.id === eventId);
-      if (event) {
-        const participants = new Set([event.creatorId, event.userId]);
-        participants.forEach(pId => {
-          if (pId !== user.id) {
-            update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/viewedBy`), { [pId]: false });
-          }
+        if (!user) return;
+        const dayCommentId = `${day}_${plannerUserId}`;
+        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+        const newComment: Comment = {
+          id: newCommentRef.key!,
+          userId: user.id,
+          text,
+          date: new Date().toISOString(),
+          eventId,
+        };
+        set(newCommentRef, newComment);
+        update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
+            id: dayCommentId,
+            plannerUserId,
+            day,
+            lastUpdated: new Date().toISOString()
         });
-      }
+    
+        // Mark as unread for other participants
+        const event = plannerEvents.find(e => e.id === eventId);
+        if (event) {
+            const participants = new Set([event.creatorId, event.userId]);
+            participants.forEach(pId => {
+                if (pId !== user.id) {
+                    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/viewedBy`), { [pId]: false });
+                }
+            });
+        }
     }, [user, plannerEvents]);
 
     const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
@@ -191,7 +199,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const carryForwardPlantAssignments = useCallback(async (monthKey: string) => {
-        const prevMonthKey = format(new Date(monthKey).setMonth(new Date(monthKey).getMonth() - 1), 'yyyy-MM');
+        const prevMonthKey = format(startOfDay(new Date(monthKey)).setMonth(new Date(monthKey).getMonth() - 1), 'yyyy-MM');
         
         const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}/records`));
         if (!prevMonthSnapshot.exists()) {

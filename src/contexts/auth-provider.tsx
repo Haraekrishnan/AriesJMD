@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS } from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback } from '@/lib/types';
+import { useRouter, usePathname } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { add, isPast } from 'date-fns';
 
 // --- TYPE DEFINITIONS ---
 
@@ -19,51 +19,56 @@ type AuthContextType = {
   loading: boolean;
   users: User[];
   roles: RoleDefinition[];
+  passwordResetRequests: PasswordResetRequest[];
+  unlockRequests: UnlockRequest[];
+  feedback: Feedback[];
   can: PermissionsObject;
+  appName: string;
+  appLogo: string | null;
+
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
   updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
+  requestPasswordReset: (email: string) => Promise<boolean>;
+  resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
   lockUser: (userId: string) => void;
   unlockUser: (userId: string) => void;
+  requestUnlock: (userId: string, userName: string) => void;
+  resolveUnlockRequest: (requestId: string, userId: string) => void;
   addUser: (user: Omit<User, 'id' | 'avatar' | 'status'>) => void;
   updateUser: (user: User) => void;
   deleteUser: (userId: string) => void;
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
+  addFeedback: (subject: string, message: string) => void;
+  updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
+  markFeedbackAsViewed: () => void;
+  updateBranding: (name: string, logo: string | null) => void;
+  addActivityLog: (userId: string, action: string, details?: string) => void;
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
-  addActivityLog: (userId: string, action: string, details?: string) => void;
-  passwordResetRequests: any[]; // Simplified for this context
 };
 
 // --- HELPER FUNCTIONS ---
-
-const hashPassword = (password: string): string => {
-    let hash = 0;
-    for (let i = 0; i < password.length; i++) {
-        const char = password.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0;
-    }
-    return `hashed_${hash}`;
-};
 
 const createDataListener = <T extends {}>(
     path: string,
     setData: Dispatch<SetStateAction<Record<string, T>>>,
 ) => {
     const dbRef = ref(rtdb, path);
-    const listener = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(processedData);
-    });
-    return () => listener();
+    const listeners = [
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            const processedData = Object.keys(data).reduce((acc, key) => {
+                acc[key] = { ...data[key], id: key };
+                return acc;
+            }, {} as Record<string, T>);
+            setData(processedData);
+        })
+    ];
+    return () => listeners.forEach(listener => listener());
 };
 
 // --- CONTEXT ---
@@ -76,14 +81,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
-  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, any>>({});
-  
+  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
+  const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
+  const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
+  const [appName, setAppName] = useState('Aries Marine');
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
   const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
+  const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
+  const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   const can: PermissionsObject = useMemo(() => {
     const userRole = roles.find(r => r.name === user?.role);
@@ -95,6 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return canObject;
   }, [user, roles]);
 
+  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
+    if (!userId) return;
+    const logRef = push(ref(rtdb, 'activityLogs'));
+    const newLog = {
+      userId, action, details: details || null, timestamp: new Date().toISOString(),
+    };
+    set(logRef, newLog);
+  }, []);
+
   const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; user?: User }> => {
     setLoading(true);
     const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -104,29 +125,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const usersData = snapshot.val();
       const userId = Object.keys(usersData)[0];
       const foundUser = { id: userId, ...usersData[userId] };
-      const hashedPassword = hashPassword(pass);
-      
-      if (foundUser.password === hashedPassword) {
+
+      if (foundUser.password === pass) {
         setStoredUserId(foundUser.id);
         setUser(foundUser);
+        addActivityLog(foundUser.id, 'User Logged In');
         setLoading(false);
         return { success: true, user: foundUser };
       }
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
+    if (user) addActivityLog(user.id, 'User Logged Out');
     setStoredUserId(null);
     setUser(null);
     router.push('/login');
-  }, [setStoredUserId, router]);
-
-  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
-    const newRef = push(ref(rtdb, 'activityLogs'));
-    set(newRef, { userId, action, details, timestamp: new Date().toISOString() });
-  }, []);
+  }, [user, setStoredUserId, router, addActivityLog]);
 
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -134,13 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
       dataToSave.supervisorId = null;
     }
-    if (dataToSave.password && !dataToSave.password.startsWith('hashed_')) {
-        dataToSave.password = hashPassword(dataToSave.password);
-    }
-
     update(ref(rtdb, `users/${id}`), dataToSave);
+    if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
     if (user?.id === updatedUser.id) setUser(updatedUser);
-  }, [user]);
+  }, [user, addActivityLog]);
   
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
     if (user) {
@@ -160,43 +174,107 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, updateUser, toast]);
 
-    const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
-        const request = passwordResetRequests.find(r => r.email === email && r.resetCode === code && r.status === 'pending');
-        if (!request || (request.expiresAt && isPast(new Date(request.expiresAt)))) {
-            if(request) {
-                update(ref(rtdb, `passwordResetRequests/${request.id}`), { status: 'expired' });
-            }
-            return false;
-        }
+    const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
+        const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+        const snapshot = await get(usersRef);
+        if (!snapshot.exists()) return false;
         
-        const targetUser = users.find(u => u.id === request.userId);
-        if(!targetUser) return false;
+        const userData = snapshot.val();
+        const userId = Object.keys(userData)[0];
+        const targetUser = { id: userId, ...userData[userId] };
 
-        const newHashedPassword = hashPassword(newPass);
-        await update(ref(rtdb, `users/${request.userId}`), { password: newHashedPassword });
-        await update(ref(rtdb, `passwordResetRequests/${request.id}`), { status: 'handled' });
-
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+        await set(newRequestRef, {
+            userId: targetUser.id,
+            email: targetUser.email,
+            date: new Date().toISOString(),
+            status: 'pending',
+            resetCode: code,
+        });
+        
+        if (targetUser.email) {
+            sendNotificationEmail({
+                to: [targetUser.email], 
+                subject:`Your Password Reset Code`, 
+                htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire. Please use it to reset your password in the app.</p>`,
+                notificationSettings: {} as any, // Placeholder for now
+                event: 'onPasswordReset', // This might need a new event type
+            });
+        }
         return true;
-    }, [passwordResetRequests, users]);
+    }, []);
+  
+  const resolveResetRequest = useCallback((requestId: string) => {
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
+  }, []);
+
+  const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
+    const requestsRef = query(ref(rtdb, 'passwordResetRequests'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(requestsRef);
+    if (!snapshot.exists()) return false;
+    
+    const requestsData = snapshot.val();
+    let validRequest: PasswordResetRequest | null = null;
+    let requestId: string | null = null;
+    
+    for (const key in requestsData) {
+      if (requestsData[key].resetCode === code && requestsData[key].status === 'pending') {
+        validRequest = { id: key, ...requestsData[key] };
+        requestId = key;
+        break;
+      }
+    }
+    
+    if (!validRequest || !requestId) return false;
+    
+    await update(ref(rtdb, `users/${validRequest.userId}`), { password: newPass });
+    await update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
+    addActivityLog(validRequest.userId, 'Password Reset');
+    return true;
+  }, [addActivityLog]);
 
   const lockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'locked' }), []);
   const unlockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'active' }), []);
   
+  const requestUnlock = useCallback((userId: string, userName: string) => {
+    const newRequestRef = push(ref(rtdb, 'unlockRequests'));
+    set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
+
+    const admins = users.filter(u => u.role === 'Admin' && u.email);
+    admins.forEach(admin => {
+        sendNotificationEmail({
+            to: [admin.email!],
+            subject: `Account Unlock Request from ${userName}`,
+            htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
+            notificationSettings: {} as any, // Placeholder
+            event: 'onUnlockRequest',
+        });
+    });
+  }, [users]);
+  
+  const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
+    unlockUser(userId);
+    update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
+  }, [unlockUser]);
+
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar' | 'status'>) => {
     const newRef = push(ref(rtdb, 'users'));
     set(newRef, {
       ...userData,
-      password: hashPassword(userData.password!),
       supervisorId: userData.supervisorId || null,
       avatar: `https://i.pravatar.cc/150?u=${newRef.key}`,
       status: 'active',
       planningScore: 0,
     });
-  }, []);
+    if (user) addActivityLog(user.id, 'New User Added', `Added user: ${userData.name}`);
+  }, [user, addActivityLog]);
   
   const deleteUser = useCallback((userId: string) => {
     remove(ref(rtdb, `users/${userId}`));
-  }, []);
+    if (user) addActivityLog(user.id, 'User Deleted', `Deleted user ID: ${userId}`);
+  }, [user, addActivityLog]);
 
   const addRole = useCallback((role: Omit<RoleDefinition, 'id' | 'isEditable'>) => {
     const newRef = push(ref(rtdb, 'roles'));
@@ -210,6 +288,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `roles/${roleId}`));
   }, []);
   
+  const addFeedback = useCallback((subject: string, message: string) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'feedback'));
+    set(newRef, {
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
+    });
+  }, [user]);
+
+  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
+    update(ref(rtdb, `feedback/${feedbackId}`), { status });
+  }, []);
+
+  const markFeedbackAsViewed = useCallback(() => {
+    if (!user) return;
+    feedback.forEach(f => {
+      if (!f.viewedBy?.[user.id]) {
+        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
+      }
+    });
+  }, [user, feedback]);
+  
+  const updateBranding = useCallback((name: string, logo: string | null) => {
+    if (!user || user.role !== 'Admin') {
+      toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only administrators can change branding settings.' });
+      return;
+    }
+    const updates: { [key: string]: any } = { '/branding/appName': name };
+    if (logo !== undefined) updates['/branding/appLogo'] = logo;
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
+  }, [user, addActivityLog, toast]);
+
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
     const queue = [userId];
@@ -276,19 +386,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, users, getVisibleUsers]);
   
   useEffect(() => {
-    const unsubUsers = createDataListener('users', setUsersById);
-    const unsubRoles = createDataListener('roles', setRolesById);
-    const unsubResets = createDataListener('passwordResetRequests', setPasswordResetRequestsById);
+    const unsubscribers = [
+      createDataListener('users', setUsersById),
+      createDataListener('roles', setRolesById),
+      createDataListener('passwordResetRequests', setPasswordResetRequestsById),
+      createDataListener('unlockRequests', setUnlockRequestsById),
+      createDataListener('feedback', setFeedbackById),
+      onValue(ref(rtdb, 'branding'), (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setAppName(data.appName || 'Aries Marine');
+          setAppLogo(data.appLogo || null);
+        }
+      })
+    ];
 
     if (!storedUserId) {
         setLoading(false);
     }
 
-    return () => {
-      unsubUsers();
-      unsubRoles();
-      unsubResets();
-    };
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, [storedUserId]);
 
   useEffect(() => {
@@ -297,6 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (foundUser) {
         setUser(foundUser);
       } else {
+        // This case handles when a user is deleted from the DB
         logout();
       }
        setLoading(false);
@@ -306,8 +424,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [storedUserId, users, logout]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, can, passwordResetRequests,
-    login, logout, updateProfile, resetPassword, lockUser, unlockUser, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, getVisibleUsers, getAssignableUsers, addActivityLog
+    user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo,
+    login, logout, updateProfile, requestPasswordReset,
+    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
