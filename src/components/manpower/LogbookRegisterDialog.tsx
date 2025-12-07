@@ -4,17 +4,24 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { ManpowerProfile, LogbookRecord, LogbookStatus } from '@/lib/types';
+import { ScrollArea } from '../ui/scroll-area';
+import { Badge } from '../ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { ChevronsUpDown, Trash2, MessageSquare } from 'lucide-react';
+import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
-import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
-import { Badge } from '../ui/badge';
 import LogbookSummary from './LogbookSummary';
 
 interface LogbookRegisterDialogProps {
@@ -37,7 +44,7 @@ const getStatusVariant = (status?: LogbookStatus) => {
 };
 
 export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegisterDialogProps) {
-  const { manpowerProfiles, users, addLogbookHistoryRecord } = useAppContext();
+  const { user, manpowerProfiles, users, addLogbookHistoryRecord } = useAppContext();
   const { toast } = useToast();
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [status, setStatus] = useState<LogbookStatus | ''>('');
@@ -46,9 +53,12 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
   const [remarks, setRemarks] = useState('');
   const [requestedById, setRequestedById] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [manpowerStatusFilter, setManpowerStatusFilter] = useState<'Working' | 'On Leave'>('Working');
+  const [manpowerStatusFilter, setManpowerStatusFilter] = useState<'Working' | 'On Leave' | 'All'>('All');
 
   const filteredProfilesForStatus = useMemo(() => {
+    if (manpowerStatusFilter === 'All') {
+        return manpowerProfiles;
+    }
     return manpowerProfiles.filter(p => p.status === manpowerStatusFilter);
   }, [manpowerProfiles, manpowerStatusFilter]);
 
@@ -116,6 +126,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="All">All</SelectItem>
               <SelectItem value="Working">Working</SelectItem>
               <SelectItem value="On Leave">On Leave</SelectItem>
             </SelectContent>
