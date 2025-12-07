@@ -21,7 +21,7 @@ type PurchaseContextType = {
   deleteVendor: (vendorId: string) => void;
 
   addPayment: (paymentData: Omit<Payment, 'id' | 'status' | 'requesterId' | 'date'>) => void;
-  updatePayment: (payment: Payment) => void;
+  updatePayment: (paymentId: string, data: Partial<Payment>) => void;
   deletePayment: (paymentId: string) => void;
 
   addPurchaseRegister: (purchaseData: Omit<PurchaseRegister, 'id' | 'creatorId' | 'date'>) => void;
@@ -95,11 +95,10 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             date: new Date().toISOString(),
         };
         set(newRef, newPayment);
-    }, [user, users, vendors]);
+    }, [user]);
 
-    const updatePayment = useCallback((payment: Payment) => {
-        const { id, ...data } = payment;
-        update(ref(rtdb, `payments/${id}`), data);
+    const updatePayment = useCallback((paymentId: string, data: Partial<Payment>) => {
+        update(ref(rtdb, `payments/${paymentId}`), data);
     }, []);
 
     const deletePayment = useCallback((paymentId: string) => {
@@ -116,16 +115,16 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             creatorId: user.id,
             date: new Date().toISOString(),
         };
-        set(newPurchaseRef, newPurchase);
-        
-        const paymentData = {
-            vendorId: purchaseData.vendorId,
-            amount: purchaseData.grandTotal,
-            remarks: `From Purchase Register #${newPurchaseRef.key?.slice(-6)}`,
-            purchaseRegisterId: newPurchaseRef.key
-        };
 
-        addPayment(paymentData);
+        set(newPurchaseRef, newPurchase).then(() => {
+            const paymentData = {
+                vendorId: purchaseData.vendorId,
+                amount: purchaseData.grandTotal,
+                remarks: `From Purchase Register #${newPurchaseRef.key?.slice(-6)}`,
+                purchaseRegisterId: newPurchaseRef.key!
+            };
+            addPayment(paymentData);
+        });
     }, [user, addPayment]);
 
     const updatePurchaseRegister = useCallback((purchase: PurchaseRegister) => {
@@ -144,9 +143,10 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         const associatedPayment = payments.find(p => p.purchaseRegisterId === id);
         if(associatedPayment) {
             remove(ref(rtdb, `payments/${associatedPayment.id}`));
+            if(user) addActivityLog(user.id, "Payment Record Deleted", `Deleted payment record linked to purchase ${id}`);
         }
         remove(ref(rtdb, `purchaseRegisters/${id}`));
-    }, [payments]);
+    }, [payments, user, addActivityLog]);
     
     const updatePurchaseRegisterPoNumber = useCallback((id: string, poNumber: string) => {
         update(ref(rtdb, `purchaseRegisters/${id}`), { poNumber });
