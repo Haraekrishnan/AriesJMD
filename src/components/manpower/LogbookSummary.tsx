@@ -11,7 +11,6 @@ export default function LogbookSummary({ profiles }: { profiles: ManpowerProfile
   const statusCounts = useMemo(() => {
     const counts: Record<LogbookStatus, number> = {
       'Pending': 0,
-      'Requested': 0,
       'Received': 0,
       'Not Received': 0,
       'Sent back as requested': 0,
@@ -22,7 +21,6 @@ export default function LogbookSummary({ profiles }: { profiles: ManpowerProfile
         if (counts[status] !== undefined) {
             counts[status]++;
         } else if (status === 'Sent back as requested') {
-            // Count "Sent back" as "Pending" for this summary view
             counts['Pending']++;
         }
     });
@@ -31,7 +29,7 @@ export default function LogbookSummary({ profiles }: { profiles: ManpowerProfile
   }, [profiles]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
        <StatCard 
           title="Received" 
           value={statusCounts.Received} 
@@ -45,13 +43,6 @@ export default function LogbookSummary({ profiles }: { profiles: ManpowerProfile
           icon={XCircle} 
           description="Logbooks not yet submitted"
           className="border-red-500"
-        />
-        <StatCard 
-          title="Requested" 
-          value={statusCounts.Requested} 
-          icon={Book} 
-          description="Logbooks requested by supervisors"
-          className="border-blue-500"
         />
         <StatCard 
           title="Pending" 

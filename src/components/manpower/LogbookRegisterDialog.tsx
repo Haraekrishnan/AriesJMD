@@ -36,7 +36,6 @@ const getStatusVariant = (status?: LogbookStatus) => {
         case 'Received': return 'success';
         case 'Not Received': return 'destructive';
         case 'Sent back as requested': return 'warning';
-        case 'Requested': return 'default';
         case 'Pending':
         default:
             return 'secondary';

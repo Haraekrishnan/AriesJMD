@@ -413,7 +413,8 @@ export type EpNumberRecord = {
     date: string; // ISO string
 };
 
-export type LogbookStatus = 'Received' | 'Not Received' | 'Pending' | 'Requested' | 'Sent back as requested';
+export type LogbookStatus = 'Received' | 'Not Received' | 'Pending' | 'Sent back as requested';
+
 export type LogbookRecord = {
   id: string;
   status: LogbookStatus;
