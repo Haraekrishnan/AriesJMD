@@ -7,39 +7,13 @@ import { ManpowerProvider, useManpower } from './manpower-provider';
 import { PlannerProvider, usePlanner } from './planner-provider';
 import { PurchaseProvider, usePurchase } from './purchase-provider';
 import { TaskProvider, useTask } from './task-provider';
+import { rtdb } from '@/lib/rtdb';
+import { ref, push, set, update } from 'firebase/database';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { add, isPast } from 'date-fns';
-import { rtdb } from '@/lib/rtdb';
-import { ref, set, push, query, orderByChild, equalTo, get, update } from 'firebase/database';
-import { useToast } from '@/hooks/use-toast';
-import type { PasswordResetRequest, UnlockRequest, Feedback } from '@/lib/types';
-
 
 const AppContext = createContext({} as any);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  return (
-    <AuthProvider>
-        <GeneralProvider>
-            <TaskProvider>
-            <PlannerProvider>
-                <ManpowerProvider>
-                <PurchaseProvider>
-                    <InventoryProvider>
-                    <CombinedProvider>
-                        {children}
-                    </CombinedProvider>
-                    </InventoryProvider>
-                </PurchaseProvider>
-                </ManpowerProvider>
-            </PlannerProvider>
-            </TaskProvider>
-        </GeneralProvider>
-    </AuthProvider>
-  );
-}
-
-// A helper component to combine all context values and cross-context logic
 function CombinedProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const general = useGeneral();
@@ -48,34 +22,13 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const planner = usePlanner();
   const purchase = usePurchase();
   const task = useTask();
-  const { toast } = useToast();
-  
-  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
-    const newRef = push(ref(rtdb, 'activityLogs'));
-    set(newRef, { userId, action, details, timestamp: new Date().toISOString() });
-  }, []);
 
-  const updateBranding = useCallback((name: string, logo: string | null) => {
-    if (!auth.user || auth.user.role !== 'Admin') {
-      toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only administrators can change branding settings.' });
-      return;
-    }
-    const updates: { [key: string]: any } = { '/branding/appName': name };
-    if (logo !== undefined) {
-        updates['/branding/appLogo'] = logo;
-    }
-    update(ref(rtdb), updates);
-    addActivityLog(auth.user.id, 'Branding Updated', `App name changed to "${name}"`);
-  }, [auth.user, addActivityLog, toast]);
-
-    const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(usersRef);
-    if (!snapshot.exists()) return false;
-
-    const userData = snapshot.val();
-    const userId = Object.keys(userData)[0];
-    const targetUser = { id: userId, ...userData[userId] };
+  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
+    const { users, passwordResetRequests } = auth;
+    const { notificationSettings } = general;
+    
+    const targetUser = users.find(u => u.email === email);
+    if (!targetUser) return false;
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiryDate = add(new Date(), { minutes: 15 }).toISOString();
@@ -95,64 +48,59 @@ function CombinedProvider({ children }: { children: ReactNode }) {
             to: [targetUser.email],
             subject: `Your Password Reset Code`,
             htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes. Please use it to reset your password in the app.</p>`,
-            notificationSettings: general.notificationSettings,
+            notificationSettings: notificationSettings,
             event: 'onPasswordReset',
         });
     }
     return true;
-}, [general.notificationSettings]);
-  
+  }, [auth.users, general.notificationSettings]);
+
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
   }, []);
 
   const requestUnlock = useCallback((userId: string, userName: string) => {
+    const { users } = auth;
+    const { notificationSettings } = general;
     const newRequestRef = push(ref(rtdb, 'unlockRequests'));
     set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
 
-    const admins = auth.users.filter(u => u.role === 'Admin' && u.email);
+    const admins = users.filter(u => u.role === 'Admin' && u.email);
     admins.forEach(admin => {
         sendNotificationEmail({
             to: [admin.email!],
             subject: `Account Unlock Request from ${userName}`,
             htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
-            notificationSettings: general.notificationSettings,
+            notificationSettings: notificationSettings,
             event: 'onUnlockRequest',
         });
     });
   }, [auth.users, general.notificationSettings]);
-  
+
   const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
     auth.unlockUser(userId);
     update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
   }, [auth.unlockUser]);
-
+  
   const addFeedback = useCallback((subject: string, message: string) => {
-    if (!auth.user) return;
+    const { user } = auth;
+    if (!user) return;
     const newRef = push(ref(rtdb, 'feedback'));
     set(newRef, {
-      userId: auth.user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [auth.user.id]: true },
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
     });
   }, [auth.user]);
 
-  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
-    update(ref(rtdb, `feedback/${feedbackId}`), { status });
-  }, []);
-
-  const markFeedbackAsViewed = useCallback(() => {
-    if (!auth.user) return;
-    const updates: { [key: string]: boolean } = {};
-    let needsUpdate = false;
-    general.feedback.forEach(f => {
-      if (f && f.id && !f.viewedBy?.[auth.user!.id]) {
-        updates[`feedback/${f.id}/viewedBy/${auth.user!.id}`] = true;
-        needsUpdate = true;
-      }
-    });
-    if (needsUpdate) {
-        update(ref(rtdb), updates);
+  const updateBranding = useCallback((name: string, logo: string | null) => {
+    const { user, addActivityLog } = auth;
+    if (!user || user.role !== 'Admin') return;
+    const updates: { [key: string]: any } = { '/branding/appName': name };
+    if (logo !== undefined) {
+        updates['/branding/appLogo'] = logo;
     }
-  }, [auth.user, general.feedback]);
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
+  }, [auth.user, auth.addActivityLog]);
 
   const combinedValue = {
     ...auth,
@@ -162,22 +110,40 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     ...planner,
     ...purchase,
     ...task,
-    // Overwrite with cross-context functions
-    addActivityLog,
-    updateBranding,
     requestPasswordReset,
     resolveResetRequest,
     requestUnlock,
     resolveUnlockRequest,
     addFeedback,
-    updateFeedbackStatus,
-    markFeedbackAsViewed,
+    updateBranding,
   };
 
   return (
     <AppContext.Provider value={combinedValue}>
       {children}
     </AppContext.Provider>
+  );
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  return (
+    <AuthProvider>
+      <GeneralProvider>
+        <TaskProvider>
+          <PlannerProvider>
+            <ManpowerProvider>
+              <PurchaseProvider>
+                <InventoryProvider>
+                  <CombinedProvider>
+                    {children}
+                  </CombinedProvider>
+                </InventoryProvider>
+              </PurchaseProvider>
+            </ManpowerProvider>
+          </PlannerProvider>
+        </TaskProvider>
+      </GeneralProvider>
+    </AuthProvider>
   );
 }
 

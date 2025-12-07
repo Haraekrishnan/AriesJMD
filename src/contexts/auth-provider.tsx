@@ -8,6 +8,7 @@ import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, rem
 import useLocalStorage from '@/hooks/use-local-storage';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { add, isPast } from 'date-fns';
 
 // --- TYPE DEFINITIONS ---
 
@@ -33,6 +34,8 @@ type AuthContextType = {
   deleteRole: (roleId: string) => void;
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
+  addActivityLog: (userId: string, action: string, details?: string) => void;
+  passwordResetRequests: any[]; // Simplified for this context
 };
 
 // --- HELPER FUNCTIONS ---
@@ -73,9 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
+  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, any>>({});
   
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
+  const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -118,6 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   }, [setStoredUserId, router]);
 
+  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
+    const newRef = push(ref(rtdb, 'activityLogs'));
+    set(newRef, { userId, action, details, timestamp: new Date().toISOString() });
+  }, []);
+
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
     const dataToSave: any = { ...data };
@@ -151,11 +161,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, updateUser, toast]);
 
     const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
-        // This function needs access to passwordResetRequests, so it's moved to the combined provider
-        // This is a placeholder to prevent crashes, the real logic is in AppProvider
-        console.error("resetPassword should be called from useAppContext");
-        return false;
-    }, []);
+        const request = passwordResetRequests.find(r => r.email === email && r.resetCode === code && r.status === 'pending');
+        if (!request || (request.expiresAt && isPast(new Date(request.expiresAt)))) {
+            if(request) {
+                update(ref(rtdb, `passwordResetRequests/${request.id}`), { status: 'expired' });
+            }
+            return false;
+        }
+        
+        const targetUser = users.find(u => u.id === request.userId);
+        if(!targetUser) return false;
+
+        const newHashedPassword = hashPassword(newPass);
+        await update(ref(rtdb, `users/${request.userId}`), { password: newHashedPassword });
+        await update(ref(rtdb, `passwordResetRequests/${request.id}`), { status: 'handled' });
+
+        return true;
+    }, [passwordResetRequests, users]);
 
   const lockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'locked' }), []);
   const unlockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'active' }), []);
@@ -256,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubUsers = createDataListener('users', setUsersById);
     const unsubRoles = createDataListener('roles', setRolesById);
+    const unsubResets = createDataListener('passwordResetRequests', setPasswordResetRequestsById);
 
     if (!storedUserId) {
         setLoading(false);
@@ -264,6 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubUsers();
       unsubRoles();
+      unsubResets();
     };
   }, [storedUserId]);
 
@@ -282,8 +306,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [storedUserId, users, logout]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, can,
-    login, logout, updateProfile, resetPassword, lockUser, unlockUser, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, getVisibleUsers, getAssignableUsers
+    user, loading, users, roles, can, passwordResetRequests,
+    login, logout, updateProfile, resetPassword, lockUser, unlockUser, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, getVisibleUsers, getAssignableUsers, addActivityLog
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, Building, Room, Bed, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
 
 // --- TYPE DEFINITIONS ---
@@ -22,7 +22,6 @@ type GeneralContextType = {
   notificationSettings: NotificationSettings;
   appName: string;
   appLogo: string | null;
-  passwordResetRequests: PasswordResetRequest[];
   unlockRequests: UnlockRequest[];
   feedback: Feedback[];
   
@@ -32,6 +31,8 @@ type GeneralContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
+  updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
+  markFeedbackAsViewed: () => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -70,7 +71,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ events: {}, additionalRecipients: '' });
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
-  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
   const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
 
@@ -84,7 +84,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const vehicles = useMemo(() => Object.values(vehiclesById), [vehiclesById]);
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
   const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
-  const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
 
@@ -118,6 +117,15 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       remove(ref(rtdb, `jobCodes/${jobCodeId}`));
   }, []);
 
+  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
+    update(ref(rtdb, `feedback/${feedbackId}`), { status });
+  }, []);
+
+  const markFeedbackAsViewed = useCallback(() => {
+    // This function will now be handled in the CombinedProvider to get user access
+  }, []);
+
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('projects', setProjectsById),
@@ -139,7 +147,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       onValue(ref(rtdb, 'branding/appLogo'), (snapshot) => {
         setAppLogo(snapshot.val());
       }),
-      createDataListener('passwordResetRequests', setPasswordResetRequestsById),
       createDataListener('unlockRequests', setUnlockRequestsById),
       createDataListener('feedback', setFeedbackById),
     ];
@@ -159,8 +166,8 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, passwordResetRequests, unlockRequests, feedback,
-    addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, unlockRequests, feedback,
+    addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
