@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import LogbookSummary from './LogbookSummary';
 
 interface LogbookRegisterDialogProps {
   isOpen: boolean;
@@ -45,10 +46,15 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
   const [remarks, setRemarks] = useState('');
   const [requestedById, setRequestedById] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [manpowerStatusFilter, setManpowerStatusFilter] = useState<'Working' | 'On Leave'>('Working');
 
-  const filteredProfiles = useMemo(() => {
-    return manpowerProfiles.filter(p => p.status === 'Working' && p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [manpowerProfiles, searchTerm]);
+  const filteredProfilesForStatus = useMemo(() => {
+    return manpowerProfiles.filter(p => p.status === manpowerStatusFilter);
+  }, [manpowerProfiles, manpowerStatusFilter]);
+
+  const filteredProfilesForList = useMemo(() => {
+    return filteredProfilesForStatus.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [filteredProfilesForStatus, searchTerm]);
   
   const possibleRequesters = useMemo(() => {
     return users.filter(u => u.role !== 'Manager');
@@ -89,7 +95,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
   
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
-      setSelectedProfileIds(filteredProfiles.map(p => p.id));
+      setSelectedProfileIds(filteredProfilesForList.map(p => p.id));
     } else {
       setSelectedProfileIds([]);
     }
@@ -103,6 +109,21 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
           <DialogDescription>Update logbook status for multiple employees.</DialogDescription>
         </DialogHeader>
         
+        <div className="flex items-center gap-4">
+          <Label>Filter by Status:</Label>
+          <Select value={manpowerStatusFilter} onValueChange={(v) => setManpowerStatusFilter(v as any)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Working">Working</SelectItem>
+              <SelectItem value="On Leave">On Leave</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <LogbookSummary profiles={filteredProfilesForStatus} />
+
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 border rounded-md">
             <div className="space-y-2">
                 <Label>Status</Label>
@@ -154,7 +175,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
                     <TableRow>
                         <TableHead className="w-12">
                             <Checkbox 
-                                checked={selectedProfileIds.length > 0 && selectedProfileIds.length === filteredProfiles.length ? true : (selectedProfileIds.length > 0 ? 'indeterminate' : false)}
+                                checked={filteredProfilesForList.length > 0 && selectedProfileIds.length === filteredProfilesForList.length ? true : (selectedProfileIds.length > 0 ? 'indeterminate' : false)}
                                 onCheckedChange={handleSelectAll} 
                             />
                         </TableHead>
@@ -164,11 +185,11 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {filteredProfiles.map(profile => (
-                        <TableRow key={profile.id}>
-                            <TableCell><Checkbox checked={selectedProfileIds.includes(profile.id)} onCheckedChange={() => {
+                    {filteredProfilesForList.map(profile => (
+                        <TableRow key={profile.id} onClick={() => {
                                 setSelectedProfileIds(prev => prev.includes(profile.id) ? prev.filter(id => id !== profile.id) : [...prev, profile.id])
-                            }} /></TableCell>
+                            }} className="cursor-pointer">
+                            <TableCell><Checkbox checked={selectedProfileIds.includes(profile.id)} /></TableCell>
                             <TableCell>{profile.name}</TableCell>
                             <TableCell>{profile.trade}</TableCell>
                             <TableCell>
@@ -181,7 +202,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
           </ScrollArea>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-auto">
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
