@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -21,6 +22,7 @@ import LogbookRequests from '@/components/manpower/LogbookRequests';
 import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 import ManpowerSummary from '@/components/manpower/ManpowerSummary';
 import { Role } from '@/lib/types';
+import LogbookSummary from '@/components/manpower/LogbookSummary';
 
 export default function ManpowerPage() {
     const { user, can } = useAppContext();
@@ -60,6 +62,8 @@ export default function ManpowerPage() {
             </div>
 
             <ManpowerSummary />
+
+            {can.manage_logbook && <LogbookSummary />}
 
             <LogbookRequests />
 
