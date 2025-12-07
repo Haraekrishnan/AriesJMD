@@ -959,6 +959,11 @@ export type InspectionChecklist = {
 
 export const NOTIFICATION_EVENTS = {
     onNewTask: 'New Task Created',
+    onTaskComment: 'New Task Comment',
+    onTaskStatusSubmitted: 'Task Status Submitted for Approval',
+    onTaskApproved: 'Task Approved',
+    onTaskReturned: 'Task Returned for Revision',
+    onTaskReassignmentRequest: 'Task Reassignment Requested',
     onPpeRequest: 'New PPE Request',
     onInternalRequest: 'New Internal Store Request',
     onInternalRequestUpdate: 'Update on Request Item',

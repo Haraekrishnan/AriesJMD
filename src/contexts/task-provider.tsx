@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -157,8 +156,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         if (!task) return;
     
         const newCommentRef = push(ref(rtdb, `tasks/${taskId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: taskId };
-        set(newCommentRef, { ...newComment, id: newCommentRef.key });
+        const newComment: Comment = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text: commentText,
+            date: new Date().toISOString(),
+            eventId: taskId
+        };
+        set(newCommentRef, newComment);
 
         const participants = new Set([...(task.assigneeIds || []), task.creatorId]);
         participants.forEach(pId => {
@@ -166,14 +171,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                 const participantUser = users.find(u => u.id === pId);
                 if (participantUser?.email) {
                     const isAssigneeComment = task.assigneeIds.includes(user.id);
-                    const isCreatorComment = task.creatorId === user.id;
-
+                    
                     let shouldNotify = false;
                     if (isAssigneeComment && pId === task.creatorId) {
                         shouldNotify = true; // Assignee comments, notify creator
-                    }
-                    if (isCreatorComment && task.assigneeIds.includes(pId)) {
-                        shouldNotify = true; // Creator comments, notify assignee
+                    } else if (pId !== task.creatorId) { // Also notify other assignees
+                        shouldNotify = true;
                     }
                     
                     if(shouldNotify) {
@@ -182,7 +185,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                             subject: `New comment on task: ${task.title}`,
                             htmlBody: `<p>${user.name} commented: "${commentText}"</p><br/><a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks">View Task</a>`,
                             notificationSettings,
-                            event: 'onInternalRequestUpdate', // Re-using for general updates
+                            event: 'onTaskComment',
                             involvedUser: participantUser,
                             creatorUser: users.find(u => u.id === task.creatorId)
                         });
@@ -282,7 +285,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                 subject: `Task Approved: ${task.title}`,
                 htmlBody: `<p>Your submitted task "${task.title}" has been approved by ${user.name}.</p><p>Comment: "${comment}"</p><br/><a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks">View Task</a>`,
                 notificationSettings,
-                event: 'onInternalRequestUpdate',
+                event: 'onTaskApproved',
                 involvedUser: requestor,
                 creatorUser: user
             });
@@ -294,17 +297,17 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const task = tasksById[taskId];
         if (!task || !task.statusRequest) return;
-
+    
         const updates: { [key: string]: any } = {};
         updates[`tasks/${taskId}/approvalState`] = 'returned';
         updates[`tasks/${taskId}/statusRequest`] = null; 
         
         updates[`tasks/${taskId}/status`] = 'In Progress';
-
-        if (task.subtasks) {
-            Object.keys(task.subtasks).forEach(userId => {
-                updates[`tasks/${taskId}/subtasks/${userId}/status`] = 'In Progress';
-            });
+    
+        // Only reset the subtask status for the user who made the request
+        const requesterId = task.statusRequest.requestedBy;
+        if (task.subtasks?.[requesterId]) {
+            updates[`tasks/${taskId}/subtasks/${requesterId}/status`] = 'In Progress';
         }
         
         if (comment) {
@@ -314,7 +317,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             };
         }
         update(ref(rtdb), updates);
-
+    
         const requestor = users.find(u => u.id === task.statusRequest!.requestedBy);
         if (requestor?.email) {
             sendNotificationEmail({
@@ -322,12 +325,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                 subject: `Task Returned: ${task.title}`,
                 htmlBody: `<p>Your submitted task "${task.title}" has been returned by ${user.name}.</p><p>Comment: "${comment}"</p><br/><a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks">View Task</a>`,
                 notificationSettings,
-                event: 'onInternalRequestUpdate',
+                event: 'onTaskReturned',
                 involvedUser: requestor,
                 creatorUser: user
             });
         }
-
+    
     }, [user, users, tasksById, notificationSettings]);
 
     const requestTaskReassignment = useCallback((taskId: string, newAssigneeId: string, comment: string) => {
@@ -349,7 +352,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
     const markTaskAsViewed = useCallback((taskId: string) => {
         if (!user || tasksById[taskId]?.viewedBy?.[user.id]) return;
-        update(ref(rtdb, `tasks/${taskId}/viewedBy`), { ...tasksById[taskId].viewedBy, [user.id]: true });
+        update(ref(rtdb, `tasks/${taskId}/viewedBy/${user.id}`), true);
     }, [user, tasksById]);
     
     const acknowledgeReturnedTask = useCallback((taskId: string) => {
