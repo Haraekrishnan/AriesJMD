@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus, Role } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 type InventoryContextType = {
   inventoryItems: InventoryItem[];
@@ -295,7 +295,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const dataToSave: Partial<InventoryItem> = {
                 name: row['ITEM NAME'] || '',
                 serialNumber: serialNumber,
-                chestCrollNo: row['CHEST CROLL NO'] || '',
+                chestCrollNo: row['CHEST CROLL NO'] || null,
                 ariesId: row['ARIES ID'] || '',
                 inspectionDate: parseDateExcel(row['INSPECTION DATE']),
                 inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
@@ -432,7 +432,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         set(newRequestRef, newRequest);
         addActivityLog(user.id, 'Inventory Transfer Request Created');
     
-        const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
         const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
         const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
         const itemsHtml = requestData.items.map(item => `<li>${item.name} (SN: ${item.serialNumber})</li>`).join('');
@@ -471,8 +471,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`inventoryTransferRequests/${request.id}/status`] = 'Completed';
         updates[`inventoryTransferRequests/${request.id}/approverId`] = user.id;
         updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
-    
-        // Immediately move items upon approval
+        updates[`inventoryTransferRequests/${request.id}/acknowledgedByRequester`] = false;
+
         request.items.forEach(item => {
             let itemPath: string;
             switch (item.itemType) {
@@ -488,19 +488,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
 
         if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
-        const newListData = {
-            name: `From Transfer ${request.id.slice(-6)}`,
-            date: new Date().toISOString().split('T')[0],
-            items: request.items.map(item => ({
-            materialName: item.name,
-            manufacturerSrNo: item.serialNumber,
-            itemId: item.itemId,
-            itemType: item.itemType,
-            ariesId: item.ariesId || null,
-            chestCrollNo: (item as any).chestCrollNo || null,
-            })),
-        };
-        addTpCertList(newListData);
+            const listData = {
+                name: `From Transfer ${request.id.slice(-6)}`,
+                date: new Date().toISOString().split('T')[0],
+                items: request.items.map(item => ({
+                    materialName: item.name,
+                    manufacturerSrNo: item.serialNumber,
+                    itemId: item.itemId,
+                    itemType: item.itemType,
+                    ariesId: item.ariesId || null,
+                    chestCrollNo: (item as any).chestCrollNo || null,
+                })),
+            };
+            addTpCertList(listData);
         }
     
         update(ref(rtdb), updates);
@@ -539,6 +539,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const updates: { [key: string]: any } = {};
         updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
         updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+        updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
 
         update(ref(rtdb), updates);
         addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
@@ -559,7 +560,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const acknowledgeTransfer = useCallback((requestId: string) => {
         if (!user) return;
         update(ref(rtdb, `inventoryTransferRequests/${requestId}`), {
-            acknowledgedBy: user.id,
+            acknowledgedByRequester: true,
             acknowledgedDate: new Date().toISOString(),
         });
         addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
@@ -625,8 +626,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
         addActivityLog(user.id, "Certificate Request Created");
 
-        const storeManagers = users.filter(u => u.role === 'Store in Charge' || u.role === 'Document Controller');
-        storeManagers.forEach(manager => {
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Document Controller', 'Admin'].includes(u.role));
+        storePersonnel.forEach(manager => {
             if(manager.email) {
                 const htmlBody = `
                     <h3>New Certificate Request</h3>
@@ -662,18 +663,18 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const urlRegex = /(https?:\/\/[^\s]+)/;
         const match = comment.match(urlRegex);
         if(match) {
-        const url = match[0];
-        let path: string | null = null;
-        if (request.itemId) {
-            path = `inventoryItems/${request.itemId}/certificateUrl`;
-        } else if (request.utMachineId) {
-            path = `utMachines/${request.utMachineId}/certificateUrl`;
-        } else if (request.dftMachineId) {
-            path = `dftMachines/${request.dftMachineId}/certificateUrl`;
-        }
-        if (path) {
-            updates[path] = url;
-        }
+            const url = match[0];
+            let path: string | null = null;
+            if (request.itemId) {
+                path = `inventoryItems/${request.itemId}/certificateUrl`;
+            } else if (request.utMachineId) {
+                path = `utMachines/${request.utMachineId}/certificateUrl`;
+            } else if (request.dftMachineId) {
+                path = `dftMachines/${request.dftMachineId}/certificateUrl`;
+            }
+            if (path) {
+                updates[path] = url;
+            }
         }
         
         update(ref(rtdb), updates);
@@ -859,11 +860,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
     }, [user, manpowerProfiles, ppeStock]);
 
-    const updatePpeRequest = useCallback((request: PpeRequest) => {
-        const { id, ...data } = request;
-        update(ref(rtdb, `ppeRequests/${id}`), data);
-    }, []);
-
     const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
         if (!user) return;
         const request = ppeRequests.find(r => r.id === requestId);
@@ -878,7 +874,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
         update(ref(rtdb), updates);
 
-        const approvers = users.filter(u => u.role === 'Manager' || u.role === 'Admin');
+        const approvers = users.filter(u => ['Manager', 'Admin'].includes(u.role));
         const requester = users.find(u => u.id === request.requesterId);
         const employee = manpowerProfiles.find(p => p.id === request.manpowerId);
 
@@ -889,7 +885,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                      const htmlBody = `
                         <h3>Query on PPE Request for ${employee?.name || '...'}</h3>
                         <p><strong>From:</strong> ${user.name}</p>
-                        <p><strong>Query:</strong> ${commentText}</p>
+                        <p><strong>Comment:</strong> ${commentText}</p>
                         <p>Please review the request in the app.</p>
                      `;
                      sendNotificationEmail({
@@ -910,26 +906,27 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const request = ppeRequests.find(r => r.id === requestId);
         if (!request) return;
-
+    
         const updates: { [key: string]: any } = {};
         updates[`ppeRequests/${requestId}/status`] = status;
         updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-
+    
         if (status === 'Approved') {
             updates[`ppeRequests/${requestId}/approverId`] = user.id;
         } else if (status === 'Issued') {
             updates[`ppeRequests/${requestId}/issuedById`] = user.id;
             const newHistoryRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
             const historyRecord: PpeHistoryRecord = {
-            id: newHistoryRef.key!,
-            ppeType: request.ppeType,
-            size: request.size,
-            quantity: request.quantity || 1,
-            issueDate: new Date().toISOString(),
-            requestType: request.requestType,
-            remarks: `Issued based on request ID: ${requestId.slice(-6)}. ${request.remarks || ''}`,
-            issuedById: user.id,
-            approverId: request.approverId
+                id: newHistoryRef.key!,
+                ppeType: request.ppeType,
+                size: request.size,
+                quantity: request.quantity || 1,
+                issueDate: new Date().toISOString(),
+                requestType: request.requestType,
+                remarks: `Issued based on request ID: ${requestId.slice(-6)}. ${request.remarks || ''}`,
+                issuedById: user.id,
+                approverId: request.approverId,
+                requestId: requestId,
             };
             updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${newHistoryRef.key}`] = historyRecord;
             
@@ -937,17 +934,42 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             get(ref(rtdb, stockPath)).then(snapshot => {
                 const stockData = snapshot.val();
                 if (request.ppeType === 'Coverall') {
-                    const currentSizeStock = stockData.sizes[request.size] || 0;
-                    update(ref(rtdb, `${stockPath}/sizes`), { [request.size]: currentSizeStock - (request.quantity || 1) });
+                    const currentSizeStock = stockData?.sizes?.[request.size] || 0;
+                    const newStock = Math.max(0, currentSizeStock - (request.quantity || 1));
+                    update(ref(rtdb, `${stockPath}/sizes`), { ...stockData.sizes, [request.size]: newStock });
                 } else {
-                    update(ref(rtdb, stockPath), { quantity: (stockData.quantity || 0) - (request.quantity || 1) });
+                    const newStock = Math.max(0, (stockData?.quantity || 0) - (request.quantity || 1));
+                    update(ref(rtdb, stockPath), { quantity: newStock });
                 }
             });
         }
-
+    
         update(ref(rtdb), updates);
         addPpeRequestComment(requestId, comment || `Status changed to ${status}`, true);
-    }, [user, ppeRequests, addPpeRequestComment]);
+        
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email) {
+            const htmlBody = `
+                <p>The status of your PPE request for ${manpowerProfiles.find(p => p.id === request.manpowerId)?.name} has been updated to <strong>${status}</strong> by ${user.name}.</p>
+                <p><strong>Comment:</strong> ${comment}</p>
+                <p>You can view the details in the app.</p>
+            `;
+            sendNotificationEmail({
+                to: [requester.email],
+                subject: `PPE Request ${status}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onInternalRequestUpdate',
+                involvedUser: requester
+            });
+        }
+    
+    }, [user, users, ppeRequests, addPpeRequestComment, notificationSettings, manpowerProfiles]);
+    
+    const updatePpeRequest = useCallback((request: PpeRequest) => {
+        const { id, ...data } = request;
+        update(ref(rtdb, `ppeRequests/${id}`), data);
+    }, []);
     
     const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
         if (!user) return;
@@ -1046,7 +1068,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         set(newRef, newRequest);
         addActivityLog(user.id, 'Internal Store Request Created');
 
-        const storePersonnel = users.filter(u => u.role === 'Store in Charge' || u.role === 'Assistant Store Incharge');
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
         storePersonnel.forEach(storeUser => {
             if(storeUser.email) {
                 const htmlBody = `
@@ -1102,7 +1124,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         const requester = users.find(u => u.id === request.requesterId);
         const isFromRequester = user.id === request.requesterId;
-        const approvers = users.filter(u => can.approve_store_requests || u.role === 'Admin');
+        const approvers = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
 
         const recipients = isFromRequester ? approvers : (requester ? [requester] : []);
 
@@ -1147,7 +1169,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const actionComment = comment || `${request.items[itemIndex].description}: Status changed to ${status}.`;
         addInternalRequestComment(requestId, actionComment, true);
     
-        // Recalculate main request status
         const updatedItems = [...request.items];
         updatedItems[itemIndex].status = status;
         
@@ -1424,8 +1445,3 @@ export const useInventory = (): InventoryContextType => {
 };
 
     
-
-    
-
-
-
