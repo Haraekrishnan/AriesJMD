@@ -1,14 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { add, isPast } from 'date-fns';
 
 // --- TYPE DEFINITIONS ---
 
@@ -39,27 +38,29 @@ type AuthContextType = {
 // --- HELPER FUNCTIONS ---
 
 const hashPassword = (password: string): string => {
-    // This is NOT a secure hash. It's for demonstration purposes only.
-    return `hashed_${password.split('').reverse().join('')}`;
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+        const char = password.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+    }
+    return `hashed_${hash}`;
 };
-
 
 const createDataListener = <T extends {}>(
     path: string,
     setData: Dispatch<SetStateAction<Record<string, T>>>,
 ) => {
     const dbRef = ref(rtdb, path);
-    const listeners = [
-        onValue(dbRef, (snapshot) => {
-            const data = snapshot.val() || {};
-            const processedData = Object.keys(data).reduce((acc, key) => {
-                acc[key] = { ...data[key], id: key };
-                return acc;
-            }, {} as Record<string, T>);
-            setData(processedData);
-        })
-    ];
-    return () => listeners.forEach(listener => listener());
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(processedData);
+    });
+    return () => listener();
 };
 
 // --- CONTEXT ---
@@ -72,11 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
-  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
   
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
-  const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -136,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
     if (user) {
         const updatedUser: User = { ...user, name, email };
-        if (password) updatedUser.password = password; // Will be hashed by updateUser
+        if (password) updatedUser.password = password;
 
         if (avatarFile) {
             try {
@@ -151,31 +150,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, updateUser, toast]);
 
-  const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
-    const requestsRef = query(ref(rtdb, 'passwordResetRequests'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(requestsRef);
-    if (!snapshot.exists()) return false;
-    
-    const requestsData = snapshot.val();
-    let validRequest: PasswordResetRequest | null = null;
-    let requestId: string | null = null;
-    
-    for (const key in requestsData) {
-        const req = requestsData[key];
-        const isExpired = req.expiresAt && isPast(new Date(req.expiresAt));
-        if (req.resetCode === code && req.status === 'pending' && !isExpired) {
-            validRequest = { id: key, ...req };
-            requestId = key;
-            break;
-        }
-    }
-    
-    if (!validRequest || !requestId) return false;
-    
-    await update(ref(rtdb, `users/${validRequest.userId}`), { password: hashPassword(newPass) });
-    await update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
-    return true;
-  }, []);
+    const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
+        // This function needs access to passwordResetRequests, so it's moved to the combined provider
+        // This is a placeholder to prevent crashes, the real logic is in AppProvider
+        console.error("resetPassword should be called from useAppContext");
+        return false;
+    }, []);
 
   const lockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'locked' }), []);
   const unlockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'active' }), []);
@@ -274,17 +254,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, users, getVisibleUsers]);
   
   useEffect(() => {
-    const unsubscribers = [
-      createDataListener('users', setUsersById),
-      createDataListener('roles', setRolesById),
-      createDataListener('passwordResetRequests', setPasswordResetRequestsById),
-    ];
+    const unsubUsers = createDataListener('users', setUsersById);
+    const unsubRoles = createDataListener('roles', setRolesById);
 
     if (!storedUserId) {
         setLoading(false);
     }
 
-    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+    return () => {
+      unsubUsers();
+      unsubRoles();
+    };
   }, [storedUserId]);
 
   useEffect(() => {
