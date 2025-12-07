@@ -1,15 +1,15 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, Building, Room, Bed, NotificationSettings, Broadcast } from '@/lib/types';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, Building, Room, Bed, NotificationSettings, Broadcast, PasswordResetRequest, UnlockRequest, Feedback } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
 import { saveNotificationSettings } from '@/app/actions/saveNotificationSettings';
 import { useToast } from '@/hooks/use-toast';
+import { add, isPast } from 'date-fns';
 
 // --- TYPE DEFINITIONS ---
 
@@ -25,6 +25,12 @@ type GeneralContextType = {
   drivers: Driver[];
   buildings: Building[];
   notificationSettings: NotificationSettings;
+  appName: string;
+  appLogo: string | null;
+  passwordResetRequests: PasswordResetRequest[];
+  unlockRequests: UnlockRequest[];
+  feedback: Feedback[];
+  
   addProject: (projectName: string, isPlant?: boolean) => void;
   updateProject: (project: Project) => void;
   deleteProject: (projectId: string) => void;
@@ -69,6 +75,15 @@ type GeneralContextType = {
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
   updateNotificationSettings: (settings: NotificationSettings) => void;
+  addActivityLog: (userId: string, action: string, details?: string) => void;
+  updateBranding: (name: string, logo: string | null) => void;
+  requestPasswordReset: (email: string) => Promise<boolean>;
+  resolveResetRequest: (requestId: string) => void;
+  requestUnlock: (userId: string, userName: string) => void;
+  resolveUnlockRequest: (requestId: string, userId: string) => void;
+  addFeedback: (subject: string, message: string) => void;
+  updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
+  markFeedbackAsViewed: () => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -96,7 +111,7 @@ const createDataListener = <T extends {}>(
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
-  const { user, users, addActivityLog } = useAuth();
+  const { user, users, lockUser, unlockUser } = useAuth();
   const { toast } = useToast();
   
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
@@ -110,7 +125,12 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [driversById, setDriversById] = useState<Record<string, Driver>>({});
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ events: {}, additionalRecipients: '' });
-  
+  const [appName, setAppName] = useState('Aries Marine');
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
+  const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
+  const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
+
   const projects = useMemo(() => Object.values(projectsById), [projectsById]);
   const jobCodes = useMemo(() => Object.values(jobCodesById), [jobCodesById]);
   const activityLogs = useMemo(() => Object.values(activityLogsById), [activityLogsById]);
@@ -121,9 +141,17 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const vehicles = useMemo(() => Object.values(vehiclesById), [vehiclesById]);
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
   const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
-
+  const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
+  const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
+  const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
 
   // --- FUNCTION DEFINITIONS ---
+  
+  const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
+    const newRef = push(ref(rtdb, 'activityLogs'));
+    set(newRef, { userId, action, details, timestamp: new Date().toISOString() });
+  }, []);
+
   const addProject = useCallback((projectName: string, isPlant = false) => {
     const newRef = push(ref(rtdb, 'projects'));
     set(newRef, { name: projectName, isPlant });
@@ -265,7 +293,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       }
     });
   }, [user]);
-
 
   const addIncidentReport = useCallback((incident: Omit<IncidentReport, 'id' | 'reporterId' | 'reportTime' | 'status' | 'isPublished' | 'comments' | 'reportedToUserIds' | 'lastUpdated' | 'viewedBy'>) => {
     if(!user) return;
@@ -610,6 +637,104 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     }
   }, [toast]);
 
+  const updateBranding = useCallback((name: string, logo: string | null) => {
+    if (!user || user.role !== 'Admin') {
+      toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only administrators can change branding settings.' });
+      return;
+    }
+    const updates: { [key: string]: any } = { '/branding/appName': name };
+    if (logo !== undefined) {
+        updates['/branding/appLogo'] = logo;
+    }
+    update(ref(rtdb), updates);
+    addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
+  }, [user, addActivityLog, toast]);
+
+    const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) return false;
+
+    const userData = snapshot.val();
+    const userId = Object.keys(userData)[0];
+    const targetUser = { id: userId, ...userData[userId] };
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryDate = add(new Date(), { minutes: 15 }).toISOString();
+
+    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+    await set(newRequestRef, {
+        userId: targetUser.id,
+        email: targetUser.email,
+        date: new Date().toISOString(),
+        status: 'pending',
+        resetCode: code,
+        expiresAt: expiryDate
+    });
+
+    if (targetUser.email) {
+        sendNotificationEmail({
+            to: [targetUser.email],
+            subject: `Your Password Reset Code`,
+            htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes. Please use it to reset your password in the app.</p>`,
+            notificationSettings,
+            event: 'onPasswordReset',
+        });
+    }
+    return true;
+}, [notificationSettings]);
+  
+  const resolveResetRequest = useCallback((requestId: string) => {
+    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
+  }, []);
+
+  const requestUnlock = useCallback((userId: string, userName: string) => {
+    const newRequestRef = push(ref(rtdb, 'unlockRequests'));
+    set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
+
+    const admins = users.filter(u => u.role === 'Admin' && u.email);
+    admins.forEach(admin => {
+        sendNotificationEmail({
+            to: [admin.email!],
+            subject: `Account Unlock Request from ${userName}`,
+            htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
+            notificationSettings,
+            event: 'onUnlockRequest',
+        });
+    });
+  }, [users, notificationSettings]);
+  
+  const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
+    unlockUser(userId);
+    update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
+  }, [unlockUser]);
+
+  const addFeedback = useCallback((subject: string, message: string) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'feedback'));
+    set(newRef, {
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
+    });
+  }, [user]);
+
+  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
+    update(ref(rtdb, `feedback/${feedbackId}`), { status });
+  }, []);
+
+  const markFeedbackAsViewed = useCallback(() => {
+    if (!user) return;
+    const updates: { [key: string]: boolean } = {};
+    let needsUpdate = false;
+    feedback.forEach(f => {
+      if (f && f.id && !f.viewedBy?.[user.id]) {
+        updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
+        needsUpdate = true;
+      }
+    });
+    if (needsUpdate) {
+        update(ref(rtdb), updates);
+    }
+  }, [user, feedback]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -626,6 +751,15 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       onValue(ref(rtdb, 'settings/notificationSettings'), (snapshot) => {
         setNotificationSettings(snapshot.val() || { events: {}, additionalRecipients: '' });
       }),
+      onValue(ref(rtdb, 'branding/appName'), (snapshot) => {
+        setAppName(snapshot.val() || 'Aries Marine');
+      }),
+      onValue(ref(rtdb, 'branding/appLogo'), (snapshot) => {
+        setAppLogo(snapshot.val());
+      }),
+      createDataListener('passwordResetRequests', setPasswordResetRequestsById),
+      createDataListener('unlockRequests', setUnlockRequestsById),
+      createDataListener('feedback', setFeedbackById),
     ];
     
     // Seed job codes
@@ -644,7 +778,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, passwordResetRequests, unlockRequests, feedback,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode,
     addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, dismissAnnouncement,
     addBroadcast, deleteBroadcast, dismissBroadcast,
@@ -653,7 +787,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     addVehicle, updateVehicle, deleteVehicle,
     addDriver, updateDriver, deleteDriver,
     addBuilding, updateBuilding, deleteBuilding, addRoom, updateRoom, deleteRoom, addBed, updateBed, deleteBed, assignOccupant, unassignOccupant,
-    updateNotificationSettings,
+    updateNotificationSettings, addActivityLog, updateBranding, requestPasswordReset, resolveResetRequest, requestUnlock, resolveUnlockRequest, addFeedback, updateFeedbackStatus, markFeedbackAsViewed,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;

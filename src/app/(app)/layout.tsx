@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -15,30 +16,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) {
-      return; // Wait until loading is false
+      return; 
     }
 
     if (!user) {
-      // If not loading and no user, redirect to login
-      router.replace('/login');
+      if (pathname !== '/login') {
+        router.replace('/login');
+      }
       return;
     }
 
     if (user.status === 'locked') {
-      // If user is locked, they should only be on the status page
       if (pathname !== '/status') {
         router.replace('/status');
       }
     } else if (user.status === 'active') {
-      // If user is active and on login/status, redirect to dashboard
       if (pathname === '/login' || pathname === '/status') {
         router.replace('/dashboard');
       }
     }
   }, [user, loading, router, pathname]);
 
-  // Show a loading skeleton while we're determining auth state or redirecting
-  if (loading || !user) {
+  if (loading || !user || (user.status === 'locked' && pathname !== '/status')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -52,11 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // A locked user should not see the main app layout.
-  // The /status page will handle its own rendering.
   if (user.status === 'locked') {
-    // This allows the /status page to render without triggering re-renders from this layout.
-    // If we're already on /status, children will be the status page.
     return <>{children}</>;
   }
   
