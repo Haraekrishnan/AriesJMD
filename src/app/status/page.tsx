@@ -29,8 +29,8 @@ export default function StatusPage() {
   }, [user, loading, router]);
 
 
+  // Show a loading skeleton while we determine status, but only if we don't have a locked user yet
   if (loading || !user || user.status !== 'locked') {
-    // Show a loading skeleton while we determine status or redirect
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">

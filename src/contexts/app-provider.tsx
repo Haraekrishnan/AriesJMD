@@ -1,4 +1,3 @@
-
 'use client';
 import { createContext, useContext, ReactNode } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';

@@ -54,15 +54,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If a locked user lands on the status page, just render that page without the main layout.
-  // This prevents the redirect loop.
-  if (user.status === 'locked' && pathname === '/status') {
+  // A locked user should not see the main app layout.
+  // The /status page will handle its own rendering.
+  if (user.status === 'locked') {
+    // This allows the /status page to render without triggering re-renders from this layout.
+    // If we're already on /status, children will be the status page.
+    // If not, the useEffect above will redirect.
     return <>{children}</>;
   }
 
   // If user is active, render the main app layout.
   // This condition implicitly handles redirecting away from /status if the user becomes active.
-  if (user.status === 'active') {
+  if (user.status === 'active' && pathname !== '/status') {
     return (
         <div className="flex min-h-screen w-full bg-background">
           <AppSidebar />
@@ -81,6 +84,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // This is a fallback for transitional states, e.g., before a redirect completes.
-  return null;
+  // Fallback for transitional states, e.g., before a redirect completes.
+  return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+            </div>
+        </div>
+      </div>
+    );
 }
