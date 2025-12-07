@@ -414,6 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (foundUser) {
         setUser(foundUser);
       } else {
+        // This case handles when a user is deleted from the DB
         logout();
       }
        setLoading(false);
@@ -422,32 +423,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [storedUserId, users, logout]);
 
-
-  useEffect(() => {
-    if (loading) return;
-
-    if (!user) {
-      if (pathname !== '/login') {
-        router.replace('/login');
-      }
-      return;
-    }
-
-    if (user.status === 'locked') {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-    } else if (user.status === 'active') {
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, router, pathname]);
-
   const contextValue: AuthContextType = {
     user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo,
     login, logout, updateProfile, requestPasswordReset,
-    generateResetCode: () => {}, // Deprecated
     resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers,
   };
 

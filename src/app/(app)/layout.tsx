@@ -15,14 +15,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) {
-      return;
+      return; // Wait until loading is false
     }
 
     if (!user) {
       // If not loading and no user, redirect to login
-      if (pathname !== '/login') {
-        router.replace('/login');
-      }
+      router.replace('/login');
       return;
     }
 
@@ -39,8 +37,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router, pathname]);
 
+  // Show a loading skeleton while we're determining auth state or redirecting
   if (loading || !user) {
-    // Show a loading skeleton while we're determining auth state or redirecting
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -59,41 +57,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (user.status === 'locked') {
     // This allows the /status page to render without triggering re-renders from this layout.
     // If we're already on /status, children will be the status page.
-    // If not, the useEffect above will redirect.
     return <>{children}</>;
   }
-
-  // If user is active, render the main app layout.
-  // This condition implicitly handles redirecting away from /status if the user becomes active.
-  if (user.status === 'active' && pathname !== '/status') {
-    return (
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex h-screen w-full flex-col md:pl-64">
-              <Header />
-              <div className="p-2 border-b">
-                 <BroadcastFeed />
-              </div>
-              <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-                  <div className="mt-4">
-                      {children}
-                  </div>
-              </main>
-          </div>
-        </div>
-    );
-  }
-
-  // Fallback for transitional states, e.g., before a redirect completes.
+  
   return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <div className="flex h-screen w-full flex-col md:pl-64">
+            <Header />
+            <div className="p-2 border-b">
+               <BroadcastFeed />
             </div>
+            <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+                <div className="mt-4">
+                    {children}
+                </div>
+            </main>
         </div>
       </div>
-    );
+  );
 }
