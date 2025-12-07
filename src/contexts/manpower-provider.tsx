@@ -77,8 +77,9 @@ const createDataListener = <T extends {}>(
 const ManpowerContext = createContext<ManpowerContextType | undefined>(undefined);
 
 export function ManpowerProvider({ children }: { children: ReactNode }) {
-    const { user, users, can } = useAuth();
+    const { user, users, can, addActivityLog } = useAuth();
     const { projects, notificationSettings } = useGeneral();
+    const { toast } = useToast();
     
     const [manpowerProfilesById, setManpowerProfilesById] = useState<Record<string, ManpowerProfile>>({});
     const [manpowerLogsById, setManpowerLogsById] = useState<Record<string, ManpowerLog>>({});
@@ -175,11 +176,16 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
     };
 
     const confirmManpowerLeave = (profileId: string, leaveId: string) => {
-        update(ref(rtdb, `manpowerProfiles/${profileId}`), { status: 'On Leave' });
+        const updates: { [key: string]: any } = {};
+        updates[`manpowerProfiles/${profileId}/status`] = 'On Leave';
+        updates[`manpowerProfiles/${profileId}/leaveHistory/${leaveId}/isConfirmed`] = true;
+        update(ref(rtdb), updates);
     };
 
     const cancelManpowerLeave = (profileId: string, leaveId: string) => {
-        remove(ref(rtdb, `manpowerProfiles/${profileId}/leaveHistory/${leaveId}`));
+        update(ref(rtdb, `manpowerProfiles/${profileId}/leaveHistory/${leaveId}`), {
+            status: 'Cancelled'
+        });
     };
     
     const rejoinFromLeave = (profileId: string, leaveId: string, rejoinDate: Date) => {
@@ -293,9 +299,13 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
 
     const updateLogbookStatus = (manpowerId: string, status: LogbookStatus, inDate?: Date, outDate?: Date) => {
         if (!user) return;
-        const updates: Partial<LogbookRecord> = { status, enteredById: user.id, entryDate: new Date().toISOString() };
+        const profile = manpowerProfilesById[manpowerId];
+        if (!profile || !profile.logbook) return;
+    
+        const updates: Partial<LogbookRecord> = { status };
         if (inDate) updates.inDate = inDate.toISOString();
         if (outDate) updates.outDate = outDate.toISOString();
+
         update(ref(rtdb, `manpowerProfiles/${manpowerId}/logbook`), updates);
     };
     
@@ -315,8 +325,6 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
             inDate: recordData.inDate || null,
             requestedById: recordData.requestedById || null,
         };
-        // remarks is used for manual entry, so clear it before saving to history from register.
-        delete recordToWrite.remarks;
         set(newRef, { ...recordToWrite, id: newRef.key });
         
         const updates: Partial<LogbookRecord> = {};
@@ -387,6 +395,7 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
                 approverId: user.id,
                 approvalDate: new Date().toISOString(),
                 approverComment: comment,
+                requestId: requestId,
             };
             addLogbookHistoryRecord(manpowerId, newHistoryRecord);
         }
