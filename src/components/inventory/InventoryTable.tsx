@@ -18,9 +18,12 @@ import NewCertificateRequestDialog from './NewCertificateRequestDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import RenameItemGroupDialog from './RenameItemGroupDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Checkbox } from '../ui/checkbox';
 
 interface InventoryTableProps {
   items: InventoryItem[];
+  selectedItems?: InventoryItem[];
+  onSelectionChange?: (items: InventoryItem[]) => void;
 }
 
 const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; onVerify: () => void; }) => {
@@ -131,7 +134,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
     );
 };
 
-export default function InventoryTable({ items }: InventoryTableProps) {
+export default function InventoryTable({ items, selectedItems, onSelectionChange }: InventoryTableProps) {
     const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem, can } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -240,6 +243,29 @@ export default function InventoryTable({ items }: InventoryTableProps) {
             return 'Invalid Date';
         }
     };
+    
+    const handleItemGroupSelection = (itemName: string, checked: boolean | 'indeterminate') => {
+        if (!onSelectionChange || !selectedItems) return;
+        const groupItems = groupedItems[itemName];
+        const currentSelection = new Set(selectedItems.map(i => i.id));
+        if (checked) {
+            groupItems.forEach(item => currentSelection.add(item.id));
+        } else {
+            groupItems.forEach(item => currentSelection.delete(item.id));
+        }
+        onSelectionChange(items.filter(i => currentSelection.has(i.id)));
+    };
+    
+    const handleRowSelection = (item: InventoryItem) => {
+        if (!onSelectionChange || !selectedItems) return;
+        const currentSelection = new Set(selectedItems.map(i => i.id));
+        if (currentSelection.has(item.id)) {
+            currentSelection.delete(item.id);
+        } else {
+            currentSelection.add(item.id);
+        }
+        onSelectionChange(items.filter(i => currentSelection.has(i.id)));
+    };
 
     if (items.length === 0) {
         return (
@@ -251,42 +277,19 @@ export default function InventoryTable({ items }: InventoryTableProps) {
 
     return (
         <TooltipProvider>
-            {/* Mobile View */}
-            <div className="md:hidden">
-                <Accordion type="multiple" className="w-full space-y-2">
-                    {Object.entries(groupedItems).map(([itemName, itemList]) => (
-                        <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
-                             <AccordionTrigger className="p-4 hover:no-underline">
-                                <div className="flex items-center gap-4">
-                                    <h3 className="font-semibold text-lg">{itemName}</h3>
-                                    <Badge variant="secondary">Total: {itemList.length}</Badge>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-0">
-                                {itemList.map(item => (
-                                    <ItemCard
-                                        key={item.id}
-                                        item={item}
-                                        onEdit={() => handleEditClick(item)}
-                                        onRequest={() => handleRequestClick(item)}
-                                        onDelete={() => handleDelete(item.id)}
-                                        onVerify={() => handleVerify(item)}
-                                    />
-                                ))}
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
-            </div>
-
             {/* Desktop View */}
             <div className="hidden md:block">
                 <Accordion type="multiple" className="w-full space-y-2">
-                    {Object.entries(groupedItems).map(([itemName, itemList]) => (
+                    {Object.entries(groupedItems).map(([itemName, itemList]) => {
+                         const allInGroupSelected = itemList.every(item => selectedItems?.some(sel => sel.id === item.id));
+                         const someInGroupSelected = itemList.some(item => selectedItems?.some(sel => sel.id === item.id));
+
+                        return (
                         <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
                             <div className="flex justify-between items-center p-4">
                                 <AccordionTrigger className="p-0 hover:no-underline flex-1">
                                     <div className="flex items-center gap-4">
+                                        {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked)} />}
                                         <h3 className="font-semibold text-lg">{itemName}</h3>
                                         <Badge variant="secondary">Total: {itemList.length}</Badge>
                                     </div>
@@ -333,6 +336,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
+                                                <TableHead></TableHead>
                                                 <TableHead>Serial No.</TableHead>
                                                 <TableHead>Aries ID</TableHead>
                                                 {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
@@ -359,6 +363,9 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                                 const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' || displayStatus === 'Quarantine' ? 'destructive' : 'secondary';
                                                 return (
                                                 <TableRow key={item.id}>
+                                                    <TableCell>
+                                                      {onSelectionChange && <Checkbox checked={selectedItems?.some(sel => sel.id === item.id)} onCheckedChange={() => handleRowSelection(item)} />}
+                                                    </TableCell>
                                                     <TableCell>{item.serialNumber}</TableCell>
                                                     <TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                     {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
@@ -420,7 +427,7 @@ export default function InventoryTable({ items }: InventoryTableProps) {
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
-                    ))}
+                    )})}
                 </Accordion>
             </div>
 
