@@ -332,31 +332,41 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const existingItem = inventoryItems.find(i => String(i.serialNumber) === serialNumber);
             if (!existingItem) return;
     
-            const parseDateExcel = (date: any): string | null | undefined => {
-                if (!date) return undefined; // Keep existing if cell is empty
-                if (date instanceof Date && isValid(date)) {
-                    return date.toISOString();
-                }
+            const parseDateExcel = (date: any): string | undefined => {
+                if (date === undefined || date === null) return undefined;
+                const d = new Date(date);
+                if (isValid(d)) return d.toISOString();
                 return undefined;
             };
-    
-            const dataToSave: Partial<InventoryItem> = {
-                name: row['ITEM NAME'] || existingItem.name,
-                serialNumber: serialNumber,
-                chestCrollNo: row['CHEST CROLL NO'] ?? existingItem.chestCrollNo,
-                ariesId: row['ARIES ID'] ?? existingItem.ariesId,
-                inspectionDate: parseDateExcel(row['INSPECTION DATE']) ?? existingItem.inspectionDate,
-                inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']) ?? existingItem.inspectionDueDate,
-                tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']) ?? existingItem.tpInspectionDueDate,
-                status: row['STATUS'] || existingItem.status,
-                projectId: projects.find(p => p.name === row['PROJECT'])?.id || existingItem.projectId,
-                certificateUrl: row['TP Certificate Link'] ?? existingItem.certificateUrl,
-                inspectionCertificateUrl: row['Inspection Certificate Link'] ?? existingItem.inspectionCertificateUrl,
-                lastUpdated: new Date().toISOString()
-            };
             
-            updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
-            updatedCount++;
+            const dataToSave: Partial<InventoryItem> = {};
+            
+            if(row['ITEM NAME']) dataToSave.name = row['ITEM NAME'];
+            if(row['CHEST CROLL NO'] !== undefined) dataToSave.chestCrollNo = row['CHEST CROLL NO'] || null;
+            if(row['ARIES ID'] !== undefined) dataToSave.ariesId = row['ARIES ID'] || '';
+            
+            const inspDate = parseDateExcel(row['INSPECTION DATE']);
+            if(inspDate) dataToSave.inspectionDate = inspDate;
+
+            const inspDueDate = parseDateExcel(row['INSPECTION DUE DATE']);
+            if(inspDueDate) dataToSave.inspectionDueDate = inspDueDate;
+
+            const tpInspDueDate = parseDateExcel(row['TP INSPECTION DUE DATE']);
+            if(tpInspDueDate) dataToSave.tpInspectionDueDate = tpInspDueDate;
+            
+            if(row['STATUS']) dataToSave.status = row['STATUS'];
+
+            const newProjectId = projects.find(p => p.name === row['PROJECT'])?.id;
+            if(newProjectId) dataToSave.projectId = newProjectId;
+            
+            if(row['TP Certificate Link'] !== undefined) dataToSave.certificateUrl = row['TP Certificate Link'] || '';
+            if(row['Inspection Certificate Link'] !== undefined) dataToSave.inspectionCertificateUrl = row['Inspection Certificate Link'] || '';
+            
+            if(Object.keys(dataToSave).length > 0) {
+                dataToSave.lastUpdated = new Date().toISOString();
+                updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
+                updatedCount++;
+            }
         });
     
         if(Object.keys(updates).length > 0) {
@@ -909,10 +919,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!request) return;
 
         const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString() };
+        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString() };
         
         const updates: { [key: string]: any } = {};
-        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
         updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
 
         update(ref(rtdb), updates);
@@ -1157,10 +1167,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!request) return;
     
         const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
         
         const updates: {[key: string]: any} = {};
-        updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = {...newComment, id: newCommentRef.key};
+        updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
         updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
         
         update(ref(rtdb), updates);
@@ -1323,10 +1333,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!request) return;
 
         const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
         
         const updates: {[key: string]: any} = {};
-        updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = {...newComment, id: newCommentRef.key};
+        updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
         updates[`managementRequests/${requestId}/viewedByRequester`] = false;
         
         update(ref(rtdb), updates);
@@ -1486,5 +1496,7 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
