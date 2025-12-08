@@ -909,10 +909,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             ? `${stockItem.sizes[requestData.size] || 0} in stock`
             : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
 
-        const recipients = ['satanin2013@gmail.com'];
+        const recipients = ['vijay.sai@ariesmar.com'];
         
         sendPpeRequestEmail({
-            recipients,
+            to: ['vijay.sai@ariesmar.com'],
             requesterName: user.name,
             employeeName: manpower?.name,
             ppeType: requestData.ppeType,
@@ -922,12 +922,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             remarks: requestData.remarks,
             attachmentUrl: requestData.attachmentUrl,
             joiningDate: manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A',
-            rejoiningDate: 'N/A', // This needs logic to find last rejoin date
+            rejoiningDate: 'N/A',
             lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A',
             stockInfo: stockInfo,
             eligibility: requestData.eligibility,
             newRequestJustification: requestData.newRequestJustification
-        });
+        });        
         
     }, [user, users, manpowerProfiles, ppeStock]);
 
