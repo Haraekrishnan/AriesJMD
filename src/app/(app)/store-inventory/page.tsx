@@ -229,7 +229,7 @@ if (filters.projectId !== 'all') {
                 </div>
             </div>
             
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="w-full" defaultValue="inventory-transfers">
                 <AccordionItem value="inventory-transfers">
                     <AccordionTrigger className="text-lg font-semibold">
                         <div className="flex items-center gap-2">
@@ -390,5 +390,6 @@ if (filters.projectId !== 'all') {
         </div>
     );
 }
+
 
 
