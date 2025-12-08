@@ -37,7 +37,6 @@ type InventoryContextType = {
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
-  updateMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
@@ -321,60 +320,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         return importedCount;
     }, [inventoryItems, projects]);
 
-    const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
-        let updatedCount = 0;
-        const updates: { [key: string]: any } = {};
-    
-        itemsData.forEach(row => {
-            const serialNumber = String(row['SERIAL NUMBER'] || '').trim();
-            if (!serialNumber) return;
-    
-            const existingItem = inventoryItems.find(i => String(i.serialNumber) === serialNumber);
-            if (!existingItem) return;
-    
-            const parseDateExcel = (date: any): string | undefined => {
-                if (date === undefined || date === null) return undefined;
-                const d = new Date(date);
-                if (isValid(d)) return d.toISOString();
-                return undefined;
-            };
-            
-            const dataToSave: Partial<InventoryItem> = {};
-            
-            if(row['ITEM NAME']) dataToSave.name = row['ITEM NAME'];
-            if(row['CHEST CROLL NO'] !== undefined) dataToSave.chestCrollNo = row['CHEST CROLL NO'] || null;
-            if(row['ARIES ID'] !== undefined) dataToSave.ariesId = row['ARIES ID'] || '';
-            
-            const inspDate = parseDateExcel(row['INSPECTION DATE']);
-            if(inspDate) dataToSave.inspectionDate = inspDate;
-
-            const inspDueDate = parseDateExcel(row['INSPECTION DUE DATE']);
-            if(inspDueDate) dataToSave.inspectionDueDate = inspDueDate;
-
-            const tpInspDueDate = parseDateExcel(row['TP INSPECTION DUE DATE']);
-            if(tpInspDueDate) dataToSave.tpInspectionDueDate = tpInspDueDate;
-            
-            if(row['STATUS']) dataToSave.status = row['STATUS'];
-
-            const newProjectId = projects.find(p => p.name === row['PROJECT'])?.id;
-            if(newProjectId) dataToSave.projectId = newProjectId;
-            
-            if(row['TP Certificate Link'] !== undefined) dataToSave.certificateUrl = row['TP Certificate Link'] || '';
-            if(row['Inspection Certificate Link'] !== undefined) dataToSave.inspectionCertificateUrl = row['Inspection Certificate Link'] || '';
-            
-            if(Object.keys(dataToSave).length > 0) {
-                dataToSave.lastUpdated = new Date().toISOString();
-                updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
-                updatedCount++;
-            }
-        });
-    
-        if(Object.keys(updates).length > 0) {
-            update(ref(rtdb), updates);
-        }
-        return updatedCount;
-    }, [inventoryItems, projects]);
-    
     const updateInventoryItem = useCallback((item: InventoryItem) => {
         const { id, ...data } = item;
         const updates = { 
@@ -894,24 +839,29 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             ? `${stockItem.sizes[requestData.size] || 0} in stock`
             : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
 
+        const recipients = users
+            .filter(u => ['Admin', 'Manager'].includes(u.role) && u.email)
+            .map(u => u.email!);
+        
         sendPpeRequestEmail({
-        requesterName: user.name,
-        employeeName: manpower?.name,
-        ppeType: requestData.ppeType,
-        size: requestData.size,
-        quantity: requestData.quantity,
-        requestType: requestData.requestType,
-        remarks: requestData.remarks,
-        attachmentUrl: requestData.attachmentUrl,
-        joiningDate: manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A',
-        rejoiningDate: 'N/A', // This needs logic to find last rejoin date
-        lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A',
-        stockInfo: stockInfo,
-        eligibility: requestData.eligibility,
-        newRequestJustification: requestData.newRequestJustification
+            recipients,
+            requesterName: user.name,
+            employeeName: manpower?.name,
+            ppeType: requestData.ppeType,
+            size: requestData.size,
+            quantity: requestData.quantity,
+            requestType: requestData.requestType,
+            remarks: requestData.remarks,
+            attachmentUrl: requestData.attachmentUrl,
+            joiningDate: manpower?.joiningDate ? format(parseISO(manpower.joiningDate), 'dd-MM-yyyy') : 'N/A',
+            rejoiningDate: 'N/A', // This needs logic to find last rejoin date
+            lastIssueDate: lastIssue ? format(parseISO(lastIssue.issueDate), 'dd-MM-yyyy') : 'N/A',
+            stockInfo: stockInfo,
+            eligibility: requestData.eligibility,
+            newRequestJustification: requestData.newRequestJustification
         });
         
-    }, [user, manpowerProfiles, ppeStock]);
+    }, [user, users, manpowerProfiles, ppeStock]);
 
     const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
         if (!user) return;
@@ -1462,7 +1412,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords,
-        addInventoryItem, addMultipleInventoryItems, updateMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
+        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
@@ -1496,6 +1446,8 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
 

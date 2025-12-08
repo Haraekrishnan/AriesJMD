@@ -1,20 +1,27 @@
 'use server';
 
-import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
-  const { GMAIL_USER, GMAIL_APP_PASS, RESEND_API_KEY } = process.env;
+  const { RESEND_API_KEY, RESEND_FROM_EMAIL, NEXT_PUBLIC_APP_URL } = process.env;
 
-  if (!GMAIL_USER || !GMAIL_APP_PASS || !RESEND_API_KEY) {
-    console.error('Missing email credentials in .env file.');
-    return { success: false, error: 'Server configuration error.' };
+  if (!RESEND_API_KEY) {
+    console.error("Resend API key missing. PPE email cannot be sent.");
+    return { success: false, error: "Resend API key missing." };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  if (!RESEND_FROM_EMAIL) {
+    console.error("RESEND_FROM_EMAIL missing. Add a verified domain sender.");
+    return { success: false, error: "Missing RESEND_FROM_EMAIL." };
+  }
+
+  const resend = new Resend(RESEND_API_KEY);
+
+  const appUrl = NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const approvalLink = `${appUrl}/my-requests`;
 
   const {
+    recipients,
     requesterName,
     employeeName,
     ppeType,
@@ -31,93 +38,76 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     newRequestJustification,
   } = ppeData;
 
+  if (!recipients || recipients.length === 0) {
+    console.log("No recipients for PPE request email. Email not sent.");
+    return { success: true, message: 'No recipients configured.' };
+  }
+
   const eligibilityHtml = eligibility ? `
     <p style="margin-top: 20px; padding: 10px; border-left: 4px solid ${eligibility.eligible ? '#28a745' : '#dc3545'}; background-color: #f8f9fa;">
       <strong style="color: ${eligibility.eligible ? '#28a745' : '#dc3545'};">Eligibility Status: ${eligibility.eligible ? 'Eligible' : 'Not Eligible'}</strong><br>
       ${eligibility.reason}
-    </p>
-  ` : '';
-  
+    </p>` : '';
+
   const justificationHtml = newRequestJustification ? `
     <p style="margin-top: 20px; padding: 10px; border-left: 4px solid #ffc107; background-color: #fff3cd;">
       <strong style="color: #856404;">Justification for 'New' Request:</strong><br>
       ${newRequestJustification}
-    </p>
-  ` : '';
+    </p>` : '';
 
   const subject = `PPE Request from ${requesterName} for ${employeeName} — ${ppeType}`;
+  
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
       <h2 style="color: #0056b3;">New PPE Request for Approval</h2>
-      
+
       <p><strong>Employee:</strong> ${employeeName}</p>
       <p><strong>Type:</strong> ${ppeType} &middot; <strong>Size:</strong> ${size} &middot; <strong>Qty:</strong> ${quantity}</p>
       <p><strong>Request Type:</strong> ${requestType}</p>
-      
-       ${justificationHtml}
+
+      ${justificationHtml}
 
       <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
         <strong>Joining Date:</strong> ${joiningDate || 'N/A'}<br>
         <strong>Re-Joining Date:</strong> ${rejoiningDate || 'N/A'}<br>
         <strong>Last Issue Date:</strong> ${lastIssueDate || 'N/A'}<br>
-        <strong>Current Stock:</strong> <span style="font-weight: bold; color: #d9534f;">${stockInfo || 'N/A'}</span>
+        <strong>Current Stock:</strong> <strong style="color: #d9534f;">${stockInfo || 'N/A'}</strong>
       </p>
 
       ${eligibilityHtml}
 
       <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
-      
-      ${attachmentUrl ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color: #0056b3; text-decoration: none;">View Attached Image</a></p>` : ''}
-      
+
+      ${
+        attachmentUrl 
+        ? `<p><strong>Attachment:</strong> <a href="${attachmentUrl}" style="color:#0056b3;">View Attachment</a></p>` 
+        : ''
+      }
+
       <p><strong>Requested By:</strong> ${requesterName}</p>
 
       <p style="margin-top: 25px;">
-        <a href="${approvalLink}" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; border-top: 12px solid #007bff; border-bottom: 12px solid #007bff; border-right: 18px solid #007bff; border-left: 18px solid #007bff; display: inline-block;">
-            Review Request
+        <a href="${approvalLink}" style="font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 5px; background-color: #007bff; padding: 12px 18px; display: inline-block;">
+          Review Request
         </a>
       </p>
     </div>
   `;
 
-  // Attempt to send with Nodemailer (Gmail) first
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASS,
-      },
-      logger: true,
-      debug: true,
-    });
-
-    await transporter.sendMail({
-      from: `"Aries PPE Request" <${GMAIL_USER}>`,
-      to: 'vijay.sai@ariesmar.com',
-      subject: subject,
+    const sendResult = await resend.emails.send({
+      from: `Aries PPE Request <${RESEND_FROM_EMAIL}>`,
+      to: recipients,
+      subject,
       html: htmlBody,
     });
-    
-    console.log('PPE request notification sent successfully via Gmail.');
+
+    console.log("PPE request email sent successfully via RESEND:", sendResult);
     return { success: true };
-  } catch (gmailError) {
-    console.error('Failed to send email via Gmail:', gmailError);
-    
-    // Fallback to Resend API
-    console.log('Attempting to send email via Resend as a fallback...');
-    const resend = new Resend(RESEND_API_KEY);
-    try {
-      await resend.emails.send({
-        from: `Aries PPE Request <${GMAIL_USER}>`,
-        to: 'vijay.sai@ariesmar.com',
-        subject: subject,
-        html: htmlBody,
-      });
-      console.log('PPE request notification sent successfully via Resend.');
-      return { success: true };
-    } catch (resendError) {
-      console.error('Failed to send email via Resend as well:', resendError);
-      return { success: false, error: (resendError as Error).message };
-    }
+  } catch (error: any) {
+    console.error("Failed to send PPE email via RESEND:", error);
+    return { success: false, error: error?.message || "Unknown error" };
   }
 }
+
+    
