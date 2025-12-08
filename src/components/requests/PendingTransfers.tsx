@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
-import type { InventoryItem, InventoryTransferRequest, TpCertList, UTMachine } from '@/lib/types';
+import type { InventoryItem, InventoryTransferRequest, TpCertList, UTMachine, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -36,25 +36,27 @@ export default function PendingTransfers() {
     const forApproval: InventoryTransferRequest[] = [];
     const myActiveRequests: InventoryTransferRequest[] = [];
     const completed: InventoryTransferRequest[] = [];
+    
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
+    const isPrivileged = privilegedRoles.includes(user.role);
 
     inventoryTransferRequests.forEach(req => {
+      const isMyProject = user.projectIds?.includes(req.fromProjectId) || user.projectIds?.includes(req.toProjectId);
+      const isRequester = req.requesterId === user.id;
+
       if (can.approve_store_requests && req.status === 'Pending') {
         forApproval.push(req);
       }
       
-      const isMyProject = user.projectIds?.includes(req.toProjectId) || user.role === 'Admin';
-      const isRequester = req.requesterId === user.id;
-
-      if (isMyProject && req.status === 'Approved') {
-        myActiveRequests.push(req);
-      }
-      if (isRequester && (req.status === 'Pending' || req.status === 'Rejected' || req.status === 'Disputed')) {
+      if ((isMyProject && req.status === 'Approved') || (isRequester && (req.status === 'Pending' || req.status === 'Rejected' || req.status === 'Disputed'))) {
         const existing = myActiveRequests.find(r => r.id === req.id);
         if (!existing) myActiveRequests.push(req);
       }
 
       if (req.status === 'Completed' || req.status === 'Rejected' || req.status === 'Disputed') {
-          completed.push(req);
+          if (isPrivileged || isRequester || isMyProject) {
+            completed.push(req);
+          }
       }
     });
 
@@ -65,15 +67,11 @@ export default function PendingTransfers() {
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
 
-  if (forApproval.length === 0 && myActiveRequests.length === 0 && allCompletedRequests.length === 0) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardDescription>There are no pending or active inventory transfers at the moment.</CardDescription>
-            </CardHeader>
-        </Card>
-    );
-  }
+  const canCreateTpList = useMemo(() => {
+      if (!user) return false;
+      const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
+      return allowedRoles.includes(user.role);
+  }, [user]);
 
   const handleCreateTpList = (request: InventoryTransferRequest) => {
     const listData = {
@@ -273,7 +271,7 @@ export default function PendingTransfers() {
                                     </div>
                                 </AccordionTrigger>
                                 <div className="flex items-center gap-2">
-                                    {showTpOption && (
+                                    {showTpOption && canCreateTpList && (
                                         <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
                                             <FilePlus className="mr-2 h-3 w-3" /> Create TP List
                                         </Button>
