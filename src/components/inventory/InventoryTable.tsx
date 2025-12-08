@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -19,6 +18,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import RenameItemGroupDialog from './RenameItemGroupDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Checkbox } from '../ui/checkbox';
+import React from 'react';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -286,14 +286,16 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
 
                         return (
                         <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
-                            <div className="flex justify-between items-center p-4">
-                                <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                                    <div className="flex items-center gap-4">
-                                        {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked)} />}
-                                        <h3 className="font-semibold text-lg">{itemName}</h3>
-                                        <Badge variant="secondary">Total: {itemList.length}</Badge>
-                                    </div>
-                                </AccordionTrigger>
+                             <div className="flex justify-between items-center p-4">
+                                <div className="flex items-center gap-4 flex-1">
+                                    {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked)} />}
+                                    <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
+                                        <div className="flex items-center gap-4">
+                                            <h3 className="font-semibold text-lg">{itemName}</h3>
+                                            <Badge variant="secondary">Total: {itemList.length}</Badge>
+                                        </div>
+                                    </AccordionTrigger>
+                                </div>
                                 {user?.role === 'Admin' && (
                                     <div className="flex items-center gap-1 pl-4">
                                         <Tooltip>
@@ -437,3 +439,5 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         </TooltipProvider>
     );
 }
+
+    
