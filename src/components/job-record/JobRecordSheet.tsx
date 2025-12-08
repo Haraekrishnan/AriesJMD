@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import AddJobCodeDialog from './AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
 import EditJobCodeDialog from './EditJobCodeDialog';
@@ -827,7 +827,7 @@ export default function JobRecordSheet() {
             <div className="flex flex-col h-full bg-card border rounded-lg">
                 {/* --- HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
-                    <div className="flex flex-wrap justify-between items-center gap-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
                                 <ChevronLeft className="h-4 w-4" />
@@ -843,23 +843,23 @@ export default function JobRecordSheet() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search by name..."
-                                    className="pl-9 w-64"
+                                    className="pl-9 w-full sm:w-64"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             {canCarryForward && (
                                 <Button onClick={() => carryForwardPlantAssignments(monthKey)} variant="outline" disabled={!isCurrentMonth || isCurrentSheetLocked}>
-                                    <ArrowRightLeft className="mr-2 h-4 w-4"/> Carry Forward Assignments
+                                    <ArrowRightLeft className="mr-2 h-4 w-4"/> Carry Forward
                                 </Button>
                             )}
-                            <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export All to Excel</Button>
+                            <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export</Button>
                             {user?.role === 'Admin' && (
                                 <>
-                                    <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Job Code</Button>
-                                    <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add New Plant</Button>
+                                    <Button onClick={() => setIsAddJobCodeOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Code</Button>
+                                    <Button onClick={() => setIsAddPlantOpen(true)} variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Plant</Button>
                                 </>
                             )}
                             {canEditSheet && (
@@ -872,7 +872,7 @@ export default function JobRecordSheet() {
                             )}
                              {can.manage_job_record && !isCurrentSheetLocked && isCurrentMonth && (
                                 <AlertDialog>
-                                    <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock Sheet</Button></AlertDialogTrigger>
+                                    <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
                                         <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
@@ -881,40 +881,42 @@ export default function JobRecordSheet() {
                             )}
                             {user?.role === 'Admin' && isCurrentSheetLocked && (
                                 <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
-                                    <Unlock className="mr-2 h-4 w-4" /> Unlock Sheet
+                                    <Unlock className="mr-2 h-4 w-4" /> Unlock
                                 </Button>
                             )}
                         </div>
                     </div>
-                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="w-full justify-start h-auto">
-                            {allTabs.map(plantName => {
-                                const plant = plantProjects.find(p => p.name === plantName);
-                                return (
-                                <div key={plantName} className="relative group">
-                                    <TabsTrigger value={plantName}>{plantName}</TabsTrigger>
-                                    {user?.role === 'Admin' && plant && plantName !== 'Unassigned' && (
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive hidden group-hover:flex">
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete Plant "{plant.name}"?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This will move all assigned employees to "Unassigned". This action cannot be undone.</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePlant(plant)}>Delete Plant</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    )}
-                                </div>
-                        )})}
-                    </TabsList>
-                 </Tabs>
+                    <ScrollArea className="w-full">
+                         <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <TabsList className="w-full justify-start h-auto">
+                                {allTabs.map(plantName => {
+                                    const plant = plantProjects.find(p => p.name === plantName);
+                                    return (
+                                    <div key={plantName} className="relative group">
+                                        <TabsTrigger value={plantName}>{plantName}</TabsTrigger>
+                                        {user?.role === 'Admin' && plant && plantName !== 'Unassigned' && (
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive hidden group-hover:flex">
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete Plant "{plant.name}"?</AlertDialogTitle>
+                                                        <AlertDialogDescription>This will move all assigned employees to "Unassigned". This action cannot be undone.</AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePlant(plant)}>Delete Plant</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                    </div>
+                            )})}
+                        </TabsList>
+                        </Tabs>
+                    </ScrollArea>
                 </div>
                 
                 <div className="overflow-auto flex-1 relative">
@@ -1205,4 +1207,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
