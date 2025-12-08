@@ -324,21 +324,22 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
         let updatedCount = 0;
         const updates: { [key: string]: any } = {};
-
+    
         itemsData.forEach(row => {
-            const serialNumber = row['SERIAL NUMBER'];
+            const serialNumber = String(row['SERIAL NUMBER'] || '').trim();
             if (!serialNumber) return;
-
-            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
-            if (!existingItem) return; // Skip if item doesn't exist
-            
-            const parseDateExcel = (date: any): string | undefined => {
+    
+            const existingItem = inventoryItems.find(i => String(i.serialNumber) === serialNumber);
+            if (!existingItem) return;
+    
+            const parseDateExcel = (date: any): string | null | undefined => {
+                if (!date) return undefined; // Keep existing if cell is empty
                 if (date instanceof Date && isValid(date)) {
                     return date.toISOString();
                 }
                 return undefined;
-            }
-
+            };
+    
             const dataToSave: Partial<InventoryItem> = {
                 name: row['ITEM NAME'] || existingItem.name,
                 serialNumber: serialNumber,
@@ -357,7 +358,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
             updatedCount++;
         });
-
+    
         if(Object.keys(updates).length > 0) {
             update(ref(rtdb), updates);
         }
