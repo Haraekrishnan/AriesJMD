@@ -26,11 +26,14 @@ import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
+import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
+
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
+    const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [isBulkInspectionUpdateOpen, setIsBulkInspectionUpdateOpen] = useState(false);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
@@ -218,9 +221,15 @@ if (filters.projectId !== 'all') {
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
-                    <Button variant="outline" onClick={() => setIsTransferRequestOpen(true)}>
-                        <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
-                    </Button>
+                    {selectedItemsForTransfer.length > 0 ? (
+                        <Button onClick={() => setIsTransferRequestOpen(true)}>
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Selected ({selectedItemsForTransfer.length})
+                        </Button>
+                    ) : (
+                        <Button variant="outline" onClick={() => setIsTransferRequestOpen(true)}>
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
+                        </Button>
+                    )}
                     {canManageInventory && (
                         <>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
@@ -386,6 +395,7 @@ if (filters.projectId !== 'all') {
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
+            <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
             <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
@@ -394,6 +404,7 @@ if (filters.projectId !== 'all') {
         </div>
     );
 }
+
 
 
 

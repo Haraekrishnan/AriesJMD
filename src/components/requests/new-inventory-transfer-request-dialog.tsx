@@ -108,9 +108,13 @@ type FormValues = z.infer<typeof transferRequestSchema>;
 export default function NewInventoryTransferRequestDialog({
   isOpen,
   setIsOpen,
+  preSelectedItems = [],
+  onClearSelection = () => {},
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
+  preSelectedItems?: InventoryItem[];
+  onClearSelection?: () => void;
 }) {
   const {
     user,
@@ -141,6 +145,21 @@ export default function NewInventoryTransferRequestDialog({
       items: [],
     },
   });
+  
+  useEffect(() => {
+    if (isOpen && preSelectedItems.length > 0) {
+      const firstItemProjectId = preSelectedItems[0].projectId;
+      form.setValue('fromProjectId', firstItemProjectId);
+      form.setValue('items', preSelectedItems.map(item => ({
+        itemId: item.id,
+        itemType: 'Inventory', // Assuming pre-selected items are always 'Inventory'
+        name: item.name,
+        serialNumber: item.serialNumber,
+        ariesId: item.ariesId,
+      })));
+    }
+  }, [isOpen, preSelectedItems, form]);
+
 
   const fromProjectId = form.watch("fromProjectId");
   const selectedItems = form.watch("items");
@@ -253,6 +272,7 @@ export default function NewInventoryTransferRequestDialog({
       items: [],
     });
     setSearchTerm("");
+    onClearSelection();
   };
 
   return (
@@ -281,7 +301,7 @@ export default function NewInventoryTransferRequestDialog({
                   name="fromProjectId"
                   control={form.control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={preSelectedItems.length > 0}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select origin..." />
                       </SelectTrigger>
@@ -488,4 +508,3 @@ export default function NewInventoryTransferRequestDialog({
     </Dialog>
   );
 }
-
