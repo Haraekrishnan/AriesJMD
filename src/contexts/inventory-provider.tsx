@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -40,6 +39,7 @@ type InventoryContextType = {
   updateInventoryItem: (item: InventoryItem) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
+  updateMultipleInventoryItems: (itemsData: any[]) => number;
   deleteInventoryItem: (itemId: string) => void;
   deleteInventoryItemGroup: (itemName: string) => void;
   renameInventoryItemGroup: (oldName: string, newName: string) => void;
@@ -355,6 +355,76 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), dbUpdates);
     }, [inventoryItems]);
 
+    const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+        let updatedCount = 0;
+        const updates: { [key: string]: any } = {};
+    
+        const parseDateExcel = (date: any): string | null | undefined => {
+            if (!date) return undefined; 
+            if (date instanceof Date && isValid(date)) {
+                return date.toISOString();
+            }
+            return undefined;
+        }
+    
+        itemsData.forEach(row => {
+            const serialNumber = String(row['SERIAL NUMBER'] || '').trim();
+            if (!serialNumber) return;
+    
+            const existingItem = inventoryItems.find(i => String(i.serialNumber) === serialNumber);
+            if (!existingItem) return;
+    
+            const dataToSave: Partial<InventoryItem> = {};
+            
+            const fieldsToUpdate: (keyof InventoryItem)[] = ['name', 'chestCrollNo', 'ariesId', 'status', 'certificateUrl', 'inspectionCertificateUrl'];
+            const excelHeaderMap: Record<string, keyof InventoryItem> = {
+                'ITEM NAME': 'name',
+                'CHEST CROLL NO': 'chestCrollNo',
+                'ARIES ID': 'ariesId',
+                'STATUS': 'status',
+                'TP Certificate Link': 'certificateUrl',
+                'Inspection Certificate Link': 'inspectionCertificateUrl',
+            };
+    
+            Object.keys(excelHeaderMap).forEach(header => {
+                const key = excelHeaderMap[header];
+                if (row[header] !== undefined && row[header] !== '') {
+                    (dataToSave as any)[key] = row[header];
+                }
+            });
+    
+            if (row['PROJECT']) {
+                const project = projects.find(p => p.name === row['PROJECT']);
+                if (project) dataToSave.projectId = project.id;
+            }
+    
+            const dateFields: Record<string, keyof InventoryItem> = {
+                'INSPECTION DATE': 'inspectionDate',
+                'INSPECTION DUE DATE': 'inspectionDueDate',
+                'TP INSPECTION DUE DATE': 'tpInspectionDueDate',
+            };
+    
+            Object.keys(dateFields).forEach(header => {
+                const key = dateFields[header];
+                const parsedDate = parseDateExcel(row[header]);
+                if(parsedDate !== undefined) {
+                    (dataToSave as any)[key] = parsedDate;
+                }
+            });
+    
+            if (Object.keys(dataToSave).length > 0) {
+                dataToSave.lastUpdated = new Date().toISOString();
+                updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
+                updatedCount++;
+            }
+        });
+    
+        if (Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+        }
+        return updatedCount;
+    }, [inventoryItems, projects]);
+
     const deleteInventoryItem = useCallback((itemId: string) => {
         remove(ref(rtdb, `inventoryItems/${itemId}`));
     }, []);
@@ -601,10 +671,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!request) return;
     
         const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
+        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
         
         const updates: { [key: string]: any } = {};
-        updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, id: newCommentRef.key };
+        updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
         updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
     
         update(ref(rtdb), updates);
@@ -839,9 +909,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             ? `${stockItem.sizes[requestData.size] || 0} in stock`
             : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
 
-        const recipients = users
-            .filter(u => ['Admin', 'Manager'].includes(u.role) && u.email)
-            .map(u => u.email!);
+        const recipients = ['satanin2013@gmail.com'];
         
         sendPpeRequestEmail({
             recipients,
@@ -869,7 +937,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!request) return;
 
         const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString() };
+        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: 'ppe-request' };
         
         const updates: { [key: string]: any } = {};
         updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
@@ -1412,7 +1480,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords,
-        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
+        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
@@ -1446,6 +1514,8 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
 
