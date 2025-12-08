@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -25,11 +26,13 @@ import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
+import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 
 export default function StoreInventoryPage() {
     const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
+    const [isUpdateOpen, setIsUpdateOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [isBulkInspectionUpdateOpen, setIsBulkInspectionUpdateOpen] = useState(false);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
@@ -222,6 +225,7 @@ if (filters.projectId !== 'all') {
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
                             <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
+                            <Button onClick={() => setIsUpdateOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Update Items</Button>
                             <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button>
                             <Button onClick={() => setIsAddItemOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                         </>
@@ -382,6 +386,7 @@ if (filters.projectId !== 'all') {
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
+            <UpdateItemsDialog isOpen={isUpdateOpen} setIsOpen={setIsUpdateOpen} />
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
             <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
@@ -390,6 +395,7 @@ if (filters.projectId !== 'all') {
         </div>
     );
 }
+
 
 
 

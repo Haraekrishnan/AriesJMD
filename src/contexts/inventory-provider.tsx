@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -36,6 +37,7 @@ type InventoryContextType = {
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
+  updateMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
@@ -284,6 +286,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             if (!serialNumber) return;
 
             const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+            if (existingItem) return; // Skip existing items
             
             const parseDateExcel = (date: any): string | null => {
                 if (date instanceof Date && isValid(date)) {
@@ -307,12 +310,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 lastUpdated: new Date().toISOString()
             };
             
-            if (existingItem) {
-                updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
-            } else {
-                const newRef = push(ref(rtdb, 'inventoryItems'));
-                updates[`/inventoryItems/${newRef.key}`] = dataToSave;
-            }
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            updates[`/inventoryItems/${newRef.key}`] = dataToSave;
             importedCount++;
         });
 
@@ -320,6 +319,49 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             update(ref(rtdb), updates);
         }
         return importedCount;
+    }, [inventoryItems, projects]);
+
+    const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+        let updatedCount = 0;
+        const updates: { [key: string]: any } = {};
+
+        itemsData.forEach(row => {
+            const serialNumber = row['SERIAL NUMBER'];
+            if (!serialNumber) return;
+
+            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
+            if (!existingItem) return; // Skip if item doesn't exist
+            
+            const parseDateExcel = (date: any): string | undefined => {
+                if (date instanceof Date && isValid(date)) {
+                    return date.toISOString();
+                }
+                return undefined;
+            }
+
+            const dataToSave: Partial<InventoryItem> = {
+                name: row['ITEM NAME'] || existingItem.name,
+                serialNumber: serialNumber,
+                chestCrollNo: row['CHEST CROLL NO'] ?? existingItem.chestCrollNo,
+                ariesId: row['ARIES ID'] ?? existingItem.ariesId,
+                inspectionDate: parseDateExcel(row['INSPECTION DATE']) ?? existingItem.inspectionDate,
+                inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']) ?? existingItem.inspectionDueDate,
+                tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']) ?? existingItem.tpInspectionDueDate,
+                status: row['STATUS'] || existingItem.status,
+                projectId: projects.find(p => p.name === row['PROJECT'])?.id || existingItem.projectId,
+                certificateUrl: row['TP Certificate Link'] ?? existingItem.certificateUrl,
+                inspectionCertificateUrl: row['Inspection Certificate Link'] ?? existingItem.inspectionCertificateUrl,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
+            updatedCount++;
+        });
+
+        if(Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+        }
+        return updatedCount;
     }, [inventoryItems, projects]);
     
     const updateInventoryItem = useCallback((item: InventoryItem) => {
@@ -457,7 +499,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                     to: [storeUser.email],
                     subject:`Inventory Transfer Request from ${user.name}`,
                     htmlBody,
-                    notificationSettings: notificationSettings,
+                    notificationSettings,
                     event: 'onInternalRequest'
                 });
             }
@@ -1409,7 +1451,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords,
-        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
+        addInventoryItem, addMultipleInventoryItems, updateMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
