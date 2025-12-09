@@ -1,8 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
@@ -11,46 +10,26 @@ import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (loading) {
-      return; 
-    }
-
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
-
-    if (user.status === 'locked') {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-    } else if (user.status === 'active') {
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, router, pathname]);
 
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
         </div>
       </div>
     );
   }
-  
+
+  // The main app provider now handles redirection for locked users.
+  // This component's only job is to render the layout for an active user.
   if (user.status === 'locked') {
-    return <>{children}</>;
+    // Render a skeleton or null while the redirect happens to prevent flashes of content.
+    return null;
   }
   
   return (
