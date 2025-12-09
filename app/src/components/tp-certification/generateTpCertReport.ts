@@ -264,8 +264,8 @@ export async function generateTpCertExcel(
   });
 
   if (!existingWorkbook) {
-    const bufferExcel = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([bufferExcel]), "TP_Certification_List.xlsx");
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([excelBuffer]), "TP_Certification_List.xlsx");
   }
 }
 
