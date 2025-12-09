@@ -1,3 +1,4 @@
+
 'use server';
 
 import * as nodemailer from 'nodemailer';
@@ -78,46 +79,43 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       </p>
     </div>
   `;
-
-  // Attempt to send with Nodemailer (Gmail) first
+  
+  // Prioritize Resend for better deliverability
+  const resend = new Resend(RESEND_API_KEY);
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASS,
-      },
-      logger: true,
-      debug: true,
-    });
-
-    await transporter.sendMail({
-      from: `"Aries PPE Request" <${GMAIL_USER}>`,
+    await resend.emails.send({
+      from: `Aries PPE Request <aries-ppe@resend.dev>`,
       to: 'vijay.sai@ariesmar.com',
       subject: subject,
       html: htmlBody,
     });
-    
-    console.log('PPE request notification sent successfully via Gmail.');
+    console.log('PPE request notification sent successfully via Resend.');
     return { success: true };
-  } catch (gmailError) {
-    console.error('Failed to send email via Gmail:', gmailError);
+  } catch (resendError) {
+    console.error('Failed to send email via Resend:', resendError);
     
-    // Fallback to Resend API
-    console.log('Attempting to send email via Resend as a fallback...');
-    const resend = new Resend(RESEND_API_KEY);
+    // Fallback to Nodemailer (Gmail) if Resend fails
+    console.log('Attempting to send email via Gmail as a fallback...');
     try {
-      await resend.emails.send({
-        from: `Aries PPE Request <${GMAIL_USER}>`,
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: GMAIL_USER,
+          pass: GMAIL_APP_PASS,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"Aries PPE Request" <${GMAIL_USER}>`,
         to: 'vijay.sai@ariesmar.com',
         subject: subject,
         html: htmlBody,
       });
-      console.log('PPE request notification sent successfully via Resend.');
+      console.log('PPE request notification sent successfully via Gmail fallback.');
       return { success: true };
-    } catch (resendError) {
-      console.error('Failed to send email via Resend as well:', resendError);
-      return { success: false, error: (resendError as Error).message };
+    } catch (gmailError) {
+      console.error('Failed to send email via Gmail as well:', gmailError);
+      return { success: false, error: (gmailError as Error).message };
     }
   }
 }
