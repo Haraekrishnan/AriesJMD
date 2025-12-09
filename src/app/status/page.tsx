@@ -1,27 +1,46 @@
-
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+        // Not logged in, go to login page
+        router.replace('/login');
+        return;
+    }
+    
+    if (user.status === 'active') {
+        // If the user becomes active while on this page, move to dashboard
+        router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
+
+
+  // Show a loading skeleton while we determine status, but only if we don't have a locked user yet
   if (loading || !user || user.status !== 'locked') {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                </div>
+            </div>
         </div>
-      </div>
     );
   }
 

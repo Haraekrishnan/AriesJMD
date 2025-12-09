@@ -909,10 +909,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             ? `${stockItem.sizes[requestData.size] || 0} in stock`
             : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
 
-        const recipients = ['vijay.sai@ariesmar.com'];
+        const recipients = ['satanin2013@gmail.com'];
         
         sendPpeRequestEmail({
-            to: ['vijay.sai@ariesmar.com'],
+            to: ['satanin2013@gmail.com'],
             requesterName: user.name,
             employeeName: manpower?.name,
             ppeType: requestData.ppeType,

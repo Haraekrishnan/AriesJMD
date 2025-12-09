@@ -1,6 +1,5 @@
-
 'use client';
-import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useCallback } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
 import { InventoryProvider, useInventory } from './inventory-provider';
@@ -12,7 +11,6 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, push, set, update } from 'firebase/database';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { add, isPast } from 'date-fns';
-import { useRouter, usePathname } from 'next/navigation';
 
 const AppContext = createContext({} as any);
 
@@ -24,31 +22,6 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const planner = usePlanner();
   const purchase = usePurchase();
   const task = useTask();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // Centralized redirection logic
-  useEffect(() => {
-    const { user, loading } = auth;
-    if (loading) return;
-
-    const isAuthPage = pathname === '/login';
-    const isStatusPage = pathname === '/status';
-
-    if (!user && !isAuthPage) {
-      router.replace('/login');
-    } else if (user) {
-      if (user.status === 'locked') {
-        if (!isStatusPage) {
-          router.replace('/status');
-        }
-      } else if (user.status === 'active') {
-        if (isAuthPage || isStatusPage) {
-          router.replace('/dashboard');
-        }
-      }
-    }
-  }, [auth.user, auth.loading, pathname, router]);
 
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
     const { users, passwordResetRequests } = auth;
