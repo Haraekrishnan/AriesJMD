@@ -13,7 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { PpeInwardRecord } from '@/lib/types';
 import { useEffect } from 'react';
-import { parseISO } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
@@ -44,8 +44,9 @@ export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditP
 
     useEffect(() => {
         if (record && isOpen) {
+            const parsedDate = record.date ? parseISO(record.date) : null;
             form.reset({
-                date: parseISO(record.date),
+                date: parsedDate && isValid(parsedDate) ? parsedDate : new Date(),
                 sizes: record.sizes,
                 quantity: record.quantity,
             });
