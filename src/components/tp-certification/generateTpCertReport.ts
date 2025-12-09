@@ -1,3 +1,4 @@
+
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -271,15 +272,18 @@ export async function generateTpCertPdf(
   allItems: FullItem[],
   listDate?: Date | string
 ) {
-  // 1. Generate the Excel workbook in memory
-  const workbook = await generateExcelWorkbook(items, allItems, undefined, "Sheet1", listDate);
+  const workbook = await generateExcelWorkbook(
+    items,
+    allItems,
+    undefined,
+    "Sheet1",
+    listDate
+  );
   const excelBuffer = await workbook.xlsx.writeBuffer();
 
-  // 2. Prepare the form data to send to the backend
   const formData = new FormData();
   formData.append("file", new Blob([excelBuffer]), "tp_cert_list.xlsx");
 
-  // 3. IMPORTANT: Replace with your actual Cloud Run URL
   const converterUrl = "https://YOUR_CLOUD_RUN_SERVICE_URL/convert";
   
   try {
@@ -293,14 +297,12 @@ export async function generateTpCertPdf(
       throw new Error(`PDF conversion failed: ${response.statusText} - ${errorText}`);
     }
 
-    // 4. Handle the PDF blob response
     const pdfBlob = await response.blob();
-    
     const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
     saveAs(pdfBlob, `TP_Certification_List_${format(dateToUse, 'yyyy-MM-dd')}.pdf`);
   } catch (error) {
     console.error("Failed to convert Excel to PDF:", error);
-    throw error; // Re-throw to be caught by the calling component
+    throw error;
   }
 }
 
