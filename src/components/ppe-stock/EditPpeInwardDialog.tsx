@@ -57,8 +57,8 @@ export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditP
         const updatedRecord: PpeInwardRecord = {
             ...record,
             date: data.date.toISOString(),
-            sizes: record.ppeType === 'Coverall' ? data.sizes : undefined,
-            quantity: record.ppeType === 'Safety Shoes' ? data.quantity : undefined,
+            sizes: record.ppeType === 'Coverall' ? data.sizes : null,
+            quantity: record.ppeType === 'Safety Shoes' ? data.quantity : null,
         };
         updatePpeInwardRecord(updatedRecord);
         toast({ title: 'Record Updated', description: 'The inward stock record has been updated.' });
