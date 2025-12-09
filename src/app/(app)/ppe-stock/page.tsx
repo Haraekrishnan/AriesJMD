@@ -21,7 +21,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import EditPpeInwardDialog from '@/components/ppe-stock/EditPpeInwardDialog';
 import type { PpeInwardRecord } from '@/lib/types';
@@ -291,9 +291,11 @@ export default function PpeStockPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(ppeInwardHistory || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                                    {(ppeInwardHistory || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => {
+                                        const date = parseISO(record.date);
+                                        return (
                                         <TableRow key={record.id}>
-                                            <TableCell>{format(new Date(record.date), 'dd MMM, yyyy')}</TableCell>
+                                            <TableCell>{isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date'}</TableCell>
                                             <TableCell>{record.ppeType}</TableCell>
                                             <TableCell>
                                                 {record.ppeType === 'Coverall' 
@@ -322,7 +324,7 @@ export default function PpeStockPage() {
                                                 </TableCell>
                                             )}
                                         </TableRow>
-                                    ))}
+                                    )})}
                                 </TableBody>
                             </Table>
                             {(ppeInwardHistory || []).length === 0 && <p className="text-center text-muted-foreground py-4">No inward history found.</p>}
