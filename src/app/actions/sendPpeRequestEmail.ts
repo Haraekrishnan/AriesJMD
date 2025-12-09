@@ -7,13 +7,10 @@ import { Resend } from 'resend';
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
   const { GMAIL_USER, GMAIL_APP_PASS, RESEND_API_KEY, ARIES_PPE_RECIPIENT } = process.env;
 
-  if (!RESEND_API_KEY) {
-    console.error('Missing Resend API key in .env file.');
-    // Fallback or just log an error if Resend is critical
-  }
+  const recipientEmail = 'vijay.sai@ariesmar.com';
 
-  if (!ARIES_PPE_RECIPIENT) {
-    console.error('Missing ARIES_PPE_RECIPIENT in .env file.');
+  if (!recipientEmail) {
+    console.error('Recipient email address is not set.');
     return { success: false, error: 'Server configuration error: Recipient not set.' };
   }
 
@@ -90,7 +87,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     try {
       await resend.emails.send({
         from: `Aries PPE Request <aries-ppe@resend.dev>`,
-        to: ARIES_PPE_RECIPIENT,
+        to: recipientEmail,
         subject: subject,
         html: htmlBody,
       });
@@ -115,7 +112,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
 
         await transporter.sendMail({
           from: `"Aries PPE Request" <${GMAIL_USER}>`,
-          to: ARIES_PPE_RECIPIENT,
+          to: recipientEmail,
           subject: subject,
           html: htmlBody,
         });
