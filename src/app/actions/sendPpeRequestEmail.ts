@@ -16,6 +16,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
   const approvalLink = `${appUrl}/my-requests`;
 
   const {
+    to,
     requesterName,
     employeeName,
     ppeType,
@@ -94,7 +95,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
 
     await transporter.sendMail({
       from: `"Aries PPE Request" <${GMAIL_USER}>`,
-      to: 'vijay.sai@ariesmar.com',
+      to: to.join(', '),
       subject: subject,
       html: htmlBody,
     });
@@ -110,7 +111,7 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
     try {
       await resend.emails.send({
         from: `Aries PPE Request <${GMAIL_USER}>`,
-        to: 'vijay.sai@ariesmar.com',
+        to: to.join(', '),
         subject: subject,
         html: htmlBody,
       });
