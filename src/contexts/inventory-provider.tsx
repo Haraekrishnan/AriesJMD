@@ -908,11 +908,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const stockInfo = requestData.ppeType === 'Coverall' && stockItem && 'sizes' in stockItem && stockItem.sizes
             ? `${stockItem.sizes[requestData.size] || 0} in stock`
             : (stockItem && 'quantity' in stockItem ? `${stockItem.quantity || 0} in stock` : 'N/A');
-
-        const recipients = ['vijay.sai@ariesmar.com'];
         
         sendPpeRequestEmail({
-            to: ['vijay.sai@ariesmar.com'],
             requesterName: user.name,
             employeeName: manpower?.name,
             ppeType: requestData.ppeType,
@@ -1514,11 +1511,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
-
-    
-
-    
-
-    
