@@ -274,36 +274,86 @@ export async function generateTpCertPdf(
   allItems: FullItem[],
   listDate?: Date | string
 ) {
-  const workbook = new ExcelJS.Workbook();
-  await generateTpCertExcel(items, allItems, workbook, "Sheet1", listDate);
-  const bufferExcel = await workbook.xlsx.writeBuffer();
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const headerImagePath = '/images/aries-header.png';
+  const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
+  const certItems = buildCertItems(items, allItems);
+  const groupedItems = groupItemsForExport(certItems);
 
-  const formData = new FormData();
-  formData.append("file", new Blob([bufferExcel]), "tp.xlsx");
+  let srNo = 1;
+  const bodyRows = groupedItems.flatMap(group => {
+    const capacity = getCapacity(group[0].materialName);
+    const firstRow = [srNo, group[0].materialName, group[0].manufacturerSrNo, group[0].materialName.toLowerCase().includes('harness') ? (group[0].chestCrollNo || '') : '', capacity, group.length, 'OLD', '', ''];
+    srNo++;
+    const otherRows = group.slice(1).map(item => ['', '', item.manufacturerSrNo, item.materialName.toLowerCase().includes('harness') ? (item.chestCrollNo || '') : '', '', '', '', '', '']);
+    return [firstRow, ...otherRows];
+  });
   
-  try {
-    const res = await fetch("/api/convert-excel-to-pdf", {
-      method: "POST",
-      body: formData,
-    });
-  
-    if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'PDF conversion failed');
+  const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
+
+
+  (doc as any).autoTable({
+    head: [['SR. No.', 'Material Name', 'Manufacturer Sr. No.', 'Chest Croll No.', 'Cap. in MT', 'Qty in Nos', 'New or Old', 'Valid upto if Renewal', 'Submit Last Testing Report']],
+    body: bodyRows,
+    didDrawPage: (data: any) => {
+      doc.addImage(imgDataUrl, "PNG", 40, 20, 515, 50);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, data.settings.margin.left, 85, { align: 'right'});
+
+      doc.setFontSize(12);
+      doc.text("Trivedi & Associates Technical Services (P.) Ltd.", doc.internal.pageSize.getWidth() / 2, 105, { align: 'center' });
+      doc.text("Jamnagar.", doc.internal.pageSize.getWidth() / 2, 120, { align: 'center' });
+      
+      doc.text("Subject : Testing & Certification", data.settings.margin.left, 150);
+      
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const footerY = pageHeight - 70;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Company Authorised Contact Person', data.settings.margin.left, footerY);
+      doc.text('Name : VIJAY SAI', data.settings.margin.left, footerY + 12);
+      doc.text('Contact Number : 919662095558', data.settings.margin.left, footerY + 24);
+      doc.text('Site : RELIANCE INDUSTRIES LTD', data.settings.margin.left, footerY + 36);
+      doc.text('email id: ariesril@ariesmar.com', data.settings.margin.left, footerY + 48);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', data.settings.margin.left, footerY + 60);
+
+    },
+    startY: 170,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      halign: 'center',
+      valign: 'middle',
+      lineWidth: 0.5,
+      lineColor: [0, 0, 0],
+    },
+    headStyles: {
+      fillColor: [220, 220, 220],
+      textColor: 0,
+      fontStyle: 'bold',
+    },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 80, halign: 'left' },
+      2: { cellWidth: 120, halign: 'left' },
+      3: { cellWidth: 60 },
+      4: { cellWidth: 40 },
+    },
+    didParseCell: (data: any) => {
+        if (data.row.raw[1] && data.row.raw[1] !== '' && data.column.index > 1) {
+            data.cell.styles.valign = 'top';
+        }
     }
+  });
 
-    const pdfBlob = await res.blob();
-    const filename = `TP_Certification_List_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
-
-    saveAs(pdfBlob, filename);
-
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    throw error;
-  }
+  doc.save(`TP_Certification_List_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
-
-
 
 export async function generateChecklistPdf(
   checklist: any,
