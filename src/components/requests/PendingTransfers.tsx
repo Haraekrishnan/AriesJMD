@@ -309,7 +309,7 @@ export default function PendingTransfers() {
                                         <div className="p-3 rounded-md bg-muted">
                                             <p><strong>Requester:</strong> {requester?.name || 'N/A'}</p>
                                             <p><strong>Approver:</strong> {approver?.name || 'N/A'}</p>
-                                            <p><strong>Reason:</strong> {req.reason} {requestedBy ? `by ${requestedBy.name}` : ''}</p>
+                                            <p><strong>Reason:</strong> {req.reason.replace(' as requested by', '')} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
                                             {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
                                             <div className="mt-2 pt-2 border-t">
                                                 <p className="font-semibold">Item Summary:</p>
