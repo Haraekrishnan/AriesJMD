@@ -1,17 +1,14 @@
-
 'use server';
 
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
 export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
-  const { GMAIL_USER, GMAIL_APP_PASS, RESEND_API_KEY, ARIES_PPE_RECIPIENT } = process.env;
+  const { GMAIL_USER, GMAIL_APP_PASS, RESEND_API_KEY } = process.env;
 
-  const recipientEmail = 'vijay.sai@ariesmar.com';
-
-  if (!recipientEmail) {
-    console.error('Recipient email address is not set.');
-    return { success: false, error: 'Server configuration error: Recipient not set.' };
+  if (!GMAIL_USER || !GMAIL_APP_PASS || !RESEND_API_KEY) {
+    console.error('Missing email credentials in .env file.');
+    return { success: false, error: 'Server configuration error.' };
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
@@ -81,49 +78,46 @@ export async function sendPpeRequestEmail(ppeData: Record<string, any>) {
       </p>
     </div>
   `;
-  
-  if (RESEND_API_KEY) {
+
+  // Attempt to send with Nodemailer (Gmail) first
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASS,
+      },
+      logger: true,
+      debug: true,
+    });
+
+    await transporter.sendMail({
+      from: `"Aries PPE Request" <${GMAIL_USER}>`,
+      to: 'vijay.sai@ariesmar.com',
+      subject: subject,
+      html: htmlBody,
+    });
+    
+    console.log('PPE request notification sent successfully via Gmail.');
+    return { success: true };
+  } catch (gmailError) {
+    console.error('Failed to send email via Gmail:', gmailError);
+    
+    // Fallback to Resend API
+    console.log('Attempting to send email via Resend as a fallback...');
     const resend = new Resend(RESEND_API_KEY);
     try {
       await resend.emails.send({
-        from: `Aries PPE Request <aries-ppe@resend.dev>`,
-        to: recipientEmail,
+        from: `Aries PPE Request <${GMAIL_USER}>`,
+        to: 'vijay.sai@ariesmar.com',
         subject: subject,
         html: htmlBody,
       });
       console.log('PPE request notification sent successfully via Resend.');
       return { success: true };
     } catch (resendError) {
-      console.error('Failed to send email via Resend:', resendError);
+      console.error('Failed to send email via Resend as well:', resendError);
+      return { success: false, error: (resendError as Error).message };
     }
   }
-
-  // Fallback to Nodemailer (Gmail) if Resend fails or is not configured
-  if (GMAIL_USER && GMAIL_APP_PASS) {
-      console.log('Attempting to send email via Gmail as a fallback...');
-      try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: GMAIL_USER,
-            pass: GMAIL_APP_PASS,
-          },
-        });
-
-        await transporter.sendMail({
-          from: `"Aries PPE Request" <${GMAIL_USER}>`,
-          to: recipientEmail,
-          subject: subject,
-          html: htmlBody,
-        });
-        console.log('PPE request notification sent successfully via Gmail fallback.');
-        return { success: true };
-      } catch (gmailError) {
-        console.error('Failed to send email via Gmail as well:', gmailError);
-        return { success: false, error: (gmailError as Error).message };
-      }
-  }
-  
-  console.error('No email providers are configured.');
-  return { success: false, error: 'No email providers configured on the server.' };
 }
