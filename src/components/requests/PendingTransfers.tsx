@@ -53,9 +53,12 @@ export default function PendingTransfers() {
         if (!existing) myActiveRequests.push(req);
       }
 
-      if (req.status === 'Completed' || req.status === 'Rejected' || req.status === 'Disputed') {
-          if (isPrivileged || isRequester || isMyProject) {
-            completed.push(req);
+      const isCompletedOrRejected = req.status === 'Completed' || req.status === 'Rejected' || req.status === 'Disputed';
+
+      if (isCompletedOrRejected) {
+          if (isPrivileged || isRequester || (isMyProject && req.fromProjectId !== req.toProjectId)) {
+            const existing = completed.find(r => r.id === req.id);
+            if (!existing) completed.push(req);
           }
       }
     });
@@ -247,61 +250,93 @@ export default function PendingTransfers() {
               <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-sm">
                 Transfer History ({allCompletedRequests.length})
               </AccordionTrigger>
-              <AccordionContent className="p-4 space-y-2">
+              <AccordionContent className="p-2 space-y-2">
                 {allCompletedRequests.map(req => {
-                  const fromProject = projects.find(p => p.id === req.fromProjectId);
-                  const toProject = projects.find(p => p.id === req.toProjectId);
-                  const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
-                  const showTpOption = (req.reason === 'For TP certification' || req.reason === 'Expired materials') && req.status === 'Completed';
-                  return (
-                    <Accordion key={req.id} type="single" collapsible>
-                        <AccordionItem value={req.id} className="border rounded-sm">
-                           <div className="flex justify-between items-center p-2">
-                                <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                                    <div className="flex items-center gap-4">
-                                        <div>
-                                            <p className="text-sm">
-                                                Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {format(parseISO(req.requestDate), 'dd MMM, yyyy')}
-                                            </p>
+                    const fromProject = projects.find(p => p.id === req.fromProjectId);
+                    const toProject = projects.find(p => p.id === req.toProjectId);
+                    const requester = users.find(u => u.id === req.requesterId);
+                    const approver = users.find(u => u.id === req.approverId);
+                    const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
+                    const statusVariant = req.status === 'Completed' ? 'success' : 'destructive';
+                    const showTpOption = (req.reason === 'For TP certification' || req.reason === 'Expired materials') && req.status === 'Completed';
+
+                    const itemSummary = req.items.reduce((acc, item) => {
+                        acc[item.name] = (acc[item.name] || 0) + 1;
+                        return acc;
+                    }, {} as Record<string, number>);
+
+                    return (
+                        <Accordion key={req.id} type="single" collapsible>
+                            <AccordionItem value={req.id} className="border rounded-sm bg-card">
+                               <div className="flex justify-between items-center p-3">
+                                    <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <p className="text-sm">
+                                                    Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {format(parseISO(req.requestDate), 'dd MMM, yyyy')}
+                                                </p>
+                                            </div>
+                                            <Badge variant={statusVariant}>{req.status}</Badge>
                                         </div>
-                                        <Badge variant={statusVariant}>{req.status}</Badge>
+                                    </AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        {showTpOption && canCreateTpList && (
+                                            <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
+                                                <FilePlus className="mr-2 h-3 w-3" /> Create TP List
+                                            </Button>
+                                        )}
+                                        {user?.role === 'Admin' && (
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader><AlertDialogTitle>Delete this transfer record?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
                                     </div>
-                                </AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                    {showTpOption && canCreateTpList && (
-                                        <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
-                                            <FilePlus className="mr-2 h-3 w-3" /> Create TP List
-                                        </Button>
-                                    )}
-                                    {user?.role === 'Admin' && (
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader><AlertDialogTitle>Delete this transfer record?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    )}
-                                </div>
-                           </div>
-                           <AccordionContent className="p-4 pt-0">
-                             <ul className="list-disc list-inside text-xs text-muted-foreground bg-muted p-2 rounded-md">
-                                {req.items.map(item => (
-                                    <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
-                                ))}
-                            </ul>
-                           </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  );
+                               </div>
+                               <AccordionContent className="px-4 pb-3">
+                                    <div className="text-xs space-y-2">
+                                        <div className="p-3 rounded-md bg-muted">
+                                            <p><strong>Requester:</strong> {requester?.name || 'N/A'}</p>
+                                            <p><strong>Approver:</strong> {approver?.name || 'N/A'}</p>
+                                            <p><strong>Reason:</strong> {req.reason} {requestedBy ? `by ${requestedBy.name}` : ''}</p>
+                                            {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
+                                            <div className="mt-2 pt-2 border-t">
+                                                <p className="font-semibold">Item Summary:</p>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                                {Object.entries(itemSummary).map(([name, count]) => (
+                                                    <span key={name}>{name} ({count})</span>
+                                                ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Accordion type="single" collapsible>
+                                            <AccordionItem value="details" className="border-none">
+                                                <AccordionTrigger className="text-xs hover:no-underline p-0">Show Item Details</AccordionTrigger>
+                                                <AccordionContent>
+                                                    <ul className="list-disc list-inside text-muted-foreground mt-1">
+                                                        {req.items.map(item => (
+                                                            <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
+                                                        ))}
+                                                    </ul>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+                                    </div>
+                               </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    );
                 })}
               </AccordionContent>
             </AccordionItem>
