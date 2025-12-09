@@ -291,11 +291,15 @@ export default function PpeStockPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(ppeInwardHistory || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => {
-                                        const date = parseISO(record.date);
+                                    {(ppeInwardHistory || []).sort((a, b) => {
+                                        const dateA = a?.date ? new Date(a.date).getTime() : 0;
+                                        const dateB = b?.date ? new Date(b.date).getTime() : 0;
+                                        return dateB - dateA;
+                                    }).map(record => {
+                                        const date = record.date ? parseISO(record.date) : null;
                                         return (
                                         <TableRow key={record.id}>
-                                            <TableCell>{isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date'}</TableCell>
+                                            <TableCell>{date && isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date'}</TableCell>
                                             <TableCell>{record.ppeType}</TableCell>
                                             <TableCell>
                                                 {record.ppeType === 'Coverall' 
