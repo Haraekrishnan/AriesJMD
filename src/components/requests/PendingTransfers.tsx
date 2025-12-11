@@ -124,74 +124,94 @@ export default function PendingTransfers() {
         {forApproval.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">Awaiting Store Approval</h4>
-            {forApproval.map(req => {
-              const requester = users.find(u => u.id === req.requesterId);
-              const fromProject = projects.find(p => p.id === req.fromProjectId);
-              const toProject = projects.find(p => p.id === req.toProjectId);
-              const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
-              const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
+             <Accordion type="multiple" className="w-full space-y-2">
+                {forApproval.map(req => {
+                  const requester = users.find(u => u.id === req.requesterId);
+                  const fromProject = projects.find(p => p.id === req.fromProjectId);
+                  const toProject = projects.find(p => p.id === req.toProjectId);
+                  const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
+                  const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
+                  
+                  const itemSummary = req.items.reduce((acc, item) => {
+                      acc[item.name] = (acc[item.name] || 0) + 1;
+                      return acc;
+                  }, {} as Record<string, number>);
 
-              return (
-                <div key={req.id} className="p-4 border rounded-lg bg-muted/50">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm">
-                        <span className="font-semibold">{requester?.name || 'Unknown User'}</span> requests to transfer {req.items.length} item(s)
-                        from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Submitted {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {showTpOption ? (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button size="sm"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, false)}>Approve Transfer Only</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, true)}>Approve & Create TP List</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        ) : (
-                            <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
-                                <ThumbsUp className="mr-2 h-4 w-4" /> Approve
-                            </Button>
-                        )}
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="destructive" onClick={() => setRejectionRequestId(req.id)}>
-                                    <ThumbsDown className="mr-2 h-4 w-4" /> Reject
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader><AlertDialogTitle>Reject Transfer?</AlertDialogTitle><AlertDialogDescription>Please provide a reason for rejecting this transfer request.</AlertDialogDescription></AlertDialogHeader>
-                                <div className="py-2"><Label htmlFor="rejection-comment">Comment</Label><Textarea id="rejection-comment" value={comment} onChange={e => setComment(e.target.value)} /></div>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleReject}>Confirm Rejection</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-sm">
-                    <p><strong>Reason:</strong> {req.reason} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
-                    {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
-                    <p className="font-medium mt-2">Items:</p>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground">
-                      {req.items.map(item => {
-                        const itemName = item.name || allItems.find(i => i.id === item.itemId)?.name || 'Unknown';
-                        return (
-                           <li key={item.itemId}>{itemName} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                </div>
-              );
-            })}
+                  return (
+                    <AccordionItem value={req.id} key={req.id} className="border rounded-lg bg-muted/50">
+                        <div className="flex justify-between items-center p-4">
+                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                                <div>
+                                    <p className="text-sm font-semibold">
+                                        Transfer from <span className="font-bold">{fromProject?.name}</span> to <span className="font-bold">{toProject?.name}</span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Requested by {requester?.name || 'Unknown'} &middot; {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}
+                                    </p>
+                                </div>
+                            </AccordionTrigger>
+                            <div className="flex items-center gap-2 pl-4">
+                                {showTpOption ? (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button size="sm"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, false)}>Approve Transfer Only</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, true)}>Approve & Create TP List</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
+                                        <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+                                    </Button>
+                                )}
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="sm" variant="destructive" onClick={() => setRejectionRequestId(req.id)}>
+                                            <ThumbsDown className="mr-2 h-4 w-4" /> Reject
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Reject Transfer?</AlertDialogTitle><AlertDialogDescription>Please provide a reason for rejecting this transfer request.</AlertDialogDescription></AlertDialogHeader>
+                                        <div className="py-2"><Label htmlFor="rejection-comment">Comment</Label><Textarea id="rejection-comment" value={comment} onChange={e => setComment(e.target.value)} /></div>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleReject}>Confirm Rejection</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </div>
+                        <AccordionContent className="p-4 pt-0">
+                             <div className="text-xs space-y-2 mt-2 pt-2 border-t">
+                                <p><strong>Reason:</strong> {req.reason} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
+                                {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
+                                <div className="pt-1">
+                                    <p className="font-semibold">Item Summary:</p>
+                                    <p className="text-muted-foreground">{Object.entries(itemSummary).map(([name, count]) => `${name} (${count})`).join(' · ')}</p>
+                                </div>
+                                <Accordion type="single" collapsible>
+                                    <AccordionItem value="details" className="border-none">
+                                        <AccordionTrigger className="text-xs hover:no-underline p-0">Show Item Details</AccordionTrigger>
+                                        <AccordionContent>
+                                            <ul className="list-disc list-inside text-muted-foreground mt-1">
+                                            {req.items.map(item => {
+                                                const itemName = item.name || allItems.find(i => i.id === item.itemId)?.name || 'Unknown';
+                                                return (
+                                                <li key={item.itemId}>{itemName} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
+                                                )
+                                            })}
+                                            </ul>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+            </Accordion>
           </div>
         )}
 
