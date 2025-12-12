@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
@@ -16,10 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import type { InventoryItem } from '@/lib/types';
 import ConsumableIssueList from '@/components/requests/ConsumableIssueList';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { isThisMonth, parseISO } from 'date-fns';
 
 export default function ConsumablesPage() {
   const { consumableItems, deleteConsumableItem } = useConsumable();
-  const { can } = useAppContext();
+  const { can, internalRequests } = useAppContext();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -28,14 +29,12 @@ export default function ConsumablesPage() {
     return can.manage_inventory; // Using manage_inventory permission as a proxy
   }, [can]);
 
-  const { dailyConsumables, jobConsumables, summary } = useMemo(() => {
+  const { dailyConsumables, jobConsumables, summary, consumptionMetrics } = useMemo(() => {
     const daily: any[] = [];
     const job: any[] = [];
-    let totalItems = 0;
     let lowStockItems = 0;
     
     consumableItems.forEach(item => {
-      totalItems += item.quantity || 0;
       if ((item.quantity || 0) <= 5) { // Assuming low stock is 5 or less
         lowStockItems++;
       }
@@ -45,13 +44,33 @@ export default function ConsumablesPage() {
         job.push(item);
       }
     });
+    
+    const consumableItemIds = new Set(consumableItems.map(i => i.id));
+    let consumptionThisMonth = 0;
+    let overallConsumption = 0;
+
+    internalRequests.forEach(req => {
+        if (!req.items) return;
+        req.items.forEach(item => {
+            if (item.inventoryItemId && consumableItemIds.has(item.inventoryItemId) && item.status === 'Issued') {
+                const issuedQuantity = item.quantity || 0;
+                overallConsumption += issuedQuantity;
+                
+                const issuedDate = (item as any).issuedDate;
+                if (issuedDate && isThisMonth(parseISO(issuedDate))) {
+                    consumptionThisMonth += issuedQuantity;
+                }
+            }
+        });
+    });
 
     return {
       dailyConsumables: daily,
       jobConsumables: job,
-      summary: { totalItems, lowStockItems }
+      summary: { lowStockItems },
+      consumptionMetrics: { consumptionThisMonth, overallConsumption }
     };
-  }, [consumableItems]);
+  }, [consumableItems, internalRequests]);
 
   const handleDelete = (item: InventoryItem) => {
     deleteConsumableItem(item.id);
@@ -74,16 +93,16 @@ export default function ConsumablesPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <StatCard 
-            title="Total Items in Stock"
-            value={summary.totalItems}
-            icon={Package}
-            description="Total quantity of all consumable items."
+            title="Consumption This Month"
+            value={consumptionMetrics.consumptionThisMonth}
+            icon={TrendingDown}
+            description="Total quantity of items issued this month."
         />
         <StatCard 
-            title="Items in Stock"
-            value={consumableItems.length}
-            icon={PackageCheck}
-            description="Number of distinct consumable item types."
+            title="Overall Consumption"
+            value={consumptionMetrics.overallConsumption}
+            icon={ShoppingCart}
+            description="Total quantity of all items issued historically."
         />
         <StatCard 
             title="Low Stock Items"
