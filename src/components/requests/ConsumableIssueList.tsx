@@ -23,18 +23,13 @@ export default function ConsumableIssueList() {
             const requester = users.find(u => u.id === req.requesterId);
             
             req.items.forEach(item => {
-                const approver = users.find(u => u.id === (item as any).approverId);
                 if (item.status === 'Issued') {
                     const issuedDate = (item as any).issuedDate;
-                    const approvalDate = (item as any).approvalDate;
-
                     if (issuedDate) {
                         items.push({
                             ...item,
                             requesterName: requester?.name || 'Unknown',
-                            approverName: approver?.name || 'N/A',
                             requestDate: req.date,
-                            approvalDate: approvalDate,
                             issuedDate: issuedDate,
                         });
                     }
@@ -98,9 +93,7 @@ export default function ConsumableIssueList() {
                             <AccordionContent>
                                 <div className="text-sm text-muted-foreground space-y-1 pt-2 border-t">
                                     <p><strong>Requested By:</strong> {item.requesterName}</p>
-                                    <p><strong>Approved By:</strong> {item.approverName}</p>
                                     <p><strong>Requested Date:</strong> {formatDate(item.requestDate)}</p>
-                                    <p><strong>Approved Date:</strong> {formatDate(item.approvalDate)}</p>
                                     <p><strong>Issued Date:</strong> {formatDate(item.issuedDate)}</p>
                                     <p><strong>Remarks:</strong> {item.remarks || 'N/A'}</p>
                                 </div>
