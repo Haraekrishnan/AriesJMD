@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 export default function ConsumableIssueList() {
     const { internalRequests, users } = useAppContext();
@@ -24,13 +24,17 @@ export default function ConsumableIssueList() {
                             requesterName: requester?.name || 'Unknown',
                             requestDate: req.date,
                             approvalDate: req.approvalDate,
-                            issuedDate: item.issuedDate,
+                            issuedDate: (item as any).issuedDate, // Cast to any to access potentially missing property
                         });
                     }
                 });
             }
         });
-        return items.sort((a,b) => parseISO(b.issuedDate).getTime() - parseISO(a.issuedDate).getTime());
+         return items.sort((a, b) => {
+            const dateA = a.issuedDate ? parseISO(a.issuedDate).getTime() : 0;
+            const dateB = b.issuedDate ? parseISO(b.issuedDate).getTime() : 0;
+            return dateB - dateA;
+        });
     }, [internalRequests, users]);
 
     const filteredItems = useMemo(() => {
@@ -72,16 +76,19 @@ export default function ConsumableIssueList() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredItems.map(item => (
-                            <TableRow key={`${item.id}-${item.requestDate}`}>
-                                <TableCell>{item.description}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{item.unit}</TableCell>
-                                <TableCell>{item.requesterName}</TableCell>
-                                <TableCell>{item.issuedDate ? format(parseISO(item.issuedDate), 'dd MMM, yyyy') : 'N/A'}</TableCell>
-                                <TableCell>{item.remarks}</TableCell>
-                            </TableRow>
-                        ))}
+                        {filteredItems.map(item => {
+                            const issuedDate = item.issuedDate ? parseISO(item.issuedDate) : null;
+                            return (
+                                <TableRow key={`${item.id}-${item.requestDate}`}>
+                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell>{item.unit}</TableCell>
+                                    <TableCell>{item.requesterName}</TableCell>
+                                    <TableCell>{issuedDate && isValid(issuedDate) ? format(issuedDate, 'dd MMM, yyyy') : 'N/A'}</TableCell>
+                                    <TableCell>{item.remarks}</TableCell>
+                                </TableRow>
+                            )
+                        })}
                     </TableBody>
                 </Table>
                 {filteredItems.length === 0 && <p className="text-center text-muted-foreground py-4">No issued items found for the current search.</p>}
