@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import type { InventoryItem } from '@/lib/types';
 import ConsumableIssueList from '@/components/requests/ConsumableIssueList';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function ConsumablesPage() {
   const { consumableItems, deleteConsumableItem } = useConsumable();
@@ -197,7 +198,14 @@ export default function ConsumablesPage() {
         </CardContent>
       </Card>
 
-      <ConsumableIssueList />
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="item-1">
+          <AccordionTrigger className="text-lg font-semibold bg-muted/50 p-4 rounded-t-lg hover:no-underline">Issued Consumables History</AccordionTrigger>
+          <AccordionContent className="border border-t-0 rounded-b-lg p-4">
+            <ConsumableIssueList />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {canManageConsumables && (
         <>
