@@ -6,28 +6,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart } from 'lucide-react';
+import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
 import EditConsumableDialog from '@/components/requests/EditConsumableDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { InventoryItem } from '@/lib/types';
+import type { InventoryItem, Role } from '@/lib/types';
 import ConsumableIssueList from '@/components/requests/ConsumableIssueList';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { isThisMonth, parseISO } from 'date-fns';
 
 export default function ConsumablesPage() {
   const { consumableItems, deleteConsumableItem } = useConsumable();
-  const { can, internalRequests } = useAppContext();
+  const { can, user, internalRequests } = useAppContext();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
   const canManageConsumables = useMemo(() => {
-    return can.manage_inventory; // Using manage_inventory permission as a proxy
-  }, [can]);
+    if (!user) return false;
+    const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
+    return allowedRoles.includes(user.role);
+  }, [user]);
 
   const { dailyConsumables, jobConsumables, summary, consumptionMetrics } = useMemo(() => {
     const daily: any[] = [];
@@ -76,6 +78,20 @@ export default function ConsumablesPage() {
     deleteConsumableItem(item.id);
     toast({ variant: 'destructive', title: 'Consumable Deleted', description: `${item.name} has been removed.` });
   };
+  
+   if (!canManageConsumables) {
+        return (
+           <Card className="w-full max-w-md mx-auto mt-20">
+               <CardHeader className="text-center items-center">
+                   <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                       <AlertTriangle className="h-10 w-10 text-destructive" />
+                   </div>
+                   <CardTitle>Access Denied</CardTitle>
+                   <CardDescription>You do not have permission to view the Consumables page.</CardDescription>
+               </CardHeader>
+           </Card>
+       );
+   }
 
   return (
     <div className="space-y-8">
