@@ -1,9 +1,9 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
+import { useConsumable } from '@/contexts/consumable-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { Check } from 'lucide-react';
 
 const requestItemSchema = z.object({
   id: z.string(),
-  inventoryItemId: z.string().optional(),
+  inventoryItemId: z.string().min(1, 'Please select a valid item from the list.'),
   description: z.string().min(1, 'Description is required'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
   unit: z.string().min(1, 'Unit is required. (e.g., pcs, box, m)'),
@@ -41,12 +41,9 @@ interface NewConsumableRequestDialogProps {
 const generateNewItemId = () => `item-${Date.now()}-${Math.random()}`;
 
 export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewConsumableRequestDialogProps) {
-  const { addInternalRequest, inventoryItems } = useAppContext();
+  const { addInternalRequest } = useAppContext();
+  const { consumableItems } = useConsumable();
   const { toast } = useToast();
-
-  const consumableItems = useMemo(() => {
-    return inventoryItems.filter(item => item.category === 'Daily Consumable' || item.category === 'Job Consumable');
-  }, [inventoryItems]);
 
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
@@ -64,7 +61,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
     addInternalRequest(data);
     toast({
       title: 'Request Submitted',
-      description: 'Your internal store request has been submitted.',
+      description: 'Your consumables request has been submitted.',
     });
     setIsOpen(false);
   };
@@ -147,6 +144,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                         )}
                     />
                     {form.formState.errors.items?.[index]?.description && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.description?.message}</p>}
+                    {form.formState.errors.items?.[index]?.inventoryItemId && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.inventoryItemId?.message}</p>}
                   </div>
                   <div className="col-span-2">
                     <Input id={`items.${index}.quantity`} type="number" {...form.register(`items.${index}.quantity`)} />

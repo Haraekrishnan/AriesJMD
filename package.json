@@ -51,7 +51,7 @@
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "lucide-react": "^0.475.0",
-    "next": "^16.0.7",
+    "next": "16.0.10",
     "nodemailer": "^6.9.14",
     "patch-package": "^8.0.0",
     "react": "^19.2.1",

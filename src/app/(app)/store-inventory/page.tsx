@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -57,40 +55,27 @@ export default function StoreInventoryPage() {
         return user.role === 'Admin' || can.manage_inventory;
     }, [user, can]);
 
-    const { generalItems, dailyConsumables, jobConsumables } = useMemo(() => {
-        const general: InventoryItem[] = [];
-        const daily: InventoryItem[] = [];
-        const job: InventoryItem[] = [];
-        inventoryItems.forEach(item => {
-            if (item.category === 'Daily Consumable') {
-                daily.push(item);
-            } else if (item.category === 'Job Consumable') {
-                job.push(item);
-            } else {
-                general.push(item);
-            }
-        });
-        return { generalItems: general, dailyConsumables: daily, jobConsumables: job };
-    }, [inventoryItems]);
-
     const filteredItems = useMemo(() => {
         const userCanManage = can.manage_inventory || user?.role === 'Admin';
         
-        return generalItems.filter(item => {
-            // Project visibility filter
-            // Project visibility — always restrict to user's allowed projects
-if (!userCanManage) {
-    if (!user?.projectIds || !user.projectIds.includes(item.projectId)) {
-        return false;
-    }
-}
+        return inventoryItems.filter(item => {
+            if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') {
+                return false;
+            }
 
-// Apply selected project filter for ALL users (both admin and non-admin)
-if (filters.projectId !== 'all') {
-    if (item.projectId !== filters.projectId) {
-        return false;
-    }
-}
+            // Project visibility filter
+            if (!userCanManage) {
+                if (!user?.projectIds || !user.projectIds.includes(item.projectId)) {
+                    return false;
+                }
+            }
+
+            // Apply selected project filter for ALL users (both admin and non-admin)
+            if (filters.projectId !== 'all') {
+                if (item.projectId !== filters.projectId) {
+                    return false;
+                }
+            }
 
             const { name, status, projectId, search, updatedDateRange } = filters;
             
@@ -99,11 +84,6 @@ if (filters.projectId !== 'all') {
 
             // Search filter
             if (search && !(item.serialNumber?.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
-                return false;
-            }
-            
-            // Project filter (only if user can manage, otherwise project is already filtered)
-            if (userCanManage && projectId !== 'all' && item.projectId !== projectId) {
                 return false;
             }
             
@@ -146,7 +126,7 @@ if (filters.projectId !== 'all') {
             
             return true;
         });
-    }, [generalItems, filters, user, can.manage_inventory, projects]);
+    }, [inventoryItems, filters, user, can.manage_inventory, projects]);
 
     const summaryData = useMemo(() => {
         const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};
@@ -187,7 +167,8 @@ if (filters.projectId !== 'all') {
         const thirtyDaysFromNow = addDays(now, 30);
         const notifications: { message: string, item: InventoryItem }[] = [];
 
-        generalItems.forEach(item => {
+        inventoryItems.forEach(item => {
+            if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') return;
             if (item.inspectionDueDate) {
                 const inspectionDueDate = parseISO(item.inspectionDueDate);
                 if (isBefore(inspectionDueDate, now)) {
@@ -207,7 +188,7 @@ if (filters.projectId !== 'all') {
         });
 
         return notifications;
-    }, [generalItems]);
+    }, [inventoryItems]);
 
     return (
         <div className="space-y-8">
@@ -217,6 +198,7 @@ if (filters.projectId !== 'all') {
                     <p className="text-muted-foreground">Manage and track all equipment and items.</p>
                 </div>
                 <div className="flex items-center flex-wrap gap-2">
+                    <Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
                     <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
@@ -351,47 +333,20 @@ if (filters.projectId !== 'all') {
                 </Card>
             )}
 
-            <Tabs defaultValue="general">
-                <TabsList>
-                    <TabsTrigger value="general">General Items</TabsTrigger>
-                    <TabsTrigger value="consumables">Consumables</TabsTrigger>
-                </TabsList>
-                <TabsContent value="general">
-                    <Card>
-                        <CardHeader>
-                           <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
-                             {view === 'list' ? (
-                                <InventoryFilters onApplyFilters={setFilters} />
-                             ) : <CardTitle>General Inventory Summary</CardTitle>}
-                             <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
-                           </div>
-                        </CardHeader>
-                        <CardContent>
-                            {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                 <TabsContent value="consumables">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Consumable Items</CardTitle>
-                            <CardDescription>Manage daily and job-specific consumable items.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-2">Daily Consumables</h3>
-                                    <InventoryTable items={dailyConsumables} />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-2">Job Consumables</h3>
-                                    <InventoryTable items={jobConsumables} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            <Card>
+                <CardHeader>
+                    <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                    {view === 'list' ? (
+                        <InventoryFilters onApplyFilters={setFilters} />
+                    ) : <CardTitle>General Inventory Summary</CardTitle>}
+                    <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
+                </CardContent>
+            </Card>
+
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
@@ -404,6 +359,7 @@ if (filters.projectId !== 'all') {
         </div>
     );
 }
+
 
 
 

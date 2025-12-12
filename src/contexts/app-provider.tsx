@@ -7,6 +7,7 @@ import { ManpowerProvider, useManpower } from './manpower-provider';
 import { PlannerProvider, usePlanner } from './planner-provider';
 import { PurchaseProvider, usePurchase } from './purchase-provider';
 import { TaskProvider, useTask } from './task-provider';
+import { ConsumableProvider, useConsumable } from './consumable-provider'; // Import new provider
 import { rtdb } from '@/lib/rtdb';
 import { ref, push, set, update } from 'firebase/database';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
@@ -22,6 +23,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const planner = usePlanner();
   const purchase = usePurchase();
   const task = useTask();
+  const consumable = useConsumable(); // Use new provider
 
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
     const { users, passwordResetRequests } = auth;
@@ -110,6 +112,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     ...planner,
     ...purchase,
     ...task,
+    ...consumable, // Add consumable context
     requestPasswordReset,
     resolveResetRequest,
     requestUnlock,
@@ -134,9 +137,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             <ManpowerProvider>
               <PurchaseProvider>
                 <InventoryProvider>
-                  <CombinedProvider>
-                    {children}
-                  </CombinedProvider>
+                  <ConsumableProvider> {/* Add new provider */}
+                    <CombinedProvider>
+                      {children}
+                    </CombinedProvider>
+                  </ConsumableProvider>
                 </InventoryProvider>
               </PurchaseProvider>
             </ManpowerProvider>
