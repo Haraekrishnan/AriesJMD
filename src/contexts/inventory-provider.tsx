@@ -1121,7 +1121,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
         if (!user) return;
-        const newRef = push(ref(rtdb, 'internalRequests'));
+        const newRequestRef = push(ref(rtdb, 'internalRequests'));
         
         const itemsWithStatus = requestData.items.map(item => ({...item, status: 'Pending' as InternalRequestItemStatus}));
         
@@ -1133,16 +1133,23 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'internal-request' }],
           viewedByRequester: true,
         };
-        set(newRef, newRequest);
+        set(newRequestRef, newRequest);
         addActivityLog(user.id, 'Internal Store Request Created');
 
-        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge'].includes(u.role));
+        const fromProjectName = projects.find(p => p.id === user.projectIds?.[0])?.name;
+        const itemsHtml = requestData.items.map(item => `<li>${item.quantity} ${item.unit} of ${item.description}</li>`).join('');
+    
         storePersonnel.forEach(storeUser => {
-            if(storeUser.email) {
+            if (storeUser.email) {
                 const htmlBody = `
-                    <h3>New Internal Store Request</h3>
-                    <p><strong>Requested By:</strong> ${user.name}</p>
-                    <p><strong>No. of Items:</strong> ${requestData.items.length}</p>
+                    <p>A new internal store request has been submitted by ${user.name}.</p>
+                    <h3>Details:</h3>
+                    <p><strong>From Project:</strong> ${fromProjectName || 'Unknown'}</p>
+                    <h3>Items (${requestData.items.length}):</h3>
+                    <ul>
+                        ${itemsHtml}
+                    </ul>
                     <p>Please review the request in the app.</p>
                     <a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a>
                 `;
@@ -1155,7 +1162,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 });
             }
         });
-      }, [user, addActivityLog, users, notificationSettings]);
+      }, [user, addActivityLog, users, notificationSettings, projects]);
     
       const deleteInternalRequest = useCallback((requestId: string) => {
         const request = internalRequestsById[requestId];
@@ -1511,3 +1518,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
