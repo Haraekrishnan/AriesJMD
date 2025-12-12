@@ -1,7 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
@@ -17,30 +16,32 @@ export default function ConsumableIssueList() {
     const issuedItems = useMemo(() => {
         const items: any[] = [];
         internalRequests.forEach(req => {
-            if (req.items) {
-                const requester = users.find(u => u.id === req.requesterId);
-                const approver = users.find(u => u.id === req.approverId);
-                req.items.forEach(item => {
-                    const isConsumable = item.inventoryItemId && consumableItemIds.has(item.inventoryItemId);
-                    if (isConsumable && item.status === 'Issued') {
+            const isConsumableReq = req.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
+            if (!isConsumableReq) return;
+
+            const requester = users.find(u => u.id === req.requesterId);
+            const approver = users.find(u => u.id === req.approverId);
+            
+            req.items.forEach(item => {
+                if (item.status === 'Issued') {
+                    const issuedDate = (item as any).issuedDate;
+                    if (issuedDate) {
                         items.push({
                             ...item,
                             requesterName: requester?.name || 'Unknown',
                             approverName: approver?.name || 'N/A',
                             requestDate: req.date,
                             approvalDate: req.approvalDate,
-                            issuedDate: (item as any).issuedDate,
+                            issuedDate: issuedDate,
                         });
                     }
-                });
-            }
+                }
+            });
         });
         return items.sort((a,b) => {
             const dateA = a.issuedDate ? parseISO(a.issuedDate).getTime() : 0;
             const dateB = b.issuedDate ? parseISO(b.issuedDate).getTime() : 0;
-            if (!dateA && !dateB) return 0;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
+            if (!dateA || !dateB) return 0;
             return dateB - dateA;
         });
     }, [internalRequests, users, consumableItemIds]);
