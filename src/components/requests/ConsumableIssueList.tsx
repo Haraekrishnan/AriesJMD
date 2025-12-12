@@ -1,8 +1,6 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -11,8 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 
 export default function ConsumableIssueList() {
-    const { internalRequests, users } = useAppContext();
-    const { consumableItems } = useConsumable();
+    const { internalRequests, users, consumableItems } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     
     const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
@@ -40,6 +37,7 @@ export default function ConsumableIssueList() {
         return items.sort((a,b) => {
             const dateA = a.issuedDate ? parseISO(a.issuedDate) : 0;
             const dateB = b.issuedDate ? parseISO(b.issuedDate) : 0;
+            if (!dateA && !dateB) return 0;
             if (!dateA) return 1;
             if (!dateB) return -1;
             return dateB.getTime() - dateA.getTime();
@@ -82,7 +80,7 @@ export default function ConsumableIssueList() {
                 {filteredItems.length > 0 ? (
                     <Accordion type="multiple" className="w-full space-y-2">
                         {filteredItems.map((item, index) => (
-                            <AccordionItem key={`${item.id}-${index}`} value={`${item.id}-${index}`} className="border rounded-md px-4">
+                            <AccordionItem key={`${item.id}-${index}`} value={`${item.id}-${index}`} className="border rounded-md px-4 bg-muted/40">
                                 <AccordionTrigger>
                                     <div className="flex justify-between items-center w-full">
                                         <div className="text-left">
