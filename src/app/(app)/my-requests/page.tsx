@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -26,8 +27,10 @@ export default function MyRequestsPage() {
         internalRequests, 
         managementRequests, 
         ppeRequests,
-        pendingInternalRequestCount,
-        updatedInternalRequestCount,
+        pendingConsumableRequestCount,
+        updatedConsumableRequestCount,
+        pendingGeneralRequestCount,
+        updatedGeneralRequestCount,
         pendingManagementRequestCount,
         updatedManagementRequestCount,
         pendingPpeRequestCount,
@@ -89,7 +92,8 @@ export default function MyRequestsPage() {
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [ppeRequests, user, can.view_ppe_requests, can.manage_ppe_request]);
 
-    const internalNotifCount = pendingInternalRequestCount + updatedInternalRequestCount;
+    const consumableNotifCount = pendingConsumableRequestCount + updatedConsumableRequestCount;
+    const generalNotifCount = pendingGeneralRequestCount + updatedGeneralRequestCount;
     const mgmtNotifCount = pendingManagementRequestCount + updatedManagementRequestCount;
     const ppeNotifCount = pendingPpeRequestCount + updatedPpeRequestCount;
 
@@ -114,12 +118,15 @@ export default function MyRequestsPage() {
                     </TabsTrigger>
                      <TabsTrigger value="consumable-requests" className="flex items-center gap-2">
                         Consumable Requests
-                         {internalNotifCount > 0 && (
-                            <Badge variant="destructive">{internalNotifCount}</Badge>
+                         {consumableNotifCount > 0 && (
+                            <Badge variant="destructive">{consumableNotifCount}</Badge>
                          )}
                     </TabsTrigger>
                     <TabsTrigger value="store-requests" className="flex items-center gap-2">
                         General Store Requests
+                         {generalNotifCount > 0 && (
+                            <Badge variant="destructive">{generalNotifCount}</Badge>
+                         )}
                     </TabsTrigger>
                     <TabsTrigger value="management-requests" className="flex items-center gap-2">
                         Management Requests

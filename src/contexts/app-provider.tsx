@@ -52,13 +52,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           <PlannerProvider>
             <ManpowerProvider>
               <PurchaseProvider>
-                <InventoryProvider>
-                  <ConsumableProvider>
+                <ConsumableProvider>
+                  <InventoryProvider>
                     <CombinedProvider>
                       {children}
                     </CombinedProvider>
-                  </ConsumableProvider>
-                </InventoryProvider>
+                  </InventoryProvider>
+                </ConsumableProvider>
               </PurchaseProvider>
             </ManpowerProvider>
           </PlannerProvider>

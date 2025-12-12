@@ -13,6 +13,7 @@ import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { format, parseISO, isValid } from 'date-fns';
+import { useConsumable } from './consumable-provider';
 
 type InventoryContextType = {
   inventoryItems: InventoryItem[];
@@ -133,8 +134,10 @@ type InventoryContextType = {
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
-  pendingInternalRequestCount: number;
-  updatedInternalRequestCount: number;
+  pendingConsumableRequestCount: number;
+  updatedConsumableRequestCount: number;
+  pendingGeneralRequestCount: number;
+  updatedGeneralRequestCount: number;
   pendingManagementRequestCount: number;
   updatedManagementRequestCount: number;
   pendingPpeRequestCount: number;
@@ -166,6 +169,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { projects, notificationSettings } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
+    const { consumableItems } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -209,23 +213,40 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const inspectionChecklists = useMemo(() => Object.values(inspectionChecklistsById), [inspectionChecklistsById]);
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
     
-    const { pendingInternalRequestCount, updatedInternalRequestCount } = useMemo(() => {
-        if (!user) return { pendingInternalRequestCount: 0, updatedInternalRequestCount: 0 };
+    const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
+
+    const { 
+        pendingConsumableRequestCount, updatedConsumableRequestCount,
+        pendingGeneralRequestCount, updatedGeneralRequestCount
+    } = useMemo(() => {
+        if (!user) return { pendingConsumableRequestCount: 0, updatedConsumableRequestCount: 0, pendingGeneralRequestCount: 0, updatedGeneralRequestCount: 0 };
+        
+        let pendingConsumable = 0, updatedConsumable = 0;
+        let pendingGeneral = 0, updatedGeneral = 0;
+        
         const isStoreApprover = can.approve_store_requests;
 
-        const pendingCount = isStoreApprover ? internalRequests.filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
-        const updatedCount = internalRequests.filter(r => {
-            const isMyRequest = r.requesterId === user.id;
-            if (!isMyRequest) return false;
+        internalRequests.forEach(r => {
+            const isConsumable = r.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
             
-            const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
-            const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-            
-            return isRejectedButActive || isStandardUpdate;
-        }).length;
+            if (isStoreApprover && (r.status === 'Pending' || r.status === 'Partially Approved')) {
+                if (isConsumable) pendingConsumable++;
+                else pendingGeneral++;
+            }
+
+            if (r.requesterId === user.id) {
+                const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
+                const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
+                
+                if (isRejectedButActive || isStandardUpdate) {
+                    if (isConsumable) updatedConsumable++;
+                    else updatedGeneral++;
+                }
+            }
+        });
         
-        return { pendingInternalRequestCount: pendingCount, updatedInternalRequestCount: updatedCount };
-    }, [user, internalRequests, can.approve_store_requests]);
+        return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
+    }, [user, internalRequests, can.approve_store_requests, consumableItemIds]);
 
     const { pendingManagementRequestCount, updatedManagementRequestCount } = useMemo(() => {
         if (!user) return { pendingManagementRequestCount: 0, updatedManagementRequestCount: 0 };
@@ -1254,6 +1275,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const updatedItems = [...request.items];
         updatedItems[itemIndex].status = status;
         
+        if (status === 'Issued') {
+            (updatedItems[itemIndex] as any).issuedDate = new Date().toISOString();
+        }
+        
         const allIssued = updatedItems.every(i => i.status === 'Issued');
         const someIssued = updatedItems.some(i => i.status === 'Issued' || i.status === 'Rejected');
         const allApproved = updatedItems.every(i => i.status === 'Approved' || i.status === 'Issued' || i.status === 'Rejected');
@@ -1271,20 +1296,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         
         const updates: { [key: string]: any } = {};
-        updates[`internalRequests/${requestId}/items/${itemIndex}/status`] = status;
+        updates[`internalRequests/${requestId}/items/${itemIndex}`] = updatedItems[itemIndex];
         updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
 
         if(request.status !== newStatus) {
             updates[`internalRequests/${requestId}/status`] = newStatus;
         }
 
-        // Deduct from stock if issued
         if (status === 'Issued' && requestedItem.inventoryItemId) {
-          const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
-          if (stockItem && stockItem.quantity !== undefined) {
-              const newQuantity = Math.max(0, stockItem.quantity - requestedItem.quantity);
-              updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = newQuantity;
-          }
+            const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
+            if (stockItem && stockItem.quantity !== undefined) {
+                const newQuantity = Math.max(0, stockItem.quantity - requestedItem.quantity);
+                updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = newQuantity;
+            }
         }
     
         update(ref(rtdb), updates);
@@ -1310,7 +1334,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!request || request.requesterId !== user.id) return;
         
         const updates: { [key: string]: any } = {};
-        updates[`internalRequests/${requestId}/viewedByRequester`] = true;
+        updates[`internalRequests/${requestId}/acknowledgedByRequester`] = true;
     
         const comments = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
         comments.forEach((comment) => {
@@ -1518,7 +1542,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addTpCertList, updateTpCertList, deleteTpCertList,
         addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
         addIgpOgpRecord, deleteIgpOgpRecord,
-        pendingInternalRequestCount, updatedInternalRequestCount,
+        pendingConsumableRequestCount, updatedConsumableRequestCount,
+        pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingManagementRequestCount, updatedManagementRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,

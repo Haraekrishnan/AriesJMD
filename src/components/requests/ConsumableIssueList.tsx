@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -22,7 +21,8 @@ export default function ConsumableIssueList() {
                 const requester = users.find(u => u.id === req.requesterId);
                 const approver = users.find(u => u.id === req.approverId);
                 req.items.forEach(item => {
-                    if (item.inventoryItemId && consumableItemIds.has(item.inventoryItemId) && item.status === 'Issued') {
+                    const isConsumable = item.inventoryItemId && consumableItemIds.has(item.inventoryItemId);
+                    if (isConsumable && item.status === 'Issued') {
                         items.push({
                             ...item,
                             requesterName: requester?.name || 'Unknown',
@@ -36,8 +36,8 @@ export default function ConsumableIssueList() {
             }
         });
         return items.sort((a,b) => {
-            const dateA = a.issuedDate ? parseISO(a.issuedDate) : 0;
-            const dateB = b.issuedDate ? parseISO(b.issuedDate) : 0;
+            const dateA = a.issuedDate ? parseISO(a.issuedDate).getTime() : 0;
+            const dateB = b.issuedDate ? parseISO(b.issuedDate).getTime() : 0;
             if (!dateA && !dateB) return 0;
             if (!dateA) return 1;
             if (!dateB) return -1;
