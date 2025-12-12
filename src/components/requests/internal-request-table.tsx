@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -23,6 +24,7 @@ import EditInternalRequestItemDialog from './EditInternalRequestItemDialog';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
+  showAcknowledge?: boolean;
 }
 
 const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
@@ -42,7 +44,7 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
     Rejected: 'destructive',
 };
 
-const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest; isCompletedSection?: boolean }) => {
+const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }: { req: InternalRequest; isCompletedSection?: boolean; showAcknowledge?: boolean; }) => {
     const { user, users, can, roles } = useAuth();
     const {
         updateInternalRequestStatus, 
@@ -161,7 +163,7 @@ const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest
                         <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
                         <p className="text-sm text-muted-foreground">ID: {req.id ? req.id.slice(-6) : 'N/A'} &middot; {req.date ? format(parseISO(req.date), 'dd MMM yyyy') : 'No date'}</p>
                         </div>
-                        {needsAcknowledgement ? (
+                        {showAcknowledge && needsAcknowledgement ? (
                           <Button size="sm" onClick={() => acknowledgeInternalRequest(req.id)}>Acknowledge</Button>
                         ) : (
                           <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
@@ -291,7 +293,7 @@ const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest
                             </AlertDialog>
                         )}
                         {canMarkAsCompleted && !isCompletedSection && (
-                            <Button size="sm" onClick={() => updateInternalRequestStatus(req.id, 'Issued', 'Request manually completed as all items were handled.')}><CheckCheck className="mr-2 h-4 w-4"/>Mark as Completed</Button>
+                            <Button size="sm" onClick={() => updateInternalRequestStatus(req.id, 'Issued')}><CheckCheck className="mr-2 h-4 w-4"/>Mark as Completed</Button>
                         )}
                     </div>
                 </CardFooter>
@@ -326,7 +328,7 @@ const RequestCard = ({ req, isCompletedSection = false }: { req: InternalRequest
     )
 }
 
-export default function InternalRequestTable({ requests }: InternalRequestTableProps) {
+export default function InternalRequestTable({ requests, showAcknowledge = true }: InternalRequestTableProps) {
   const { user, markInternalRequestAsViewed } = useInventory();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
@@ -368,7 +370,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} showAcknowledge={showAcknowledge} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -382,7 +384,7 @@ export default function InternalRequestTable({ requests }: InternalRequestTableP
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} showAcknowledge={showAcknowledge} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
