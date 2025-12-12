@@ -4,10 +4,10 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useInventory } from '@/contexts/inventory-provider';
+import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { ExternalLink, GanttChartSquare, PlusCircle } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
 import InternalRequestTable from '@/components/requests/internal-request-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,39 +33,45 @@ export default function MyRequestsPage() {
         pendingPpeRequestCount,
         updatedPpeRequestCount,
      } = useInventory();
-    const { pendingPaymentApprovalCount } = usePurchase();
+    const { consumableItems } = useConsumable();
 
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewConsumableRequestDialogOpen, setIsNewConsumableRequestDialogOpen] = useState(false);
     const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
     const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
 
-    const isStoreApprover = useMemo(() => {
-        if (!user) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('approve_store_requests');
-    }, [user, roles]);
+    const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
 
-    const isManager = useMemo(() => {
-        if(!user) return false;
-        return user.role === 'Manager' || user.role === 'Admin';
-    }, [user]);
-
-    const canIssuePpe = useMemo(() => {
-        if (!user) return false;
-        const storeRoles: Role[] = ['Store in Charge', 'Assistant Store Incharge'];
-        return storeRoles.includes(user.role);
-    }, [user]);
-
-    const visibleInternalRequests = useMemo(() => {
-        if (!user || !internalRequests) return [];
-        // Hard-coded fix to hide corrupted request
+    const { consumableRequests, generalStoreRequests } = useMemo(() => {
+        const consumables: any[] = [];
+        const general: any[] = [];
         const corruptedRequestId = "-OaA1ma81MdDVw62D8Xg";
-        return internalRequests
-            .filter(req => req.id !== corruptedRequestId && (req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [internalRequests, user, can.view_internal_store_request, can.manage_store_requests]);
-    
+
+        internalRequests
+            .filter(req => req.id !== corruptedRequestId)
+            .forEach(req => {
+                const isConsumableReq = req.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
+                
+                if (isConsumableReq) {
+                    consumables.push(req);
+                } else {
+                    general.push(req);
+                }
+            });
+
+        const filterAndSort = (requests: any[]) => {
+          if (!user) return [];
+          return requests
+              .filter(req => req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests)
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+
+        return {
+            consumableRequests: filterAndSort(consumables),
+            generalStoreRequests: filterAndSort(general),
+        };
+    }, [internalRequests, consumableItemIds, user, can.view_internal_store_request, can.manage_store_requests]);
+
     const visibleManagementRequests = useMemo(() => {
         if (!user || !managementRequests) return [];
         return managementRequests
@@ -99,18 +105,21 @@ export default function MyRequestsPage() {
             </div>
             
             <Tabs defaultValue="ppe-requests">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 h-auto sm:h-10">
                     <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
                         PPE Requests
                         {ppeNotifCount > 0 && (
                            <Badge variant="destructive">{ppeNotifCount}</Badge>
                         )}
                     </TabsTrigger>
-                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
-                        Internal Store Requests
+                     <TabsTrigger value="consumable-requests" className="flex items-center gap-2">
+                        Consumable Requests
                          {internalNotifCount > 0 && (
                             <Badge variant="destructive">{internalNotifCount}</Badge>
                          )}
+                    </TabsTrigger>
+                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
+                        General Store Requests
                     </TabsTrigger>
                     <TabsTrigger value="management-requests" className="flex items-center gap-2">
                         Management Requests
@@ -138,28 +147,41 @@ export default function MyRequestsPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+                <TabsContent value="consumable-requests">
+                    <Card>
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <CardTitle>Consumable Requests</CardTitle>
+                                <CardDescription>
+                                    Request daily or job-specific consumables.
+                                </CardDescription>
+                            </div>
+                            <Button onClick={() => setIsNewConsumableRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Request Consumables
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <InternalRequestTable requests={consumableRequests} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
                 <TabsContent value="store-requests">
                     <Card>
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
-                                <CardTitle>Internal Store Requests</CardTitle>
+                                <CardTitle>General Store Requests</CardTitle>
                                 <CardDescription>
-                                    Create new requests and track their status.
+                                    Request general items from the store inventory.
                                 </CardDescription>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Button variant="outline" onClick={() => setIsNewConsumableRequestDialogOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Request Consumables
-                                </Button>
-                                <Button onClick={() => setIsNewRequestDialogOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    New General Request
-                                </Button>
-                            </div>
+                            <Button onClick={() => setIsNewRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New General Request
+                            </Button>
                         </CardHeader>
                         <CardContent>
-                            <InternalRequestTable requests={visibleInternalRequests} />
+                            <InternalRequestTable requests={generalStoreRequests} />
                         </CardContent>
                     </Card>
                 </TabsContent>
