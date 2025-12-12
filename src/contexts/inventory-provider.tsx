@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1095,7 +1096,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
         const { id, ...data } = record;
-        update(ref(rtdb, `ppeInwardHistory/${id}`), data);
+        update(ref(rtdb, `ppeInwardHistory/${id}`), {
+          ...data,
+          sizes: data.sizes || null,
+          quantity: data.quantity || null,
+        });
     }, []);
     
     const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
@@ -1240,8 +1245,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         const itemIndex = request.items.findIndex(i => i.id === itemId);
         if (itemIndex === -1) return;
-    
-        const actionComment = comment || `${request.items[itemIndex].description}: Status changed to ${status}.`;
+        
+        const requestedItem = request.items[itemIndex];
+
+        const actionComment = comment || `${requestedItem.description}: Status changed to ${status}.`;
         addInternalRequestComment(requestId, actionComment, true);
     
         const updatedItems = [...request.items];
@@ -1270,9 +1277,18 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if(request.status !== newStatus) {
             updates[`internalRequests/${requestId}/status`] = newStatus;
         }
+
+        // Deduct from stock if issued
+        if (status === 'Issued' && requestedItem.inventoryItemId) {
+          const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
+          if (stockItem && stockItem.quantity !== undefined) {
+              const newQuantity = Math.max(0, stockItem.quantity - requestedItem.quantity);
+              updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = newQuantity;
+          }
+        }
     
         update(ref(rtdb), updates);
-      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
+      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems]);
     
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
@@ -1518,5 +1534,7 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
