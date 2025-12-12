@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +49,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
     defaultValues: {
-      items: [{ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' }],
+      items: [{ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '', inventoryItemId: '' }],
     },
   });
 
@@ -68,7 +69,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ items: [{ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' }] });
+      form.reset({ items: [{ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '', inventoryItemId: '' }] });
     }
     setIsOpen(open);
   };
@@ -83,7 +84,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
         }
     } else {
         form.setValue(`items.${index}.description`, itemName);
-        form.setValue(`items.${index}.inventoryItemId`, undefined);
+        form.setValue(`items.${index}.inventoryItemId`, ''); // Clear ID if not found
     }
   };
 
@@ -108,13 +109,13 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
                   <div className="col-span-5">
                     <Controller
-                        name={`items.${index}.description`}
+                        name={`items.${index}.inventoryItemId`}
                         control={form.control}
                         render={({ field: controllerField }) => (
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                        <span className="truncate">{controllerField.value || "Select item..."}</span>
+                                        <span className="truncate">{form.getValues(`items.${index}.description`) || "Select item..."}</span>
                                         <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
                                     </Button>
                                 </PopoverTrigger>
@@ -143,7 +144,6 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                             </Popover>
                         )}
                     />
-                    {form.formState.errors.items?.[index]?.description && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.description?.message}</p>}
                     {form.formState.errors.items?.[index]?.inventoryItemId && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.inventoryItemId?.message}</p>}
                   </div>
                   <div className="col-span-2">
@@ -167,7 +167,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
             </div>
           </ScrollArea>
           <div className="px-4 pt-4 shrink-0">
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: generateNewItemId(), description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: generateNewItemId(), inventoryItemId: '', description: '', quantity: 1, unit: 'pcs', remarks: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Item
                 </Button>
