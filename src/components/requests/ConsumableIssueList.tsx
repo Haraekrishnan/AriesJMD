@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -20,18 +21,20 @@ export default function ConsumableIssueList() {
             if (!isConsumableReq) return;
 
             const requester = users.find(u => u.id === req.requesterId);
-            const approver = users.find(u => u.id === req.approverId);
             
             req.items.forEach(item => {
+                const approver = users.find(u => u.id === (item as any).approverId);
                 if (item.status === 'Issued') {
                     const issuedDate = (item as any).issuedDate;
+                    const approvalDate = (item as any).approvalDate;
+
                     if (issuedDate) {
                         items.push({
                             ...item,
                             requesterName: requester?.name || 'Unknown',
                             approverName: approver?.name || 'N/A',
                             requestDate: req.date,
-                            approvalDate: req.approvalDate,
+                            approvalDate: approvalDate,
                             issuedDate: issuedDate,
                         });
                     }
@@ -39,10 +42,12 @@ export default function ConsumableIssueList() {
             });
         });
         return items.sort((a,b) => {
-            const dateA = a.issuedDate ? parseISO(a.issuedDate).getTime() : 0;
-            const dateB = b.issuedDate ? parseISO(b.issuedDate).getTime() : 0;
-            if (!dateA || !dateB) return 0;
-            return dateB - dateA;
+            const dateA = a.issuedDate ? parseISO(a.issuedDate) : null;
+            const dateB = b.issuedDate ? parseISO(b.issuedDate) : null;
+            if (dateA && dateB) {
+                return dateB.getTime() - dateA.getTime();
+            }
+            return 0;
         });
     }, [internalRequests, users, consumableItemIds]);
 
