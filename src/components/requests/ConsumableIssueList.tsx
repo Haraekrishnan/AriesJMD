@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -21,11 +22,13 @@ export default function ConsumableIssueList() {
         internalRequests.forEach(req => {
             if (req.items) {
                 const requester = users.find(u => u.id === req.requesterId);
+                const approver = users.find(u => u.id === req.approverId);
                 req.items.forEach(item => {
                     if (item.inventoryItemId && consumableItemIds.has(item.inventoryItemId) && item.status === 'Issued') {
                         items.push({
                             ...item,
                             requesterName: requester?.name || 'Unknown',
+                            approverName: approver?.name || 'N/A',
                             requestDate: req.date,
                             approvalDate: req.approvalDate,
                             issuedDate: (item as any).issuedDate,
@@ -94,9 +97,11 @@ export default function ConsumableIssueList() {
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <div className="text-sm text-muted-foreground space-y-1 pt-2 border-t">
-                                        <p><strong>Requested:</strong> {formatDate(item.requestDate)}</p>
-                                        <p><strong>Approved:</strong> {formatDate(item.approvalDate)}</p>
-                                        <p><strong>Issued:</strong> {formatDate(item.issuedDate)}</p>
+                                        <p><strong>Requested By:</strong> {item.requesterName}</p>
+                                        <p><strong>Approved By:</strong> {item.approverName}</p>
+                                        <p><strong>Requested Date:</strong> {formatDate(item.requestDate)}</p>
+                                        <p><strong>Approved Date:</strong> {formatDate(item.approvalDate)}</p>
+                                        <p><strong>Issued Date:</strong> {formatDate(item.issuedDate)}</p>
                                         <p><strong>Remarks:</strong> {item.remarks || 'N/A'}</p>
                                     </div>
                                 </AccordionContent>
