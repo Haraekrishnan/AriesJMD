@@ -1,7 +1,7 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
+import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,10 @@ import { format, parseISO, isValid } from 'date-fns';
 
 export default function ConsumableIssueList() {
     const { internalRequests, users } = useAppContext();
+    const { consumableItems } = useConsumable();
     const [searchTerm, setSearchTerm] = useState('');
+    
+    const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
 
     const issuedItems = useMemo(() => {
         const items: any[] = [];
@@ -18,13 +21,14 @@ export default function ConsumableIssueList() {
             if (req.items) {
                 const requester = users.find(u => u.id === req.requesterId);
                 req.items.forEach(item => {
-                    if (item.status === 'Issued') {
+                    // Only include items that are in the consumableItems list and have been issued
+                    if (item.inventoryItemId && consumableItemIds.has(item.inventoryItemId) && item.status === 'Issued') {
                         items.push({
                             ...item,
                             requesterName: requester?.name || 'Unknown',
                             requestDate: req.date,
                             approvalDate: req.approvalDate,
-                            issuedDate: (item as any).issuedDate, // Cast to any to access potentially missing property
+                            issuedDate: (item as any).issuedDate,
                         });
                     }
                 });
@@ -33,9 +37,10 @@ export default function ConsumableIssueList() {
          return items.sort((a, b) => {
             const dateA = a.issuedDate ? parseISO(a.issuedDate).getTime() : 0;
             const dateB = b.issuedDate ? parseISO(b.issuedDate).getTime() : 0;
+            if (!dateA || !dateB || !isValid(dateA) || !isValid(dateB)) return 0;
             return dateB - dateA;
         });
-    }, [internalRequests, users]);
+    }, [internalRequests, users, consumableItemIds]);
 
     const filteredItems = useMemo(() => {
         if (!searchTerm) return issuedItems;
@@ -89,9 +94,15 @@ export default function ConsumableIssueList() {
                                 </TableRow>
                             )
                         })}
+                         {filteredItems.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center">
+                                    No issued consumables found.
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
-                {filteredItems.length === 0 && <p className="text-center text-muted-foreground py-4">No issued items found for the current search.</p>}
             </CardContent>
         </Card>
     );
