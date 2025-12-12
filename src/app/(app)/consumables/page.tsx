@@ -1,29 +1,52 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useConsumable } from '@/contexts/consumable-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle } from 'lucide-react';
+import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle, Inbox } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
 import EditConsumableDialog from '@/components/requests/EditConsumableDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { InventoryItem, Role } from '@/lib/types';
+import type { InventoryItem, Role, ConsumableInwardRecord } from '@/lib/types';
 import ConsumableIssueList from '@/components/requests/ConsumableIssueList';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { isThisMonth, parseISO } from 'date-fns';
+import { isThisMonth, parseISO, isValid, format } from 'date-fns';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
+import { Input } from '@/components/ui/input';
+import EditConsumableInwardDialog from '@/components/requests/EditConsumableInwardDialog';
+
+const inwardSchema = z.object({
+  itemId: z.string().min(1, 'Please select an item.'),
+  date: z.date({ required_error: "Date is required" }),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+});
+
+type InwardFormValues = z.infer<typeof inwardSchema>;
+
 
 export default function ConsumablesPage() {
-  const { consumableItems, deleteConsumableItem } = useConsumable();
+  const { consumableItems, deleteConsumableItem, consumableInwardHistory, addConsumableInwardRecord, deleteConsumableInwardRecord } = useConsumable();
   const { can, user, internalRequests } = useAppContext();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editingInwardRecord, setEditingInwardRecord] = useState<ConsumableInwardRecord | null>(null);
+
+  const inwardForm = useForm<InwardFormValues>({
+    resolver: zodResolver(inwardSchema),
+    defaultValues: { date: new Date(), quantity: 1 }
+  });
 
   const canManageConsumables = useMemo(() => {
     if (!user) return false;
@@ -78,6 +101,17 @@ export default function ConsumablesPage() {
     deleteConsumableItem(item.id);
     toast({ variant: 'destructive', title: 'Consumable Deleted', description: `${item.name} has been removed.` });
   };
+
+  const handleInwardSubmit = (data: InwardFormValues) => {
+    addConsumableInwardRecord(data.itemId, data.quantity, data.date);
+    toast({ title: 'Stock Added', description: 'Inward stock has been added and stock levels updated.' });
+    inwardForm.reset({ date: new Date(), quantity: 1, itemId: '' });
+  };
+  
+  const handleDeleteInwardRecord = (record: ConsumableInwardRecord) => {
+    deleteConsumableInwardRecord(record);
+    toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed and stock levels adjusted.' });
+  };
   
    if (!canManageConsumables) {
         return (
@@ -128,6 +162,98 @@ export default function ConsumablesPage() {
             className={summary.lowStockItems > 0 ? "border-destructive" : ""}
         />
       </div>
+
+      {canManageConsumables && (
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="inward-register">
+                <Card className="border-0">
+                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline rounded-t-lg text-lg font-semibold">
+                       <div className="flex items-center gap-2">
+                           <Inbox/> Inward Register
+                       </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 rounded-b-lg border border-t-0">
+                        <form onSubmit={inwardForm.handleSubmit(handleInwardSubmit)} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div className="space-y-2">
+                                    <Label>Consumable Item</Label>
+                                    <Controller name="itemId" control={inwardForm.control} render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select item"/></SelectTrigger>
+                                            <SelectContent>{consumableItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    )} />
+                                    {inwardForm.formState.errors.itemId && <p className="text-xs text-destructive">{inwardForm.formState.errors.itemId.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Quantity Added</Label>
+                                    <Input type="number" {...inwardForm.register('quantity')} />
+                                    {inwardForm.formState.errors.quantity && <p className="text-xs text-destructive">{inwardForm.formState.errors.quantity.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Date</Label>
+                                    <Controller name="date" control={inwardForm.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                                    {inwardForm.formState.errors.date && <p className="text-xs text-destructive">{inwardForm.formState.errors.date.message}</p>}
+                                </div>
+                            </div>
+                            <Button type="submit">Add to Stock</Button>
+                        </form>
+                        <Separator className="my-6" />
+                         <h4 className="font-semibold text-md mb-2">Inward History</h4>
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead>Date</TableHead>
+                                      <TableHead>Item</TableHead>
+                                      <TableHead>Quantity</TableHead>
+                                      <TableHead>Added By</TableHead>
+                                      {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {(consumableInwardHistory || []).sort((a, b) => {
+                                      const dateA = a?.date ? new Date(a.date).getTime() : 0;
+                                      const dateB = b?.date ? new Date(b.date).getTime() : 0;
+                                      return dateB - dateA;
+                                  }).map(record => {
+                                      const date = record.date ? parseISO(record.date) : null;
+                                      const addedBy = users.find(u => u.id === record.addedByUserId);
+                                      const item = consumableItems.find(i => i.id === record.itemId);
+                                      return (
+                                      <TableRow key={record.id}>
+                                          <TableCell>{date && isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date'}</TableCell>
+                                          <TableCell>{item?.name || 'Unknown Item'}</TableCell>
+                                          <TableCell>{record.quantity}</TableCell>
+                                          <TableCell>{addedBy?.name || 'Unknown'}</TableCell>
+                                          {user?.role === 'Admin' && (
+                                              <TableCell className="text-right">
+                                                  <Button variant="ghost" size="icon" onClick={() => setEditingInwardRecord(record)}><Edit className="h-4 w-4"/></Button>
+                                                  <AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                          <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                      </AlertDialogTrigger>
+                                                      <AlertDialogContent>
+                                                          <AlertDialogHeader>
+                                                              <AlertDialogTitle>Delete Record?</AlertDialogTitle>
+                                                              <AlertDialogDescription>This will permanently delete this inward record and update the stock levels. This action cannot be undone.</AlertDialogDescription>
+                                                          </AlertDialogHeader>
+                                                          <AlertDialogFooter>
+                                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                              <AlertDialogAction onClick={() => handleDeleteInwardRecord(record)}>Delete</AlertDialogAction>
+                                                          </AlertDialogFooter>
+                                                      </AlertDialogContent>
+                                                  </AlertDialog>
+                                              </TableCell>
+                                          )}
+                                      </TableRow>
+                                  )})}
+                              </TableBody>
+                          </Table>
+                          {(consumableInwardHistory || []).length === 0 && <p className="text-center text-muted-foreground py-4">No inward history found.</p>}
+                    </AccordionContent>
+                </Card>
+            </AccordionItem>
+        </Accordion>
+      )}
 
       <Card>
         <CardHeader>
@@ -246,6 +372,7 @@ export default function ConsumablesPage() {
         <>
             <AddConsumableDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} />
             {editingItem && <EditConsumableDialog isOpen={!!editingItem} setIsOpen={() => setEditingItem(null)} item={editingItem} />}
+            {editingInwardRecord && <EditConsumableInwardDialog isOpen={!!editingInwardRecord} setIsOpen={() => setEditingInwardRecord(null)} record={editingInwardRecord} />}
         </>
       )}
     </div>

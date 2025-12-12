@@ -44,6 +44,14 @@ export type PpeInwardRecord = {
   addedByUserId: string;
 };
 
+export type ConsumableInwardRecord = {
+  id: string;
+  date: string; // ISO string
+  itemId: string;
+  quantity: number;
+  addedByUserId: string;
+};
+
 export type IgpOgpItem = {
   id: string;
   itemName: string;
@@ -429,6 +437,7 @@ export type LogbookRecord = {
   approverId?: string;
   approvalDate?: string;
   approverComment?: string;
+  requestId?: string;
 };
 
 export type ManpowerProfile = {
