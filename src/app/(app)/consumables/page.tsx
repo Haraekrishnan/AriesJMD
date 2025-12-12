@@ -25,6 +25,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Input } from '@/components/ui/input';
 import EditConsumableInwardDialog from '@/components/requests/EditConsumableInwardDialog';
+import { Separator } from '@/components/ui/separator';
 
 const inwardSchema = z.object({
   itemId: z.string().min(1, 'Please select an item.'),
@@ -37,7 +38,7 @@ type InwardFormValues = z.infer<typeof inwardSchema>;
 
 export default function ConsumablesPage() {
   const { consumableItems, deleteConsumableItem, consumableInwardHistory, addConsumableInwardRecord, deleteConsumableInwardRecord } = useConsumable();
-  const { can, user, internalRequests } = useAppContext();
+  const { can, user, internalRequests, users } = useAppContext();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -378,3 +379,4 @@ export default function ConsumablesPage() {
     </div>
   );
 }
+
