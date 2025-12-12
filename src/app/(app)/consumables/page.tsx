@@ -1,14 +1,31 @@
+
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import { Package, PackageCheck, PackageX } from 'lucide-react';
+import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
+import EditConsumableDialog from '@/components/requests/EditConsumableDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import type { InventoryItem } from '@/lib/types';
+import ConsumableIssueList from '@/components/requests/ConsumableIssueList';
 
 export default function ConsumablesPage() {
-  const { consumableItems } = useConsumable();
+  const { consumableItems, deleteConsumableItem } = useConsumable();
+  const { can } = useAppContext();
+  const { toast } = useToast();
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+
+  const canManageConsumables = useMemo(() => {
+    return can.manage_inventory; // Using manage_inventory permission as a proxy
+  }, [can]);
 
   const { dailyConsumables, jobConsumables, summary } = useMemo(() => {
     const daily: any[] = [];
@@ -35,11 +52,23 @@ export default function ConsumablesPage() {
     };
   }, [consumableItems]);
 
+  const handleDelete = (item: InventoryItem) => {
+    deleteConsumableItem(item.id);
+    toast({ variant: 'destructive', title: 'Consumable Deleted', description: `${item.name} has been removed.` });
+  };
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Consumable Items</h1>
-        <p className="text-muted-foreground">Manage stock levels for daily and job-specific consumables.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Consumable Items</h1>
+          <p className="text-muted-foreground">Manage stock levels for daily and job-specific consumables.</p>
+        </div>
+        {canManageConsumables && (
+            <Button onClick={() => setIsAddOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4"/> Add Consumable
+            </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -77,6 +106,7 @@ export default function ConsumablesPage() {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Remarks</TableHead>
+                {canManageConsumables && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -88,6 +118,26 @@ export default function ConsumablesPage() {
                   </TableCell>
                   <TableCell>{item.unit}</TableCell>
                   <TableCell>{item.remarks}</TableCell>
+                  {canManageConsumables && (
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingItem(item)}><Edit className="h-4 w-4"/></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will permanently delete {item.name}.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(item)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -108,6 +158,7 @@ export default function ConsumablesPage() {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Remarks</TableHead>
+                {canManageConsumables && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,12 +170,41 @@ export default function ConsumablesPage() {
                   </TableCell>
                   <TableCell>{item.unit}</TableCell>
                   <TableCell>{item.remarks}</TableCell>
+                   {canManageConsumables && (
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingItem(item)}><Edit className="h-4 w-4"/></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will permanently delete {item.name}.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(item)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <ConsumableIssueList />
+
+      {canManageConsumables && (
+        <>
+            <AddConsumableDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} />
+            {editingItem && <EditConsumableDialog isOpen={!!editingItem} setIsOpen={() => setEditingItem(null)} item={editingItem} />}
+        </>
+      )}
     </div>
   );
 }

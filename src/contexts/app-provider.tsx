@@ -1,3 +1,4 @@
+
 'use client';
 import { createContext, useContext, ReactNode, useCallback } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';
@@ -7,11 +8,11 @@ import { ManpowerProvider, useManpower } from './manpower-provider';
 import { PlannerProvider, usePlanner } from './planner-provider';
 import { PurchaseProvider, usePurchase } from './purchase-provider';
 import { TaskProvider, useTask } from './task-provider';
-import { ConsumableProvider, useConsumable } from './consumable-provider'; // Import new provider
+import { ConsumableProvider, useConsumable } from './consumable-provider';
 import { rtdb } from '@/lib/rtdb';
 import { ref, push, set, update } from 'firebase/database';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { add, isPast } from 'date-fns';
+import { add } from 'date-fns';
 
 const AppContext = createContext({} as any);
 
@@ -23,86 +24,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const planner = usePlanner();
   const purchase = usePurchase();
   const task = useTask();
-  const consumable = useConsumable(); // Use new provider
-
-  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-    const { users, passwordResetRequests } = auth;
-    const { notificationSettings } = general;
-    
-    const targetUser = users.find(u => u.email === email);
-    if (!targetUser) return false;
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiryDate = add(new Date(), { minutes: 15 }).toISOString();
-
-    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
-    await set(newRequestRef, {
-        userId: targetUser.id,
-        email: targetUser.email,
-        date: new Date().toISOString(),
-        status: 'pending',
-        resetCode: code,
-        expiresAt: expiryDate
-    });
-
-    if (targetUser.email) {
-        sendNotificationEmail({
-            to: [targetUser.email],
-            subject: `Your Password Reset Code`,
-            htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes. Please use it to reset your password in the app.</p>`,
-            notificationSettings: notificationSettings,
-            event: 'onPasswordReset',
-        });
-    }
-    return true;
-  }, [auth.users, general.notificationSettings]);
-
-  const resolveResetRequest = useCallback((requestId: string) => {
-    update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
-  }, []);
-
-  const requestUnlock = useCallback((userId: string, userName: string) => {
-    const { users } = auth;
-    const { notificationSettings } = general;
-    const newRequestRef = push(ref(rtdb, 'unlockRequests'));
-    set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
-
-    const admins = users.filter(u => u.role === 'Admin' && u.email);
-    admins.forEach(admin => {
-        sendNotificationEmail({
-            to: [admin.email!],
-            subject: `Account Unlock Request from ${userName}`,
-            htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
-            notificationSettings: notificationSettings,
-            event: 'onUnlockRequest',
-        });
-    });
-  }, [auth.users, general.notificationSettings]);
-
-  const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
-    auth.unlockUser(userId);
-    update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
-  }, [auth.unlockUser]);
-  
-  const addFeedback = useCallback((subject: string, message: string) => {
-    const { user } = auth;
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'feedback'));
-    set(newRef, {
-      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
-    });
-  }, [auth.user]);
-
-  const updateBranding = useCallback((name: string, logo: string | null) => {
-    const { user, addActivityLog } = auth;
-    if (!user || user.role !== 'Admin') return;
-    const updates: { [key: string]: any } = { '/branding/appName': name };
-    if (logo !== undefined) {
-        updates['/branding/appLogo'] = logo;
-    }
-    update(ref(rtdb), updates);
-    addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
-  }, [auth.user, auth.addActivityLog]);
+  const consumable = useConsumable();
 
   const combinedValue = {
     ...auth,
@@ -112,13 +34,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     ...planner,
     ...purchase,
     ...task,
-    ...consumable, // Add consumable context
-    requestPasswordReset,
-    resolveResetRequest,
-    requestUnlock,
-    resolveUnlockRequest,
-    addFeedback,
-    updateBranding,
+    ...consumable,
   };
 
   return (
@@ -137,7 +53,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             <ManpowerProvider>
               <PurchaseProvider>
                 <InventoryProvider>
-                  <ConsumableProvider> {/* Add new provider */}
+                  <ConsumableProvider>
                     <CombinedProvider>
                       {children}
                     </CombinedProvider>

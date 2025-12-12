@@ -1,19 +1,22 @@
+
 'use client';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { InventoryItem } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, push, set, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
 
 type ConsumableContextType = {
   consumableItems: InventoryItem[];
-  updateConsumableStock: (itemId: string, newQuantity: number) => void;
+  addConsumableItem: (itemData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'projectId'>) => void;
+  updateConsumableItem: (item: InventoryItem) => void;
+  deleteConsumableItem: (itemId: string) => void;
 };
 
 const ConsumableContext = createContext<ConsumableContextType | undefined>(undefined);
 
 export function ConsumableProvider({ children }: { children: ReactNode }) {
-  const { addActivityLog } = useAuth();
+  const { user, addActivityLog } = useAuth();
   const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
 
   useEffect(() => {
@@ -35,20 +38,35 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     );
   }, [inventoryItemsById]);
 
-  const updateConsumableStock = useCallback((itemId: string, newQuantity: number) => {
-    const item = inventoryItemsById[itemId];
-    if (item) {
-      const updates: { [key: string]: any } = {};
-      updates[`/inventoryItems/${itemId}/quantity`] = newQuantity;
-      updates[`/inventoryItems/${itemId}/lastUpdated`] = new Date().toISOString();
-      update(ref(rtdb), updates);
-      addActivityLog(`System`, `Stock Update for ${item.name}`, `Quantity changed to ${newQuantity}.`);
-    }
-  }, [inventoryItemsById, addActivityLog]);
+  const addConsumableItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'projectId'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'inventoryItems'));
+    const dataToSave: Partial<InventoryItem> = {
+        ...itemData,
+        status: 'In Store',
+        projectId: 'STORE', // Assign a special project ID for consumables
+        lastUpdated: new Date().toISOString(),
+    };
+    set(newRef, dataToSave);
+    addActivityLog(user.id, 'Consumable Item Added', `${itemData.name}`);
+  }, [user, addActivityLog]);
+
+  const updateConsumableItem = useCallback((item: InventoryItem) => {
+    const { id, ...data } = item;
+    const updates = { ...data, lastUpdated: new Date().toISOString() };
+    update(ref(rtdb, `inventoryItems/${id}`), updates);
+  }, []);
+  
+  const deleteConsumableItem = useCallback((itemId: string) => {
+      remove(ref(rtdb, `inventoryItems/${itemId}`));
+  }, []);
+
 
   const contextValue: ConsumableContextType = {
     consumableItems,
-    updateConsumableStock,
+    addConsumableItem,
+    updateConsumableItem,
+    deleteConsumableItem,
   };
 
   return (
