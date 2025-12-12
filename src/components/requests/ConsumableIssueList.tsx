@@ -37,11 +37,11 @@ export default function ConsumableIssueList() {
                 });
             }
         });
-         return items.sort((a, b) => {
-            const dateA = a.issuedDate ? parseISO(a.issuedDate) : null;
-            const dateB = b.issuedDate ? parseISO(b.issuedDate) : null;
-            if (!dateA || !isValid(dateA)) return 1;
-            if (!dateB || !isValid(dateB)) return -1;
+        return items.sort((a,b) => {
+            const dateA = a.issuedDate ? parseISO(a.issuedDate) : 0;
+            const dateB = b.issuedDate ? parseISO(b.issuedDate) : 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
             return dateB.getTime() - dateA.getTime();
         });
     }, [internalRequests, users, consumableItemIds]);
