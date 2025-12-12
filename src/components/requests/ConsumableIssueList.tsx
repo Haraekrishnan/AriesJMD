@@ -3,10 +3,11 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 export default function ConsumableIssueList() {
     const { internalRequests, users } = useAppContext();
@@ -21,7 +22,6 @@ export default function ConsumableIssueList() {
             if (req.items) {
                 const requester = users.find(u => u.id === req.requesterId);
                 req.items.forEach(item => {
-                    // Only include items that are in the consumableItems list and have been issued
                     if (item.inventoryItemId && consumableItemIds.has(item.inventoryItemId) && item.status === 'Issued') {
                         items.push({
                             ...item,
@@ -35,10 +35,11 @@ export default function ConsumableIssueList() {
             }
         });
          return items.sort((a, b) => {
-            const dateA = a.issuedDate ? parseISO(a.issuedDate).getTime() : 0;
-            const dateB = b.issuedDate ? parseISO(b.issuedDate).getTime() : 0;
-            if (!dateA || !dateB || !isValid(dateA) || !isValid(dateB)) return 0;
-            return dateB - dateA;
+            const dateA = a.issuedDate ? parseISO(a.issuedDate) : null;
+            const dateB = b.issuedDate ? parseISO(b.issuedDate) : null;
+            if (!dateA || !isValid(dateA)) return 1;
+            if (!dateB || !isValid(dateB)) return -1;
+            return dateB.getTime() - dateA.getTime();
         });
     }, [internalRequests, users, consumableItemIds]);
 
@@ -50,6 +51,12 @@ export default function ConsumableIssueList() {
             item.requesterName.toLowerCase().includes(lowercasedTerm)
         );
     }, [issuedItems, searchTerm]);
+    
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
+        const date = parseISO(dateString);
+        return isValid(date) ? format(date, 'dd MMM, yyyy') : 'N/A';
+    };
 
     return (
         <Card>
@@ -69,40 +76,36 @@ export default function ConsumableIssueList() {
                 </div>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Item Name</TableHead>
-                            <TableHead>Qty</TableHead>
-                            <TableHead>Unit</TableHead>
-                            <TableHead>Requester</TableHead>
-                            <TableHead>Issued Date</TableHead>
-                            <TableHead>Remarks</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredItems.map(item => {
-                            const issuedDate = item.issuedDate ? parseISO(item.issuedDate) : null;
-                            return (
-                                <TableRow key={`${item.id}-${item.requestDate}`}>
-                                    <TableCell>{item.description}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell>{item.unit}</TableCell>
-                                    <TableCell>{item.requesterName}</TableCell>
-                                    <TableCell>{issuedDate && isValid(issuedDate) ? format(issuedDate, 'dd MMM, yyyy') : 'N/A'}</TableCell>
-                                    <TableCell>{item.remarks}</TableCell>
-                                </TableRow>
-                            )
-                        })}
-                         {filteredItems.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
-                                    No issued consumables found.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                {filteredItems.length > 0 ? (
+                    <Accordion type="multiple" className="w-full space-y-2">
+                        {filteredItems.map((item, index) => (
+                            <AccordionItem key={`${item.id}-${index}`} value={`${item.id}-${index}`} className="border rounded-md px-4">
+                                <AccordionTrigger>
+                                    <div className="flex justify-between items-center w-full">
+                                        <div className="text-left">
+                                            <p className="font-semibold">{item.description}</p>
+                                            <p className="text-sm text-muted-foreground">Qty: {item.quantity} {item.unit}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary">To: {item.requesterName}</Badge>
+                                            <Badge variant="success">Issued: {formatDate(item.issuedDate)}</Badge>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="text-sm text-muted-foreground space-y-1 pt-2 border-t">
+                                        <p><strong>Requested:</strong> {formatDate(item.requestDate)}</p>
+                                        <p><strong>Approved:</strong> {formatDate(item.approvalDate)}</p>
+                                        <p><strong>Issued:</strong> {formatDate(item.issuedDate)}</p>
+                                        <p><strong>Remarks:</strong> {item.remarks || 'N/A'}</p>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                ) : (
+                     <div className="text-center py-10 text-muted-foreground">No issued consumables found.</div>
+                )}
             </CardContent>
         </Card>
     );
