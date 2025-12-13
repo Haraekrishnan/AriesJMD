@@ -653,7 +653,7 @@ export default function JobRecordSheet() {
                   });
     
                 // ---- Apply Conditional Job Code Colors ----
-                const excelJobCodeColors: Record<string, { bg: string; text?: string }> = {
+                 const excelJobCodeColors: Record<string, { bg: string; text?: string }> = {
                     "X": { bg: "FFFF0000", text: "FFFFFFFF" },
                     "EP": { bg: "FF00B0F0" },
                     "PD": { bg: "FF00FF00" },
@@ -673,14 +673,16 @@ export default function JobRecordSheet() {
                     row.eachCell((cell) => {
                         if (typeof cell.value === "string") {
                             const val = cell.value.trim().toUpperCase();
-                            const color = excelJobCodeColors[val];
-                            if (color) {
+                            const jobColor = JOB_CODE_COLORS[val as keyof typeof JOB_CODE_COLORS];
+                            if (jobColor && jobColor.excelFill) {
                                 cell.fill = {
-                                    type: "pattern",
-                                    pattern: "solid",
-                                    fgColor: { argb: color.bg },
+                                    type: 'pattern',
+                                    pattern: 'solid',
+                                    fgColor: { argb: jobColor.excelFill.fgColor.argb }
                                 };
-                                cell.font = { color: { argb: color.text || "FF000000" } }; // Black text
+                                if (jobColor.excelFill.font?.color?.argb) {
+                                    cell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
+                                }
                             }
                         }
                     });
@@ -745,10 +747,10 @@ export default function JobRecordSheet() {
                           codeCell.fill = {
                               type: 'pattern',
                               pattern: 'solid',
-                              fgColor: { argb: jobColor.excelFill.fgColor.rgb }
+                              fgColor: { argb: jobColor.excelFill.fgColor.argb }
                           };
-                          if (jobColor.excelFill.font?.color?.rgb) {
-                              codeCell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.rgb } };
+                          if (jobColor.excelFill.font?.color?.argb) {
+                              codeCell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
                           }
                         } else {
                           codeCell.font = { bold: true };
@@ -1182,7 +1184,7 @@ export default function JobRecordSheet() {
                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingJobCode(jc)}><Edit className="h-3 w-3"/></Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/80"><Trash2 className="h-3 w-3"/></Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader><AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
@@ -1207,4 +1209,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
