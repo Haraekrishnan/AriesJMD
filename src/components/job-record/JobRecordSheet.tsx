@@ -653,33 +653,19 @@ export default function JobRecordSheet() {
                   });
     
                 // ---- Apply Conditional Job Code Colors ----
-                 const excelJobCodeColors: Record<string, { bg: string; text?: string }> = {
-                    "X": { bg: "FFFF0000", text: "FFFFFFFF" },
-                    "EP": { bg: "FF00B0F0" },
-                    "PD": { bg: "FF00FF00" },
-                    "ML": { bg: "FFFFFF00" },
-                    "OFF": { bg: "FFBFBFBF" },
-                    "ST": { bg: "FF00B0F0" },
-                    "PH": { bg: "FF92D050" },
-                    "KD": { bg: "FFFFC000" },
-                    "Q": { bg: "FF00B0F0" },
-                    "TR": { bg: "FFEAD1DC" },
-                    "OS": { bg: "FFFF9900" },
-                    "L": { bg: "FFFF0000", text: "FFFFFFFF" },
-                    "NWS": { bg: "FF7030A0", text: "FFFFFFFF" },
-                };
-
                 sheet.eachRow((row) => {
                     row.eachCell((cell) => {
                         if (typeof cell.value === "string") {
                             const val = cell.value.trim().toUpperCase();
                             const jobColor = JOB_CODE_COLORS[val as keyof typeof JOB_CODE_COLORS];
                             if (jobColor && jobColor.excelFill) {
-                                cell.fill = {
-                                    type: 'pattern',
-                                    pattern: 'solid',
-                                    fgColor: { argb: jobColor.excelFill.fgColor.argb }
-                                };
+                                if (jobColor.excelFill.fgColor) {
+                                    cell.fill = {
+                                        type: 'pattern',
+                                        pattern: 'solid',
+                                        fgColor: { argb: jobColor.excelFill.fgColor.argb }
+                                    };
+                                }
                                 if (jobColor.excelFill.font?.color?.argb) {
                                     cell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
                                 }
@@ -744,14 +730,16 @@ export default function JobRecordSheet() {
 
                         const jobColor = JOB_CODE_COLORS[jc.code as keyof typeof JOB_CODE_COLORS];
                         if (jobColor && jobColor.excelFill) {
-                          codeCell.fill = {
-                              type: 'pattern',
-                              pattern: 'solid',
-                              fgColor: { argb: jobColor.excelFill.fgColor.argb }
-                          };
-                          if (jobColor.excelFill.font?.color?.argb) {
-                              codeCell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
-                          }
+                            if (jobColor.excelFill.fgColor) {
+                                codeCell.fill = {
+                                    type: 'pattern',
+                                    pattern: 'solid',
+                                    fgColor: { argb: jobColor.excelFill.fgColor.argb }
+                                };
+                            }
+                            if (jobColor.excelFill.font?.color?.argb) {
+                                codeCell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
+                            }
                         } else {
                           codeCell.font = { bold: true };
                         }
@@ -1209,5 +1197,6 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
