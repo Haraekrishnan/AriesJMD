@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1185,7 +1186,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                     `;
                     
                     const emailSubject = subject || (isFromRequester
-                      ? `Query on Request #${requestId.slice(-6)}`
+                      ? `Query on your request: #${requestId.slice(-6)}`
                       : `Update on your Request #${requestId.slice(-6)}`);
 
                     sendNotificationEmail({
@@ -1507,7 +1508,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addAnemometer, updateAnemometer, deleteAnemometer,
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
         addMachineLog, deleteMachineLog, getMachineLogs,
-        addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
+        addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addManagementRequest, updateManagementRequest, deleteManagementRequest, updateManagementRequestStatus, addManagementRequestComment, markManagementRequestAsViewed,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
@@ -1518,7 +1519,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingManagementRequestCount, updatedManagementRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
-        resolveInternalRequestDispute,
+        resolveInternalRequestDispute, addInternalRequestComment
     };
 
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;
