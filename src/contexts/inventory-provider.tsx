@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -170,7 +168,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { projects, notificationSettings } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
-    const { consumableItems, consumableInwardHistory } = useConsumable();
+    const { consumableItems, consumableInwardHistory, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -1094,58 +1092,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `ppeStock/${stockId}`), updates);
     }, []);
     
-    const addPpeInwardRecord = useCallback((recordData: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => {
-        if(!user) return;
-        const newRef = push(ref(rtdb, 'ppeInwardHistory'));
-        set(newRef, { ...recordData, addedByUserId: user.id });
-
-        const { ppeType, sizes, quantity } = recordData;
-        const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
-        
-        get(ref(rtdb, stockPath)).then(snapshot => {
-            const stockData = snapshot.val();
-            if (ppeType === 'Coverall' && sizes) {
-                const currentSizes = stockData?.sizes || {};
-                Object.keys(sizes).forEach(size => {
-                    currentSizes[size] = (currentSizes[size] || 0) + (sizes[size] || 0);
-                });
-                update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
-            } else if (ppeType === 'Safety Shoes' && quantity) {
-                update(ref(rtdb, stockPath), { quantity: (stockData?.quantity || 0) + quantity });
-            }
-        });
-    }, [user]);
-
-    const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
-        const { id, ...data } = record;
-        update(ref(rtdb, `ppeInwardHistory/${id}`), {
-          ...data,
-          sizes: data.sizes || null,
-          quantity: data.quantity || null,
-        });
-    }, []);
-    
-    const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
-        remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
-        
-        const { ppeType, sizes, quantity } = record;
-        const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
-        
-        get(ref(rtdb, stockPath)).then(snapshot => {
-            const stockData = snapshot.val();
-            if (ppeType === 'Coverall' && sizes) {
-                const currentSizes = stockData?.sizes || {};
-                Object.keys(sizes).forEach(size => {
-                    currentSizes[size] = Math.max(0, (currentSizes[size] || 0) - (sizes[size] || 0));
-                });
-                update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
-            } else if (ppeType === 'Safety Shoes' && quantity) {
-                update(ref(rtdb, stockPath), { quantity: Math.max(0, (stockData?.quantity || 0) - quantity) });
-            }
-        });
-
-    }, []);
-
     const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
         if (!user) return;
         const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -1271,7 +1217,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const requestedItem = request.items[itemIndex];
 
         const actionComment = comment || `${requestedItem.description}: Status changed to ${status}.`;
-        addInternalRequestComment(requestId, actionComment, false);
+        addInternalRequestComment(requestId, actionComment, true);
     
         const updatedItems = [...request.items];
         updatedItems[itemIndex].status = status;
@@ -1299,10 +1245,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const updates: { [key: string]: any } = {};
         updates[`internalRequests/${requestId}/items/${itemIndex}`] = updatedItems[itemIndex];
         updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
-
-        if(request.status !== newStatus) {
-            updates[`internalRequests/${requestId}/status`] = newStatus;
-        }
 
         if (status === 'Issued' && requestedItem.inventoryItemId) {
             const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
@@ -1474,8 +1416,18 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        // Dummy implementation, needs to be filled out
-    }, []);
+        if (!user || !can.approve_store_requests) return;
+        
+        const request = internalRequestsById[requestId];
+        if (!request) return;
+
+        addInternalRequestComment(requestId, `Dispute resolved by ${user.name}. Resolution: ${resolution === 'reissue' ? 'Re-issuing items' : 'Confirmed as issued'}. Comment: ${comment}`, true);
+
+        const allItemsIssued = request.items.every(item => item.status === 'Issued');
+        const newStatus = allItemsIssued ? 'Issued' : 'Partially Issued';
+
+        update(ref(rtdb, `internalRequests/${requestId}`), { status: newStatus });
+    }, [user, can.approve_store_requests, addInternalRequestComment, internalRequestsById]);
 
     const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
         if (!user) return;
@@ -1560,3 +1512,4 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
