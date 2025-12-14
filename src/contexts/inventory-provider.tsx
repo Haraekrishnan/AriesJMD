@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1162,7 +1163,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         set(newRequestRef, newRequest);
         addActivityLog(user.id, 'Internal Store Request Created');
 
-        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge'].includes(u.role));
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
         const fromProjectName = projects.find(p => p.id === user.projectIds?.[0])?.name;
         const itemsHtml = requestData.items.map(item => `<li>${item.quantity} ${item.unit} of ${item.description}</li>`).join('');
     
@@ -1270,7 +1271,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const requestedItem = request.items[itemIndex];
 
         const actionComment = comment || `${requestedItem.description}: Status changed to ${status}.`;
-        addInternalRequestComment(requestId, actionComment, true);
+        addInternalRequestComment(requestId, actionComment, false);
     
         const updatedItems = [...request.items];
         updatedItems[itemIndex].status = status;
