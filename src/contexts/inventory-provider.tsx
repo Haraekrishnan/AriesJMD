@@ -96,7 +96,7 @@ type InventoryContextType = {
   addInternalRequest: (requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   deleteInternalRequest: (requestId: string) => void;
   forceDeleteInternalRequest: (requestId: string) => void;
-  addInternalRequestComment: (requestId: string, commentText: string, notify?: boolean) => void;
+  addInternalRequestComment: (requestId: string, commentText: string, notify?: boolean, subject?: string) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus) => void;
   updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => void;
   updateInternalRequestItem: (requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => void;
@@ -707,7 +707,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         status: 'Pending',
         requestDate: new Date().toISOString(),
-        comments: [{ id: `comm-init`, text: requestData.remarks || 'Request created.', userId: user.id, date: new Date().toISOString(), eventId: 'cert-req-1' }],
+        comments: [{ id: 'comm-init', text: requestData.remarks || 'Request created.', userId: user.id, date: new Date().toISOString(), eventId: 'cert-req-1' }],
         };
         set(newRequestRef, newRequest);
         
@@ -1154,7 +1154,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `internalRequests/${requestId}`));
       }, [user]);
     
-      const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
+    const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean, subject?: string) => {
         if (!user) return;
         const request = internalRequestsById[requestId];
         if (!request) return;
@@ -1178,18 +1178,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             recipients.forEach(recipient => {
                  if (recipient.email && recipient.id !== user.id) {
                      const htmlBody = `
-                        <h3>Update on Store Request #${requestId.slice(-6)}</h3>
+                        <h3>${subject || `Query on Store Request #${requestId.slice(-6)}`}</h3>
                         <p><strong>From:</strong> ${user.name}</p>
                         <p><strong>Comment:</strong> ${commentText}</p>
                         <a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a>
                     `;
-                    const subject = isFromRequester
+                    
+                    const emailSubject = subject || (isFromRequester
                       ? `Query on Request #${requestId.slice(-6)}`
-                      : `Update on Request #${requestId.slice(-6)}`;
+                      : `Update on your Request #${requestId.slice(-6)}`);
 
                     sendNotificationEmail({
                         to: [recipient.email],
-                        subject: subject,
+                        subject: emailSubject,
                         htmlBody,
                         notificationSettings,
                         event: 'onInternalRequestUpdate',
@@ -1199,21 +1200,30 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 }
             })
         }
-      }, [user, internalRequestsById, users, can, notificationSettings]);
+    }, [user, internalRequestsById, users, can, notificationSettings]);
 
-    
-      const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
+    const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
         if (!user || !can.approve_store_requests) return;
-        const request = internalRequestsById[requestId];
-        if (!request) return;
-
-        update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-        
-        addInternalRequestComment(requestId, `Request status changed to ${status}.`, true);
-
-      }, [user, can.approve_store_requests, addInternalRequestComment, internalRequestsById]);
     
-      const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
+        const updates: { [key: string]: any } = {};
+        updates[`internalRequests/${requestId}/status`] = status;
+        updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
+    
+        if (status === 'Issued' || status === 'Rejected' || status === 'Approved') {
+          updates[`internalRequests/${requestId}/approverId`] = user.id;
+        }
+    
+        update(ref(rtdb), updates);
+    
+        const request = internalRequestsById[requestId];
+        if (request) {
+          const commentText = `Request status changed to ${status}.`;
+          const subject = `Update on your Request #${requestId.slice(-6)}`;
+          addInternalRequestComment(requestId, commentText, true, subject);
+        }
+    }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
+    
+    const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
         if (!user || !can.approve_store_requests) return;
         
         const request = internalRequestsById[requestId];
@@ -1223,9 +1233,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (itemIndex === -1) return;
         
         const requestedItem = request.items[itemIndex];
-
         const actionComment = comment || `${requestedItem.description}: Status changed to ${status}.`;
-        addInternalRequestComment(requestId, actionComment, true);
+        const emailSubject = `Update on Request #${requestId.slice(-6)}: ${requestedItem.description}`;
+        
+        addInternalRequestComment(requestId, actionComment, true, emailSubject);
     
         const updatedItems = [...request.items];
         updatedItems[itemIndex].status = status;
@@ -1263,7 +1274,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems]);
+    }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems]);
     
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
@@ -1521,4 +1532,4 @@ export const useInventory = (): InventoryContextType => {
   return context;
 };
 
-
+    
