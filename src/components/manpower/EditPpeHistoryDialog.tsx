@@ -45,10 +45,10 @@ export default function EditPpeHistoryDialog({ isOpen, setIsOpen, record, profil
 
   useEffect(() => {
     if (record && isOpen) {
-        const parsedDate = parseISO(record.issueDate);
+        const parsedDate = record.issueDate ? parseISO(record.issueDate) : null;
         form.reset({
             ...record,
-            issueDate: isValid(parsedDate) ? parsedDate : undefined,
+            issueDate: parsedDate && isValid(parsedDate) ? parsedDate : undefined,
         });
     }
   }, [record, isOpen, form]);
@@ -112,4 +112,3 @@ export default function EditPpeHistoryDialog({ isOpen, setIsOpen, record, profil
     </Dialog>
   );
 }
-
