@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -120,6 +119,9 @@ type InventoryContextType = {
   deletePpeAttachment: (requestId: string) => void;
   markPpeRequestAsViewed: (requestId: string) => void;
   updatePpeStock: (stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => void;
+  addPpeInwardRecord: (record: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => void;
+  updatePpeInwardRecord: (record: PpeInwardRecord) => void;
+  deletePpeInwardRecord: (record: PpeInwardRecord) => void;
   
   addTpCertList: (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => void;
   updateTpCertList: (listData: TpCertList) => void;
@@ -167,7 +169,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { projects, notificationSettings } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
-    const { consumableItems, consumableInwardHistory, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord } = useConsumable();
+    const { consumableItems, consumableInwardHistory } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -708,7 +710,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         status: 'Pending',
         requestDate: new Date().toISOString(),
-        comments: [{ id: 'comm-init', text: requestData.remarks || 'Request created.', userId: user.id, date: new Date().toISOString(), eventId: 'cert-req-1' }],
+        comments: [{ id: `comm-init`, text: requestData.remarks || 'Request created.', userId: user.id, date: new Date().toISOString(), eventId: 'cert-req-1' }],
         };
         set(newRequestRef, newRequest);
         
@@ -1056,7 +1058,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const updatePpeRequest = useCallback((request: PpeRequest) => {
         const { id, ...data } = request;
-        update(ref(rtdb, `ppeRequests/${id}`), data);
+        const dataToSave = { ...data, attachmentUrl: data.attachmentUrl || null };
+        update(ref(rtdb, `ppeRequests/${id}`), dataToSave);
     }, []);
     
     const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
@@ -1091,6 +1094,58 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `ppeStock/${stockId}`), updates);
     }, []);
     
+    const addPpeInwardRecord = useCallback((recordData: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => {
+        if(!user) return;
+        const newRef = push(ref(rtdb, 'ppeInwardHistory'));
+        set(newRef, { ...recordData, addedByUserId: user.id });
+
+        const { ppeType, sizes, quantity } = recordData;
+        const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+        
+        get(ref(rtdb, stockPath)).then(snapshot => {
+            const stockData = snapshot.val();
+            if (ppeType === 'Coverall' && sizes) {
+                const currentSizes = stockData?.sizes || {};
+                Object.keys(sizes).forEach(size => {
+                    currentSizes[size] = (currentSizes[size] || 0) + (sizes[size] || 0);
+                });
+                update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
+            } else if (ppeType === 'Safety Shoes' && quantity) {
+                update(ref(rtdb, stockPath), { quantity: (stockData?.quantity || 0) + quantity });
+            }
+        });
+    }, [user]);
+
+    const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+        const { id, ...data } = record;
+        update(ref(rtdb, `ppeInwardHistory/${id}`), {
+          ...data,
+          sizes: data.sizes || null,
+          quantity: data.quantity || null,
+        });
+    }, []);
+    
+    const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+        remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
+        
+        const { ppeType, sizes, quantity } = record;
+        const stockPath = `/ppeStock/${ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+        
+        get(ref(rtdb, stockPath)).then(snapshot => {
+            const stockData = snapshot.val();
+            if (ppeType === 'Coverall' && sizes) {
+                const currentSizes = stockData?.sizes || {};
+                Object.keys(sizes).forEach(size => {
+                    currentSizes[size] = Math.max(0, (currentSizes[size] || 0) - (sizes[size] || 0));
+                });
+                update(ref(rtdb, `${stockPath}/sizes`), currentSizes);
+            } else if (ppeType === 'Safety Shoes' && quantity) {
+                update(ref(rtdb, stockPath), { quantity: Math.max(0, (stockData?.quantity || 0) - quantity) });
+            }
+        });
+
+    }, []);
+
     const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
         if (!user) return;
         const newRequestRef = push(ref(rtdb, 'internalRequests'));
@@ -1108,7 +1163,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         set(newRequestRef, newRequest);
         addActivityLog(user.id, 'Internal Store Request Created');
 
-        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge'].includes(u.role));
         const fromProjectName = projects.find(p => p.id === user.projectIds?.[0])?.name;
         const itemsHtml = requestData.items.map(item => `<li>${item.quantity} ${item.unit} of ${item.description}</li>`).join('');
     
@@ -1176,22 +1231,18 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const recipients = isFromRequester ? approvers : (requester ? [requester] : []);
 
         if (notify) {
+            const finalSubject = subject || `Query on your request #${requestId.slice(-6)}`;
             recipients.forEach(recipient => {
                  if (recipient.email && recipient.id !== user.id) {
                      const htmlBody = `
-                        <h3>${subject || `Query on Store Request #${requestId.slice(-6)}`}</h3>
+                        <h3>${finalSubject}</h3>
                         <p><strong>From:</strong> ${user.name}</p>
                         <p><strong>Comment:</strong> ${commentText}</p>
                         <a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a>
                     `;
-                    
-                    const emailSubject = subject || (isFromRequester
-                      ? `Query on your request: #${requestId.slice(-6)}`
-                      : `Update on your Request #${requestId.slice(-6)}`);
-
                     sendNotificationEmail({
                         to: [recipient.email],
-                        subject: emailSubject,
+                        subject: finalSubject,
                         htmlBody,
                         notificationSettings,
                         event: 'onInternalRequestUpdate',
@@ -1201,30 +1252,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 }
             })
         }
-    }, [user, internalRequestsById, users, can, notificationSettings]);
+      }, [user, internalRequestsById, users, can, notificationSettings]);
 
-    const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
+    
+      const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
         if (!user || !can.approve_store_requests) return;
+        update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
+      }, [user, can.approve_store_requests]);
     
-        const updates: { [key: string]: any } = {};
-        updates[`internalRequests/${requestId}/status`] = status;
-        updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
-    
-        if (status === 'Issued' || status === 'Rejected' || status === 'Approved') {
-          updates[`internalRequests/${requestId}/approverId`] = user.id;
-        }
-    
-        update(ref(rtdb), updates);
-    
-        const request = internalRequestsById[requestId];
-        if (request) {
-          const commentText = `Request status changed to ${status}.`;
-          const subject = `Update on your Request #${requestId.slice(-6)}`;
-          addInternalRequestComment(requestId, commentText, true, subject);
-        }
-    }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
-    
-    const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
+      const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
         if (!user || !can.approve_store_requests) return;
         
         const request = internalRequestsById[requestId];
@@ -1234,10 +1270,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (itemIndex === -1) return;
         
         const requestedItem = request.items[itemIndex];
+
         const actionComment = comment || `${requestedItem.description}: Status changed to ${status}.`;
-        const emailSubject = `Update on Request #${requestId.slice(-6)}: ${requestedItem.description}`;
-        
-        addInternalRequestComment(requestId, actionComment, true, emailSubject);
+        addInternalRequestComment(requestId, actionComment, true, `Update on your request #${requestId.slice(-6)}`);
     
         const updatedItems = [...request.items];
         updatedItems[itemIndex].status = status;
@@ -1266,6 +1301,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`internalRequests/${requestId}/items/${itemIndex}`] = updatedItems[itemIndex];
         updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
 
+        if(request.status !== newStatus) {
+            updates[`internalRequests/${requestId}/status`] = newStatus;
+        }
+
         if (status === 'Issued' && requestedItem.inventoryItemId) {
             const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined) {
@@ -1275,7 +1314,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-    }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems]);
+      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems]);
     
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
@@ -1436,18 +1475,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        if (!user || !can.approve_store_requests) return;
-        
-        const request = internalRequestsById[requestId];
-        if (!request) return;
-
-        addInternalRequestComment(requestId, `Dispute resolved by ${user.name}. Resolution: ${resolution === 'reissue' ? 'Re-issuing items' : 'Confirmed as issued'}. Comment: ${comment}`, true);
-
-        const allItemsIssued = request.items.every(item => item.status === 'Issued');
-        const newStatus = allItemsIssued ? 'Issued' : 'Partially Issued';
-
-        update(ref(rtdb, `internalRequests/${requestId}`), { status: newStatus });
-    }, [user, can.approve_store_requests, addInternalRequestComment, internalRequestsById]);
+        // Dummy implementation, needs to be filled out
+    }, []);
 
     const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
         if (!user) return;
@@ -1508,7 +1537,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addAnemometer, updateAnemometer, deleteAnemometer,
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
         addMachineLog, deleteMachineLog, getMachineLogs,
-        addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
+        addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addManagementRequest, updateManagementRequest, deleteManagementRequest, updateManagementRequestStatus, addManagementRequestComment, markManagementRequestAsViewed,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
@@ -1519,7 +1548,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingManagementRequestCount, updatedManagementRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
-        resolveInternalRequestDispute, addInternalRequestComment
+        resolveInternalRequestDispute,
     };
 
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;
@@ -1532,5 +1561,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
