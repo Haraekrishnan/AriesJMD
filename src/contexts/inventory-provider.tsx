@@ -97,7 +97,7 @@ type InventoryContextType = {
   deleteInternalRequest: (requestId: string) => void;
   forceDeleteInternalRequest: (requestId: string) => void;
   addInternalRequestComment: (requestId: string, commentText: string, notify?: boolean, subject?: string) => void;
-  updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus) => void;
+  updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus, comment?: string) => void;
   updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => void;
   updateInternalRequestItem: (requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
@@ -1058,13 +1058,71 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const updatePpeRequest = useCallback((request: PpeRequest) => {
         const { id, ...data } = request;
+        const originalRequest = ppeRequests.find(r => r.id === id);
+        if (!originalRequest) return;
+    
         const dataToSave = { ...data, attachmentUrl: data.attachmentUrl || null };
         update(ref(rtdb, `ppeRequests/${id}`), dataToSave);
-    }, []);
+    
+        if (originalRequest.status === 'Issued') {
+            const manpowerProfile = manpowerProfiles.find(p => p.id === request.manpowerId);
+            const historyArray = Array.isArray(manpowerProfile?.ppeHistory)
+                ? manpowerProfile.ppeHistory
+                : Object.values(manpowerProfile?.ppeHistory || {});
+            
+            const historyRecord = historyArray.find(h => h.requestId === id);
+            
+            if (historyRecord) {
+                const stockUpdates: any = {};
+    
+                // 1. Revert old stock changes
+                const oldQty = originalRequest.quantity || 1;
+                const oldSize = originalRequest.size;
+                const oldType = originalRequest.ppeType;
+                
+                if (oldType === 'Coverall') {
+                    const stockPath = `/ppeStock/coveralls/sizes/${oldSize}`;
+                    get(ref(rtdb, stockPath)).then(snapshot => {
+                        update(ref(rtdb, stockPath), (snapshot.val() || 0) + oldQty);
+                    });
+                } else {
+                    const stockPath = `/ppeStock/safetyShoes/quantity`;
+                    get(ref(rtdb, stockPath)).then(snapshot => {
+                        update(ref(rtdb, stockPath), (snapshot.val() || 0) + oldQty);
+                    });
+                }
+    
+                // 2. Apply new stock changes
+                const newQty = data.quantity || 1;
+                const newSize = data.size;
+                const newType = data.ppeType;
+    
+                if (newType === 'Coverall') {
+                    const stockPath = `/ppeStock/coveralls/sizes/${newSize}`;
+                    get(ref(rtdb, stockPath)).then(snapshot => {
+                        update(ref(rtdb, stockPath), Math.max(0, (snapshot.val() || 0) - newQty));
+                    });
+                } else {
+                    const stockPath = `/ppeStock/safetyShoes/quantity`;
+                    get(ref(rtdb, stockPath)).then(snapshot => {
+                        update(ref(rtdb, stockPath), Math.max(0, (snapshot.val() || 0) - newQty));
+                    });
+                }
+    
+                // 3. Update history record
+                const historyUpdatePath = `manpowerProfiles/${request.manpowerId}/ppeHistory/${historyRecord.id}`;
+                update(ref(rtdb, historyUpdatePath), {
+                    quantity: newQty,
+                    size: newSize,
+                    ppeType: newType,
+                });
+            }
+        }
+    }, [ppeRequests, manpowerProfiles]);
     
     const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
         if (!user) return;
-        addPpeRequestComment(requestId, comment);
+        addPpeRequestComment(requestId, comment, true);
         if (resolution === 'reissue') {
             update(ref(rtdb, `ppeRequests/${requestId}`), { status: 'Approved' });
         } else { // reverse
@@ -1255,10 +1313,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       }, [user, internalRequestsById, users, can, notificationSettings]);
 
     
-      const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
+      const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus, comment?: string) => {
         if (!user || !can.approve_store_requests) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-      }, [user, can.approve_store_requests]);
+        
+        const subject = `Update on your request #${requestId.slice(-6)}`;
+        const body = comment || `Request status updated to ${status}.`;
+        addInternalRequestComment(requestId, body, true, subject);
+    }, [user, can.approve_store_requests, addInternalRequestComment]);
     
       const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
         if (!user || !can.approve_store_requests) return;
