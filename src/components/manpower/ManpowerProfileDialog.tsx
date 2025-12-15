@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -868,5 +866,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
-
