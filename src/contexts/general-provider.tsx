@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -5,6 +6,7 @@ import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocumen
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
+import { useAuth } from './auth-provider';
 
 // --- TYPE DEFINITIONS ---
 
@@ -33,6 +35,9 @@ type GeneralContextType = {
   deleteJobCode: (jobCodeId: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
   markFeedbackAsViewed: () => void;
+  addDocument: (docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => void;
+  updateDocument: (doc: DownloadableDocument) => void;
+  deleteDocument: (docId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -58,6 +63,7 @@ const createDataListener = <T extends {}>(
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
   const [jobCodesById, setJobCodesById] = useState<Record<string, JobCode>>({});
   const [activityLogsById, setActivityLogsById] = useState<Record<string, ActivityLog>>({});
@@ -125,6 +131,25 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     // This function will now be handled in the CombinedProvider to get user access
   }, []);
 
+  const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'downloadableDocuments'));
+    set(newRef, {
+      ...docData,
+      uploadedBy: user.id,
+      createdAt: new Date().toISOString(),
+    });
+  }, [user]);
+
+  const updateDocument = useCallback((doc: DownloadableDocument) => {
+    const { id, ...data } = doc;
+    update(ref(rtdb, `downloadableDocuments/${id}`), data);
+  }, []);
+
+  const deleteDocument = useCallback((docId: string) => {
+    remove(ref(rtdb, `downloadableDocuments/${docId}`));
+  }, []);
+
 
   useEffect(() => {
     const unsubscribers = [
@@ -168,6 +193,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const contextValue: GeneralContextType = {
     projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, unlockRequests, feedback,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
+    addDocument, updateDocument, deleteDocument,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
