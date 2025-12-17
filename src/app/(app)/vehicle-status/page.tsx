@@ -16,9 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DriverListTable from '@/components/driver/DriverListTable';
 import AddDriverDialog from '@/components/driver/AddDriverDialog';
 import VehicleLogManagerDialog from '@/components/vehicle/VehicleLogManagerDialog';
+import { useSearchParams } from 'next/navigation';
 
 export default function VehicleStatusPage() {
     const { can, vehicles, drivers } = useAppContext();
+    const searchParams = useSearchParams();
+    const tab = searchParams.get('tab');
     
     // Vehicle State
     const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
@@ -145,7 +148,7 @@ export default function VehicleStatusPage() {
                 </Card>
             )}
 
-            <Tabs defaultValue="vehicles">
+            <Tabs defaultValue={tab || "vehicles"}>
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
                     <TabsTrigger value="drivers">Drivers</TabsTrigger>

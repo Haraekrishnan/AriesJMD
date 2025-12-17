@@ -38,6 +38,12 @@ type GeneralContextType = {
   addDocument: (docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => void;
   updateDocument: (doc: DownloadableDocument) => void;
   deleteDocument: (docId: string) => void;
+  addVehicle: (vehicleData: Omit<Vehicle, 'id'>) => void;
+  updateVehicle: (vehicle: Vehicle) => void;
+  deleteVehicle: (vehicleId: string) => void;
+  addDriver: (driverData: Omit<Driver, 'id'>) => void;
+  updateDriver: (driver: Driver) => void;
+  deleteDriver: (driverId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -63,7 +69,7 @@ const createDataListener = <T extends {}>(
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, addActivityLog } = useAuth();
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
   const [jobCodesById, setJobCodesById] = useState<Record<string, JobCode>>({});
   const [activityLogsById, setActivityLogsById] = useState<Record<string, ActivityLog>>({});
@@ -128,8 +134,13 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markFeedbackAsViewed = useCallback(() => {
-    // This function will now be handled in the CombinedProvider to get user access
-  }, []);
+    if (!user) return;
+    feedback.forEach(f => {
+      if (!f.viewedBy?.[user.id]) {
+        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
+      }
+    });
+  }, [user, feedback]);
 
   const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
     if (!user) return;
@@ -149,6 +160,48 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const deleteDocument = useCallback((docId: string) => {
     remove(ref(rtdb, `downloadableDocuments/${docId}`));
   }, []);
+
+  const addVehicle = useCallback((vehicleData: Omit<Vehicle, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'vehicles'));
+    set(newRef, vehicleData);
+    addActivityLog(user.id, 'Vehicle Added', `Vehicle: ${vehicleData.vehicleNumber}`);
+  }, [user, addActivityLog]);
+
+  const updateVehicle = useCallback((vehicle: Vehicle) => {
+    if (!user) return;
+    const { id, ...data } = vehicle;
+    update(ref(rtdb, `vehicles/${id}`), data);
+    addActivityLog(user.id, 'Vehicle Updated', `Vehicle: ${vehicle.vehicleNumber}`);
+  }, [user, addActivityLog]);
+
+  const deleteVehicle = useCallback((vehicleId: string) => {
+    if (!user) return;
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    remove(ref(rtdb, `vehicles/${vehicleId}`));
+    if (vehicle) addActivityLog(user.id, 'Vehicle Deleted', `Vehicle: ${vehicle.vehicleNumber}`);
+  }, [user, vehicles, addActivityLog]);
+
+  const addDriver = useCallback((driverData: Omit<Driver, 'id'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'drivers'));
+    set(newRef, driverData);
+    addActivityLog(user.id, 'Driver Added', `Driver: ${driverData.name}`);
+  }, [user, addActivityLog]);
+
+  const updateDriver = useCallback((driver: Driver) => {
+    if (!user) return;
+    const { id, ...data } = driver;
+    update(ref(rtdb, `drivers/${id}`), data);
+    addActivityLog(user.id, 'Driver Updated', `Driver: ${driver.name}`);
+  }, [user, addActivityLog]);
+
+  const deleteDriver = useCallback((driverId: string) => {
+    if (!user) return;
+    const driver = drivers.find(d => d.id === driverId);
+    remove(ref(rtdb, `drivers/${driverId}`));
+    if (driver) addActivityLog(user.id, 'Driver Deleted', `Driver: ${driver.name}`);
+  }, [user, drivers, addActivityLog]);
 
 
   useEffect(() => {
@@ -193,7 +246,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const contextValue: GeneralContextType = {
     projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, unlockRequests, feedback,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
-    addDocument, updateDocument, deleteDocument,
+    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
