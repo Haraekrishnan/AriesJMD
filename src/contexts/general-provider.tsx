@@ -164,7 +164,15 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const addVehicle = useCallback((vehicleData: Omit<Vehicle, 'id'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'vehicles'));
-    set(newRef, vehicleData);
+    const dataToSave = {
+        ...vehicleData,
+        vapValidity: vehicleData.vapValidity || null,
+        insuranceValidity: vehicleData.insuranceValidity || null,
+        fitnessValidity: vehicleData.fitnessValidity || null,
+        taxValidity: vehicleData.taxValidity || null,
+        puccValidity: vehicleData.puccValidity || null,
+    };
+    set(newRef, dataToSave);
     addActivityLog(user.id, 'Vehicle Added', `Vehicle: ${vehicleData.vehicleNumber}`);
   }, [user, addActivityLog]);
 
