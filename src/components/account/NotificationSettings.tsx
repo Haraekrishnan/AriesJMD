@@ -18,7 +18,6 @@ import RoleManagementTable from '@/components/account/role-management-table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import ProjectManagementTable from '@/components/account/project-management-table';
 import { Skeleton } from '@/components/ui/skeleton';
-import PasswordResetRequests from '@/components/account/password-reset-requests';
 import FeedbackManagement from '@/components/account/FeedbackManagement';
 import { Badge } from '@/components/ui/badge';
 import UnlockRequests from '@/components/account/UnlockRequests';
@@ -166,7 +165,6 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground">{user.role}</p>
             </CardHeader>
           </Card>
-           {can.manage_password_resets && <PasswordResetRequests />}
            {can.manage_user_lock_status && <UnlockRequests />}
         </div>
         <div className="md:col-span-2">
