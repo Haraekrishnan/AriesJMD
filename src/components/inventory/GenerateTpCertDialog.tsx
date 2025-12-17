@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -87,6 +86,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
             setListDate(new Date());
         }
       }, [existingList, listToCreate, isOpen, allSearchableItems]);
+
+      const sortedSelectedItems = useMemo(() => {
+        return [...selectedItems].sort((a, b) => a.materialName.localeCompare(b.materialName));
+      }, [selectedItems]);
 
       const uniqueItemNames = useMemo(() => {
         const names = new Set<string>();
@@ -251,8 +254,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedItems.length > 0 ? (
-                      selectedItems.map((item, index) => {
+                    {sortedSelectedItems.length > 0 ? (
+                      sortedSelectedItems.map((item, index) => {
                         return (
                             <TableRow key={`${item.itemId}-${item.itemType}`}>
                               <TableCell>{index + 1}</TableCell>
