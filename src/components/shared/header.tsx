@@ -24,7 +24,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       user, logout, appName, appLogo, can,
       tasks, certificateRequests, plannerEvents,
       internalRequests, managementRequests, incidentReports,
-      ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
+      ppeRequests, payments, feedback, unlockRequests,
       inventoryTransferRequests, dailyPlannerComments, logbookRequests,
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
     } = useAppContext();
@@ -111,7 +111,6 @@ const plannerNotificationCount =
     
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? (payments || []).filter(p => p.status === 'Pending').length : 0;
-    const pendingPasswordResetRequestCount = can.manage_password_resets ? (passwordResetRequests || []).filter(r => r.status === 'pending').length : 0;
     const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedBy?.[user.id]).length : 0;
     const pendingUnlockRequestCount = can.manage_user_lock_status ? (unlockRequests || []).filter(r => r.status === 'pending').length : 0;
 
@@ -128,13 +127,13 @@ const plannerNotificationCount =
       planner: plannerNotificationCount,
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
-      account: pendingPasswordResetRequestCount + pendingFeedbackCount + pendingUnlockRequestCount,
+      account: pendingFeedbackCount + pendingUnlockRequestCount,
       manpower: pendingLogbookRequestCount
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports,
-    ppeRequests, payments, passwordResetRequests, feedback, unlockRequests,
+    ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
   ]);
