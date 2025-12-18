@@ -4,7 +4,8 @@ import type { InventoryItem } from '@/lib/types';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { format, isValid, parseISO } from 'date-fns';
 
 interface InventoryReportDownloadsProps {
@@ -16,8 +17,10 @@ interface InventoryReportDownloadsProps {
 export default function InventoryReportDownloads({ items, isSummary = false, summaryData = [] }: InventoryReportDownloadsProps) {
   const { projects } = useAppContext();
 
-  const handleDownloadExcel = () => {
-    const workbook = XLSX.utils.book_new();
+  const handleDownloadExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Aries Marine';
+    workbook.created = new Date();
 
     const formatDate = (dateString?: string | null) => {
         if (!dateString) return 'N/A';
@@ -26,16 +29,39 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
     }
 
     if (isSummary) {
-      const dataToExport = (summaryData || []).map(row => {
-        const newRow: {[key: string]: any} = { 'Item Name': row.name };
-        projects.forEach(p => {
-          newRow[p.name] = row[p.id] || 0;
-        });
-        newRow['Total'] = row.total;
-        return newRow;
+      const worksheet = workbook.addWorksheet('Inventory Summary');
+      
+      const headerRow = ['Item Name', ...projects.map(p => p.name), 'Total'];
+      worksheet.addRow(headerRow).eachCell(cell => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF007BFF' } };
+          cell.alignment = { horizontal: 'center' };
       });
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory Summary');
+      
+      (summaryData || []).forEach(row => {
+        const rowData: (string | number)[] = [row.name];
+        projects.forEach(p => {
+          rowData.push(row[p.id] || 0);
+        });
+        rowData.push(row.total);
+        worksheet.addRow(rowData);
+      });
+      
+      worksheet.columns.forEach(column => {
+        let max_width = 15;
+        if(column.values) {
+          column.values.forEach(value => {
+            if(value) {
+                const column_width = String(value).length;
+                if (column_width > max_width) {
+                  max_width = column_width;
+                }
+            }
+          });
+        }
+        column.width = max_width + 2;
+      });
+
     } else {
       const groupedItems: { [key: string]: InventoryItem[] } = {};
       items.forEach(item => {
@@ -46,32 +72,60 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
       });
 
       for (const itemName in groupedItems) {
-        const sheetData = groupedItems[itemName].map(item => ({
-          'Item Name': item.name,
-          'Serial Number': item.serialNumber,
-          'Aries ID': item.ariesId || 'N/A',
-          'ERP ID': item.erpId || 'N/A',
-          'Certification': item.certification || 'N/A',
-          'Purchase Date': formatDate(item.purchaseDate),
-          'Chest Croll No': item.chestCrollNo || 'N/A',
-          'Status': item.status,
-          'Location': projects.find(p => p.id === item.projectId)?.name || 'N/A',
-          'Plant/Unit': item.plantUnit || 'N/A',
-          'Inspection Date': formatDate(item.inspectionDate),
-          'Inspection Due Date': formatDate(item.inspectionDueDate),
-          'TP Inspection Due Date': formatDate(item.tpInspectionDueDate),
-          'Last Updated': formatDate(item.lastUpdated),
-          'TP Certificate Link': item.certificateUrl || 'N/A',
-          'Inspection Certificate Link': item.inspectionCertificateUrl || 'N/A',
-        }));
-        const worksheet = XLSX.utils.json_to_sheet(sheetData);
-        // Sanitize sheet name
         const sheetName = itemName.replace(/[\\/*?:]/g, "").substring(0, 31);
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        const worksheet = workbook.addWorksheet(sheetName);
+
+        const headerRow = [
+          'Item Name', 'Serial Number', 'Aries ID', 'ERP ID', 'Certification', 'Purchase Date', 'Chest Croll No',
+          'Status', 'Location', 'Plant/Unit', 'Inspection Date', 'Inspection Due Date', 'TP Inspection Due Date',
+          'Last Updated', 'TP Certificate Link', 'Inspection Certificate Link'
+        ];
+        
+        worksheet.addRow(headerRow).eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF007BFF' } };
+        });
+
+        groupedItems[itemName].forEach(item => {
+           worksheet.addRow([
+              item.name,
+              item.serialNumber,
+              item.ariesId || 'N/A',
+              item.erpId || 'N/A',
+              item.certification || 'N/A',
+              formatDate(item.purchaseDate),
+              item.chestCrollNo || 'N/A',
+              item.status,
+              projects.find(p => p.id === item.projectId)?.name || 'N/A',
+              item.plantUnit || 'N/A',
+              formatDate(item.inspectionDate),
+              formatDate(item.inspectionDueDate),
+              formatDate(item.tpInspectionDueDate),
+              formatDate(item.lastUpdated),
+              item.certificateUrl || 'N/A',
+              item.inspectionCertificateUrl || 'N/A',
+           ]);
+        });
+        
+        worksheet.columns.forEach(column => {
+          let max_width = 15;
+          if(column.values) {
+            column.values.forEach(value => {
+                if(value) {
+                    const column_width = String(value).length;
+                    if (column_width > max_width) {
+                      max_width = column_width;
+                    }
+                }
+            });
+          }
+          column.width = max_width < 15 ? 15 : max_width + 2;
+        });
       }
     }
     
-    XLSX.writeFile(workbook, 'Inventory_Report.xlsx');
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'Inventory_Report.xlsx');
   };
 
   const handleDownloadPdf = async () => {
