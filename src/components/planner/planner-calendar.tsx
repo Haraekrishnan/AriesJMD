@@ -140,11 +140,18 @@ export default function PlannerCalendar({
 
   const changeMonth = (amount: number) => {
     const newMonth = addMonths(internalCurrentMonth, amount);
+    const today = startOfMonth(new Date());
+  
+    // ❌ Block future months
+    if (newMonth > today) return;
+  
     setInternalCurrentMonth(newMonth);
-    if (setExternalCurrentMonth) {
-      setExternalCurrentMonth(newMonth);
-    }
+    setExternalCurrentMonth(newMonth);
+  
+    // ✅ Always select a valid past date
+    setSelectedDate(startOfMonth(newMonth));
   };
+   
 
   const handleTodayClick = () => {
     const today = new Date();
