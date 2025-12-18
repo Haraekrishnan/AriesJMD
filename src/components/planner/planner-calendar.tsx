@@ -12,7 +12,7 @@ import {
 import {
   eachDayOfInterval, endOfMonth, startOfMonth, format,
   isSameDay, getDate, isPast, isValid, parseISO, isToday,
-  isSameMonth, startOfWeek, endOfWeek, startOfDay
+  isSameMonth, startOfWeek, endOfWeek, startOfDay, addMonths, subMonths
 } from 'date-fns';
 import { ref, update } from "firebase/database";
 import { rtdb } from "@/lib/rtdb";
@@ -139,9 +139,11 @@ export default function PlannerCalendar({
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   const changeMonth = (amount: number) => {
-    const newMonth = new Date(internalCurrentMonth.getFullYear(), internalCurrentMonth.getMonth() + amount, 1);
+    const newMonth = addMonths(internalCurrentMonth, amount);
     setInternalCurrentMonth(newMonth);
-    setExternalCurrentMonth(newMonth);
+    if (setExternalCurrentMonth) {
+      setExternalCurrentMonth(newMonth);
+    }
   };
 
   const handleTodayClick = () => {
