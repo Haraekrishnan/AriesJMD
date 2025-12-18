@@ -22,6 +22,9 @@ const itemSchema = z.object({
   name: z.string().min(1, 'Item name is required'),
   serialNumber: z.string().optional(),
   ariesId: z.string().optional(),
+  erpId: z.string().optional(),
+  certification: z.string().optional(),
+  purchaseDate: z.date().optional().nullable(),
   chestCrollNo: z.string().optional(),
   status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine']),
   projectId: z.string().min(1, 'Location is required'),
@@ -100,6 +103,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
         form.reset({
             ...item,
             status: effectiveStatus,
+            purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : undefined,
             inspectionDate: item.inspectionDate ? new Date(item.inspectionDate) : undefined,
             inspectionDueDate: item.inspectionDueDate ? new Date(item.inspectionDueDate) : undefined,
             tpInspectionDueDate: item.tpInspectionDueDate ? new Date(item.tpInspectionDueDate) : undefined,
@@ -116,6 +120,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
         inspectionDate: data.inspectionDate ? data.inspectionDate.toISOString() : '',
         inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
         tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
+        purchaseDate: data.purchaseDate ? data.purchaseDate.toISOString() : null,
         movedToProjectId: data.movedToProjectId,
         chestCrollNo: data.chestCrollNo,
     });
@@ -158,6 +163,17 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                     <div>
                         <Label htmlFor="ariesId">Aries ID</Label>
                         <Input id="ariesId" {...form.register('ariesId')} />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="erpId">ERP ID</Label>
+                        <Input id="erpId" {...form.register('erpId')} />
+                    </div>
+                    <div>
+                        <Label htmlFor="certification">Certification</Label>
+                        <Input id="certification" {...form.register('certification')} />
                     </div>
                 </div>
 
@@ -208,6 +224,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                 
                 {category === 'General' && (
                 <>
+                    <div><Label>Purchase Date</Label><Controller name="purchaseDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
                     <div><Label>Inspection Date</Label><Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}</div>
                     <div><Label>Inspection Due Date</Label><Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}</div>
                     <div><Label>TP Inspection Due Date</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />{form.formState.errors.tpInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.tpInspectionDueDate.message}</p>}</div>

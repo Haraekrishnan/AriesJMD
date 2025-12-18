@@ -293,6 +293,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             chestCrollNo: itemData.chestCrollNo || null,
             lastUpdated: new Date().toISOString(),
             movedToProjectId: itemData.movedToProjectId || null,
+            erpId: itemData.erpId || null,
+            certification: itemData.certification || null,
+            purchaseDate: itemData.purchaseDate || null,
         };
         set(newRef, dataToSave);
         addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
@@ -349,6 +352,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             lastUpdated: new Date().toISOString(),
             movedToProjectId: data.movedToProjectId || null,
             chestCrollNo: data.chestCrollNo || null,
+            erpId: data.erpId || null,
+            certification: data.certification || null,
+            purchaseDate: data.purchaseDate || null,
         };
         update(ref(rtdb, `inventoryItems/${id}`), updates);
     }, []);
@@ -545,7 +551,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 `;
                 sendNotificationEmail({
                     to: [storeUser.email],
-                    subject:`Inventory Transfer Request from ${user.name}`,
+                    subject: `Inventory Transfer Request from ${user.name}`,
                     htmlBody,
                     notificationSettings,
                     event: 'onInternalRequest'
@@ -1062,8 +1068,41 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (data.attachmentUrl === undefined) {
           updates.attachmentUrl = null;
         }
-        update(ref(rtdb, `ppeRequests/${id}`), updates);
-      }, []);
+        
+        const originalRequest = ppeRequests.find(r => r.id === id);
+        if (originalRequest && originalRequest.status === 'Issued') {
+            const manpowerId = request.manpowerId;
+            const historyRef = ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`);
+            get(historyRef).then(snapshot => {
+                const history = snapshot.val();
+                if(history) {
+                    const historyKey = Object.keys(history).find(key => history[key].requestId === id);
+                    if(historyKey) {
+                        const quantityDiff = (originalRequest.quantity || 1) - (request.quantity || 1);
+                        updates[`manpowerProfiles/${manpowerId}/ppeHistory/${historyKey}/size`] = request.size;
+                        updates[`manpowerProfiles/${manpowerId}/ppeHistory/${historyKey}/quantity`] = request.quantity;
+                        
+                        const stockPath = `/ppeStock/${request.ppeType === 'Coverall' ? 'coveralls' : 'safetyShoes'}`;
+                        get(ref(rtdb, stockPath)).then(stockSnapshot => {
+                            const stockData = stockSnapshot.val();
+                            if (request.ppeType === 'Coverall') {
+                                const currentSizes = stockData?.sizes || {};
+                                // Revert old size quantity, then deduct new size quantity
+                                currentSizes[originalRequest.size] = (currentSizes[originalRequest.size] || 0) + (originalRequest.quantity || 1);
+                                currentSizes[request.size] = (currentSizes[request.size] || 0) - (request.quantity || 1);
+                                updates[`${stockPath}/sizes`] = currentSizes;
+                            } else {
+                                updates[`${stockPath}/quantity`] = (stockData?.quantity || 0) + quantityDiff;
+                            }
+                            update(ref(rtdb, `ppeRequests/${id}`), updates);
+                        });
+                    }
+                }
+            });
+        } else {
+            update(ref(rtdb, `ppeRequests/${id}`), updates);
+        }
+      }, [ppeRequests]);
     
     const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
         if (!user) return;

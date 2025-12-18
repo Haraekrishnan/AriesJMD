@@ -623,6 +623,9 @@ export type InventoryItem = {
   name: string;
   serialNumber: string;
   ariesId?: string;
+  erpId?: string;
+  certification?: string;
+  purchaseDate?: string | null;
   chestCrollNo?: string | null;
   status: InventoryItemStatus;
   projectId: string;

@@ -17,9 +17,8 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
   const { projects } = useAppContext();
 
   const handleDownloadExcel = () => {
-    let dataToExport;
-    let worksheet;
-    
+    const workbook = XLSX.utils.book_new();
+
     const formatDate = (dateString?: string | null) => {
         if (!dateString) return 'N/A';
         const date = parseISO(dateString);
@@ -27,7 +26,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
     }
 
     if (isSummary) {
-      dataToExport = (summaryData || []).map(row => {
+      const dataToExport = (summaryData || []).map(row => {
         const newRow: {[key: string]: any} = { 'Item Name': row.name };
         projects.forEach(p => {
           newRow[p.name] = row[p.id] || 0;
@@ -35,28 +34,43 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
         newRow['Total'] = row.total;
         return newRow;
       });
-      worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory Summary');
     } else {
-      dataToExport = items.map(item => ({
-        'Item Name': item.name,
-        'Serial Number': item.serialNumber,
-        'Aries ID': item.ariesId || 'N/A',
-        'Chest Croll No': item.chestCrollNo || 'N/A',
-        'Status': item.status,
-        'Location': projects.find(p => p.id === item.projectId)?.name || 'N/A',
-        'Plant/Unit': item.plantUnit || 'N/A',
-        'Inspection Date': formatDate(item.inspectionDate),
-        'Inspection Due Date': formatDate(item.inspectionDueDate),
-        'TP Inspection Due Date': formatDate(item.tpInspectionDueDate),
-        'Last Updated': formatDate(item.lastUpdated),
-        'TP Certificate Link': item.certificateUrl || 'N/A',
-        'Inspection Certificate Link': item.inspectionCertificateUrl || 'N/A',
-      }));
-       worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const groupedItems: { [key: string]: InventoryItem[] } = {};
+      items.forEach(item => {
+        if (!groupedItems[item.name]) {
+          groupedItems[item.name] = [];
+        }
+        groupedItems[item.name].push(item);
+      });
+
+      for (const itemName in groupedItems) {
+        const sheetData = groupedItems[itemName].map(item => ({
+          'Item Name': item.name,
+          'Serial Number': item.serialNumber,
+          'Aries ID': item.ariesId || 'N/A',
+          'ERP ID': item.erpId || 'N/A',
+          'Certification': item.certification || 'N/A',
+          'Purchase Date': formatDate(item.purchaseDate),
+          'Chest Croll No': item.chestCrollNo || 'N/A',
+          'Status': item.status,
+          'Location': projects.find(p => p.id === item.projectId)?.name || 'N/A',
+          'Plant/Unit': item.plantUnit || 'N/A',
+          'Inspection Date': formatDate(item.inspectionDate),
+          'Inspection Due Date': formatDate(item.inspectionDueDate),
+          'TP Inspection Due Date': formatDate(item.tpInspectionDueDate),
+          'Last Updated': formatDate(item.lastUpdated),
+          'TP Certificate Link': item.certificateUrl || 'N/A',
+          'Inspection Certificate Link': item.inspectionCertificateUrl || 'N/A',
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(sheetData);
+        // Sanitize sheet name
+        const sheetName = itemName.replace(/[\\/*?:]/g, "").substring(0, 31);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      }
     }
     
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory Report');
     XLSX.writeFile(workbook, 'Inventory_Report.xlsx');
   };
 
