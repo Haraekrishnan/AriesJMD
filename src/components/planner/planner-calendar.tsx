@@ -189,11 +189,13 @@ export default function PlannerCalendar({
         {/* MONTHLY VIEW */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl font-bold">{format(internalCurrentMonth, 'MMMM yyyy')}</CardTitle>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                <CardTitle className="text-2xl font-bold">{format(internalCurrentMonth, 'MMMM yyyy')}</CardTitle>
+                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
               <Button variant="outline" onClick={handleTodayClick}>Today</Button>
-              <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
           <CardContent className="p-2">
