@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlusCircle, Trash2, ChevronsUpDown } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,8 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
   const { addInternalRequest } = useAppContext();
   const { consumableItems } = useConsumable();
   const { toast } = useToast();
+  const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
+
 
   const form = useForm<InternalRequestFormValues>({
     resolver: zodResolver(internalRequestSchema),
@@ -86,6 +88,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
         form.setValue(`items.${index}.description`, itemName);
         form.setValue(`items.${index}.inventoryItemId`, ''); // Clear ID if not found
     }
+    setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
 
   return (
@@ -112,7 +115,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                         name={`items.${index}.inventoryItemId`}
                         control={form.control}
                         render={({ field: controllerField }) => (
-                            <Popover>
+                            <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                                         <span className="truncate">{form.getValues(`items.${index}.description`) || "Select item..."}</span>
@@ -134,6 +137,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                                                     value={item.name}
                                                     onSelect={() => handleItemSelect(index, item.name)}
                                                 >
+                                                    <Check className={cn("mr-2 h-4 w-4", item.id === controllerField.value ? "opacity-100" : "opacity-0")} />
                                                     {item.name}
                                                 </CommandItem>
                                                 ))}
