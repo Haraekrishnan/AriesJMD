@@ -12,9 +12,9 @@ import { useAppContext } from '@/contexts/app-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { format, parseISO, isValid } from 'date-fns';
 
-interface ConsumableReportDownloadsProps {}
+interface ConsumableConsumptionReportProps {}
 
-export default function ConsumableReportDownloads({}: ConsumableReportDownloadsProps) {
+export default function ConsumableConsumptionReport({}: ConsumableConsumptionReportProps) {
   const { internalRequests, users } = useAppContext();
   const { consumableItems } = useConsumable();
   
@@ -109,9 +109,9 @@ export default function ConsumableReportDownloads({}: ConsumableReportDownloadsP
   const isDisabled = issuedItems.length === 0;
 
   return (
-    <>
-      <Button variant="outline" onClick={handleDownloadExcel} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4"/> Excel Report</Button>
-      <Button variant="outline" onClick={handleDownloadPdf} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4"/> PDF Report</Button>
-    </>
+    <div className="flex items-center gap-2">
+      <Button variant="outline" onClick={handleDownloadExcel} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
+      <Button variant="outline" onClick={handleDownloadPdf} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
+    </div>
   );
 }

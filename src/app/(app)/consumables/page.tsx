@@ -26,7 +26,8 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Input } from '@/components/ui/input';
 import EditConsumableInwardDialog from '@/components/requests/EditConsumableInwardDialog';
 import { Separator } from '@/components/ui/separator';
-import ConsumableReportDownloads from '@/components/requests/ConsumableReportDownloads';
+import ConsumableStockReport from '@/components/requests/ConsumableStockReport';
+import ConsumableConsumptionReport from '@/components/requests/ConsumableConsumptionReport';
 import ImportConsumablesDialog from '@/components/requests/ImportConsumablesDialog';
 
 const inwardSchema = z.object({
@@ -149,7 +150,6 @@ export default function ConsumablesPage() {
           <p className="text-muted-foreground">Manage stock levels for daily and job-specific consumables.</p>
         </div>
         <div className="flex items-center gap-2">
-            <ConsumableReportDownloads />
             {canManageConsumables && (
               <>
                 <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4"/> Import</Button>
@@ -181,6 +181,27 @@ export default function ConsumablesPage() {
             description="Items with quantity of 5 or less."
             className={summary.lowStockItems > 0 ? "border-destructive" : ""}
         />
+      </div>
+
+       <div className="grid md:grid-cols-2 gap-4">
+          <Card>
+              <CardHeader>
+                  <CardTitle>Stock List Report</CardTitle>
+                  <CardDescription>Download a complete list of current consumable stock levels.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <ConsumableStockReport />
+              </CardContent>
+          </Card>
+          <Card>
+              <CardHeader>
+                  <CardTitle>Consumption Report</CardTitle>
+                  <CardDescription>Download a report of all consumed items.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <ConsumableConsumptionReport />
+              </CardContent>
+          </Card>
       </div>
 
       <div className="relative">
