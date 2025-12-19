@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle, Inbox, Search } from 'lucide-react';
+import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle, Inbox, Search, FileDown, Upload } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
@@ -26,6 +26,8 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Input } from '@/components/ui/input';
 import EditConsumableInwardDialog from '@/components/requests/EditConsumableInwardDialog';
 import { Separator } from '@/components/ui/separator';
+import ConsumableReportDownloads from '@/components/requests/ConsumableReportDownloads';
+import ImportConsumablesDialog from '@/components/requests/ImportConsumablesDialog';
 
 const inwardSchema = z.object({
   itemId: z.string().min(1, 'Please select an item.'),
@@ -41,6 +43,7 @@ export default function ConsumablesPage() {
   const { can, user, internalRequests, users } = useAppContext();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [editingInwardRecord, setEditingInwardRecord] = useState<ConsumableInwardRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,11 +148,17 @@ export default function ConsumablesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Consumable Items</h1>
           <p className="text-muted-foreground">Manage stock levels for daily and job-specific consumables.</p>
         </div>
-        {canManageConsumables && (
-            <Button onClick={() => setIsAddOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4"/> Add Consumable
-            </Button>
-        )}
+        <div className="flex items-center gap-2">
+            <ConsumableReportDownloads dailyConsumables={dailyConsumables} jobConsumables={jobConsumables} />
+            {canManageConsumables && (
+              <>
+                <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4"/> Import</Button>
+                <Button onClick={() => setIsAddOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4"/> Add Consumable
+                </Button>
+              </>
+            )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -396,6 +405,7 @@ export default function ConsumablesPage() {
             <AddConsumableDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} />
             {editingItem && <EditConsumableDialog isOpen={!!editingItem} setIsOpen={() => setEditingItem(null)} item={editingItem} />}
             {editingInwardRecord && <EditConsumableInwardDialog isOpen={!!editingInwardRecord} setIsOpen={() => setEditingInwardRecord(null)} record={editingInwardRecord} />}
+            <ImportConsumablesDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
         </>
       )}
     </div>

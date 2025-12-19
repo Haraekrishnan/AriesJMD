@@ -1,7 +1,7 @@
 
 'use client';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
-import { InventoryItem, ConsumableInwardRecord } from '@/lib/types';
+import type { InventoryItem, ConsumableInwardRecord, InventoryCategory } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, update, push, set, remove, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -12,6 +12,7 @@ type ConsumableContextType = {
   addConsumableItem: (itemData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'projectId'>) => void;
   updateConsumableItem: (item: InventoryItem) => void;
   deleteConsumableItem: (itemId: string) => void;
+  addMultipleConsumableItems: (itemsData: any[]) => number;
   addConsumableInwardRecord: (itemId: string, quantity: number, date: Date) => void;
   updateConsumableInwardRecord: (record: ConsumableInwardRecord) => void;
   deleteConsumableInwardRecord: (record: ConsumableInwardRecord) => void;
@@ -79,6 +80,42 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   const deleteConsumableItem = useCallback((itemId: string) => {
       remove(ref(rtdb, `inventoryItems/${itemId}`));
   }, []);
+  
+  const addMultipleConsumableItems = useCallback((itemsData: any[]): number => {
+    let importedCount = 0;
+    const updates: { [key: string]: any } = {};
+
+    itemsData.forEach(row => {
+        const name = row['Name'];
+        if (!name) return;
+
+        const existingItem = consumableItems.find(i => i.name.toLowerCase() === name.toLowerCase());
+        if (existingItem) return;
+        
+        const category = row['Category'];
+        if (category !== 'Daily Consumable' && category !== 'Job Consumable') return;
+
+        const dataToSave: Partial<InventoryItem> = {
+            name,
+            quantity: Number(row['Quantity']) || 0,
+            unit: row['Unit'] || 'pcs',
+            category: category as InventoryCategory,
+            remarks: row['Remarks'] || '',
+            status: 'In Store',
+            projectId: 'STORE',
+            lastUpdated: new Date().toISOString(),
+        };
+        
+        const newRef = push(ref(rtdb, 'inventoryItems'));
+        updates[`/inventoryItems/${newRef.key}`] = dataToSave;
+        importedCount++;
+    });
+
+    if(Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
+    return importedCount;
+  }, [consumableItems]);
 
   const addConsumableInwardRecord = useCallback((itemId: string, quantity: number, date: Date) => {
     if (!user) return;
@@ -118,6 +155,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     addConsumableItem,
     updateConsumableItem,
     deleteConsumableItem,
+    addMultipleConsumableItems,
     addConsumableInwardRecord,
     updateConsumableInwardRecord,
     deleteConsumableInwardRecord,
