@@ -169,7 +169,7 @@ export default function MyRequestsPage() {
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <InternalRequestTable requests={consumableRequests} showAcknowledge={false} />
+                            <InternalRequestTable requests={consumableRequests} showAcknowledge={false} isConsumable={true} />
                         </CardContent>
                     </Card>
                 </TabsContent>

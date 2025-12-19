@@ -26,6 +26,7 @@ import { useConsumable } from '@/contexts/consumable-provider';
 interface InternalRequestTableProps {
   requests: InternalRequest[];
   showAcknowledge?: boolean;
+  isConsumable?: boolean;
 }
 
 const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
@@ -45,7 +46,7 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
     Rejected: 'destructive',
 };
 
-const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }: { req: InternalRequest; isCompletedSection?: boolean; showAcknowledge?: boolean; }) => {
+const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, isConsumable = false }: { req: InternalRequest; isCompletedSection?: boolean; showAcknowledge?: boolean; isConsumable?: boolean; }) => {
     const { user, users, can, roles } = useAuth();
     const {
         updateInternalRequestStatus, 
@@ -104,14 +105,15 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }
         const needsComment = status === 'Rejected';
 
         if (status === 'Issued') {
-            const stockItem = consumableItems.find(i => i.id === item.inventoryItemId);
+            const itemsToCheck = isConsumable ? consumableItems : inventoryItems;
+            const stockItem = itemsToCheck.find(i => i.id === item.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < item.quantity) {
                 toast({
                     variant: 'destructive',
                     title: 'Insufficient Stock',
                     description: `Cannot issue ${item.quantity} of ${item.description}. Only ${stockItem.quantity} available.`,
                 });
-                return; // Stop the action
+                return;
             }
         }
     
@@ -337,13 +339,14 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }
                     setIsOpen={() => setEditingItem(null)}
                     request={req}
                     item={editingItem}
+                    isConsumable={isConsumable}
                 />
             )}
         </>
     )
 }
 
-export default function InternalRequestTable({ requests, showAcknowledge = true }: InternalRequestTableProps) {
+export default function InternalRequestTable({ requests, showAcknowledge = true, isConsumable = false }: InternalRequestTableProps) {
   const { user, markInternalRequestAsViewed } = useInventory();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
@@ -385,7 +388,7 @@ export default function InternalRequestTable({ requests, showAcknowledge = true 
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} showAcknowledge={showAcknowledge} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} showAcknowledge={showAcknowledge} isConsumable={isConsumable} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -399,7 +402,7 @@ export default function InternalRequestTable({ requests, showAcknowledge = true 
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} showAcknowledge={showAcknowledge} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} showAcknowledge={showAcknowledge} isConsumable={isConsumable}/>)}
               </div>
             </AccordionContent>
           </AccordionItem>
