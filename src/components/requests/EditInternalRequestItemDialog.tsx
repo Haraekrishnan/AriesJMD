@@ -64,8 +64,8 @@ export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, reque
   }, [searchTerm, consumableItems]);
 
   const onSubmit = (data: FormValues) => {
-    const updatedItem = { ...item, ...data };
-    updateInternalRequestItem(request.id, updatedItem, item);
+    const updatedItem = { ...item, ...data, inventoryItemId: data.inventoryItemId || null };
+    updateInternalRequestItem(request.id, updatedItem as InternalRequestItem, item);
     toast({ title: 'Item Updated', description: 'The request item has been updated.' });
     setIsOpen(false);
   };
