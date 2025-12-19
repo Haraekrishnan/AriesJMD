@@ -1317,6 +1317,18 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
         const requestedItem = request.items[itemIndex];
 
+        if (status === 'Issued') {
+            const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
+            if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < requestedItem.quantity) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Insufficient Stock',
+                    description: `Cannot issue ${requestedItem.quantity} of ${requestedItem.description}. Only ${stockItem.quantity} available.`,
+                });
+                return;
+            }
+        }
+
         const actionComment = `${requestedItem.description}: Status changed to ${status}.`;
         const finalComment = comment ? `${actionComment} Comment: ${comment}` : actionComment;
         
@@ -1362,7 +1374,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems]);
+      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems, toast]);
     
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
