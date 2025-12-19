@@ -46,6 +46,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
   const { consumableItems } = useConsumable();
   const { toast } = useToast();
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
+  const [searchTerms, setSearchTerms] = useState<Record<number, string>>({});
 
 
   const form = useForm<InternalRequestFormValues>({
@@ -84,9 +85,6 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
         if(item.unit) {
             form.setValue(`items.${index}.unit`, item.unit);
         }
-    } else {
-        form.setValue(`items.${index}.description`, itemName);
-        form.setValue(`items.${index}.inventoryItemId`, ''); // Clear ID if not found
     }
     setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
@@ -108,7 +106,13 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
           </div>
           <ScrollArea className="flex-1 px-4">
             <div className="space-y-4">
-              {fields.map((field, index) => (
+              {fields.map((field, index) => {
+                const searchTerm = searchTerms[index] || '';
+                const filteredItems = searchTerm 
+                  ? consumableItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                  : consumableItems;
+
+                return (
                 <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
                   <div className="col-span-5">
                     <Controller
@@ -126,12 +130,12 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                                     <Command>
                                         <CommandInput 
                                             placeholder="Search items..." 
-                                            onValueChange={(value) => handleItemSelect(index, value)}
+                                            onValueChange={(value) => setSearchTerms(prev => ({ ...prev, [index]: value }))}
                                         />
                                         <CommandList>
                                             <CommandEmpty>No item found.</CommandEmpty>
                                             <CommandGroup>
-                                                {consumableItems.map(item => (
+                                                {filteredItems.map(item => (
                                                 <CommandItem
                                                     key={item.id}
                                                     value={item.name}
@@ -167,7 +171,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                     </Button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </ScrollArea>
           <div className="px-4 pt-4 shrink-0">
