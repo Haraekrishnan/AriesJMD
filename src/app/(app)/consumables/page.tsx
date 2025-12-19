@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
-import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle, Inbox } from 'lucide-react';
+import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle, Inbox, Search } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
@@ -43,6 +43,7 @@ export default function ConsumablesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [editingInwardRecord, setEditingInwardRecord] = useState<ConsumableInwardRecord | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const inwardForm = useForm<InwardFormValues>({
     resolver: zodResolver(inwardSchema),
@@ -56,18 +57,27 @@ export default function ConsumablesPage() {
   }, [user]);
 
   const { dailyConsumables, jobConsumables, summary, consumptionMetrics } = useMemo(() => {
-    const daily: any[] = [];
-    const job: any[] = [];
     let lowStockItems = 0;
     
-    consumableItems.forEach(item => {
-      if ((item.quantity || 0) <= 5) { // Assuming low stock is 5 or less
-        lowStockItems++;
-      }
+    const filteredItems = searchTerm 
+      ? consumableItems.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      : consumableItems;
+
+    const daily: any[] = [];
+    const job: any[] = [];
+
+    filteredItems.forEach(item => {
       if (item.category === 'Daily Consumable') {
         daily.push(item);
       } else if (item.category === 'Job Consumable') {
         job.push(item);
+      }
+    });
+
+    // Low stock count should be based on all items, not just filtered ones
+    consumableItems.forEach(item => {
+      if ((item.quantity || 0) <= 5) { 
+        lowStockItems++;
       }
     });
     
@@ -96,7 +106,7 @@ export default function ConsumablesPage() {
       summary: { lowStockItems },
       consumptionMetrics: { consumptionThisMonth, overallConsumption }
     };
-  }, [consumableItems, internalRequests]);
+  }, [consumableItems, internalRequests, searchTerm]);
 
   const handleDelete = (item: InventoryItem) => {
     deleteConsumableItem(item.id);
@@ -161,6 +171,16 @@ export default function ConsumablesPage() {
             icon={PackageX}
             description="Items with quantity of 5 or less."
             className={summary.lowStockItems > 0 ? "border-destructive" : ""}
+        />
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search consumable items by name..."
+          className="pl-9"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
@@ -305,6 +325,7 @@ export default function ConsumablesPage() {
               ))}
             </TableBody>
           </Table>
+           {dailyConsumables.length === 0 && <p className="text-center py-4 text-muted-foreground">No daily consumables found.</p>}
         </CardContent>
       </Card>
 
@@ -357,6 +378,7 @@ export default function ConsumablesPage() {
               ))}
             </TableBody>
           </Table>
+          {jobConsumables.length === 0 && <p className="text-center py-4 text-muted-foreground">No job consumables found.</p>}
         </CardContent>
       </Card>
 
@@ -379,4 +401,3 @@ export default function ConsumablesPage() {
     </div>
   );
 }
-
