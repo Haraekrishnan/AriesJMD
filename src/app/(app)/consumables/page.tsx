@@ -149,7 +149,7 @@ export default function ConsumablesPage() {
           <p className="text-muted-foreground">Manage stock levels for daily and job-specific consumables.</p>
         </div>
         <div className="flex items-center gap-2">
-            <ConsumableReportDownloads dailyConsumables={dailyConsumables} jobConsumables={jobConsumables} />
+            <ConsumableReportDownloads />
             {canManageConsumables && (
               <>
                 <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4"/> Import</Button>
