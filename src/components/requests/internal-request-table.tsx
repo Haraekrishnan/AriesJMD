@@ -55,7 +55,8 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }
         acknowledgeInternalRequest, 
         addInternalRequestComment, 
         inventoryItems, 
-        resolveInternalRequestDispute
+        resolveInternalRequestDispute,
+        consumableItems
     } = useInventory();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
@@ -100,6 +101,19 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }
     
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
         const needsComment = status === 'Rejected';
+
+        if (status === 'Issued') {
+            const stockItem = consumableItems.find(i => i.id === item.inventoryItemId);
+            if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < item.quantity) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Insufficient Stock',
+                    description: `Cannot issue ${item.quantity} of ${item.description}. Only ${stockItem.quantity} available.`,
+                });
+                return; // Stop the action
+            }
+        }
+    
         if (needsComment) {
             setItemAction({ item, status });
             setIsActionConfirmOpen(true);
