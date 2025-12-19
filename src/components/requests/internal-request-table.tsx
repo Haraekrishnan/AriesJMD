@@ -17,10 +17,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import EditInternalRequestItemDialog from './EditInternalRequestItemDialog';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import EditInternalRequestItemDialog from './EditInternalRequestItemDialog';
+import { useConsumable } from '@/contexts/consumable-provider';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -56,8 +57,8 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }
         addInternalRequestComment, 
         inventoryItems, 
         resolveInternalRequestDispute,
-        consumableItems
     } = useInventory();
+    const { consumableItems } = useConsumable();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
@@ -66,7 +67,7 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true }
     const [isActionConfirmOpen, setIsActionConfirmOpen] = useState(false);
     const [newComment, setNewComment] = useState('');
     const { toast } = useToast();
-    
+
     const canApprove = useMemo(() => {
         if (!user) return false;
         const userRole = roles.find(r => r.name === user.role);
