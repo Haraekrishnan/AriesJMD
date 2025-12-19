@@ -886,7 +886,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const addOtherEquipment = useCallback((equipment: Omit<OtherEquipment, 'id'>) => {
         const newRef = push(ref(rtdb, 'otherEquipments'));
-        set(newRef, equipment);
+        const dataToSave = {
+            ...equipment,
+            tpInspectionDueDate: equipment.tpInspectionDueDate || null,
+        };
+        set(newRef, dataToSave);
     }, []);
 
     const updateOtherEquipment = useCallback((equipment: OtherEquipment) => {
@@ -1030,7 +1034,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             get(ref(rtdb, stockPath)).then(snapshot => {
                 const stockData = snapshot.val();
                 if (request.ppeType === 'Coverall') {
-                    const currentSizeStock = stockData?.sizes?.[request.size] || 0;
+                    const currentSizes = stockData?.sizes || {};
+                    const currentSizeStock = currentSizes[request.size] || 0;
                     const newStock = Math.max(0, currentSizeStock - (request.quantity || 1));
                     update(ref(rtdb, `${stockPath}/sizes`), { ...stockData.sizes, [request.size]: newStock });
                 } else {
