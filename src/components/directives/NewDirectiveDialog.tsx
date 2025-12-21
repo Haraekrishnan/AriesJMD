@@ -16,6 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { type Role } from '@/lib/types';
 
 const directiveSchema = z.object({
   toUserId: z.string().min(1, 'Please select a recipient'),
@@ -31,6 +32,8 @@ interface NewDirectiveDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'Junior Supervisor', 'HSE', 'Document Controller', 'Store in Charge'];
+
 export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDialogProps) {
   const { user, users, addDirective } = useAppContext();
   const { toast } = useToast();
@@ -45,12 +48,12 @@ export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDi
 
   const possibleRecipients = useMemo(() => {
     if (!user) return [];
-    return users.filter(u => u.id !== user.id && u.role !== 'Manager');
+    return users.filter(u => u.id !== user.id && SUPERVISORY_ROLES.includes(u.role));
   }, [users, user]);
   
   const ccRecipients = useMemo(() => {
     if (!user) return [];
-    return users.filter(u => u.id !== user.id && u.id !== toUserId && u.role !== 'Manager');
+    return users.filter(u => u.id !== user.id && u.id !== toUserId && SUPERVISORY_ROLES.includes(u.role));
   }, [users, user, toUserId]);
 
   const onSubmit = (data: DirectiveFormValues) => {
@@ -73,7 +76,7 @@ export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDi
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>New Directive</DialogTitle>
           <DialogDescription>Compose and send a new internal directive.</DialogDescription>
@@ -133,7 +136,7 @@ export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDi
                                               }}
                                           >
                                               <Check className={`mr-2 h-4 w-4 ${selectedCcUserIds.includes(u.id) ? 'opacity-100' : 'opacity-0'}`} />
-                                              {u.name}
+                                              {u.name} ({u.role})
                                           </CommandItem>
                                       ))}
                                   </CommandGroup>

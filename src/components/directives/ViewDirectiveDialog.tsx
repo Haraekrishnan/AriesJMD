@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -27,6 +26,8 @@ const statusVariant: { [key in DirectiveStatus]: 'default' | 'secondary' | 'dest
   'Action Taken': 'success',
   'Closed': 'secondary',
 };
+
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'Junior Supervisor', 'HSE', 'Document Controller', 'Store in Charge'];
 
 interface ViewDirectiveDialogProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
     if (!canAddUsers) return [];
     const participantIds = new Set(participants.map(p => p.id));
     return users
-      .filter(u => !participantIds.has(u.id) && u.role !== 'Manager')
+      .filter(u => !participantIds.has(u.id) && SUPERVISORY_ROLES.includes(u.role))
       .map(u => ({ value: u.id, label: `${u.name} (${u.role})` }));
   }, [users, participants, canAddUsers]);
 
@@ -223,7 +224,7 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
         </div>
         <DialogFooter className="justify-between">
             <div className="flex gap-2">
-                {user?.id === directive.creatorId && (
+                {(user?.role === 'Admin' || user?.id === directive.creatorId) && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Directive</Button>
@@ -249,4 +250,3 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
     </Dialog>
   );
 }
-
