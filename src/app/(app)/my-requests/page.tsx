@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -12,8 +11,6 @@ import { PlusCircle } from 'lucide-react';
 import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
 import InternalRequestTable from '@/components/requests/internal-request-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import NewManagementRequestDialog from '@/components/requests/NewManagementRequestDialog';
-import ManagementRequestTable from '@/components/requests/ManagementRequestTable';
 import { Badge } from '@/components/ui/badge';
 import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
 import PpeRequestTable from '@/components/requests/PpeRequestTable';
@@ -25,14 +22,11 @@ export default function MyRequestsPage() {
     const { user, roles, can } = useAuth();
     const { 
         internalRequests, 
-        managementRequests, 
         ppeRequests,
         pendingConsumableRequestCount,
         updatedConsumableRequestCount,
         pendingGeneralRequestCount,
         updatedGeneralRequestCount,
-        pendingManagementRequestCount,
-        updatedManagementRequestCount,
         pendingPpeRequestCount,
         updatedPpeRequestCount,
      } = useInventory();
@@ -40,7 +34,6 @@ export default function MyRequestsPage() {
 
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewConsumableRequestDialogOpen, setIsNewConsumableRequestDialogOpen] = useState(false);
-    const [isNewMgmtRequestDialogOpen, setIsNewMgmtRequestDialogOpen] = useState(false);
     const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
 
     const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
@@ -74,13 +67,6 @@ export default function MyRequestsPage() {
             generalStoreRequests: filterAndSort(general),
         };
     }, [internalRequests, consumableItemIds, user, can.view_internal_store_request, can.manage_store_requests]);
-
-    const visibleManagementRequests = useMemo(() => {
-        if (!user || !managementRequests) return [];
-        return managementRequests
-            .filter(req => req.requesterId === user.id || req.recipientId === user.id)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [managementRequests, user]);
     
     const visiblePpeRequests = useMemo(() => {
         if (!user || !ppeRequests) return [];
@@ -94,7 +80,6 @@ export default function MyRequestsPage() {
 
     const consumableNotifCount = pendingConsumableRequestCount + updatedConsumableRequestCount;
     const generalNotifCount = pendingGeneralRequestCount + updatedGeneralRequestCount;
-    const mgmtNotifCount = pendingManagementRequestCount + updatedManagementRequestCount;
     const ppeNotifCount = pendingPpeRequestCount + updatedPpeRequestCount;
 
     return (
@@ -109,7 +94,7 @@ export default function MyRequestsPage() {
             </div>
             
             <Tabs defaultValue="ppe-requests">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 h-auto sm:h-10">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
                     <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
                         PPE Requests
                         {ppeNotifCount > 0 && (
@@ -126,12 +111,6 @@ export default function MyRequestsPage() {
                         General Store Requests
                          {generalNotifCount > 0 && (
                             <Badge variant="destructive">{generalNotifCount}</Badge>
-                         )}
-                    </TabsTrigger>
-                    <TabsTrigger value="management-requests" className="flex items-center gap-2">
-                        Management Requests
-                         {mgmtNotifCount > 0 && (
-                            <Badge variant="destructive">{mgmtNotifCount}</Badge>
                          )}
                     </TabsTrigger>
                 </TabsList>
@@ -192,31 +171,11 @@ export default function MyRequestsPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="management-requests">
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Management Requests</CardTitle>
-                                <CardDescription>
-                                    Direct requests to supervisors and management for non-store items.
-                                </CardDescription>
-                            </div>
-                            <Button onClick={() => setIsNewMgmtRequestDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New Management Request
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            <ManagementRequestTable requests={visibleManagementRequests} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
             </Tabs>
 
 
             <NewInternalRequestDialog isOpen={isNewRequestDialogOpen} setIsOpen={setIsNewRequestDialogOpen} />
             <NewConsumableRequestDialog isOpen={isNewConsumableRequestDialogOpen} setIsOpen={setIsNewConsumableRequestDialogOpen} />
-            <NewManagementRequestDialog isOpen={isNewMgmtRequestDialogOpen} setIsOpen={setIsNewMgmtRequestDialogOpen} />
             <NewPpeRequestDialog isOpen={isNewPpeRequestDialogOpen} setIsOpen={setIsNewPpeRequestDialogOpen} />
         </div>
     );

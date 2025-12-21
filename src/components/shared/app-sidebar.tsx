@@ -32,6 +32,7 @@ import {
   HelpCircle,
   ClipboardList,
   Download,
+  MessageSquare,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -41,14 +42,14 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { isSameDay, parseISO } from 'date-fns';
-import type { DailyPlannerComment, PlannerEvent, Comment, ManagementRequest, LogbookRequest } from '@/lib/types';
+import type { DailyPlannerComment, PlannerEvent, Comment, LogbookRequest } from '@/lib/types';
 
 
 export function AppSidebar() {
   const {
     user, logout, appName, appLogo, can,
     tasks, certificateRequests, plannerEvents,
-    internalRequests, managementRequests, incidentReports,
+    internalRequests, directives, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
@@ -65,14 +66,12 @@ export function AppSidebar() {
     const pendingStoreCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    // NEW: New delegated planner events assigned to me but not viewed
 const newDelegatedEventsCount = (plannerEvents || []).filter(e =>
-  e.userId === user.id &&          // assigned to me
-  e.creatorId !== user.id &&       // created by someone else
-  !e.viewedBy?.[user.id]           // I have not viewed it yet
+  e.userId === user.id &&
+  e.creatorId !== user.id &&
+  !e.viewedBy?.[user.id]
 ).length;
 
-// Existing unread comments logic
 const unreadCommentsForUser = (dailyPlannerComments || []).filter(dayComment => {
     if (!dayComment.day || !dayComment.comments) return false;
     const eventsOnDay = (plannerEvents || []).filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
@@ -88,7 +87,6 @@ const unreadCommentsForUser = (dailyPlannerComments || []).filter(dayComment => 
     });
 });
 
-// FINAL planner notification count
 const plannerNotificationCount =
   unreadCommentsForUser.length + newDelegatedEventsCount;
 
@@ -103,9 +101,10 @@ const plannerNotificationCount =
         return isRejectedButActive || isStandardUpdate;
     }).length;
 
-    const isRecipientOfMgmtReq = (req: ManagementRequest) => req.recipientId === user.id;
-    const pendingManagementRequestCount = (managementRequests || []).filter(r => r.status === 'Pending' && isRecipientOfMgmtReq(r)).length;
-    const updatedManagementRequestCount = (managementRequests || []).filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
+    const unreadDirectivesCount = (directives || []).filter(d => {
+        const isRecipient = d.toUserId === user.id || (d.ccUserIds || []).includes(user.id);
+        return isRecipient && !d.readBy?.[user.id];
+    }).length;
 
     const incidentNotificationCount = (incidentReports || []).filter(i => {
       const isParticipant = i.reporterId === user.id || i.reportedToUserIds.includes(user.id);
@@ -145,11 +144,12 @@ const plannerNotificationCount =
     const pendingLogbookRequestCount = can.manage_logbook ? (logbookRequests || []).filter(r => r.status === 'Pending').length : 0;
 
     return {
-      myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingManagementRequestCount + updatedManagementRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
+      myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       planner: plannerNotificationCount,
+      directives: unreadDirectivesCount,
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
@@ -157,7 +157,7 @@ const plannerNotificationCount =
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
-    internalRequests, managementRequests, incidentReports,
+    internalRequests, directives, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
@@ -166,6 +166,7 @@ const plannerNotificationCount =
   const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: notificationCounts.myRequests || 0, show: true },
+    { href: '/directives', icon: MessageSquare, label: 'Directives', notificationCount: notificationCounts.directives || 0, show: can.manage_directives },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },

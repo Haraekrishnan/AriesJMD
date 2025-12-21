@@ -1,5 +1,4 @@
 
-
 {
   "rules": {
     ".read": false,
@@ -107,9 +106,9 @@
       ".read": true,
       ".write": true
     },
-    "managementRequests": {
-      ".read": true,
-      ".write": true
+    "directives": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "ppeRequests": {
       ".read": true,
@@ -181,13 +180,12 @@
         ".write": "auth != null"
     },
     "logbookRequests": {
-      ".read": true,
-      ".write": true
+        ".read": true,
+        ".write": true
     },
     "inspectionChecklists": {
-      ".read": true,
-      ".write": true
+        ".read": true,
+        ".write": true
     }
   }
 }
-

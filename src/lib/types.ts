@@ -293,7 +293,8 @@ export const ALL_PERMISSIONS = [
   'manage_downloads',
   'manage_logbook',
   'perform_inventory_inspection',
-  'manage_tp_certification'
+  'manage_tp_certification',
+  'manage_directives'
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -573,21 +574,6 @@ export type InternalRequest = {
   viewedByRequester: boolean;
   acknowledgedByRequester?: boolean;
 };
-
-export type ManagementRequestStatus = 'Pending' | 'Approved' | 'Rejected';
-
-export type ManagementRequest = {
-    id: string;
-    requesterId: string;
-    recipientId: string;
-    approverId?: string;
-    date: string;
-    subject: string;
-    body: string;
-    status: ManagementRequestStatus;
-    comments: Comment[];
-    viewedByRequester: boolean;
-}
 
 export type PpeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Issued' | 'Disputed';
 
