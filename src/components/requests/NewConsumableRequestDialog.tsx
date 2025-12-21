@@ -159,7 +159,7 @@ export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewCon
                      {form.formState.errors.items?.[index]?.quantity && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.quantity?.message}</p>}
                   </div>
                    <div className="col-span-2">
-                    <Input id={`items.${index}.unit`} {...form.register(`items.${index}.unit`)} placeholder="e.g., pcs" />
+                    <Input id={`items.${index}.unit`} {...form.register(`items.${index}.unit`)} placeholder="e.g., pcs" disabled />
                      {form.formState.errors.items?.[index]?.unit && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.unit?.message}</p>}
                   </div>
                   <div className="col-span-2">
