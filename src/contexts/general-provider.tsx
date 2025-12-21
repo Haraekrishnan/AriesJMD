@@ -213,7 +213,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, [user, drivers, addActivityLog]);
 
   const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
-    const incident = incidentReports.find(i => i.id === incidentId);
+    const incident = incidentReportsById[incidentId];
     if (!incident || !user) return;
     const currentReportedTo = incident.reportedToUserIds || [];
     const updatedReportedTo = Array.from(new Set([...currentReportedTo, ...userIds]));
@@ -229,7 +229,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
         eventId: incidentId
     };
     set(newCommentRef, newComment);
-  }, [incidentReports, user, users]);
+  }, [incidentReportsById, user, users]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -286,3 +286,4 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
+

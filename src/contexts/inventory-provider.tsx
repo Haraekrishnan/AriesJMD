@@ -164,7 +164,7 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
     const { user, users, can, addActivityLog } = useAuth();
-    const { projects, notificationSettings, addUsersToIncidentReport } = useGeneral();
+    const { projects, notificationSettings } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
     const { consumableItems, consumableInwardHistory } = useConsumable();
@@ -1384,7 +1384,25 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             readBy: { [user.id]: true },
         };
         set(newRef, newDirective);
-    }, [user]);
+
+        const recipient = users.find(u => u.id === data.toUserId);
+        if (recipient?.email) {
+            const htmlBody = `
+                <p>You have received a new directive from <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>${data.subject}</h3>
+                <div style="padding: 10px; border-left: 3px solid #ccc;">${data.body}</div>
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/directives">Click here to view the directive and reply.</a></p>
+            `;
+            sendNotificationEmail({
+                to: [recipient.email],
+                subject: `New Directive: ${data.subject}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onNewTask', // Placeholder event, consider adding a specific one
+            });
+        }
+    }, [user, users, notificationSettings]);
 
     const updateDirective = useCallback((directive: Directive, comment: string) => {
         const { id, ...data } = directive;
@@ -1473,3 +1491,4 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
