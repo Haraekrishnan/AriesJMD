@@ -9,10 +9,7 @@ import { PlannerProvider, usePlanner } from './planner-provider';
 import { PurchaseProvider, usePurchase } from './purchase-provider';
 import { TaskProvider, useTask } from './task-provider';
 import { ConsumableProvider, useConsumable } from './consumable-provider';
-import { rtdb } from '@/lib/rtdb';
-import { ref, push, set, update } from 'firebase/database';
-import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { add } from 'date-fns';
+import { AccommodationProvider, useAccommodation } from './accommodation-provider';
 
 const AppContext = createContext({} as any);
 
@@ -25,6 +22,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const purchase = usePurchase();
   const task = useTask();
   const consumable = useConsumable();
+  const accommodation = useAccommodation();
 
   const combinedValue = {
     ...auth,
@@ -35,6 +33,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     ...purchase,
     ...task,
     ...consumable,
+    ...accommodation,
   };
 
   return (
@@ -51,15 +50,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <TaskProvider>
           <PlannerProvider>
             <ManpowerProvider>
-              <PurchaseProvider>
-                <ConsumableProvider>
-                  <InventoryProvider>
-                    <CombinedProvider>
-                      {children}
-                    </CombinedProvider>
-                  </InventoryProvider>
-                </ConsumableProvider>
-              </PurchaseProvider>
+                <PurchaseProvider>
+                    <ConsumableProvider>
+                        <InventoryProvider>
+                            <AccommodationProvider>
+                                <CombinedProvider>
+                                {children}
+                                </CombinedProvider>
+                            </AccommodationProvider>
+                        </InventoryProvider>
+                    </ConsumableProvider>
+                </PurchaseProvider>
             </ManpowerProvider>
           </PlannerProvider>
         </TaskProvider>

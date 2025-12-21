@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, Building, Room, Bed, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest, Role } from '@/lib/types';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest, Role } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
@@ -20,7 +20,6 @@ type GeneralContextType = {
   downloadableDocuments: DownloadableDocument[];
   vehicles: Vehicle[];
   drivers: Driver[];
-  buildings: Building[];
   notificationSettings: NotificationSettings;
   appName: string;
   appLogo: string | null;
@@ -80,7 +79,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [downloadableDocumentsById, setDownloadableDocumentsById] = useState<Record<string, DownloadableDocument>>({});
   const [vehiclesById, setVehiclesById] = useState<Record<string, Vehicle>>({});
   const [driversById, setDriversById] = useState<Record<string, Driver>>({});
-  const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ events: {}, additionalRecipients: '' });
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
@@ -96,7 +94,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const downloadableDocuments = useMemo(() => Object.values(downloadableDocumentsById), [downloadableDocumentsById]);
   const vehicles = useMemo(() => Object.values(vehiclesById), [vehiclesById]);
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
-  const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
 
@@ -242,7 +239,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       createDataListener('downloadableDocuments', setDownloadableDocumentsById),
       createDataListener('vehicles', setVehiclesById),
       createDataListener('drivers', setDriversById),
-      createDataListener('buildings', setBuildingsById),
       onValue(ref(rtdb, 'settings/notificationSettings'), (snapshot) => {
         setNotificationSettings(snapshot.val() || { events: {}, additionalRecipients: '' });
       }),
@@ -271,7 +267,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, unlockRequests, feedback,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, appName, appLogo, unlockRequests, feedback,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport
   };
@@ -286,4 +282,3 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
-
