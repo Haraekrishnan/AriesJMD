@@ -27,7 +27,7 @@ const statusVariant: { [key in DirectiveStatus]: 'default' | 'secondary' | 'dest
   'Closed': 'secondary',
 };
 
-const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'Junior Supervisor', 'HSE', 'Document Controller', 'Store in Charge'];
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
 
 interface ViewDirectiveDialogProps {
   isOpen: boolean;
@@ -77,8 +77,22 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
   }, [users, participants, canAddUsers]);
 
   const handleAddComment = () => {
-    if (!newComment.trim() || !user) return;
-    addDirectiveComment(directive.id, newComment, ccUserIds);
+    if (!newComment.trim() && ccUserIds.length === 0) return;
+    if (!user) return;
+    
+    let commentText = newComment.trim();
+    
+    if (ccUserIds.length > 0) {
+      const addedUsers = users.filter(u => ccUserIds.includes(u.id)).map(u => u.name).join(', ');
+      const systemComment = `${user.name} added ${addedUsers} to this directive.`;
+      if (commentText) {
+        commentText = `${systemComment}\n\n${commentText}`;
+      } else {
+        commentText = systemComment;
+      }
+    }
+    
+    addDirectiveComment(directive.id, commentText, ccUserIds);
     setNewComment('');
     setCcUserIds([]);
     setShowForward(false);
@@ -217,7 +231,7 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
                 </ScrollArea>
                 <div className="relative">
                   <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." className="pr-12" />
-                  <Button type="button" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleAddComment} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleAddComment} disabled={!newComment.trim() && ccUserIds.length === 0}><Send className="h-4 w-4" /></Button>
                 </div>
              </div>
           </div>
