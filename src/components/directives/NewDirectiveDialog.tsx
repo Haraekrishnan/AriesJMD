@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -74,14 +73,14 @@ export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDi
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-full max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>New Directive</DialogTitle>
           <DialogDescription>Compose and send a new internal directive.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 pr-4 -mr-6">
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 pr-6 -mr-6">
+            <div className="space-y-4 p-1">
               <div className="space-y-2">
                 <Label>To</Label>
                 <Controller
