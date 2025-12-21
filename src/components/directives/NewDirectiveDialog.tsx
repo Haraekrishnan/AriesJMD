@@ -74,7 +74,7 @@ export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDi
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg h-full max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl h-full max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>New Directive</DialogTitle>
           <DialogDescription>Compose and send a new internal directive.</DialogDescription>
