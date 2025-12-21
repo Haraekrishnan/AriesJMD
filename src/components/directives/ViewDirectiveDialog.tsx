@@ -240,7 +240,7 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
         </div>
         <DialogFooter className="justify-between">
             <div className="flex gap-2">
-                {(user?.role === 'Admin' || user?.id === directive.creatorId) && (
+                {user?.role === 'Admin' && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Directive</Button>
