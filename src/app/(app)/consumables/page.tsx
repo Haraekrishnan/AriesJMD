@@ -51,7 +51,7 @@ export default function ConsumablesPage() {
 
   const inwardForm = useForm<InwardFormValues>({
     resolver: zodResolver(inwardSchema),
-    defaultValues: { date: new Date(), quantity: 1 }
+    defaultValues: { date: new Date(), quantity: 1, itemId: '' }
   });
 
   const canManageConsumables = useMemo(() => {
@@ -80,7 +80,7 @@ export default function ConsumablesPage() {
 
     // Low stock count should be based on all items, not just filtered ones
     consumableItems.forEach(item => {
-      if ((item.quantity || 0) <= 5) { 
+      if ((item.quantity || 0) <= 5 && (item.quantity || 0) > 0) { 
         lowStockItems++;
       }
     });
@@ -126,6 +126,12 @@ export default function ConsumablesPage() {
   const handleDeleteInwardRecord = (record: ConsumableInwardRecord) => {
     deleteConsumableInwardRecord(record);
     toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed and stock levels adjusted.' });
+  };
+
+  const getQuantityBadgeVariant = (quantity: number) => {
+    if (quantity === 0) return 'destructive';
+    if (quantity <= 5) return 'warning';
+    return 'secondary';
   };
   
    if (!canManageConsumables) {
@@ -179,7 +185,7 @@ export default function ConsumablesPage() {
             value={summary.lowStockItems}
             icon={PackageX}
             description="Items with quantity of 5 or less."
-            className={summary.lowStockItems > 0 ? "border-destructive" : ""}
+            className={summary.lowStockItems > 0 ? "border-orange-500" : ""}
         />
       </div>
 
@@ -327,7 +333,7 @@ export default function ConsumablesPage() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>
-                    <Badge variant={(item.quantity || 0) <= 5 ? 'destructive' : 'secondary'}>{item.quantity || 0}</Badge>
+                    <Badge variant={getQuantityBadgeVariant(item.quantity || 0)}>{item.quantity || 0}</Badge>
                   </TableCell>
                   <TableCell>{item.unit}</TableCell>
                   <TableCell>{item.remarks}</TableCell>
@@ -380,7 +386,7 @@ export default function ConsumablesPage() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>
-                     <Badge variant={(item.quantity || 0) <= 5 ? 'destructive' : 'secondary'}>{item.quantity || 0}</Badge>
+                     <Badge variant={getQuantityBadgeVariant(item.quantity || 0)}>{item.quantity || 0}</Badge>
                   </TableCell>
                   <TableCell>{item.unit}</TableCell>
                   <TableCell>{item.remarks}</TableCell>
