@@ -130,8 +130,8 @@ export default function ConsumablesPage() {
 
   const getQuantityBadgeVariant = (quantity: number) => {
     if (quantity === 0) return 'destructive';
-    if (quantity <= 5) return 'success';
-    return 'secondary';
+    if (quantity <= 5) return 'yellow';
+    return 'success';
   };
   
    if (!canManageConsumables) {
@@ -185,7 +185,7 @@ export default function ConsumablesPage() {
             value={summary.lowStockItems}
             icon={PackageX}
             description="Items with quantity of 5 or less."
-            className={summary.lowStockItems > 0 ? "border-orange-500" : ""}
+            className={summary.lowStockItems > 0 ? "border-yellow-500" : ""}
         />
       </div>
 
