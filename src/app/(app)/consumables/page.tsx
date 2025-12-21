@@ -130,7 +130,7 @@ export default function ConsumablesPage() {
 
   const getQuantityBadgeVariant = (quantity: number) => {
     if (quantity === 0) return 'destructive';
-    if (quantity <= 5) return 'warning';
+    if (quantity <= 5) return 'success';
     return 'secondary';
   };
   
