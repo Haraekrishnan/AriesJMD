@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription
+  Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter
 } from '@/components/ui/card';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -41,6 +41,30 @@ interface PlannerCalendarProps {
 }
 
 const MAX_EVENTS_VISIBLE = 2;
+
+const eventColors = [
+    'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200',
+    'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200',
+    'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200',
+    'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200',
+    'bg-pink-100 dark:bg-pink-900/40 border-pink-300 dark:border-pink-700 text-pink-800 dark:text-pink-200',
+    'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200',
+    'bg-teal-100 dark:bg-teal-900/40 border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200',
+];
+
+const personalPlanningColor = 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600';
+
+const creatorColorMap = new Map<string, string>();
+let colorIndex = 0;
+
+const getColorForCreator = (creatorId: string) => {
+    if (!creatorColorMap.has(creatorId)) {
+        creatorColorMap.set(creatorId, eventColors[colorIndex % eventColors.length]);
+        colorIndex++;
+    }
+    return creatorColorMap.get(creatorId);
+};
+
 
 export default function PlannerCalendar({
   selectedUserId,
@@ -243,6 +267,8 @@ export default function PlannerCalendar({
                       {visibleEvents.map(event => {
                         const creator = users.find(u => u.id === event.event.creatorId);
                         const isDelegated = event.event.creatorId !== event.event.userId;
+                        const eventColor = isDelegated ? getColorForCreator(event.event.creatorId) : personalPlanningColor;
+
                         return (
                           <div
                             key={event.event.id}
@@ -254,7 +280,7 @@ export default function PlannerCalendar({
                                 });
                               }
                             }}
-                            className="p-1 rounded-sm text-xs cursor-pointer bg-accent/50 hover:bg-accent"
+                            className={cn("p-1.5 rounded-sm text-xs cursor-pointer border-l-4", eventColor)}
                           >
                             <p className="font-semibold truncate">{event.event.title}</p>
                             <p className="text-muted-foreground truncate">
@@ -300,9 +326,10 @@ export default function PlannerCalendar({
                   const isEventInPast = eventDate ? isPast(startOfDay(eventDate)) && !isToday(eventDate) : true;
                   const isDelegated = event.event.creatorId !== event.event.userId;
                   const eventComments = getCommentsForEvent(event.event.id);
+                  const eventColor = isDelegated ? getColorForCreator(event.event.creatorId) : personalPlanningColor;
 
                   return (
-                    <div key={event.event.id} className="border rounded-lg p-3 space-y-2">
+                    <div key={event.event.id} className={cn("border rounded-lg p-3 space-y-2 border-l-4", eventColor)}>
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-semibold">{event.event.title}</p>
