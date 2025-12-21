@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -341,7 +340,7 @@ export default function ManpowerListPage() {
                     <CardDescription>Filter the list of manpower profiles below.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ManpowerFilters onApplyFilters={setFilters} />
+                    <ManpowerFilters onFiltersChange={setFilters} />
                 </CardContent>
             </Card>
 
