@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus, Role, ConsumableInwardRecord } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -35,6 +35,7 @@ type InventoryContextType = {
   tpCertLists: TpCertList[];
   inspectionChecklists: InspectionChecklist[];
   igpOgpRecords: IgpOgpRecord[];
+  directives: Directive[];
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
@@ -103,12 +104,11 @@ type InventoryContextType = {
   markInternalRequestAsViewed: (requestId: string) => void;
   acknowledgeInternalRequest: (requestId: string) => void;
 
-  addManagementRequest: (requestData: Omit<ManagementRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => void;
-  updateManagementRequest: (request: ManagementRequest) => void;
-  deleteManagementRequest: (requestId: string) => void;
-  updateManagementRequestStatus: (requestId: string, status: ManagementRequestStatus, comment: string) => void;
-  addManagementRequestComment: (requestId: string, commentText: string) => void;
-  markManagementRequestAsViewed: (requestId: string) => void;
+  addDirective: (requestData: Omit<Directive, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => void;
+  updateDirective: (request: Directive, comment: string) => void;
+  deleteDirective: (requestId: string) => void;
+  addDirectiveComment: (requestId: string, commentText: string, ccUserIds?: string[]) => void;
+  markDirectiveAsRead: (requestId: string) => void;
 
   addPpeRequest: (request: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
@@ -138,8 +138,6 @@ type InventoryContextType = {
   updatedConsumableRequestCount: number;
   pendingGeneralRequestCount: number;
   updatedGeneralRequestCount: number;
-  pendingManagementRequestCount: number;
-  updatedManagementRequestCount: number;
   pendingPpeRequestCount: number;
   updatedPpeRequestCount: number;
 };
@@ -183,7 +181,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
     const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
     const [internalRequestsById, setInternalRequestsById] = useState<Record<string, InternalRequest>>({});
-    const [managementRequestsById, setManagementRequestsById] = useState<Record<string, ManagementRequest>>({});
     const [inventoryTransferRequestsById, setInventoryTransferRequestsById] = useState<Record<string, InventoryTransferRequest>>({});
     const [ppeRequestsById, setPpeRequestsById] = useState<Record<string, PpeRequest>>({});
     const [ppeStockById, setPpeStockById] = useState<Record<string, PpeStock>>({});
@@ -191,6 +188,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [tpCertListsById, setTpCertListsById] = useState<Record<string, TpCertList>>({});
     const [inspectionChecklistsById, setInspectionChecklistsById] = useState<Record<string, InspectionChecklist>>({});
     const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
+    const [directivesById, setDirectivesById] = useState<Record<string, Directive>>({});
+    const [managementRequests, setManagementRequests] = useState<ManagementRequest[]>([]);
     
     // Memos
     const inventoryItems = useMemo(() => Object.values(inventoryItemsById), [inventoryItemsById]);
@@ -204,7 +203,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
     const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
     const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
-    const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
     const inventoryTransferRequests = useMemo(() => Object.values(inventoryTransferRequestsById), [inventoryTransferRequestsById]);
     const ppeRequests = useMemo(() => Object.values(ppeRequestsById), [ppeRequestsById]);
     const ppeStock = useMemo(() => Object.values(ppeStockById), [ppeStockById]);
@@ -212,6 +210,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const tpCertLists = useMemo(() => Object.values(tpCertListsById), [tpCertListsById]);
     const inspectionChecklists = useMemo(() => Object.values(inspectionChecklistsById), [inspectionChecklistsById]);
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
+    const directives = useMemo(() => Object.values(directivesById), [directivesById]);
     
     const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
 
@@ -248,15 +247,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
     }, [user, internalRequests, can.approve_store_requests, consumableItemIds]);
 
-    const { pendingManagementRequestCount, updatedManagementRequestCount } = useMemo(() => {
-        if (!user) return { pendingManagementRequestCount: 0, updatedManagementRequestCount: 0 };
-        
-        const pendingCount = managementRequests.filter(r => r.recipientId === user.id && r.status === 'Pending').length;
-        const updatedCount = managementRequests.filter(r => r.requesterId === user.id && r.status !== 'Pending' && !r.viewedByRequester).length;
-
-        return { pendingManagementRequestCount: pendingCount, updatedManagementRequestCount: updatedCount };
-    }, [user, managementRequests]);
-
     const { pendingPpeRequestCount, updatedPpeRequestCount } = useMemo(() => {
         if (!user) return { pendingPpeRequestCount: 0, updatedPpeRequestCount: 0 };
     
@@ -283,6 +273,59 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             updatedPpeRequestCount: myUpdates + myQueries
         };
     }, [user, ppeRequests]);
+
+    const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
+        if (!user) return;
+        const request = ppeRequestsById[requestId];
+        if (!request) return;
+    
+        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+        
+        const updates: {[key: string]: any} = {};
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
+        updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+        
+        update(ref(rtdb), updates);
+    }, [user, ppeRequestsById]);
+
+    const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        updates[`ppeRequests/${requestId}/status`] = status;
+        updates[`ppeRequests/${requestId}/approverId`] = user.id;
+        updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+        
+        if (status === 'Issued') {
+            const request = ppeRequestsById[requestId];
+            const stockPath = request.ppeType === 'Coverall' ? `ppeStock/coveralls/sizes/${request.size}` : `ppeStock/safetyShoes/quantity`;
+            get(ref(rtdb, stockPath)).then(snapshot => {
+                const currentStock = snapshot.val() || 0;
+                const newStock = Math.max(0, currentStock - (request.quantity || 1));
+                updates[stockPath] = newStock;
+                
+                const historyRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
+                updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${historyRef.key}`] = {
+                    id: historyRef.key,
+                    ppeType: request.ppeType,
+                    size: request.size,
+                    quantity: request.quantity || 1,
+                    issueDate: new Date().toISOString(),
+                    requestType: request.requestType,
+                    remarks: request.remarks,
+                    storeComment: comment,
+                    requestId: requestId,
+                    issuedById: user.id,
+                };
+
+                update(ref(rtdb), updates);
+            });
+        } else {
+            update(ref(rtdb), updates);
+        }
+
+        addPpeRequestComment(requestId, `Status changed to ${status}. ${comment}`, true);
+    }, [user, ppeRequestsById, addPpeRequestComment]);
 
     // Functions
     const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
@@ -937,7 +980,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         set(newRequestRef, newRequest);
         addActivityLog(user.id, 'Internal Store Request Created');
 
-        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge'].includes(u.role));
+        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
         const fromProjectName = projects.find(p => p.id === user.projectIds?.[0])?.name;
         const itemsHtml = requestData.items.map(item => `<li>${item.quantity} ${item.unit} of ${item.description}</li>`).join('');
     
@@ -1045,7 +1088,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const requestedItem = request.items[itemIndex];
 
         if (status === 'Issued') {
-            const itemsToCheck = consumableItems.length > 0 ? consumableItems : inventoryItems;
+            const itemsToCheck = isConsumable(request) ? consumableItems : inventoryItems;
             const stockItem = itemsToCheck.find(i => i.id === requestedItem.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < requestedItem.quantity) {
                 toast({
@@ -1094,7 +1137,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
 
         if (status === 'Issued' && requestedItem.inventoryItemId) {
-            const stockItem = inventoryItems.find(i => i.id === requestedItem.inventoryItemId);
+            const stockItem = (isConsumable(request) ? consumableItems : inventoryItems).find(i => i.id === requestedItem.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined) {
                 const newQuantity = Math.max(0, stockItem.quantity - requestedItem.quantity);
                 updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = newQuantity;
@@ -1104,6 +1147,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
       }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, inventoryItems, toast, consumableItems]);
     
+      const isConsumable = (request: InternalRequest) => {
+          return request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
+      }
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
         if (!user || !can.approve_store_requests) return;
@@ -1140,149 +1186,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           update(ref(rtdb, `internalRequests/${requestId}`), { acknowledgedByRequester: true });
       }, []);
 
-    const addManagementRequest = useCallback((requestData: Omit<ManagementRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
-        if (!user) return;
-        const newRef = push(ref(rtdb, 'managementRequests'));
-        set(newRef, {
-            ...requestData,
-            requesterId: user.id,
-            date: new Date().toISOString(),
-            status: 'Pending',
-            comments: [{ id: 'comment-initial', userId: user.id, text: `Request created for ${requestData.subject}.`, date: new Date().toISOString() }],
-            viewedByRequester: true,
-        });
-
-        const recipient = users.find(u => u.id === requestData.recipientId);
-        if (recipient?.email) {
-            const htmlBody = `
-                <p>You have received a new management request from ${user.name}.</p>
-                <h3>${requestData.subject}</h3>
-                <p>${requestData.body}</p>
-                <p>Please log in to the app to review and respond.</p>
-            `;
-            sendNotificationEmail({
-                to: [recipient.email],
-                subject: `New Management Request: ${requestData.subject}`,
-                htmlBody,
-                notificationSettings,
-                event: 'onManagementRequest'
-            });
-        }
-    }, [user, users, notificationSettings]);
-
-    const updateManagementRequest = useCallback((request: ManagementRequest) => {
-        const { id, ...data } = request;
-        update(ref(rtdb, `managementRequests/${id}`), data);
-    }, []);
-
-    const deleteManagementRequest = useCallback((requestId: string) => {
-        remove(ref(rtdb, `managementRequests/${requestId}`));
-    }, []);
-
-    const addManagementRequestComment = useCallback((requestId: string, commentText: string) => {
-        if (!user) return;
-        const request = managementRequestsById[requestId];
-        if (!request) return;
-
-        const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
-        
-        const updates: {[key: string]: any} = {};
-        updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
-        updates[`managementRequests/${requestId}/viewedByRequester`] = false;
-        
-        update(ref(rtdb), updates);
-
-        const isFromRequester = user.id === request.requesterId;
-        const recipient = users.find(u => u.id === (isFromRequester ? request.recipientId : request.requesterId));
-
-        if (recipient?.email) {
-            const htmlBody = `
-                <h3>New comment on your management request: "${request.subject}"</h3>
-                <p><strong>From:</strong> ${user.name}</p>
-                <p><strong>Comment:</strong> ${commentText}</p>
-                <p>Please review the request in the app.</p>
-            `;
-            sendNotificationEmail({
-                to: [recipient.email],
-                subject: `Reply on request: ${request.subject}`,
-                htmlBody,
-                notificationSettings,
-                event: 'onManagementRequest'
-            });
-        }
-    }, [user, users, managementRequestsById, notificationSettings]);
-    
-    const updateManagementRequestStatus = useCallback((requestId: string, status: ManagementRequestStatus, comment: string) => {
-        if (!user) return;
-        const updates: {[key: string]: any} = {};
-        updates[`managementRequests/${requestId}/status`] = status;
-        updates[`managementRequests/${requestId}/approverId`] = user.id;
-        updates[`managementRequests/${requestId}/viewedByRequester`] = false;
-        update(ref(rtdb), updates);
-        addManagementRequestComment(requestId, `Status updated to ${status}. ${comment}`);
-    }, [user, addManagementRequestComment]);
-    
-    const markManagementRequestAsViewed = useCallback((requestId: string) => {
-        if (!user) return;
-        const request = managementRequestsById[requestId];
-        if (!request || request.requesterId !== user.id) return;
-        update(ref(rtdb, `managementRequests/${requestId}`), { viewedByRequester: true });
-    }, [user, managementRequestsById]);
-    
-    const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
-        if (!user) return;
-        const request = ppeRequestsById[requestId];
-        if (!request) return;
-    
-        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
-        
-        const updates: {[key: string]: any} = {};
-        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
-        updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-        
-        update(ref(rtdb), updates);
-    }, [user, ppeRequestsById]);
-
-    const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
-        if (!user) return;
-        const updates: { [key: string]: any } = {};
-        updates[`ppeRequests/${requestId}/status`] = status;
-        updates[`ppeRequests/${requestId}/approverId`] = user.id;
-        updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-        
-        if (status === 'Issued') {
-            const request = ppeRequestsById[requestId];
-            const stockPath = request.ppeType === 'Coverall' ? `ppeStock/coveralls/sizes/${request.size}` : `ppeStock/safetyShoes/quantity`;
-            get(ref(rtdb, stockPath)).then(snapshot => {
-                const currentStock = snapshot.val() || 0;
-                const newStock = Math.max(0, currentStock - (request.quantity || 1));
-                updates[stockPath] = newStock;
-                
-                const historyRef = push(ref(rtdb, `manpowerProfiles/${request.manpowerId}/ppeHistory`));
-                updates[`manpowerProfiles/${request.manpowerId}/ppeHistory/${historyRef.key}`] = {
-                    id: historyRef.key,
-                    ppeType: request.ppeType,
-                    size: request.size,
-                    quantity: request.quantity || 1,
-                    issueDate: new Date().toISOString(),
-                    requestType: request.requestType,
-                    remarks: request.remarks,
-                    storeComment: comment,
-                    requestId: requestId,
-                    issuedById: user.id,
-                };
-
-                update(ref(rtdb), updates);
-            });
-        } else {
-            update(ref(rtdb), updates);
-        }
-
-        addPpeRequestComment(requestId, `Status changed to ${status}. ${comment}`, true);
-    }, [user, ppeRequestsById, addPpeRequestComment]);
-    
     const addPpeRequest = useCallback((requestData: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
         if (!user) return;
         const newRequestRef = push(ref(rtdb, 'ppeRequests'));
@@ -1292,7 +1195,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           requesterId: user.id,
           date: new Date().toISOString(),
           status: 'Pending',
-          comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString() }],
+          comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'ppe-request' }],
           viewedByRequester: true,
         };
         set(newRequestRef, newRequest);
@@ -1373,42 +1276,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
     }, []);
 
-    const addInspectionChecklist = useCallback((checklist: Omit<InspectionChecklist, 'id'>) => {
-        if (!user) return;
-        const newRef = push(ref(rtdb, 'inspectionChecklists'));
-        
-        const dataToSave: Partial<InspectionChecklist> = {
-            ...checklist,
-            purchaseDate: checklist.purchaseDate || null,
-            firstUseDate: checklist.firstUseDate || null,
-        };
-        
-        const newChecklist = { ...dataToSave, id: newRef.key! };
-        set(newRef, newChecklist);
-
-        update(ref(rtdb, `inventoryItems/${checklist.itemId}`), {
-        inspectionDueDate: checklist.nextDueDate,
-        lastUpdated: new Date().toISOString()
-        });
-
-        addActivityLog(user.id, "Inspection Checklist Created", `For item ID: ${checklist.itemId}`);
-    }, [user, addActivityLog]);
-
-    const updateInspectionChecklist = useCallback((checklist: InspectionChecklist) => {
-        if (!user) return;
-        const { id, ...data } = checklist;
-        update(ref(rtdb, `inspectionChecklists/${id}`), data);
-    }, [user]);
-    
-    const deleteInspectionChecklist = useCallback((id: string) => {
-        if (!user) return;
-        remove(ref(rtdb, `inspectionChecklists/${id}`));
-    }, [user]);
-
-    const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        // Dummy implementation, needs to be filled out
-    }, []);
-
     const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'igpOgpRecords'));
@@ -1443,6 +1310,85 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
     }, []);
     
+    const addDirective = useCallback((data: Omit<Directive, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'directives'));
+        const now = new Date().toISOString();
+        const initialComment: Comment = {
+            id: 'c0',
+            userId: user.id,
+            text: data.body,
+            date: now,
+            viewedBy: { [user.id]: true }
+        };
+        const newDirective: Omit<Directive, 'id'> = {
+            ...data,
+            creatorId: user.id,
+            lastUpdated: now,
+            status: 'New',
+            comments: [initialComment],
+            readBy: { [user.id]: true },
+        };
+        set(newRef, newDirective);
+    }, [user]);
+
+    const updateDirective = useCallback((directive: Directive, comment: string) => {
+        const { id, ...data } = directive;
+        update(ref(rtdb, `directives/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+        addDirectiveComment(id, comment);
+    }, []);
+
+    const deleteDirective = useCallback((directiveId: string) => {
+        remove(ref(rtdb, `directives/${directiveId}`));
+    }, []);
+
+    const addDirectiveComment = useCallback((requestId: string, commentText: string, ccUserIds: string[] = []) => {
+        if (!user) return;
+        const directive = directivesById[requestId];
+        if (!directive) return;
+
+        const newCommentRef = push(ref(rtdb, `directives/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text: commentText,
+            date: new Date().toISOString(),
+            eventId: requestId
+        };
+        
+        const allRecipientIds = new Set([directive.creatorId, directive.toUserId, ...(directive.ccUserIds || []), ...ccUserIds]);
+        const updates: { [key: string]: any } = {};
+        updates[`directives/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
+        updates[`directives/${requestId}/lastUpdated`] = new Date().toISOString();
+        
+        allRecipientIds.forEach(id => {
+            if (id !== user.id) {
+                updates[`directives/${requestId}/readBy/${id}`] = false;
+            }
+        });
+
+        if (ccUserIds.length > 0) {
+            updates[`directives/${requestId}/ccUserIds`] = Array.from(new Set([...(directive.ccUserIds || []), ...ccUserIds]));
+        }
+
+        update(ref(rtdb), updates);
+    }, [user, directivesById]);
+
+    const markDirectiveAsRead = useCallback((requestId: string) => {
+        if (!user) return;
+        update(ref(rtdb, `directives/${requestId}/readBy`), { [user.id]: true });
+    }, [user]);
+    
+    const resolveInternalRequestDispute = useCallback(() => {}, []);
+    const addManagementRequest = useCallback(() => {}, []);
+    const updateManagementRequest = useCallback(() => {}, []);
+    const deleteManagementRequest = useCallback(() => {}, []);
+    const updateManagementRequestStatus = useCallback(() => {}, []);
+    const addManagementRequestComment = useCallback(() => {}, []);
+    const markManagementRequestAsViewed = useCallback(() => {}, []);
+    const addInspectionChecklist = useCallback(() => {}, []);
+    const updateInspectionChecklist = useCallback(() => {}, []);
+    const deleteInspectionChecklist = useCallback(() => {}, []);
     
     useEffect(() => {
         const unsubscribers = [
@@ -1457,7 +1403,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('machineLogs', setMachineLogsById),
             createDataListener('certificateRequests', setCertificateRequestsById),
             createDataListener('internalRequests', setInternalRequestsById),
-            createDataListener('managementRequests', setManagementRequestsById),
             createDataListener('inventoryTransferRequests', setInventoryTransferRequestsById),
             createDataListener('ppeRequests', setPpeRequestsById),
             createDataListener('ppeStock', setPpeStockById),
@@ -1465,12 +1410,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('tpCertLists', setTpCertListsById),
             createDataListener('inspectionChecklists', setInspectionChecklistsById),
             createDataListener('igpOgpRecords', setIgpOgpRecordsById),
+            createDataListener('directives', setDirectivesById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests: [], inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives,
         addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1483,7 +1429,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
-        addManagementRequest, updateManagementRequest, deleteManagementRequest, updateManagementRequestStatus, addManagementRequestComment, markManagementRequestAsViewed,
+        addDirective, updateDirective, deleteDirective, addDirectiveComment, markDirectiveAsRead,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,
@@ -1491,7 +1437,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addIgpOgpRecord, deleteIgpOgpRecord,
         pendingConsumableRequestCount, updatedConsumableRequestCount,
         pendingGeneralRequestCount, updatedGeneralRequestCount,
-        pendingManagementRequestCount, updatedManagementRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,
     };
@@ -1506,6 +1451,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-
-    

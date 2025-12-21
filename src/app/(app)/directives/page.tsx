@@ -10,7 +10,7 @@ import DirectiveList from '@/components/directives/DirectiveList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function DirectivesPage() {
-    const { user, can, directives } = useAppContext();
+    const { user, can, directives = [] } = useAppContext();
     const [isNewDirectiveOpen, setIsNewDirectiveOpen] = useState(false);
 
     const { activeDirectives, archivedDirectives } = useMemo(() => {

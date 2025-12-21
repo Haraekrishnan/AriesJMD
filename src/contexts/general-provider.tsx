@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, Building, Room, Bed, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest } from '@/lib/types';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, Building, Room, Bed, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest, Role } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
@@ -44,6 +44,7 @@ type GeneralContextType = {
   addDriver: (driverData: Omit<Driver, 'id'>) => void;
   updateDriver: (driver: Driver) => void;
   deleteDriver: (driverId: string) => void;
+  addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -69,7 +70,7 @@ const createDataListener = <T extends {}>(
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
-  const { user, addActivityLog } = useAuth();
+  const { user, addActivityLog, users } = useAuth();
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
   const [jobCodesById, setJobCodesById] = useState<Record<string, JobCode>>({});
   const [activityLogsById, setActivityLogsById] = useState<Record<string, ActivityLog>>({});
@@ -211,6 +212,24 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     if (driver) addActivityLog(user.id, 'Driver Deleted', `Driver: ${driver.name}`);
   }, [user, drivers, addActivityLog]);
 
+  const addUsersToIncidentReport = useCallback((incidentId: string, userIds: string[], comment: string) => {
+    const incident = incidentReports.find(i => i.id === incidentId);
+    if (!incident || !user) return;
+    const currentReportedTo = incident.reportedToUserIds || [];
+    const updatedReportedTo = Array.from(new Set([...currentReportedTo, ...userIds]));
+    update(ref(rtdb, `incidentReports/${incidentId}`), { reportedToUserIds: updatedReportedTo });
+    
+    // Add a comment about adding users
+    const newCommentRef = push(ref(rtdb, `incidentReports/${incidentId}/comments`));
+    const newComment: Omit<Comment, 'id'> = {
+        id: newCommentRef.key!,
+        userId: user.id,
+        text: `Added users to report: ${userIds.map(id => users.find(u=>u.id===id)?.name).join(', ')}. Comment: ${comment}`,
+        date: new Date().toISOString(),
+        eventId: incidentId
+    };
+    set(newCommentRef, newComment);
+  }, [incidentReports, user, users]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -254,7 +273,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const contextValue: GeneralContextType = {
     projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, buildings, notificationSettings, appName, appLogo, unlockRequests, feedback,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
-    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver,
+    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
