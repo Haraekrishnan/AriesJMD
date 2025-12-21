@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -32,7 +33,7 @@ interface NewDirectiveDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const SUPERVISORY_ROLES: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
 
 export default function NewDirectiveDialog({ isOpen, setIsOpen }: NewDirectiveDialogProps) {
   const { user, users, addDirective } = useAppContext();

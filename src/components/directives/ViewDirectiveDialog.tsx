@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -27,7 +28,7 @@ const statusVariant: { [key in DirectiveStatus]: 'default' | 'secondary' | 'dest
   'Closed': 'secondary',
 };
 
-const SUPERVISORY_ROLES: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
 
 interface ViewDirectiveDialogProps {
   isOpen: boolean;
@@ -77,7 +78,6 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
   }, [users, participants, canAddUsers]);
 
   const handleAddComment = () => {
-    if (!newComment.trim() && ccUserIds.length === 0) return;
     if (!user) return;
     
     let commentText = newComment.trim();
@@ -91,6 +91,8 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: init
         commentText = systemComment;
       }
     }
+
+    if (!commentText) return;
     
     addDirectiveComment(directive.id, commentText, ccUserIds);
     setNewComment('');
