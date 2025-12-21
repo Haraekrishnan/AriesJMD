@@ -34,8 +34,8 @@ interface ViewDirectiveDialogProps {
   directive: Directive;
 }
 
-export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive }: ViewDirectiveDialogProps) {
-  const { user, users, updateDirective, deleteDirective, addDirectiveComment } = useAppContext();
+export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive: initialDirective }: ViewDirectiveDialogProps) {
+  const { user, users, directives, updateDirective, deleteDirective, addDirectiveComment } = useAppContext();
   const { toast } = useToast();
   
   const [newComment, setNewComment] = useState('');
@@ -43,10 +43,15 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive }: Vi
   const [ccUserIds, setCcUserIds] = useState<string[]>([]);
   const [isCcPopoverOpen, setIsCcPopoverOpen] = useState(false);
 
+  // Use the live directive from the context, which updates in real-time
+  const directive = useMemo(() => {
+    return directives.find(d => d.id === initialDirective.id) || initialDirective;
+  }, [directives, initialDirective]);
+
   const creator = useMemo(() => users.find(u => u.id === directive.creatorId), [users, directive]);
   const recipient = useMemo(() => users.find(u => u.id === directive.toUserId), [users, directive]);
 
-  const canManage = useMemo(() => {
+  const canManageStatus = useMemo(() => {
     if (!user) return false;
     return user.id === directive.toUserId || user.role === 'Admin';
   }, [user, directive]);
@@ -58,8 +63,9 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive }: Vi
 
   const canAddUsers = useMemo(() => {
     if (!user || !directive) return false;
-    return participants.some(p => p.id === user.id);
-  }, [user, directive, participants]);
+    // Only recipient or Admin can forward/add users
+    return user.id === directive.toUserId || user.role === 'Admin';
+  }, [user, directive]);
 
   const availableUsersForCC = useMemo(() => {
     if (!canAddUsers) return [];
@@ -78,7 +84,7 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive }: Vi
   };
   
   const handleStatusChange = (newStatus: DirectiveStatus) => {
-    if (!canManage) return;
+    if (!canManageStatus) return;
     const comment = `Status changed to: ${newStatus}`;
     updateDirective({ ...directive, status: newStatus }, comment);
     toast({ title: 'Directive Status Updated' });
@@ -172,7 +178,7 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive }: Vi
              <div className="space-y-3">
                  <h3 className="font-semibold">Actions</h3>
                  <div className="flex flex-wrap gap-2">
-                     {canManage && (
+                     {canManageStatus && (
                         <Select onValueChange={(value) => handleStatusChange(value as DirectiveStatus)} value={directive.status}>
                           <SelectTrigger className="w-[200px]"><SelectValue placeholder="Change status..." /></SelectTrigger>
                           <SelectContent>
@@ -244,5 +250,3 @@ export default function ViewDirectiveDialog({ isOpen, setIsOpen, directive }: Vi
   );
 }
 
-
-    
