@@ -164,7 +164,7 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
     const { user, users, can, addActivityLog } = useAuth();
-    const { projects, notificationSettings } = useGeneral();
+    const { projects, notificationSettings, addUsersToIncidentReport } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
     const { consumableItems, consumableInwardHistory } = useConsumable();
@@ -273,6 +273,60 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             updatedPpeRequestCount: myUpdates + myQueries
         };
     }, [user, ppeRequests]);
+    
+    const addDirectiveComment = useCallback((requestId: string, commentText: string, ccUserIds: string[] = []) => {
+        if (!user) return;
+        const directive = directivesById[requestId];
+        if (!directive) return;
+    
+        const newCommentRef = push(ref(rtdb, `directives/${requestId}/comments`));
+        const newComment: Omit<Comment, 'id'> = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text: commentText,
+            date: new Date().toISOString(),
+            eventId: requestId
+        };
+        
+        const allRecipientIds = new Set([directive.creatorId, directive.toUserId, ...(directive.ccUserIds || []), ...ccUserIds]);
+        const updates: { [key: string]: any } = {};
+        updates[`directives/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
+        updates[`directives/${requestId}/lastUpdated`] = new Date().toISOString();
+        
+        allRecipientIds.forEach(id => {
+            if (id !== user.id) {
+                updates[`directives/${requestId}/readBy/${id}`] = false;
+            }
+        });
+    
+        if (ccUserIds.length > 0) {
+            updates[`directives/${requestId}/ccUserIds`] = Array.from(new Set([...(directive.ccUserIds || []), ...ccUserIds]));
+        }
+    
+        update(ref(rtdb), updates);
+
+        const emailRecipients = Array.from(allRecipientIds)
+            .filter(id => id !== user.id)
+            .map(id => users.find(u => u.id === id)?.email)
+            .filter((email): email is string => !!email);
+
+        if (emailRecipients.length > 0) {
+            const htmlBody = `
+                <p>There is a new reply on the directive: <strong>${directive.subject}</strong></p>
+                <p><strong>From:</strong> ${user.name}</p>
+                <p><strong>Message:</strong></p>
+                <div style="padding: 10px; border-left: 3px solid #ccc;">${commentText}</div>
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/directives">View Directive</a></p>
+            `;
+            sendNotificationEmail({
+                to: emailRecipients,
+                subject: `Re: ${directive.subject}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onTaskComment', 
+            });
+        }
+    }, [user, directivesById, users, notificationSettings]);
 
     const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
         if (!user) return;
@@ -1152,7 +1206,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       }
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
-        if (!user || !can.approve_store_requests) return;
+        if (!user) return;
+        if (!can.approve_store_requests && request.requesterId !== user.id) return;
+    
         const request = internalRequestsById[requestId];
         if (!request) return;
     
@@ -1233,9 +1289,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     }, [user, addActivityLog, ppeStock, manpowerProfiles]);
     
-    const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        // Dummy implementation, needs to be filled out
-    }, []);
+    const resolvePpeDispute = useCallback(() => {}, []);
 
     const markPpeRequestAsViewed = useCallback((requestId: string) => {
       update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
@@ -1336,43 +1390,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const { id, ...data } = directive;
         update(ref(rtdb, `directives/${id}`), { ...data, lastUpdated: new Date().toISOString() });
         addDirectiveComment(id, comment);
-    }, []);
+    }, [addDirectiveComment]);
 
     const deleteDirective = useCallback((directiveId: string) => {
         remove(ref(rtdb, `directives/${directiveId}`));
     }, []);
-
-    const addDirectiveComment = useCallback((requestId: string, commentText: string, ccUserIds: string[] = []) => {
-        if (!user) return;
-        const directive = directivesById[requestId];
-        if (!directive) return;
-
-        const newCommentRef = push(ref(rtdb, `directives/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = {
-            id: newCommentRef.key!,
-            userId: user.id,
-            text: commentText,
-            date: new Date().toISOString(),
-            eventId: requestId
-        };
-        
-        const allRecipientIds = new Set([directive.creatorId, directive.toUserId, ...(directive.ccUserIds || []), ...ccUserIds]);
-        const updates: { [key: string]: any } = {};
-        updates[`directives/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
-        updates[`directives/${requestId}/lastUpdated`] = new Date().toISOString();
-        
-        allRecipientIds.forEach(id => {
-            if (id !== user.id) {
-                updates[`directives/${requestId}/readBy/${id}`] = false;
-            }
-        });
-
-        if (ccUserIds.length > 0) {
-            updates[`directives/${requestId}/ccUserIds`] = Array.from(new Set([...(directive.ccUserIds || []), ...ccUserIds]));
-        }
-
-        update(ref(rtdb), updates);
-    }, [user, directivesById]);
 
     const markDirectiveAsRead = useCallback((requestId: string) => {
         if (!user) return;
