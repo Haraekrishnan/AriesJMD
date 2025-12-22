@@ -106,6 +106,7 @@ type InventoryContextType = {
 
   addManagementRequest: (requestData: Omit<ManagementRequest, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => void;
   updateManagementRequest: (request: ManagementRequest, comment: string) => void;
+  forwardManagementRequest: (originalRequest: ManagementRequest, forwardData: { toUserId: string; ccUserIds: string[]; body: string; }) => void;
   deleteManagementRequest: (requestId: string) => void;
   addManagementRequestComment: (requestId: string, commentText: string, ccUserIds?: string[]) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
@@ -144,7 +145,7 @@ type InventoryContextType = {
 
 const createDataListener = <T extends {}>(
     path: string,
-    setData: Dispatch<SetStateAction<Record<string, T>>>,
+    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
 ) => {
     const dbRef = ref(rtdb, path);
     const listeners = [
@@ -1404,6 +1405,53 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, users, notificationSettings]);
 
+    const forwardManagementRequest = useCallback((originalRequest: ManagementRequest, forwardData: { toUserId: string; ccUserIds: string[]; body: string; }) => {
+        if (!user) return;
+    
+        const newRef = push(ref(rtdb, 'managementRequests'));
+        const now = new Date().toISOString();
+        const originalCreator = users.find(u => u.id === originalRequest.creatorId);
+    
+        const forwardedBody = `
+    ${forwardData.body}
+    
+    ---------- Forwarded message ----------
+    From: ${originalCreator?.name || 'Unknown'}
+    Date: ${format(parseISO(originalRequest.lastUpdated), 'PPP p')}
+    Subject: ${originalRequest.subject}
+    
+    ${originalRequest.body}
+    `;
+    
+        const newRequest: Omit<ManagementRequest, 'id'> = {
+            toUserId: forwardData.toUserId,
+            ccUserIds: forwardData.ccUserIds,
+            subject: `Fwd: ${originalRequest.subject}`,
+            body: forwardedBody,
+            creatorId: user.id,
+            lastUpdated: now,
+            status: 'New',
+            comments: [],
+            readBy: { [user.id]: true },
+        };
+        set(newRef, newRequest);
+    
+        // Notify new recipients
+        const allNewRecipients = new Set([forwardData.toUserId, ...forwardData.ccUserIds]);
+        allNewRecipients.forEach(recipientId => {
+          const recipient = users.find(u => u.id === recipientId);
+          if (recipient?.email) {
+            sendNotificationEmail({
+              to: [recipient.email],
+              subject: `Fwd: ${originalRequest.subject}`,
+              htmlBody: `<p><strong>${user.name}</strong> forwarded a request to you.</p><hr/>` + forwardedBody.replace(/\n/g, '<br/>'),
+              notificationSettings,
+              event: 'onManagementRequest'
+            });
+          }
+        });
+      }, [user, users, notificationSettings]);
+
     const updateManagementRequest = useCallback((request: ManagementRequest, comment: string) => {
         const { id, ...data } = request;
         update(ref(rtdb, `managementRequests/${id}`), { ...data, lastUpdated: new Date().toISOString() });
@@ -1411,8 +1459,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [addManagementRequestComment]);
 
     const deleteManagementRequest = useCallback((requestId: string) => {
+        if (!user || user.role !== 'Admin') return;
         remove(ref(rtdb, `managementRequests/${requestId}`));
-    }, []);
+    }, [user]);
 
     const markManagementRequestAsViewed = useCallback((requestId: string) => {
         if (!user) return;
@@ -1464,7 +1513,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
-        addManagementRequest, updateManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
+        addManagementRequest, updateManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed, forwardManagementRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,
@@ -1486,3 +1535,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
