@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest, Role } from '@/lib/types';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest, Role, ManagementRequest, ManagementRequestStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
@@ -25,6 +25,7 @@ type GeneralContextType = {
   appLogo: string | null;
   unlockRequests: UnlockRequest[];
   feedback: Feedback[];
+  managementRequests: ManagementRequest[];
   
   addProject: (projectName: string, isPlant?: boolean) => void;
   updateProject: (project: Project) => void;
@@ -84,6 +85,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [appLogo, setAppLogo] = useState<string | null>(null);
   const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
+  const [managementRequestsById, setManagementRequestsById] = useState<Record<string, ManagementRequest>>({});
 
   const projects = useMemo(() => Object.values(projectsById), [projectsById]);
   const jobCodes = useMemo(() => Object.values(jobCodesById), [jobCodesById]);
@@ -96,6 +98,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
+  const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
 
   // --- FUNCTION DEFINITIONS ---
 
@@ -239,6 +242,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       createDataListener('downloadableDocuments', setDownloadableDocumentsById),
       createDataListener('vehicles', setVehiclesById),
       createDataListener('drivers', setDriversById),
+      createDataListener('managementRequests', setManagementRequestsById),
       onValue(ref(rtdb, 'settings/notificationSettings'), (snapshot) => {
         setNotificationSettings(snapshot.val() || { events: {}, additionalRecipients: '' });
       }),
@@ -267,7 +271,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, appName, appLogo, unlockRequests, feedback,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, appName, appLogo, unlockRequests, feedback, managementRequests,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport
   };
