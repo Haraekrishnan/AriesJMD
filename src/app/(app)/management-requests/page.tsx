@@ -1,5 +1,5 @@
-
 'use client';
+
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -8,16 +8,9 @@ import { PlusCircle, AlertTriangle } from 'lucide-react';
 import NewManagementRequestDialog from '@/components/requests/NewManagementRequestDialog';
 import ManagementRequestList from '@/components/requests/ManagementRequestList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useRouter } from 'next/navigation';
 
 export default function ManagementRequestsPage() {
     const { user, can, managementRequests = [] } = useAppContext();
-    const router = useRouter();
-
-    if (typeof window !== 'undefined' && window.location.pathname === '/directives') {
-        router.replace('/management-requests');
-    }
-
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
 
     const { activeRequests, archivedRequests } = useMemo(() => {
