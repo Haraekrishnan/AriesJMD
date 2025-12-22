@@ -322,6 +322,8 @@ export type ActivityLog = {
   details?: string;
 };
 
+export type VehicleStatus = 'Active' | 'In Maintenance' | 'Left the Project';
+
 export type Vehicle = {
   id:string;
   vehicleNumber: string;
@@ -330,6 +332,7 @@ export type Vehicle = {
   vapNumber?: string;
   seatingCapacity: number;
   vapAccess?: string[];
+  status?: VehicleStatus;
   vapValidity?: string; // YYYY-MM-DD
   insuranceValidity?: string; // YYYY-MM-DD
   fitnessValidity?: string; // YYYY-MM-DD
@@ -987,3 +990,16 @@ export type NotificationSettings = {
   };
   additionalRecipients: string; // comma-separated emails
 };
+export type Directive = {
+  id: string;
+  creatorId: string;
+  toUserId: string;
+  ccUserIds?: string[];
+  subject: string;
+  body: string;
+  status: DirectiveStatus;
+  lastUpdated: string;
+  comments: Comment[];
+  readBy: { [key: string]: boolean };
+};
+export type DirectiveStatus = 'New' | 'Under Review' | 'Action Taken' | 'Closed';

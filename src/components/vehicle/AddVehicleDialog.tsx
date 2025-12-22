@@ -15,8 +15,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { Check } from 'lucide-react';
 import { DatePickerInput } from '../ui/date-picker-input';
+import type { VehicleStatus } from '@/lib/types';
 
 const VAP_ACCESS_OPTIONS = ["DTA ISBL", "SEZ ISBL", "MTF ISBL", "OTHERS"];
+const statusOptions: VehicleStatus[] = ['Active', 'In Maintenance', 'Left the Project'];
 
 const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
@@ -25,6 +27,7 @@ const vehicleSchema = z.object({
   vapNumber: z.string().optional(),
   seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
   vapAccess: z.array(z.string()).optional(),
+  status: z.enum(['Active', 'In Maintenance', 'Left the Project']).default('Active'),
   vapValidity: z.date().optional(),
   insuranceValidity: z.date().optional(),
   fitnessValidity: z.date().optional(),
@@ -49,6 +52,7 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
       vehicleNumber: '',
       driverId: '',
       vapAccess: [],
+      status: 'Active',
     },
   });
 
@@ -123,6 +127,22 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
             {form.formState.errors.driverId && <p className="text-xs text-destructive">{form.formState.errors.driverId.message}</p>}
           </div>
 
+           <div className="space-y-2">
+            <Label>Status</Label>
+            <Controller
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label>VAP Access</Label>
             <Controller
@@ -184,5 +204,3 @@ export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialog
     </Dialog>
   );
 }
-
-    

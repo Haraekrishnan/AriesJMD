@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import type { Vehicle } from '@/lib/types';
+import type { Vehicle, VehicleStatus } from '@/lib/types';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
@@ -20,6 +20,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
 
 const VAP_ACCESS_OPTIONS = ["DTA ISBL", "SEZ ISBL", "MTF ISBL", "OTHERS"];
+const statusOptions: VehicleStatus[] = ['Active', 'In Maintenance', 'Left the Project'];
 
 const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1, 'Vehicle number is required'),
@@ -28,6 +29,7 @@ const vehicleSchema = z.object({
   vapNumber: z.string().optional(),
   seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
   vapAccess: z.array(z.string()).optional(),
+  status: z.enum(['Active', 'In Maintenance', 'Left the Project']).default('Active'),
   vapValidity: z.date().optional(),
   insuranceValidity: z.date().optional(),
   fitnessValidity: z.date().optional(),
@@ -60,6 +62,7 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
             vapNumber: vehicle.vapNumber,
             seatingCapacity: vehicle.seatingCapacity,
             vapAccess: vehicle.vapAccess || [],
+            status: vehicle.status || 'Active',
             vapValidity: vehicle.vapValidity ? parseISO(vehicle.vapValidity) : undefined,
             insuranceValidity: vehicle.insuranceValidity ? parseISO(vehicle.insuranceValidity) : undefined,
             fitnessValidity: vehicle.fitnessValidity ? parseISO(vehicle.fitnessValidity) : undefined,
@@ -141,6 +144,22 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
           </div>
 
           <div className="space-y-2">
+            <Label>Status</Label>
+            <Controller
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label>VAP Access</Label>
             <Controller
               control={form.control}
@@ -201,5 +220,3 @@ export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVe
     </Dialog>
   );
 }
-
-    

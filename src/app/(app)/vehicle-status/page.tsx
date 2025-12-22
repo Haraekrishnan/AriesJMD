@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Users } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Users, Car, Wrench } from 'lucide-react';
 import VehicleTable from '@/components/vehicle/VehicleTable';
 import AddVehicleDialog from '@/components/vehicle/AddVehicleDialog';
 import type { Vehicle, Driver } from '@/lib/types';
@@ -17,6 +17,7 @@ import DriverListTable from '@/components/driver/DriverListTable';
 import AddDriverDialog from '@/components/driver/AddDriverDialog';
 import VehicleLogManagerDialog from '@/components/vehicle/VehicleLogManagerDialog';
 import { useSearchParams } from 'next/navigation';
+import StatCard from '@/components/dashboard/stat-card';
 
 export default function VehicleStatusPage() {
     const { can, vehicles, drivers } = useAppContext();
@@ -35,9 +36,13 @@ export default function VehicleStatusPage() {
 
     const thirtyDaysFromNow = useMemo(() => addDays(new Date(), 30), []);
 
+    const activeOrMaintenanceVehicles = useMemo(() => {
+        return vehicles.filter(v => v.status === 'Active' || v.status === 'In Maintenance');
+    }, [vehicles]);
+    
     const expiringVehicles = useMemo(() => {
-        if (!can.manage_vehicles || !vehicles) return [];
-        return vehicles.filter(v => 
+        if (!can.manage_vehicles || !activeOrMaintenanceVehicles) return [];
+        return activeOrMaintenanceVehicles.filter(v => 
             (v.vapValidity && isBefore(parseISO(v.vapValidity), thirtyDaysFromNow)) ||
             (v.insuranceValidity && isBefore(parseISO(v.insuranceValidity), thirtyDaysFromNow)) ||
             (v.fitnessValidity && isBefore(parseISO(v.fitnessValidity), thirtyDaysFromNow)) ||
@@ -57,7 +62,7 @@ export default function VehicleStatusPage() {
             check(v.puccValidity, 'PUCC');
             return { vehicle: v, expiringDocs };
         });
-    }, [vehicles, thirtyDaysFromNow, can.manage_vehicles]);
+    }, [activeOrMaintenanceVehicles, thirtyDaysFromNow, can.manage_vehicles]);
     
     const expiringDrivers = useMemo(() => {
         if (!can.manage_vehicles || !drivers) return [];
@@ -116,6 +121,10 @@ export default function VehicleStatusPage() {
     
     const expiringItems = [...expiringVehicles, ...expiringDrivers];
 
+    const activeVehiclesCount = vehicles.filter(v => v.status === 'Active').length;
+    const maintenanceVehiclesCount = vehicles.filter(v => v.status === 'In Maintenance').length;
+    const totalDriversCount = drivers.length;
+    
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -123,6 +132,27 @@ export default function VehicleStatusPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
                     <p className="text-muted-foreground">Manage and track vehicle details and driver information.</p>
                 </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+                <StatCard 
+                    title="Active Vehicles"
+                    value={activeVehiclesCount}
+                    icon={Car}
+                    description="Vehicles currently in service"
+                />
+                <StatCard 
+                    title="Total Drivers"
+                    value={totalDriversCount}
+                    icon={Users}
+                    description="Total number of registered drivers"
+                />
+                <StatCard 
+                    title="In Maintenance"
+                    value={maintenanceVehiclesCount}
+                    icon={Wrench}
+                    description="Vehicles currently under maintenance"
+                />
             </div>
             
              {expiringItems.length > 0 && (
