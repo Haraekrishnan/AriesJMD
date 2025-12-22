@@ -5,32 +5,39 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
-import NewDirectiveDialog from '@/components/directives/NewDirectiveDialog';
-import DirectiveList from '@/components/directives/DirectiveList';
+import NewManagementRequestDialog from '@/components/requests/NewManagementRequestDialog';
+import ManagementRequestList from '@/components/requests/ManagementRequestList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useRouter } from 'next/navigation';
 
-export default function DirectivesPage() {
-    const { user, can, directives = [] } = useAppContext();
-    const [isNewDirectiveOpen, setIsNewDirectiveOpen] = useState(false);
+export default function ManagementRequestsPage() {
+    const { user, can, managementRequests = [] } = useAppContext();
+    const router = useRouter();
 
-    const { activeDirectives, archivedDirectives } = useMemo(() => {
-        if (!user) return { activeDirectives: [], archivedDirectives: [] };
+    if (typeof window !== 'undefined' && window.location.pathname === '/directives') {
+        router.replace('/management-requests');
+    }
 
-        const myDirectives = directives.filter(d => 
+    const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+
+    const { activeRequests, archivedRequests } = useMemo(() => {
+        if (!user) return { activeRequests: [], archivedRequests: [] };
+
+        const myRequests = managementRequests.filter(d => 
             d.toUserId === user.id || 
             (d.ccUserIds || []).includes(user.id) ||
             d.creatorId === user.id
         );
         
-        const active = myDirectives.filter(d => d.status !== 'Closed');
-        const archived = myDirectives.filter(d => d.status === 'Closed');
+        const active = myRequests.filter(d => d.status !== 'Closed');
+        const archived = myRequests.filter(d => d.status === 'Closed');
 
         return { 
-            activeDirectives: active.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()),
-            archivedDirectives: archived.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+            activeRequests: active.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()),
+            archivedRequests: archived.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
         };
 
-    }, [user, directives]);
+    }, [user, managementRequests]);
 
     if (!can.manage_directives) {
         return (
@@ -50,37 +57,37 @@ export default function DirectivesPage() {
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Directives</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Management Requests</h1>
                     <p className="text-muted-foreground">Your internal communication inbox.</p>
                 </div>
-                <Button onClick={() => setIsNewDirectiveOpen(true)}>
+                <Button onClick={() => setIsNewRequestOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    New Directive
+                    New Request
                 </Button>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>My Directives</CardTitle>
+                    <CardTitle>My Requests</CardTitle>
                     <CardDescription>Manage communications sent to you or by you.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Tabs defaultValue="active">
                         <TabsList>
-                            <TabsTrigger value="active">Active ({activeDirectives.length})</TabsTrigger>
-                            <TabsTrigger value="archived">Archived ({archivedDirectives.length})</TabsTrigger>
+                            <TabsTrigger value="active">Active ({activeRequests.length})</TabsTrigger>
+                            <TabsTrigger value="archived">Archived ({archivedRequests.length})</TabsTrigger>
                         </TabsList>
                         <TabsContent value="active" className="mt-4">
-                            <DirectiveList directives={activeDirectives} />
+                            <ManagementRequestList requests={activeRequests} />
                         </TabsContent>
                         <TabsContent value="archived" className="mt-4">
-                            <DirectiveList directives={archivedDirectives} />
+                            <ManagementRequestList requests={archivedRequests} />
                         </TabsContent>
                     </Tabs>
                 </CardContent>
             </Card>
 
-            <NewDirectiveDialog isOpen={isNewDirectiveOpen} setIsOpen={setIsNewDirectiveOpen} />
+            <NewManagementRequestDialog isOpen={isNewRequestOpen} setIsOpen={setIsNewRequestOpen} />
         </div>
     );
 }

@@ -23,7 +23,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const { 
       user, logout, appName, appLogo, can,
       tasks, certificateRequests, plannerEvents,
-      internalRequests, directives, incidentReports,
+      internalRequests, managementRequests, incidentReports,
       ppeRequests, payments, feedback, unlockRequests,
       inventoryTransferRequests, dailyPlannerComments, logbookRequests,
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
@@ -75,7 +75,7 @@ const plannerNotificationCount =
         return isRejectedButActive || isStandardUpdate;
     }).length;
 
-    const unreadDirectivesCount = (directives || []).filter(d => {
+    const unreadDirectivesCount = (managementRequests || []).filter(d => {
         const isRecipient = d.toUserId === user.id || (d.ccUserIds || []).includes(user.id);
         return isRecipient && !d.readBy?.[user.id];
     }).length;
@@ -123,7 +123,7 @@ const plannerNotificationCount =
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       planner: plannerNotificationCount,
-      directives: unreadDirectivesCount,
+      managementRequests: unreadDirectivesCount,
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
@@ -131,7 +131,7 @@ const plannerNotificationCount =
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
-    internalRequests, directives, incidentReports,
+    internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
@@ -140,7 +140,7 @@ const plannerNotificationCount =
     const navItems = [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
       { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: notificationCounts.myRequests || 0, show: true },
-      { href: '/directives', icon: MessageSquare, label: 'Directives', notificationCount: notificationCounts.directives || 0, show: can.manage_directives },
+      { href: '/management-requests', icon: MessageSquare, label: 'Management Requests', notificationCount: notificationCounts.managementRequests || 0, show: can.manage_directives },
       { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
       { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
@@ -224,7 +224,7 @@ export default function Header() {
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     if (name === 'downloads') return 'Forms & Documents';
-    if (name === 'directives') return 'Directives';
+    if (name === 'management-requests') return 'Management Requests';
     return name.charAt(0).toUpperCase() + name.slice(1);
   };
 
