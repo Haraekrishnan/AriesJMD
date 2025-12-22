@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -48,13 +49,22 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
     const now = new Date();
     const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
     const displayStatus = isExpired ? 'Expired' : item.status;
-    const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' || displayStatus === 'Quarantine' ? 'destructive' : 'secondary';
+    
+    const getStatusVariant = (status: string) => {
+        switch (status) {
+            case 'Damaged': return 'destructive';
+            case 'Expired': return 'yellow';
+            case 'Quarantine': return 'quarantine';
+            default: return 'secondary';
+        }
+    };
+
 
     return (
         <div className="border-t p-4 space-y-3">
             <div className="flex justify-between items-start">
                 <div className="font-bold">{item.serialNumber}</div>
-                <Badge variant={statusVariant}>{displayStatus}</Badge>
+                <Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div>
@@ -267,6 +277,15 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         onSelectionChange(items.filter(i => currentSelection.has(i.id)));
     };
 
+    const getStatusVariant = (status: string) => {
+        switch (status) {
+            case 'Damaged': return 'destructive';
+            case 'Expired': return 'yellow';
+            case 'Quarantine': return 'quarantine';
+            default: return 'secondary';
+        }
+    };
+
     if (items.length === 0) {
         return (
             <div className="flex items-center justify-center h-48 border-dashed border-2 rounded-lg">
@@ -362,7 +381,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                 const now = new Date();
                                                 const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
                                                 const displayStatus = isExpired ? 'Expired' : item.status;
-                                                const statusVariant = displayStatus === 'Damaged' || displayStatus === 'Expired' || displayStatus === 'Quarantine' ? 'destructive' : 'secondary';
+                                                
                                                 return (
                                                 <TableRow key={item.id}>
                                                     <TableCell>
@@ -371,7 +390,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                     <TableCell>{item.serialNumber}</TableCell>
                                                     <TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                     {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
-                                                    <TableCell><Badge variant={statusVariant}>{displayStatus}</Badge></TableCell>
+                                                    <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
                                                     <TableCell>{getProjectName(item)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
                                                     <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
