@@ -25,12 +25,12 @@ const statusVariantMap: { [key in ManagementRequest['status']]: 'default' | 'sec
 };
 
 export default function ManagementRequestList({ requests }: ManagementRequestListProps) {
-  const { user, users, markDirectiveAsRead } = useAppContext();
+  const { user, users, markManagementRequestAsViewed } = useAppContext();
   const [viewingRequest, setViewingRequest] = useState<ManagementRequest | null>(null);
 
   const handleView = (request: ManagementRequest) => {
     if (user && !request.readBy?.[user.id]) {
-      markDirectiveAsRead(request.id);
+      markManagementRequestAsViewed(request.id);
     }
     setViewingRequest(request);
   };

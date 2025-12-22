@@ -30,6 +30,7 @@ const statusVariant: { [key in ManagementRequestStatus]: 'default' | 'secondary'
 
 const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge', 'Document Controller'];
 
+
 interface ViewManagementRequestDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
