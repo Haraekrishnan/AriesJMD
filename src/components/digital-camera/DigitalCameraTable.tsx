@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { DigitalCamera } from '@/lib/types';
-import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 
 interface DigitalCameraTableProps {
@@ -27,7 +25,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 }
 
 export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) {
-  const { can, digitalCameras, users, projects, deleteDigitalCamera } = useAppContext();
+  const { can, digitalCameras, projects, deleteDigitalCamera } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
@@ -50,7 +48,6 @@ export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) 
           <TableRow>
             <TableHead>Make & Model</TableHead>
             <TableHead>Serial Number</TableHead>
-            <TableHead>Allotted To</TableHead>
             <TableHead>Project</TableHead>
             <TableHead>Status</TableHead>
             {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
@@ -58,22 +55,12 @@ export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) 
         </TableHeader>
         <TableBody>
           {digitalCameras.map(item => {
-              const allottedUser = users.find(u => u.id === item.allottedTo);
               const project = projects.find(p => p.id === item.projectId);
               return (
                   <TableRow key={item.id}>
                       <TableCell><p className="font-medium">{item.make}</p><p className="text-xs text-muted-foreground">{item.model}</p></TableCell>
                       <TableCell>{item.serialNumber}</TableCell>
-                      <TableCell>
-                          <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                  <AvatarImage src={allottedUser?.avatar} alt={allottedUser?.name} />
-                                  <AvatarFallback>{allottedUser?.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <p className="font-medium">{allottedUser?.name}</p>
-                          </div>
-                      </TableCell>
-                      <TableCell>{project?.name}</TableCell>
+                      <TableCell>{project?.name || 'N/A'}</TableCell>
                       <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
                       {can.manage_equipment_status && (
                       <TableCell className="text-right">

@@ -8,7 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { OtherEquipment } from '@/lib/types';
-import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { cn } from '@/lib/utils';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -18,7 +17,7 @@ interface OtherEquipmentTableProps {
 }
 
 export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps) {
-  const { can, otherEquipments, users, deleteOtherEquipment } = useAppContext();
+  const { can, otherEquipments, projects, deleteOtherEquipment } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
@@ -30,7 +29,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
     });
   };
 
-  const getDateStyles = (dateString?: string): string => {
+  const getDateStyles = (dateString?: string | null): string => {
     if (!dateString) return '';
     const date = parseISO(dateString);
     if (isPast(date)) return 'text-destructive font-bold';
@@ -51,7 +50,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
             <TableHead>Equipment Name</TableHead>
             <TableHead>Serial Number</TableHead>
             <TableHead>Aries ID</TableHead>
-            <TableHead>Allotted To</TableHead>
+            <TableHead>Project</TableHead>
             <TableHead>TP Due Date</TableHead>
             <TableHead>Certificate</TableHead>
             <TableHead>Remarks</TableHead>
@@ -60,21 +59,13 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
         </TableHeader>
         <TableBody>
           {otherEquipments.map(item => {
-              const allottedUser = users.find(u => u.id === item.allottedTo);
+              const project = projects.find(p => p.id === item.projectId);
               return (
                   <TableRow key={item.id}>
                       <TableCell><p className="font-medium">{item.equipmentName}</p></TableCell>
                       <TableCell>{item.serialNumber}</TableCell>
                       <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                      <TableCell>
-                          <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                  <AvatarImage src={allottedUser?.avatar} alt={allottedUser?.name} />
-                                  <AvatarFallback>{allottedUser?.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <p className="font-medium">{allottedUser?.name}</p>
-                          </div>
-                      </TableCell>
+                      <TableCell>{project?.name || 'N/A'}</TableCell>
                        <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>
                             {item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
                         </TableCell>

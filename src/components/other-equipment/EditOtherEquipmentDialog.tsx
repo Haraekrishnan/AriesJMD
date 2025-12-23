@@ -17,7 +17,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
 
 const itemSchema = z.object({
-  allottedTo: z.string().min(1, 'Please select a user'),
+  projectId: z.string().min(1, 'Project is required'),
   equipmentName: z.string().min(1, 'Equipment name is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
   ariesId: z.string().optional(),
@@ -35,7 +35,7 @@ interface EditOtherEquipmentDialogProps {
 }
 
 export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: EditOtherEquipmentDialogProps) {
-  const { users, updateOtherEquipment } = useAppContext();
+  const { projects, updateOtherEquipment } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
@@ -73,13 +73,13 @@ export default function EditOtherEquipmentDialog({ isOpen, setIsOpen, item }: Ed
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Allotted To</Label>
-              <Controller name="allottedTo" control={form.control} render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select user"/></SelectTrigger>
-                      <SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-                  </Select>
-              )}/>
-               {form.formState.errors.allottedTo && <p className="text-xs text-destructive">{form.formState.errors.allottedTo.message}</p>}
+                <Label>Project / Location</Label>
+                <Controller name="projectId" control={form.control} render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select project"/></SelectTrigger>
+                        <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                )}/>
+                {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
             </div>
           <div className="space-y-2">
               <Label htmlFor="equipmentName">Equipment Name</Label>

@@ -13,13 +13,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Textarea } from '../ui/textarea';
 
 const itemSchema = z.object({
-  allottedTo: z.string().min(1, 'Please select a user'),
+  projectId: z.string().min(1, 'Project is required'),
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
   serialNumber: z.string().min(1, 'Serial number is required'),
   ariesId: z.string().optional(),
   status: z.string().min(1, 'Status is required'),
-  projectId: z.string().min(1, 'Project is required'),
   remarks: z.string().optional(),
 });
 
@@ -33,7 +32,7 @@ interface AddDigitalCameraDialogProps {
 const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
 
 export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigitalCameraDialogProps) {
-  const { users, projects, addDigitalCamera } = useAppContext();
+  const { projects, addDigitalCamera } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
@@ -64,15 +63,6 @@ export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigital
           <DialogDescription>Fill in the details for the new equipment.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Allotted To</Label>
-              <Controller name="allottedTo" control={form.control} render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select user"/></SelectTrigger>
-                      <SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-                  </Select>
-              )}/>
-               {form.formState.errors.allottedTo && <p className="text-xs text-destructive">{form.formState.errors.allottedTo.message}</p>}
-            </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="make">Make</Label>
@@ -98,7 +88,7 @@ export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigital
           </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Project</Label>
+                    <Label>Project / Location</Label>
                     <Controller name="projectId" control={form.control} render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select project"/></SelectTrigger>
                             <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>

@@ -672,9 +672,8 @@ export type DigitalCamera = {
   make: string;
   model: string;
   serialNumber: string;
-  allottedTo: string; // User ID
-  status: string;
   projectId: string;
+  status: string;
   remarks?: string;
   ariesId?: string;
 };
@@ -684,9 +683,8 @@ export type Anemometer = {
   make: string;
   model: string;
   serialNumber: string;
-  allottedTo: string; // User ID
-  status: string;
   projectId: string;
+  status: string;
   calibrationDueDate?: string; // ISO String
   remarks?: string;
   ariesId?: string;
@@ -723,7 +721,7 @@ export type OtherEquipment = {
     equipmentName: string;
     serialNumber: string;
     ariesId?: string;
-    allottedTo: string; // User ID
+    projectId: string;
     remarks?: string;
     tpInspectionDueDate?: string | null;
     certificateUrl?: string;
