@@ -24,18 +24,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user.status === 'locked') {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-    } else if (user.status === 'active') {
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
+    // This layout is for authenticated, active users.
+    // The AppProvider will handle redirecting 'locked' users to the '/status' page.
+    if (user.status === 'active' && (pathname === '/login' || pathname === '/status')) {
+      router.replace('/dashboard');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || !user || user.status !== 'active') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -47,10 +43,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-  
-  if (user.status === 'locked') {
-    return <>{children}</>;
   }
   
   return (

@@ -1,3 +1,4 @@
+
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -14,15 +15,7 @@ export default function StatusPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
-
-    if (!user) {
-        // Not logged in, go to login page
-        router.replace('/login');
-        return;
-    }
-    
-    if (user.status === 'active') {
+    if (!loading && user?.status === 'active') {
         // If the user becomes active while on this page, move to dashboard
         router.replace('/dashboard');
     }
