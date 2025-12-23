@@ -1354,7 +1354,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const updatePpeRequest = useCallback((request: PpeRequest) => {
         const { id, ...data } = request;
-        update(ref(rtdb, `ppeRequests/${id}`), data);
+        const updates = {
+            ...data,
+            attachmentUrl: data.attachmentUrl === undefined ? null : data.attachmentUrl,
+        };
+        update(ref(rtdb, `ppeRequests/${id}`), updates);
     }, []);
     
     const deletePpeRequest = useCallback((requestId: string) => {
@@ -1535,5 +1539,7 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
