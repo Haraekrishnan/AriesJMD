@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import type { LaptopDesktop, Role } from '@/lib/types';
+import { Eye, EyeOff } from 'lucide-react';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -35,6 +36,7 @@ interface EditLaptopDesktopDialogProps {
 export default function EditLaptopDesktopDialog({ isOpen, setIsOpen, item }: EditLaptopDesktopDialogProps) {
   const { user, users, updateLaptopDesktop } = useAppContext();
   const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
@@ -103,7 +105,14 @@ export default function EditLaptopDesktopDialog({ isOpen, setIsOpen, item }: Edi
           </div>
            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" {...form.register('password')} disabled={!canEditPassword} />
+              <div className="relative">
+                <Input id="password" type={showPassword ? 'text' : 'password'} {...form.register('password')} disabled={!canEditPassword} />
+                 {canEditPassword && (
+                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                 )}
+              </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>

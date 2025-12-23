@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { Eye, EyeOff } from 'lucide-react';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -39,6 +40,7 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
   const { addUser, projects, roles, users } = useAppContext();
   const { toast } = useToast();
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
@@ -107,7 +109,12 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" {...form.register('password')} placeholder="••••••••" />
+                <div className="relative">
+                  <Input id="password" type={showPassword ? 'text' : 'password'} {...form.register('password')} placeholder="••••••••" />
+                  <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
                 {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
               </div>
               

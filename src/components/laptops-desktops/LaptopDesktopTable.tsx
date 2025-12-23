@@ -1,9 +1,10 @@
+
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -18,12 +19,20 @@ interface LaptopDesktopTableProps {
 export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTableProps) {
   const { user, can, users, deleteLaptopDesktop } = useAppContext();
   const { toast } = useToast();
+  const [shownPasswords, setShownPasswords] = useState<Record<string, boolean>>({});
 
   const canViewPassword = useMemo(() => {
     if (!user) return false;
-    const privilegedRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge'];
+    const privilegedRoles: Role[] = ['Admin'];
     return privilegedRoles.includes(user.role);
   }, [user]);
+  
+  const togglePasswordVisibility = (itemId: string) => {
+    setShownPasswords(prev => ({
+        ...prev,
+        [itemId]: !prev[itemId]
+    }));
+  };
 
   const handleDelete = (itemId: string) => {
     deleteLaptopDesktop(itemId);
@@ -47,7 +56,7 @@ export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTable
             <TableHead>Model</TableHead>
             <TableHead>Serial Number</TableHead>
             <TableHead>Aries ID</TableHead>
-            {canViewPassword && <TableHead>Password</TableHead>}
+            <TableHead>Password</TableHead>
             <TableHead>Allotted To</TableHead>
             <TableHead>Remarks</TableHead>
             {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
@@ -56,13 +65,23 @@ export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTable
         <TableBody>
           {items.map(item => {
               const allottedUser = users.find(u => u.id === item.allottedTo);
+              const isPasswordVisible = shownPasswords[item.id];
               return (
                   <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.make}</TableCell>
                       <TableCell>{item.model}</TableCell>
                       <TableCell>{item.serialNumber}</TableCell>
                       <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                      {canViewPassword && <TableCell>{item.password || 'N/A'}</TableCell>}
+                      <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span>{canViewPassword && isPasswordVisible ? item.password || 'N/A' : '••••••••'}</span>
+                            {canViewPassword && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => togglePasswordVisibility(item.id)}>
+                                    {isPasswordVisible ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                                </Button>
+                            )}
+                          </div>
+                      </TableCell>
                       <TableCell>
                           <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
