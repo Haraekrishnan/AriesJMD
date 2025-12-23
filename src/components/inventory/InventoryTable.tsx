@@ -99,7 +99,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
                 {item.certificateUrl && (
                     <Tooltip>
                         <TooltipTrigger asChild><Button asChild variant="secondary" size="icon" className="h-8 w-8"><a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a></Button></TooltipTrigger>
-                        <TooltipContent>View Certificate</TooltipContent>
+                        <TooltipContent><p>View Certificate</p></TooltipContent>
                     </Tooltip>
                 )}
                 <Button variant="outline" size="sm" onClick={onRequest}><ShieldQuestion className="mr-2 h-4 w-4"/>Certificate</Button>
@@ -356,98 +356,102 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                     )}
                                 </div>
                                 <AccordionContent>
-                                    <div className="p-1 border-t">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead></TableHead>
-                                                    <TableHead>Serial No.</TableHead>
-                                                    <TableHead>Aries ID</TableHead>
-                                                    {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
-                                                    <TableHead>Status</TableHead>
-                                                    <TableHead>Location</TableHead>
-                                                    <TableHead>Insp. Due</TableHead>
-                                                    <TableHead>TP Insp. Due</TableHead>
-                                                    <TableHead>
-                                                        <Button variant="ghost" onClick={() => requestSort('lastUpdated')} className="px-0 hover:bg-transparent">
-                                                            Last Updated
-                                                            <ArrowUpDown className="ml-2 h-4 w-4" />
-                                                        </Button>
-                                                    </TableHead>
-                                                    <TableHead>TP Cert.</TableHead>
-                                                    <TableHead>Insp. Cert.</TableHead>
-                                                    <TableHead className="text-right">Actions</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {itemList.map(item => {
-                                                    const now = new Date();
-                                                    const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
-                                                    const displayStatus = isExpired ? 'Expired' : item.status;
-                                                    
-                                                    return (
-                                                    <TableRow key={item.id}>
-                                                        <TableCell>
-                                                        {onSelectionChange && <Checkbox checked={selectedItems?.some(sel => sel.id === item.id)} onCheckedChange={() => handleRowSelection(item)} />}
-                                                        </TableCell>
-                                                        <TableCell>{item.serialNumber}</TableCell>
-                                                        <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                                                        {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
-                                                        <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
-                                                        <TableCell>{getProjectName(item)}</TableCell>
-                                                        <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
-                                                        <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
-                                                        <TableCell className="text-xs text-muted-foreground">
-                                                            {item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {item.certificateUrl && (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button asChild variant="ghost" size="icon">
-                                                                            <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>View TP Certificate</TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {item.inspectionCertificateUrl && (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button asChild variant="ghost" size="icon">
-                                                                            <a href={item.inspectionCertificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>View Inspection Certificate</TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell className="text-right">
-                                                                <div className="flex items-center justify-end gap-2">
-                                                                    
-                                                                    <AlertDialog>
-                                                                        <DropdownMenu>
-                                                                            <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                                            <DropdownMenuContent align="end">
-                                                                                {canManage && <DropdownMenuItem onSelect={() => handleEditClick(item)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>}
-                                                                                {canManage && <DropdownMenuItem onSelect={() => handleVerify(item)}><CheckCircle className="mr-2 h-4 w-4"/>Mark as Verified</DropdownMenuItem>}
-                                                                                <DropdownMenuItem onSelect={() => handleRequestClick(item)}><ShieldQuestion className="mr-2 h-4 w-4"/>Request Certificate</DropdownMenuItem>
-                                                                                {canManage && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></AlertDialogTrigger>}
-                                                                            </DropdownMenuContent>
-                                                                        </DropdownMenu>
-                                                                        <AlertDialogContent>
-                                                                            <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the item. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                                                        </AlertDialogContent>
-                                                                    </AlertDialog>
-                                                                </div>
-                                                        </TableCell>
+                                    <div className="border-t">
+                                      <ScrollArea className="h-72">
+                                        <div className="overflow-x-auto">
+                                            <Table>
+                                                <TableHeader className="sticky top-0 z-10 bg-card">
+                                                    <TableRow>
+                                                        <TableHead></TableHead>
+                                                        <TableHead>Serial No.</TableHead>
+                                                        <TableHead>Aries ID</TableHead>
+                                                        {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
+                                                        <TableHead>Status</TableHead>
+                                                        <TableHead>Location</TableHead>
+                                                        <TableHead>Insp. Due</TableHead>
+                                                        <TableHead>TP Insp. Due</TableHead>
+                                                        <TableHead>
+                                                            <Button variant="ghost" onClick={() => requestSort('lastUpdated')} className="px-0 hover:bg-transparent">
+                                                                Last Updated
+                                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                            </Button>
+                                                        </TableHead>
+                                                        <TableHead>TP Cert.</TableHead>
+                                                        <TableHead>Insp. Cert.</TableHead>
+                                                        <TableHead className="text-right">Actions</TableHead>
                                                     </TableRow>
-                                                )})}
-                                            </TableBody>
-                                        </Table>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {itemList.map(item => {
+                                                        const now = new Date();
+                                                        const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
+                                                        const displayStatus = isExpired ? 'Expired' : item.status;
+                                                        
+                                                        return (
+                                                        <TableRow key={item.id}>
+                                                            <TableCell>
+                                                            {onSelectionChange && <Checkbox checked={selectedItems?.some(sel => sel.id === item.id)} onCheckedChange={() => handleRowSelection(item)} />}
+                                                            </TableCell>
+                                                            <TableCell>{item.serialNumber}</TableCell>
+                                                            <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                                                            {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
+                                                            <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
+                                                            <TableCell>{getProjectName(item)}</TableCell>
+                                                            <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
+                                                            <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
+                                                            <TableCell className="text-xs text-muted-foreground">
+                                                                {item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {item.certificateUrl && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>View TP Certificate</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {item.inspectionCertificateUrl && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <a href={item.inspectionCertificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>View Inspection Certificate</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        
+                                                                        <AlertDialog>
+                                                                            <DropdownMenu>
+                                                                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                                                <DropdownMenuContent align="end">
+                                                                                    {canManage && <DropdownMenuItem onSelect={() => handleEditClick(item)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>}
+                                                                                    {canManage && <DropdownMenuItem onSelect={() => handleVerify(item)}><CheckCircle className="mr-2 h-4 w-4"/>Mark as Verified</DropdownMenuItem>}
+                                                                                    <DropdownMenuItem onSelect={() => handleRequestClick(item)}><ShieldQuestion className="mr-2 h-4 w-4"/>Request Certificate</DropdownMenuItem>
+                                                                                    {canManage && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></AlertDialogTrigger>}
+                                                                                </DropdownMenuContent>
+                                                                            </DropdownMenu>
+                                                                            <AlertDialogContent>
+                                                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the item. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                                            </AlertDialogContent>
+                                                                        </AlertDialog>
+                                                                    </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )})}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                      </ScrollArea>
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
