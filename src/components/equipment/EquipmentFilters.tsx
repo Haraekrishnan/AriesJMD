@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export interface EquipmentFilterValues {
   status: string;
@@ -25,15 +27,11 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
     });
 
     useEffect(() => {
-        onApplyFilters();
-    }, [filters]);
+        onFiltersChange(filters);
+    }, [filters, onFiltersChange]);
 
     const handleFilterChange = <K extends keyof EquipmentFilterValues>(key: K, value: EquipmentFilterValues[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));
-    };
-
-    const handleApplyFilters = () => {
-        onFiltersChange(filters);
     };
 
     const handleClear = () => {
@@ -72,5 +70,3 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
     );
 }
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
