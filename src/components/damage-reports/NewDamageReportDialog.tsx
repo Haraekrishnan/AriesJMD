@@ -47,11 +47,15 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     resolver: zodResolver(damageReportSchema),
   });
   
-  const allItems = useMemo(() => [
-    ...inventoryItems,
-    ...utMachines,
-    ...dftMachines,
-  ], [inventoryItems, utMachines, dftMachines]);
+  const allItems = useMemo(() => {
+    if (user?.role === 'Admin') {
+      return [...inventoryItems, ...utMachines, ...dftMachines];
+    }
+    if (!user?.projectIds) return [];
+    const userProjectIds = new Set(user.projectIds);
+    return [...inventoryItems, ...utMachines, ...dftMachines].filter(item => userProjectIds.has(item.projectId));
+  }, [inventoryItems, utMachines, dftMachines, user]);
+
 
   const selectableItems = useMemo(() => {
     if (!user) return [];
@@ -90,21 +94,20 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "my_unsigned_upload"); 
 
     try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/raw/upload", {
+        const res = await fetch("/api/drive-upload", {
             method: "POST",
             body: formData,
         });
         const data = await res.json();
         setIsUploading(false);
 
-        if (data.secure_url) {
-            form.setValue('attachmentUrl', data.secure_url);
+        if (data.success && data.file.webViewLink) {
+            form.setValue('attachmentUrl', data.file.webViewLink);
             toast({ title: 'Upload Successful', description: 'File has been attached.' });
         } else {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload file.' });
+            toast({ variant: 'destructive', title: 'Upload Failed', description: data.error || 'Could not upload file.' });
         }
     } catch (error) {
         setIsUploading(false);
@@ -249,7 +252,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                     <Button asChild variant="outline" size="sm">
                       <Label htmlFor="damage-report-file"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
                     </Button>
-                    <Input id="damage-report-file" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} accept=".doc, .docx, .pdf, .jpg, .jpeg, .png" />
+                    <Input id="damage-report-file" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} />
                   </div>
                 )}
               </div>
