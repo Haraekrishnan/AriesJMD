@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,7 +50,11 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   ], [inventoryItems, utMachines, dftMachines]);
 
   const selectableItems = useMemo(() => {
-    if (!user?.projectIds) return [];
+    if (!user) return [];
+    if (user.role === 'Admin') {
+      return allItems;
+    }
+    if (!user.projectIds) return [];
     const userProjectIds = new Set(user.projectIds);
     return allItems.filter(item => userProjectIds.has(item.projectId));
   }, [allItems, user]);
@@ -60,7 +63,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     if (!searchQuery) return selectableItems;
     const lowercasedQuery = searchQuery.toLowerCase();
     return selectableItems.filter(item => 
-        (item.name || (item as any).machineName).toLowerCase().includes(lowercasedQuery) ||
+        ((item as any).name || (item as any).machineName).toLowerCase().includes(lowercasedQuery) ||
         item.serialNumber?.toLowerCase().includes(lowercasedQuery) ||
         item.ariesId?.toLowerCase().includes(lowercasedQuery)
     );
