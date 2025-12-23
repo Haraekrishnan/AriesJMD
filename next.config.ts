@@ -1,20 +1,21 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverRuntimeConfig: {
-    // Adding this to force a restart and clear the lock file.
-    forceRestart: true,
-  },
+
+  // ✅ DO NOT enable turbopack when using webpack
+  experimental: {},
+
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // REQUIRED because you use webpack customization
-  turbopack: {},
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 
   webpack: (config) => {
+    // Fix canvas / pdf / chart libs
     config.resolve.alias.canvas = false;
     return config;
   },
