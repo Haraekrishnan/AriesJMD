@@ -1,11 +1,10 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus, FileText, ArrowRightLeft, Package } from 'lucide-react';
+import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -203,6 +202,7 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
+                    <Button asChild variant="outline"><Link href="/damage-reports"><Hammer className="mr-2 h-4 w-4"/> Damage Reports</Link></Button>
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
                     {selectedItemsForTransfer.length > 0 ? (
                         <Button onClick={() => setIsTransferRequestOpen(true)}>
