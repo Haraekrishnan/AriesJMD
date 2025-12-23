@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -13,6 +12,7 @@ import { RoleDefinition } from '@/lib/types';
 import AddRoleDialog from './add-role-dialog';
 import EditRoleDialog from './edit-role-dialog';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 export default function RoleManagementTable() {
     const { user, can, roles, deleteRole } = useAppContext();
@@ -43,69 +43,71 @@ export default function RoleManagementTable() {
                     Add Role
                 </Button>
             </div>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Role Name</TableHead>
-                        <TableHead>Permissions</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {roles.map(role => {
-                        const isActionable = can.manage_roles && (role.isEditable || user?.role === 'Admin');
-                        const canDelete = role.isEditable || user?.role === 'Admin';
-                        const permissions = role.permissions || [];
-                        return (
-                        <TableRow key={role.id}>
-                            <TableCell className="font-medium">{role.name}</TableCell>
-                            <TableCell>
-                                <div className="flex flex-wrap gap-1 max-w-md">
-                                    {permissions.map(permission => (
-                                        <Badge key={permission} variant="secondary">
-                                            {permission.replace(/_/g, ' ')}
-                                        </Badge>
-                                    ))}
-                                    {permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
-                                </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {isActionable ? (
-                                    <div className="flex items-center justify-end gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(role)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        {canDelete && (
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. This will permanently delete the role "{role.name}".
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDelete(role.id)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <span className="text-xs text-muted-foreground">Locked</span>
-                                )}
-                            </TableCell>
-                        </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Role Name</TableHead>
+                          <TableHead>Permissions</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {roles.map(role => {
+                          const isActionable = can.manage_roles && (role.isEditable || user?.role === 'Admin');
+                          const canDelete = role.isEditable || user?.role === 'Admin';
+                          const permissions = role.permissions || [];
+                          return (
+                          <TableRow key={role.id}>
+                              <TableCell className="font-medium">{role.name}</TableCell>
+                              <TableCell>
+                                  <div className="flex flex-wrap gap-1 max-w-md">
+                                      {permissions.map(permission => (
+                                          <Badge key={permission} variant="secondary">
+                                              {permission.replace(/_/g, ' ')}
+                                          </Badge>
+                                      ))}
+                                      {permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
+                                  </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                  {isActionable ? (
+                                      <div className="flex items-center justify-end gap-2">
+                                          <Button variant="ghost" size="icon" onClick={() => handleEditClick(role)}>
+                                              <Edit className="h-4 w-4" />
+                                          </Button>
+                                          {canDelete && (
+                                              <AlertDialog>
+                                                  <AlertDialogTrigger asChild>
+                                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                          <Trash2 className="h-4 w-4" />
+                                                      </Button>
+                                                  </AlertDialogTrigger>
+                                                  <AlertDialogContent>
+                                                      <AlertDialogHeader>
+                                                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                          <AlertDialogDescription>
+                                                              This action cannot be undone. This will permanently delete the role "{role.name}".
+                                                          </AlertDialogDescription>
+                                                      </AlertDialogHeader>
+                                                      <AlertDialogFooter>
+                                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                          <AlertDialogAction onClick={() => handleDelete(role.id)}>Delete</AlertDialogAction>
+                                                      </AlertDialogFooter>
+                                                  </AlertDialogContent>
+                                              </AlertDialog>
+                                          )}
+                                      </div>
+                                  ) : (
+                                      <span className="text-xs text-muted-foreground">Locked</span>
+                                  )}
+                              </TableCell>
+                          </TableRow>
+                          );
+                      })}
+                  </TableBody>
+              </Table>
+            </div>
             <AddRoleDialog isOpen={isAddRoleDialogOpen} setIsOpen={setIsAddRoleDialogOpen} />
             {selectedRole && (
                 <EditRoleDialog isOpen={isEditRoleDialogOpen} setIsOpen={setIsEditRoleDialogOpen} role={selectedRole} />

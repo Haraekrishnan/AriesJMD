@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "../ui/scroll-area";
 
 export default function UnlockRequests() {
     const { unlockRequests, resolveUnlockRequest } = useAppContext();
@@ -36,6 +37,7 @@ export default function UnlockRequests() {
             </CardHeader>
             <CardContent>
                 {pendingRequests.length > 0 ? (
+                  <ScrollArea className="h-48">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -58,6 +60,7 @@ export default function UnlockRequests() {
                             ))}
                         </TableBody>
                     </Table>
+                  </ScrollArea>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">No pending unlock requests.</p>
                 )}

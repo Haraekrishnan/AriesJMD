@@ -22,6 +22,7 @@ import PasswordResetRequests from '@/components/account/password-reset-requests'
 import FeedbackManagement from '@/components/account/FeedbackManagement';
 import { Badge } from '@/components/ui/badge';
 import UnlockRequests from '@/components/account/UnlockRequests';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function AccountPage() {
   const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser, clearInventoryTransferHistory } = useAppContext();
@@ -222,7 +223,9 @@ export default function AccountPage() {
                 <CardDescription>Review and manage user-submitted feedback.</CardDescription>
             </CardHeader>
             <CardContent>
-              <FeedbackManagement />
+              <ScrollArea className="h-72">
+                <FeedbackManagement />
+              </ScrollArea>
             </CardContent>
         </Card>
       )}
@@ -295,7 +298,9 @@ export default function AccountPage() {
                 <CardDescription>Add, edit, or remove project locations.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ProjectManagementTable />
+              <ScrollArea className="h-72">
+                <ProjectManagementTable />
+              </ScrollArea>
             </CardContent>
           </Card>
       )}
@@ -307,7 +312,9 @@ export default function AccountPage() {
                 <CardDescription>Define custom roles and assign granular permissions.</CardDescription>
             </CardHeader>
             <CardContent>
-              <RoleManagementTable />
+              <ScrollArea className="h-72">
+                <RoleManagementTable />
+              </ScrollArea>
             </CardContent>
           </Card>
       )}
@@ -327,6 +334,7 @@ export default function AccountPage() {
               )}
           </CardHeader>
           <CardContent>
+            <ScrollArea className="h-96">
               <Table>
                   <TableHeader>
                       <TableRow>
@@ -400,6 +408,7 @@ export default function AccountPage() {
                       })}
                   </TableBody>
               </Table>
+              </ScrollArea>
           </CardContent>
       </Card>
       )}

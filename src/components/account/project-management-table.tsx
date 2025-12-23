@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -42,52 +41,54 @@ export default function ProjectManagementTable() {
                     Add Project
                 </Button>
             </div>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Project Name</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {projects.map(project => (
-                        <TableRow key={project.id}>
-                            <TableCell className="font-medium">{project.name}</TableCell>
-                            <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(project)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This action cannot be undone. This will permanently delete the "{project.name}" project.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDelete(project.id)}>Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                     {projects.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={2} className="text-center">No projects found.</TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Project Name</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {projects.map(project => (
+                          <TableRow key={project.id}>
+                              <TableCell className="font-medium">{project.name}</TableCell>
+                              <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(project)}>
+                                          <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                  <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                      This action cannot be undone. This will permanently delete the "{project.name}" project.
+                                                  </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => handleDelete(project.id)}>Delete</AlertDialogAction>
+                                              </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                      </AlertDialog>
+                                  </div>
+                              </TableCell>
+                          </TableRow>
+                      ))}
+                      {projects.length === 0 && (
+                          <TableRow>
+                              <TableCell colSpan={2} className="text-center">No projects found.</TableCell>
+                          </TableRow>
+                      )}
+                  </TableBody>
+              </Table>
+            </div>
             <AddProjectDialog isOpen={isAddDialogOpen} setIsOpen={setIsAddDialogOpen} />
             {selectedProject && (
                 <EditProjectDialog
