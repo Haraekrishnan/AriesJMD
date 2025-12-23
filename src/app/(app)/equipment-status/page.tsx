@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -374,8 +375,6 @@ export default function EquipmentStatusPage() {
 
             <EquipmentSummary />
             
-            <EquipmentFilters onFiltersChange={setFilters} />
-            
             {expiringMachines.length > 0 && (
                 <Card>
                     <CardHeader>
@@ -475,6 +474,8 @@ export default function EquipmentStatusPage() {
                 )}
             </Card>
 
+            <EquipmentFilters onFiltersChange={setFilters} />
+            
             <Tabs defaultValue="ut-machines" className="w-full">
                 <TabsList className="h-auto flex-wrap justify-start">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
