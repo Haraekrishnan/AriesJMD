@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,8 +37,11 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const { user, inventoryItems, utMachines, dftMachines, addDamageReport } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  
+  const [isItemTypePopoverOpen, setIsItemTypePopoverOpen] = useState(false);
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(damageReportSchema),
@@ -59,15 +63,23 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     return allItems.filter(item => userProjectIds.has(item.projectId));
   }, [allItems, user]);
 
-  const filteredItems = useMemo(() => {
-    if (!searchQuery) return selectableItems;
-    const lowercasedQuery = searchQuery.toLowerCase();
-    return selectableItems.filter(item => 
-        ((item as any).name || (item as any).machineName).toLowerCase().includes(lowercasedQuery) ||
-        item.serialNumber?.toLowerCase().includes(lowercasedQuery) ||
-        item.ariesId?.toLowerCase().includes(lowercasedQuery)
-    );
-  }, [selectableItems, searchQuery]);
+  const uniqueItemNames = useMemo(() => {
+    const names = new Set<string>();
+    selectableItems.forEach(item => {
+        const name = (item as any).name || (item as any).machineName;
+        if (name) names.add(name);
+    });
+    return Array.from(names).sort();
+  }, [selectableItems]);
+
+  const availableItemsOfType = useMemo(() => {
+    if (!selectedItemType) return [];
+    return selectableItems.filter(item => {
+        const name = (item as any).name || (item as any).machineName;
+        return name === selectedItemType;
+    });
+  }, [selectableItems, selectedItemType]);
+
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,17 +119,19 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   };
   
   const handleOpenChange = (open: boolean) => {
-    if (!open) form.reset();
+    if (!open) {
+        form.reset();
+        setSelectedItemType(null);
+    }
     setIsOpen(open);
   };
   
   const selectedItemId = form.watch('itemId');
   const selectedItemName = useMemo(() => {
-    if (!selectedItemId) return "Select an item...";
-    if (selectedItemId === 'other') return 'Other (Specify below)';
+    if (!selectedItemId) return "Select specific item...";
     const item = allItems.find(i => i.id === selectedItemId);
     const name = item?.name || (item as any)?.machineName;
-    return item ? `${name} (SN: ${item.serialNumber})` : "Select an item...";
+    return item ? `${name} (SN: ${item.serialNumber})` : "Select specific item...";
   }, [selectedItemId, allItems]);
 
 
@@ -132,41 +146,79 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Inventory Item</Label>
-                <Controller
-                  name="itemId"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Popover open={isItemPopoverOpen} onOpenChange={setIsItemPopoverOpen}>
+                <Label>Item Type</Label>
+                    <Popover open={isItemTypePopoverOpen} onOpenChange={setIsItemTypePopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" role="combobox" className="w-full justify-between">
-                          <span className="truncate">{selectedItemName}</span>
+                          <span className="truncate">{selectedItemType || "Select an item type..."}</span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                         <Command>
-                          <CommandInput placeholder="Search by name, serial no..." value={searchQuery} onValueChange={setSearchQuery}/>
+                          <CommandInput placeholder="Search item type..." />
                           <CommandList>
-                            <CommandEmpty>No item found.</CommandEmpty>
+                            <CommandEmpty>No item type found.</CommandEmpty>
                             <CommandGroup>
-                              {filteredItems.map(item => (
-                                <CommandItem key={item.id} value={item.id} onSelect={() => { form.setValue('itemId', item.id); form.setValue('otherItemName', ''); setIsItemPopoverOpen(false); }}>
-                                  {(item as any).name || (item as any).machineName} (SN: {item.serialNumber})
+                              {uniqueItemNames.map(name => (
+                                <CommandItem key={name} value={name} onSelect={() => { 
+                                  setSelectedItemType(name);
+                                  form.setValue('itemId', undefined);
+                                  form.setValue('otherItemName', undefined);
+                                  setIsItemTypePopoverOpen(false); 
+                                }}>
+                                  {name}
                                 </CommandItem>
                               ))}
-                              <CommandItem onSelect={() => { form.setValue('itemId', 'other'); setIsItemPopoverOpen(false); }}>Other (Specify below)</CommandItem>
+                              <CommandItem onSelect={() => { 
+                                setSelectedItemType('Other');
+                                form.setValue('itemId', undefined);
+                                setIsItemTypePopoverOpen(false); 
+                              }}>Other (Specify below)</CommandItem>
                             </CommandGroup>
                           </CommandList>
                         </Command>
                       </PopoverContent>
                     </Popover>
-                  )}
-                />
-                {form.formState.errors.itemId && <p className="text-xs text-destructive">{form.formState.errors.itemId.message}</p>}
               </div>
 
-              {selectedItemId === 'other' && (
+              {selectedItemType && selectedItemType !== 'Other' && (
+                <div className="space-y-2">
+                  <Label>Select Specific Item (by SN or Aries ID)</Label>
+                   <Controller
+                    name="itemId"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Popover open={isItemPopoverOpen} onOpenChange={setIsItemPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-between">
+                            <span className="truncate">{selectedItemName}</span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search by SN or Aries ID..."/>
+                            <CommandList>
+                              <CommandEmpty>No item found.</CommandEmpty>
+                              <CommandGroup>
+                                {availableItemsOfType.map(item => (
+                                  <CommandItem key={item.id} value={`${item.serialNumber} ${item.ariesId}`} onSelect={() => { form.setValue('itemId', item.id); form.setValue('otherItemName', ''); setIsItemPopoverOpen(false); }}>
+                                    {item.serialNumber} (ID: {item.ariesId || 'N/A'})
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                  {form.formState.errors.itemId && <p className="text-xs text-destructive">{form.formState.errors.itemId.message}</p>}
+                </div>
+              )}
+
+              {selectedItemType === 'Other' && (
                 <div className="space-y-2">
                   <Label htmlFor="otherItemName">Specify Item Name</Label>
                   <Input id="otherItemName" {...form.register('otherItemName')} placeholder="e.g., Office Chair" />
