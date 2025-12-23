@@ -297,7 +297,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
     return (
         <TooltipProvider>
             {/* Desktop View */}
-            <div className="hidden md:block">
+            <div className="hidden md:block overflow-x-auto">
                 <Accordion type="multiple" className="w-full space-y-2">
                     {Object.entries(groupedItems).map(([itemName, itemList]) => {
                          const allInGroupSelected = itemList.every(item => selectedItems?.some(sel => sel.id === item.id));
@@ -459,4 +459,3 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
     );
 }
 
-    
