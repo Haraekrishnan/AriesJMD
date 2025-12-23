@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
-import { Readable } from "stream";
 
 export async function GET() {
   try {
-    const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64;
-    if (!base64) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON_BASE64");
-
     const serviceAccount = JSON.parse(
-      Buffer.from(base64, "base64").toString("utf-8")
+      Buffer.from(
+        process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64!,
+        "base64"
+      ).toString("utf-8")
     );
-    
 
     const auth = new google.auth.JWT({
       email: serviceAccount.client_email,
@@ -20,23 +18,19 @@ export async function GET() {
 
     const drive = google.drive({ version: "v3", auth });
 
-    const content = Buffer.from(
-      `Drive test successful at ${new Date().toISOString()}`
-    );
-
-    const file = await drive.files.create({
+    // 🔹 Create folder
+    const folder = await drive.files.create({
       requestBody: {
-        name: "drive-test.txt",
-        parents: [process.env.DRIVE_FOLDER_ID!],
-      },
-      media: {
-        mimeType: "text/plain",
-        body: Readable.from(content),
+        name: "DamageReports",
+        mimeType: "application/vnd.google-apps.folder",
       },
       fields: "id, name, webViewLink",
     });
 
-    return NextResponse.json({ success: true, file: file.data });
+    return NextResponse.json({
+      success: true,
+      folder: folder.data,
+    });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json(
