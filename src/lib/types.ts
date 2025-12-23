@@ -294,7 +294,8 @@ export const ALL_PERMISSIONS = [
   'manage_logbook',
   'perform_inventory_inspection',
   'manage_tp_certification',
-  'manage_directives'
+  'manage_directives',
+  'manage_damage_reports',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -954,6 +955,20 @@ export type InspectionChecklist = {
   yearOfManufacture?: string;
   purchaseDate?: string | null;
   firstUseDate?: string | null;
+};
+
+export type DamageReportStatus = 'Pending' | 'Under Review' | 'Approved' | 'Rejected';
+
+export type DamageReport = {
+  id: string;
+  reporterId: string;
+  reportDate: string; // ISO
+  itemId?: string;
+  otherItemName?: string;
+  reason: string;
+  attachmentUrl?: string;
+  status: DamageReportStatus;
+  comments?: Comment[];
 };
 
 export const NOTIFICATION_EVENTS = {

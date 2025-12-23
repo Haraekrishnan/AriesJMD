@@ -10,10 +10,10 @@ import { format, parseISO } from 'date-fns';
 import type { DamageReport, DamageReportStatus } from '@/lib/types';
 
 const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' | 'success' } = {
-  Pending: 'secondary',
+  'Pending': 'secondary',
   'Under Review': 'secondary',
-  Approved: 'success',
-  Rejected: 'destructive',
+  'Approved': 'success',
+  'Rejected': 'destructive',
 };
 
 export default function DamageReportList() {
