@@ -34,7 +34,7 @@ interface NewDamageReportDialogProps {
 }
 
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
-  const { user, inventoryItems, addDamageReport } = useAppContext();
+  const { user, inventoryItems, utMachines, dftMachines, addDamageReport } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
@@ -44,17 +44,23 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     resolver: zodResolver(damageReportSchema),
   });
   
+  const allItems = useMemo(() => [
+    ...inventoryItems,
+    ...utMachines,
+    ...dftMachines,
+  ], [inventoryItems, utMachines, dftMachines]);
+
   const selectableItems = useMemo(() => {
     if (!user?.projectIds) return [];
     const userProjectIds = new Set(user.projectIds);
-    return inventoryItems.filter(item => userProjectIds.has(item.projectId));
-  }, [inventoryItems, user]);
+    return allItems.filter(item => userProjectIds.has(item.projectId));
+  }, [allItems, user]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return selectableItems;
     const lowercasedQuery = searchQuery.toLowerCase();
     return selectableItems.filter(item => 
-        item.name.toLowerCase().includes(lowercasedQuery) ||
+        (item.name || (item as any).machineName).toLowerCase().includes(lowercasedQuery) ||
         item.serialNumber?.toLowerCase().includes(lowercasedQuery) ||
         item.ariesId?.toLowerCase().includes(lowercasedQuery)
     );
@@ -106,9 +112,10 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const selectedItemName = useMemo(() => {
     if (!selectedItemId) return "Select an item...";
     if (selectedItemId === 'other') return 'Other (Specify below)';
-    const item = selectableItems.find(i => i.id === selectedItemId);
-    return item ? `${item.name} (SN: ${item.serialNumber})` : "Select an item...";
-  }, [selectedItemId, selectableItems]);
+    const item = allItems.find(i => i.id === selectedItemId);
+    const name = item?.name || (item as any)?.machineName;
+    return item ? `${name} (SN: ${item.serialNumber})` : "Select an item...";
+  }, [selectedItemId, allItems]);
 
 
   return (
@@ -140,12 +147,12 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                           <CommandList>
                             <CommandEmpty>No item found.</CommandEmpty>
                             <CommandGroup>
-                              <CommandItem onSelect={() => { form.setValue('itemId', 'other'); setIsItemPopoverOpen(false); }}>Other (Specify below)</CommandItem>
                               {filteredItems.map(item => (
                                 <CommandItem key={item.id} value={item.id} onSelect={() => { form.setValue('itemId', item.id); form.setValue('otherItemName', ''); setIsItemPopoverOpen(false); }}>
-                                  {item.name} (SN: {item.serialNumber})
+                                  {(item as any).name || (item as any).machineName} (SN: {item.serialNumber})
                                 </CommandItem>
                               ))}
+                              <CommandItem onSelect={() => { form.setValue('itemId', 'other'); setIsItemPopoverOpen(false); }}>Other (Specify below)</CommandItem>
                             </CommandGroup>
                           </CommandList>
                         </Command>

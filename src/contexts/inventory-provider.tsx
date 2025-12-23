@@ -854,7 +854,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             update(ref(rtdb), updates);
         }
     }, [inventoryTransferRequests]);
-
+    
     const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
         if (!user) return;
         const request = certificateRequestsById[requestId];
@@ -1572,4 +1572,5 @@ export const useInventory = (): InventoryContextType => {
     
 
     
+
 
