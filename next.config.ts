@@ -1,8 +1,12 @@
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-
+  serverRuntimeConfig: {
+    // Adding this to force a restart and clear the lock file.
+    forceRestart: true,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
