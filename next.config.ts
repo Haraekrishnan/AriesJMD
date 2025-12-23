@@ -1,19 +1,14 @@
-require('dotenv').config({ path: './.env' });
+import type { NextConfig } from 'next';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Disable Turbopack (Next.js 16 uses it by default)
-  experimental: {
-    turbo: false,
-  },
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
 
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // REQUIRED because you use webpack customization
+  turbopack: {},
 
   webpack: (config) => {
     config.resolve.alias.canvas = false;
@@ -25,19 +20,16 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'placehold.co',
-        port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-        port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'api.cloudinary.com',
-        port: '',
         pathname: '/**',
       },
     ],
