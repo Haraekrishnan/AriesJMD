@@ -1499,6 +1499,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newReportRef = push(ref(rtdb, 'damageReports'));
         const newReport: Omit<DamageReport, 'id'> = {
             ...reportData,
+            itemId: reportData.itemId || null,
             reporterId: user.id,
             reportDate: new Date().toISOString(),
             status: 'Pending',
@@ -1572,5 +1573,6 @@ export const useInventory = (): InventoryContextType => {
     
 
     
+
 
 

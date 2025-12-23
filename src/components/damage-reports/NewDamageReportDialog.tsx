@@ -93,7 +93,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     formData.append("upload_preset", "my_unsigned_upload"); 
 
     try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/upload", {
+        const res = await fetch("https://api.cloudinary.com/v1_1/dmgyflpz8/raw/upload", {
             method: "POST",
             body: formData,
         });
