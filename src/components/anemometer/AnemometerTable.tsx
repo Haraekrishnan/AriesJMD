@@ -1,4 +1,3 @@
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +12,7 @@ import { format, isPast, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface AnemometerTableProps {
+  items: Anemometer[];
   onEdit: (item: Anemometer) => void;
 }
 
@@ -26,8 +26,8 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
     }
 }
 
-export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
-  const { can, anemometers, projects, deleteAnemometer } = useAppContext();
+export default function AnemometerTable({ items, onEdit }: AnemometerTableProps) {
+  const { can, projects, deleteAnemometer } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
@@ -39,7 +39,7 @@ export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
     });
   };
   
-  if (anemometers.length === 0) {
+  if (items.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No anemometers found.</p>;
   }
 
@@ -69,7 +69,7 @@ export default function AnemometerTable({ onEdit }: AnemometerTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {anemometers.map(item => {
+          {items.map(item => {
               const project = projects.find(p => p.id === item.projectId);
               return (
                   <TableRow key={item.id}>

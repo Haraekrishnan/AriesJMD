@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -50,6 +48,7 @@ import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import { useToast } from '@/hooks/use-toast';
+import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equipment/EquipmentFilters';
 
 
 export default function EquipmentStatusPage() {
@@ -101,6 +100,28 @@ export default function EquipmentStatusPage() {
     // Report State
     const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
     const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
+
+    const [filters, setFilters] = useState<EquipmentFilterValues>({
+        projectId: 'all',
+        status: 'all',
+    });
+
+    const applyFilters = (items: any[]) => {
+        return items.filter(item => {
+            const { projectId, status } = filters;
+            const projectMatch = projectId === 'all' || ('projectId' in item && item.projectId === projectId) || ('allottedTo' in item && users.find(u => u.id === item.allottedTo)?.projectIds?.includes(projectId));
+            const statusMatch = status === 'all' || item.status === status;
+            return projectMatch && statusMatch;
+        });
+    };
+
+    const filteredUtMachines = useMemo(() => applyFilters(utMachines), [utMachines, filters]);
+    const filteredDftMachines = useMemo(() => applyFilters(dftMachines), [dftMachines, filters]);
+    const filteredDigitalCameras = useMemo(() => applyFilters(digitalCameras), [digitalCameras, filters]);
+    const filteredAnemometers = useMemo(() => applyFilters(anemometers), [anemometers, filters]);
+    const filteredMobileSims = useMemo(() => applyFilters(mobileSims), [mobileSims, filters]);
+    const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
+    const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
 
     const allMachines = useMemo(() => [...utMachines, ...dftMachines], [utMachines, dftMachines]);
 
@@ -353,6 +374,8 @@ export default function EquipmentStatusPage() {
 
             <EquipmentSummary />
             
+            <EquipmentFilters onFiltersChange={setFilters} />
+            
             {expiringMachines.length > 0 && (
                 <Card>
                     <CardHeader>
@@ -551,7 +574,7 @@ export default function EquipmentStatusPage() {
                     )}
                     <Card>
                         <CardHeader><CardTitle>UT Machine List</CardTitle><CardDescription>A comprehensive list of all UT machines.</CardDescription></CardHeader>
-                        <CardContent><UTMachineTable onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
+                        <CardContent><UTMachineTable items={filteredUtMachines} onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="dft-machines" className="mt-4 space-y-4">
@@ -568,7 +591,7 @@ export default function EquipmentStatusPage() {
                     </div>
                     <Card>
                         <CardHeader><CardTitle>DFT Machine List</CardTitle><CardDescription>A comprehensive list of all DFT machines.</CardDescription></CardHeader>
-                        <CardContent><DftMachineTable onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
+                        <CardContent><DftMachineTable items={filteredDftMachines} onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="digital-camera" className="mt-4 space-y-4">
@@ -582,7 +605,7 @@ export default function EquipmentStatusPage() {
                     </div>
                     <Card>
                         <CardHeader><CardTitle>Digital Cameras</CardTitle><CardDescription>List of all company-provided digital cameras.</CardDescription></CardHeader>
-                        <CardContent><DigitalCameraTable onEdit={handleEditDigitalCamera} /></CardContent>
+                        <CardContent><DigitalCameraTable items={filteredDigitalCameras} onEdit={handleEditDigitalCamera} /></CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="anemometer" className="mt-4 space-y-4">
@@ -596,7 +619,7 @@ export default function EquipmentStatusPage() {
                     </div>
                     <Card>
                         <CardHeader><CardTitle>Anemometers</CardTitle><CardDescription>List of all company-provided anemometers.</CardDescription></CardHeader>
-                        <CardContent><AnemometerTable onEdit={handleEditAnemometer} /></CardContent>
+                        <CardContent><AnemometerTable items={filteredAnemometers} onEdit={handleEditAnemometer} /></CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="mobile-sim" className="mt-4 space-y-4">
@@ -610,7 +633,7 @@ export default function EquipmentStatusPage() {
                     </div>
                     <Card>
                         <CardHeader><CardTitle>Mobile &amp; SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
-                        <CardContent><MobileSimTable onEdit={handleEditMobileSim} /></CardContent>
+                        <CardContent><MobileSimTable items={filteredMobileSims} onEdit={handleEditMobileSim} /></CardContent>
                     </Card>
                 </TabsContent>
                  <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
@@ -624,7 +647,7 @@ export default function EquipmentStatusPage() {
                     </div>
                     <Card>
                         <CardHeader><CardTitle>Laptops &amp; Desktops</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
-                        <CardContent><LaptopDesktopTable onEdit={handleEditLaptopDesktop} /></CardContent>
+                        <CardContent><LaptopDesktopTable items={filteredLaptopsDesktops} onEdit={handleEditLaptopDesktop} /></CardContent>
                     </Card>
                 </TabsContent>
                  <TabsContent value="other-equipments" className="mt-4 space-y-4">
@@ -638,7 +661,7 @@ export default function EquipmentStatusPage() {
                     </div>
                     <Card>
                         <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all other company-provided equipments.</CardDescription></CardHeader>
-                        <CardContent><OtherEquipmentTable onEdit={handleEditOtherEquipment} /></CardContent>
+                        <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>

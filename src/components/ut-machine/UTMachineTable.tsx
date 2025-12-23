@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -17,6 +15,7 @@ import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface UTMachineTableProps {
+  items: UTMachine[];
   onEdit: (machine: UTMachine) => void;
   onLogManager: (machine: UTMachine) => void;
 }
@@ -31,18 +30,18 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
     }
 }
 
-export default function UTMachineTable({ onEdit, onLogManager }: UTMachineTableProps) {
-    const { can, utMachines, projects, deleteUTMachine } = useAppContext();
+export default function UTMachineTable({ items, onEdit, onLogManager }: UTMachineTableProps) {
+    const { can, projects, deleteUTMachine } = useAppContext();
     const { toast } = useToast();
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
     const [selectedMachineForCert, setSelectedMachineForCert] = useState<UTMachine | null>(null);
 
     const machinesWithProject = useMemo(() => {
-        return utMachines.map(machine => ({
+        return items.map(machine => ({
             ...machine,
             projectName: projects.find(p => p.id === machine.projectId)?.name || 'N/A'
         }));
-    }, [utMachines, projects]);
+    }, [items, projects]);
     
   const getDateStyles = (dateString?: string): string => {
     if (!dateString) return '';

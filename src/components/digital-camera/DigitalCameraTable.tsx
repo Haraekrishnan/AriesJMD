@@ -1,4 +1,3 @@
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +10,7 @@ import { DigitalCamera } from '@/lib/types';
 import { Badge } from '../ui/badge';
 
 interface DigitalCameraTableProps {
+  items: DigitalCamera[];
   onEdit: (item: DigitalCamera) => void;
 }
 
@@ -24,8 +24,8 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
     }
 }
 
-export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) {
-  const { can, digitalCameras, projects, deleteDigitalCamera } = useAppContext();
+export default function DigitalCameraTable({ items, onEdit }: DigitalCameraTableProps) {
+  const { can, projects, deleteDigitalCamera } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
@@ -37,7 +37,7 @@ export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) 
     });
   };
   
-  if (digitalCameras.length === 0) {
+  if (items.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No digital cameras found.</p>;
   }
 
@@ -54,7 +54,7 @@ export default function DigitalCameraTable({ onEdit }: DigitalCameraTableProps) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {digitalCameras.map(item => {
+          {items.map(item => {
               const project = projects.find(p => p.id === item.projectId);
               return (
                   <TableRow key={item.id}>

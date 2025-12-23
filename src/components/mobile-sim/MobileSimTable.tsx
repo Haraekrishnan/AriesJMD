@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -15,6 +13,7 @@ import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 
 interface MobileSimTableProps {
+  items: MobileSim[];
   onEdit: (item: MobileSim) => void;
 }
 
@@ -24,8 +23,8 @@ const statusVariant: { [key in MobileSimStatus]: 'secondary' | 'default' | 'dest
     'Returned': 'destructive',
 }
 
-export default function MobileSimTable({ onEdit }: MobileSimTableProps) {
-  const { can, mobileSims, users, projects, deleteMobileSim } = useAppContext();
+export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
+  const { can, users, projects, deleteMobileSim } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
@@ -37,7 +36,7 @@ export default function MobileSimTable({ onEdit }: MobileSimTableProps) {
     });
   };
   
-  if (mobileSims.length === 0) {
+  if (items.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No mobile or SIM data found.</p>;
   }
 
@@ -56,7 +55,7 @@ export default function MobileSimTable({ onEdit }: MobileSimTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {mobileSims.map(item => {
+          {items.map(item => {
               const allottedUser = users.find(u => u.id === item.allottedToUserId);
               const project = projects.find(p => p.id === item.projectId);
               return (

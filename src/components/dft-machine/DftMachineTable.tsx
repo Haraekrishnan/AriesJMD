@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -17,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
 
 interface DftMachineTableProps {
+  items: DftMachine[];
   onEdit: (machine: DftMachine) => void;
   onLogManager: (machine: DftMachine) => void;
 }
@@ -31,18 +30,18 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
     }
 }
 
-export default function DftMachineTable({ onEdit, onLogManager }: DftMachineTableProps) {
-    const { can, dftMachines, projects, deleteDftMachine } = useAppContext();
+export default function DftMachineTable({ items, onEdit, onLogManager }: DftMachineTableProps) {
+    const { can, projects, deleteDftMachine } = useAppContext();
     const { toast } = useToast();
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
     const [selectedMachineForCert, setSelectedMachineForCert] = useState<DftMachine | null>(null);
 
     const machinesWithProject = useMemo(() => {
-        return dftMachines.map(machine => ({
+        return items.map(machine => ({
             ...machine,
             projectName: projects.find(p => p.id === machine.projectId)?.name || 'N/A'
         }));
-    }, [dftMachines, projects]);
+    }, [items, projects]);
     
     const getDateStyles = (dateString?: string): string => {
         if (!dateString) return '';

@@ -1,4 +1,3 @@
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,11 +12,12 @@ import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface OtherEquipmentTableProps {
+  items: OtherEquipment[];
   onEdit: (item: OtherEquipment) => void;
 }
 
-export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps) {
-  const { can, otherEquipments, projects, deleteOtherEquipment } = useAppContext();
+export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTableProps) {
+  const { can, projects, deleteOtherEquipment } = useAppContext();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
@@ -37,7 +37,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
     return '';
   };
   
-  if (otherEquipments.length === 0) {
+  if (items.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No other equipments found.</p>;
   }
 
@@ -58,7 +58,7 @@ export default function OtherEquipmentTable({ onEdit }: OtherEquipmentTableProps
           </TableRow>
         </TableHeader>
         <TableBody>
-          {otherEquipments.map(item => {
+          {items.map(item => {
               const project = projects.find(p => p.id === item.projectId);
               return (
                   <TableRow key={item.id}>

@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -13,11 +11,12 @@ import { LaptopDesktop, Role } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 
 interface LaptopDesktopTableProps {
+  items: LaptopDesktop[];
   onEdit: (item: LaptopDesktop) => void;
 }
 
-export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) {
-  const { user, can, laptopsDesktops, users, deleteLaptopDesktop } = useAppContext();
+export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTableProps) {
+  const { user, can, users, deleteLaptopDesktop } = useAppContext();
   const { toast } = useToast();
 
   const canViewPassword = useMemo(() => {
@@ -35,7 +34,7 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
     });
   };
   
-  if (laptopsDesktops.length === 0) {
+  if (items.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No laptop or desktop data found.</p>;
   }
 
@@ -55,7 +54,7 @@ export default function LaptopDesktopTable({ onEdit }: LaptopDesktopTableProps) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {laptopsDesktops.map(item => {
+          {items.map(item => {
               const allottedUser = users.find(u => u.id === item.allottedTo);
               return (
                   <TableRow key={item.id}>
