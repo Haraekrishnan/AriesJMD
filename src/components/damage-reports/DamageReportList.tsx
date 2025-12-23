@@ -1,15 +1,15 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import type { DamageReport, DamageReportStatus } from '@/lib/types';
+import ViewDamageReportDialog from './ViewDamageReportDialog';
 
-const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' | 'success' } = {
+const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' | 'success' | 'outline' } = {
   'Pending': 'secondary',
   'Under Review': 'secondary',
   'Approved': 'success',
@@ -17,26 +17,34 @@ const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' 
 };
 
 export default function DamageReportList() {
-  const { damageReports = [], inventoryItems, users } = useAppContext();
+  const { damageReports = [], inventoryItems, utMachines, dftMachines, users } = useAppContext();
+  const [viewingReport, setViewingReport] = useState<DamageReport | null>(null);
+  
+  const allItems = useMemo(() => [
+    ...inventoryItems,
+    ...utMachines,
+    ...dftMachines,
+  ], [inventoryItems, utMachines, dftMachines]);
 
   const reportsWithDetails = useMemo(() => {
     return damageReports.map(report => {
-      const item = inventoryItems.find(i => i.id === report.itemId);
+      const item = allItems.find(i => i.id === report.itemId);
       const reporter = users.find(u => u.id === report.reporterId);
       return {
         ...report,
-        itemName: item?.name || report.otherItemName || 'N/A',
+        itemName: item?.name || (item as any)?.machineName || report.otherItemName || 'N/A',
         serialNumber: item?.serialNumber || 'N/A',
         reporterName: reporter?.name || 'Unknown',
       };
     }).sort((a, b) => parseISO(b.reportDate).getTime() - parseISO(a.reportDate).getTime());
-  }, [damageReports, inventoryItems, users]);
+  }, [damageReports, allItems, users]);
 
   if (reportsWithDetails.length === 0) {
     return <p className="text-center py-8 text-muted-foreground">No damage reports have been submitted.</p>;
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -60,11 +68,19 @@ export default function DamageReportList() {
               <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
             </TableCell>
             <TableCell className="text-right">
-              <Button variant="outline" size="sm">View</Button>
+              <Button variant="outline" size="sm" onClick={() => setViewingReport(report)}>View</Button>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+    {viewingReport && (
+        <ViewDamageReportDialog 
+            isOpen={!!viewingReport} 
+            setIsOpen={() => setViewingReport(null)}
+            report={viewingReport}
+        />
+    )}
+    </>
   );
 }

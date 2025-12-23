@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -191,6 +190,7 @@ type InventoryContextType = {
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
   addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason' | 'attachmentUrl'>) => void;
+  updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
 
   pendingConsumableRequestCount: number;
   updatedConsumableRequestCount: number;
@@ -1506,6 +1506,30 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         set(newReportRef, newReport);
     }, [user]);
+
+    const updateDamageReportStatus = useCallback((reportId: string, status: DamageReportStatus, comment?: string) => {
+        if (!user) return;
+        const report = damageReportsById[reportId];
+        if (!report) return;
+
+        const updates: { [key: string]: any } = {
+            [`damageReports/${reportId}/status`]: status
+        };
+
+        if (status === 'Approved' && report.itemId) {
+            const item = inventoryItems.find(i => i.id === report.itemId);
+            if (item) {
+                updates[`inventoryItems/${report.itemId}/status`] = 'Damaged';
+            }
+        }
+        
+        update(ref(rtdb), updates);
+
+        if (comment) {
+            // Placeholder for adding comments to damage reports if needed later
+        }
+
+    }, [user, damageReportsById, inventoryItems]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -1552,7 +1576,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,
         addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
-        addIgpOgpRecord, deleteIgpOgpRecord, addDamageReport,
+        addIgpOgpRecord, deleteIgpOgpRecord, addDamageReport, updateDamageReportStatus,
         pendingConsumableRequestCount, updatedConsumableRequestCount,
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
@@ -1572,7 +1596,6 @@ export const useInventory = (): InventoryContextType => {
 
     
 
-    
 
 
 
