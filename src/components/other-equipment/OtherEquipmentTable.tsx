@@ -11,6 +11,7 @@ import { OtherEquipment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface OtherEquipmentTableProps {
   items: OtherEquipment[];
@@ -43,69 +44,71 @@ export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTab
   }
 
   return (
-    <div className="overflow-x-auto">
-      <TooltipProvider>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Equipment Name</TableHead>
-            <TableHead>Serial Number</TableHead>
-            <TableHead>Aries ID</TableHead>
-            <TableHead>Project</TableHead>
-            <TableHead>TP Due Date</TableHead>
-            <TableHead>Certificate</TableHead>
-            <TableHead>Remarks</TableHead>
-            {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map(item => {
-              const project = projects.find(p => p.id === item.projectId);
-              return (
-                  <TableRow key={item.id}>
-                      <TableCell><p className="font-medium">{item.equipmentName}</p></TableCell>
-                      <TableCell>{item.serialNumber}</TableCell>
-                      <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                      <TableCell>{project?.name || 'N/A'}</TableCell>
-                       <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>
-                            {item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
+    <ScrollArea className="h-96">
+      <div className="overflow-x-auto">
+        <TooltipProvider>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Equipment Name</TableHead>
+              <TableHead>Serial Number</TableHead>
+              <TableHead>Aries ID</TableHead>
+              <TableHead>Project</TableHead>
+              <TableHead>TP Due Date</TableHead>
+              <TableHead>Certificate</TableHead>
+              <TableHead>Remarks</TableHead>
+              {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map(item => {
+                const project = projects.find(p => p.id === item.projectId);
+                return (
+                    <TableRow key={item.id}>
+                        <TableCell><p className="font-medium">{item.equipmentName}</p></TableCell>
+                        <TableCell>{item.serialNumber}</TableCell>
+                        <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                        <TableCell>{project?.name || 'N/A'}</TableCell>
+                        <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>
+                              {item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {item.certificateUrl && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                    <Button asChild variant="ghost" size="icon">
+                                        <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                    </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View Certificate</TooltipContent>
+                                </Tooltip>
+                            )}
+                          </TableCell>
+                        <TableCell>{item.remarks}</TableCell>
+                        {can.manage_equipment_status && (
+                        <TableCell className="text-right">
+                            <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this entry.</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                            </AlertDialogContent>
+                            </AlertDialog>
                         </TableCell>
-                        <TableCell>
-                          {item.certificateUrl && (
-                              <Tooltip>
-                                  <TooltipTrigger asChild>
-                                  <Button asChild variant="ghost" size="icon">
-                                      <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
-                                  </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>View Certificate</TooltipContent>
-                              </Tooltip>
-                          )}
-                        </TableCell>
-                      <TableCell>{item.remarks}</TableCell>
-                      {can.manage_equipment_status && (
-                      <TableCell className="text-right">
-                          <AlertDialog>
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                              <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
-                              </DropdownMenuContent>
-                          </DropdownMenu>
-                          <AlertDialogContent>
-                              <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this entry.</AlertDialogDescription></AlertDialogHeader>
-                              <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                          </AlertDialog>
-                      </TableCell>
-                      )}
-                  </TableRow>
-              )
-          })}
-        </TableBody>
-      </Table>
-      </TooltipProvider>
-    </div>
+                        )}
+                    </TableRow>
+                )
+            })}
+          </TableBody>
+        </Table>
+        </TooltipProvider>
+      </div>
+    </ScrollArea>
   );
 }

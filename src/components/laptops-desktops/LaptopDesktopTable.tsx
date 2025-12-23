@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { LaptopDesktop, Role } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface LaptopDesktopTableProps {
   items: LaptopDesktop[];
@@ -48,74 +49,76 @@ export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTable
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Make</TableHead>
-            <TableHead>Model</TableHead>
-            <TableHead>Serial Number</TableHead>
-            <TableHead>Aries ID</TableHead>
-            <TableHead>Password</TableHead>
-            <TableHead>Allotted To</TableHead>
-            <TableHead>Remarks</TableHead>
-            {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map(item => {
-              const allottedUser = users.find(u => u.id === item.allottedTo);
-              const isPasswordVisible = shownPasswords[item.id];
-              return (
-                  <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.make}</TableCell>
-                      <TableCell>{item.model}</TableCell>
-                      <TableCell>{item.serialNumber}</TableCell>
-                      <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                      <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span>{canViewPassword && isPasswordVisible ? item.password || 'N/A' : '••••••••'}</span>
-                            {canViewPassword && (
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => togglePasswordVisibility(item.id)}>
-                                    {isPasswordVisible ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
-                                </Button>
-                            )}
-                          </div>
-                      </TableCell>
-                      <TableCell>
-                          <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                  <AvatarImage src={allottedUser?.avatar} alt={allottedUser?.name} />
-                                  <AvatarFallback>{allottedUser?.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="font-medium">
-                                  <p>{allottedUser?.name}</p>
-                              </div>
-                          </div>
-                      </TableCell>
-                      <TableCell>{item.remarks}</TableCell>
-                      {can.manage_equipment_status && (
-                      <TableCell className="text-right">
-                          <AlertDialog>
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                              <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
-                              </DropdownMenuContent>
-                          </DropdownMenu>
-                          <AlertDialogContent>
-                              <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this entry.</AlertDialogDescription></AlertDialogHeader>
-                              <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                          </AlertDialog>
-                      </TableCell>
-                      )}
-                  </TableRow>
-              )
-          })}
-        </TableBody>
-      </Table>
-    </div>
+    <ScrollArea className="h-96">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Make</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead>Serial Number</TableHead>
+              <TableHead>Aries ID</TableHead>
+              <TableHead>Password</TableHead>
+              <TableHead>Allotted To</TableHead>
+              <TableHead>Remarks</TableHead>
+              {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map(item => {
+                const allottedUser = users.find(u => u.id === item.allottedTo);
+                const isPasswordVisible = shownPasswords[item.id];
+                return (
+                    <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.make}</TableCell>
+                        <TableCell>{item.model}</TableCell>
+                        <TableCell>{item.serialNumber}</TableCell>
+                        <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{canViewPassword && isPasswordVisible ? item.password || 'N/A' : '••••••••'}</span>
+                              {canViewPassword && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => togglePasswordVisibility(item.id)}>
+                                      {isPasswordVisible ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                                  </Button>
+                              )}
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={allottedUser?.avatar} alt={allottedUser?.name} />
+                                    <AvatarFallback>{allottedUser?.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="font-medium">
+                                    <p>{allottedUser?.name}</p>
+                                </div>
+                            </div>
+                        </TableCell>
+                        <TableCell>{item.remarks}</TableCell>
+                        {can.manage_equipment_status && (
+                        <TableCell className="text-right">
+                            <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => onEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this entry.</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                            </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                        )}
+                    </TableRow>
+                )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </ScrollArea>
   );
 }
