@@ -45,14 +45,17 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
   const form = useForm<FormValues>({
     resolver: zodResolver(damageReportSchema),
+    defaultValues: {
+      reason: '',
+    }
   });
   
   const allItems = useMemo(() => {
     const items = [...inventoryItems, ...utMachines, ...dftMachines];
-    if (user?.role === 'Admin') {
+    if (!user || !user.projectIds) return items;
+    if (user.role === 'Admin') {
       return items;
     }
-    if (!user?.projectIds) return [];
     const userProjectIds = new Set(user.projectIds);
     return items.filter(item => item.projectId && userProjectIds.has(item.projectId));
   }, [inventoryItems, utMachines, dftMachines, user]);
@@ -92,12 +95,12 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     try {
       const result = await addDamageReport(data);
       if (result.success) {
-          toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
-          setIsOpen(false);
-          form.reset();
-          setSelectedItemType(null);
+        toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
+        form.reset();
+        setSelectedItemType(null);
+        setIsOpen(false);
       } else {
-          throw new Error(result.error || 'An unknown error occurred during submission.');
+        throw new Error(result.error || 'An unknown error occurred during submission.');
       }
     } catch (error: any) {
       console.error('Damage report submission failed:', error);
@@ -107,7 +110,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
         description: error.message || 'Something went wrong while submitting your report.',
       });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   };
   
