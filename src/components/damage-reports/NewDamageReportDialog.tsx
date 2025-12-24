@@ -15,7 +15,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Upload, Paperclip, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
-import { uploadFile } from '@/lib/storage';
 import { v4 as uuidv4 } from 'uuid';
 
 const damageReportSchema = z.object({
@@ -86,21 +85,37 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+  
     setIsUploading(true);
     toast({ title: 'Uploading...', description: 'Please wait while the file is uploaded.' });
-
+  
+    const formData = new FormData();
+    formData.append('file', file);
+  
     try {
-        const fileExtension = file.name.split('.').pop();
-        const fileName = `${uuidv4()}.${fileExtension}`;
-        const downloadURL = await uploadFile(file, `damage-reports/${fileName}`);
-        
-        form.setValue('attachmentUrl', downloadURL);
+      // Use the new Firebase Function URL
+      const response = await fetch('https://asia-south1-ries-doc-storage.cloudfunctions.net/uploadDamageReport', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+  
+      const result = await response.json();
+  
+      if (result.success && result.url) {
+        form.setValue('attachmentUrl', result.url);
         toast({ title: 'Upload Successful', description: 'File has been attached.' });
+      } else {
+        throw new Error(result.error || 'Unknown error occurred during upload.');
+      }
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
+      console.error("Upload error:", error);
+      toast({ variant: 'destructive', title: 'Upload Error', description: (error as Error).message });
     } finally {
-        setIsUploading(false);
+      setIsUploading(false);
     }
   };
 
@@ -256,5 +271,3 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     </Dialog>
   );
 }
-
-    

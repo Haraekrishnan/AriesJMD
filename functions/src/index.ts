@@ -7,8 +7,8 @@ import {v4 as uuidv4} from "uuid";
 const corsHandler = cors({origin: true});
 
 const b2 = new B2({
-  applicationKeyId: process.env.B2_KEY_ID as string,
-  applicationKey: process.env.B2_APP_KEY as string,
+  applicationKeyId: functions.config().b2.key_id,
+  applicationKey: functions.config().b2.app_key,
 });
 
 export const uploadDamageReport = functions.https.onRequest(
@@ -22,14 +22,14 @@ export const uploadDamageReport = functions.https.onRequest(
       try {
         await b2.authorize();
 
-        const busboy = new Busboy({ headers: req.headers });
+        const busboy = new Busboy({headers: req.headers});
         let uploadResult: B2.UploadFileResponse | null = null;
 
         busboy.on("file", async (_field, file, info) => {
           const {filename, mimeType} = info;
 
           const uploadUrl = await b2.getUploadUrl({
-            bucketId: process.env.B2_BUCKET_ID as string,
+            bucketId: functions.config().b2.bucket_id,
           });
 
           const fileName = `damage-reports/${uuidv4()}-${filename}`;
@@ -49,7 +49,7 @@ export const uploadDamageReport = functions.https.onRequest(
             return;
           }
 
-          const fileUrl = `${process.env.B2_PUBLIC_URL}/file/${process.env.B2_BUCKET}/${uploadResult.data.fileName}`;
+          const fileUrl = `${functions.config().b2.public_url}/file/${functions.config().b2.bucket}/${uploadResult.data.fileName}`;
 
           res.json({
             success: true,
