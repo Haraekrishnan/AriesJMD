@@ -4,6 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -34,7 +35,8 @@ interface NewDamageReportDialogProps {
 }
 
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
-  const { user, inventoryItems, utMachines, dftMachines, addDamageReport } = useAppContext();
+  const { user, inventoryItems, utMachines, dftMachines } = useAppContext();
+  const { addDamageReport } = useInventory();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -110,7 +112,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
         description: error.message || 'Something went wrong while submitting your report.',
       });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
   
