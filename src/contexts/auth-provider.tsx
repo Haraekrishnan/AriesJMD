@@ -119,21 +119,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, pass: string): Promise<{ success: boolean; user?: User }> => {
     setLoading(true);
-    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-    const snapshot = await get(usersRef);
+    try {
+        const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+        const snapshot = await get(usersRef);
 
-    if (snapshot.exists()) {
-      const usersData = snapshot.val();
-      const userId = Object.keys(usersData)[0];
-      const foundUser = { id: userId, ...usersData[userId] };
+        if (snapshot.exists()) {
+            const usersData = snapshot.val();
+            const userId = Object.keys(usersData)[0];
+            const foundUser = { id: userId, ...usersData[userId] };
 
-      if (foundUser.password === pass) {
-        setStoredUserId(foundUser.id);
-        setUser(foundUser);
-        addActivityLog(foundUser.id, 'User Logged In');
-        setLoading(false);
-        return { success: true, user: foundUser };
-      }
+            if (foundUser.password === pass) {
+                setStoredUserId(foundUser.id);
+                setUser(foundUser);
+                addActivityLog(foundUser.id, 'User Logged In');
+                setLoading(false);
+                return { success: true, user: foundUser };
+            }
+        }
+    } catch (error) {
+        console.error("Login error:", error);
     }
     setLoading(false);
     return { success: false };

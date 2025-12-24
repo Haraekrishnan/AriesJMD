@@ -4,7 +4,7 @@
     ".read": false,
     ".write": false,
     "users": {
-      ".read": true,
+      ".read": "auth != null",
       ".indexOn": "email",
       "$uid": {
         ".write": "$uid === auth.uid"
