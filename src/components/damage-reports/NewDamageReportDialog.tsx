@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,7 +80,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   }, [selectableItems, selectedItemType]);
 
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     form.setValue('attachment', file);
@@ -94,6 +93,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
       if (result.success) {
           toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
           setIsOpen(false);
+          form.reset();
+          setSelectedItemType(null);
       } else {
           throw new Error(result.error || 'An unknown error occurred during submission.');
       }
