@@ -1,4 +1,3 @@
-
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -15,18 +14,23 @@ export default function StatusPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user?.status === 'active') {
-        router.replace('/dashboard');
-    }
-    // If there's no user and we're not loading, they shouldn't be here
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
+        // Not logged in, go to login page
         router.replace('/login');
+        return;
+    }
+    
+    if (user.status === 'active') {
+        // If the user becomes active while on this page, move to dashboard
+        router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
 
   // Show a loading skeleton while we determine status, but only if we don't have a locked user yet
-  if (loading || !user) {
+  if (loading || !user || user.status !== 'locked') {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">
@@ -39,16 +43,6 @@ export default function StatusPage() {
         </div>
     );
   }
-  
-  if (user.status !== 'locked') {
-    // This case prevents flicker if the user becomes active. The useEffect will handle the redirect.
-    return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-         <p>Redirecting...</p>
-       </div>
-    );
-  }
-
 
   const handleUnlockRequest = () => {
     if (user) {

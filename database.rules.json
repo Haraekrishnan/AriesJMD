@@ -186,10 +186,6 @@
     "inspectionChecklists": {
         ".read": true,
         ".write": true
-    },
-    "damageReports": {
-      ".read": "auth != null",
-      ".write": "auth != null"
     }
   }
 }

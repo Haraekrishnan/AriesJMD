@@ -23,20 +23,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/login');
       return;
     }
-    
-    // Redirect away from login/status if user is active
-    if (user.status === 'active' && (pathname === '/login' || pathname === '/status')) {
-      router.replace('/dashboard');
-    }
-    
-    // Redirect to status page if locked
-    if (user.status === 'locked' && pathname !== '/status') {
-      router.replace('/status');
-    }
 
+    if (user.status === 'locked') {
+      if (pathname !== '/status') {
+        router.replace('/status');
+      }
+    } else if (user.status === 'active') {
+      if (pathname === '/login' || pathname === '/status') {
+        router.replace('/dashboard');
+      }
+    }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user || user.status !== 'active') {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -48,6 +47,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+  
+  if (user.status === 'locked') {
+    return <>{children}</>;
   }
   
   return (
