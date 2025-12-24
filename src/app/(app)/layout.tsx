@@ -23,12 +23,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/login');
       return;
     }
-
-    // This layout is for authenticated, active users.
-    // The AppProvider will handle redirecting 'locked' users to the '/status' page.
+    
+    // Redirect away from login/status if user is active
     if (user.status === 'active' && (pathname === '/login' || pathname === '/status')) {
       router.replace('/dashboard');
     }
+    
+    // Redirect to status page if locked
+    if (user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
+    }
+
   }, [user, loading, router, pathname]);
 
   if (loading || !user || user.status !== 'active') {

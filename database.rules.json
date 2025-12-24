@@ -1,13 +1,12 @@
 
-
 {
   "rules": {
     ".read": false,
     ".write": false,
     "users": {
+      ".read": true,
       ".indexOn": "email",
       "$uid": {
-        ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid"
       }
     },
@@ -189,11 +188,8 @@
         ".write": true
     },
     "damageReports": {
-      ".read": true,
+      ".read": "auth != null",
       ".write": "auth != null"
     }
   }
 }
-
-
-    

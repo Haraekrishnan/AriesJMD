@@ -42,27 +42,34 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const { user, loading } = auth;
 
   useEffect(() => {
-    if (loading) return;
-
-    const isAuthPage = pathname === '/login' || pathname === '/status';
-
+    if (loading) {
+      return;
+    }
+  
+    const isAuthPage = pathname === '/login';
+    const isStatusPage = pathname === '/status';
+  
     if (!user) {
+      // If no user and not on login, redirect to login
       if (!isAuthPage) {
         router.replace('/login');
       }
       return;
     }
-    
+  
+    // If user is locked, they must be on the status page
     if (user.status === 'locked') {
-      if (pathname !== '/status') {
+      if (!isStatusPage) {
         router.replace('/status');
       }
-    } else if (user.status === 'active') {
-      if (isAuthPage) {
+    } 
+    // If user is active, they should not be on auth or status pages
+    else if (user.status === 'active') {
+      if (isAuthPage || isStatusPage) {
         router.replace('/dashboard');
       }
     }
-
+  
   }, [user, loading, pathname, router]);
 
   return (

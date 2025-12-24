@@ -16,14 +16,17 @@ export default function StatusPage() {
 
   useEffect(() => {
     if (!loading && user?.status === 'active') {
-        // If the user becomes active while on this page, move to dashboard
         router.replace('/dashboard');
+    }
+    // If there's no user and we're not loading, they shouldn't be here
+    if (!loading && !user) {
+        router.replace('/login');
     }
   }, [user, loading, router]);
 
 
   // Show a loading skeleton while we determine status, but only if we don't have a locked user yet
-  if (loading || !user || user.status !== 'locked') {
+  if (loading || !user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex items-center space-x-4">
@@ -36,6 +39,16 @@ export default function StatusPage() {
         </div>
     );
   }
+  
+  if (user.status !== 'locked') {
+    // This case prevents flicker if the user becomes active. The useEffect will handle the redirect.
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background">
+         <p>Redirecting...</p>
+       </div>
+    );
+  }
+
 
   const handleUnlockRequest = () => {
     if (user) {
