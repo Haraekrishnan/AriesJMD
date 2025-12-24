@@ -1501,38 +1501,42 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
     const addDamageReport = useCallback(async (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }): Promise<{ success: boolean; error?: string }> => {
-        if (!user) return { success: false, error: 'User not authenticated.' };
-        
-        const newReportRef = push(ref(rtdb, 'damageReports'));
-        const newReportId = newReportRef.key!;
-    
-        try {
-            let attachmentUrl: string | null = null;
-            if (reportData.attachment) {
-                const file = reportData.attachment;
-                const fileName = `damage-reports/${newReportId}/${uuidv4()}-${file.name}`;
-                attachmentUrl = await uploadFile(file, fileName);
-            }
-        
-            const finalReport: Omit<DamageReport, 'id'> = {
-                itemId: reportData.itemId || null,
-                otherItemName: reportData.otherItemName || null,
-                reason: reportData.reason,
-                reporterId: user.id,
-                reportDate: new Date().toISOString(),
-                status: 'Pending',
-                attachmentUrl: attachmentUrl,
-            };
-        
-            await set(newReportRef, finalReport);
-            return { success: true };
-        } catch (error) {
-            console.error("Failed to submit damage report:", error);
-            // If DB entry was created but upload failed, we should probably clean it up.
-            // For now, we'll return an error to the user.
-            await remove(newReportRef); // Cleanup failed DB entry
-            return { success: false, error: (error as Error).message };
+      if (!user) {
+        return { success: false, error: "User not authenticated." };
+      }
+
+      const newReportRef = push(ref(rtdb, "damageReports"));
+      const newReportId = newReportRef.key!;
+
+      try {
+        let attachmentUrl: string | null = null;
+        if (reportData.attachment) {
+          const file = reportData.attachment;
+          const fileName = `damage-reports/${newReportId}/${uuidv4()}-${file.name}`;
+          attachmentUrl = await uploadFile(file, fileName);
         }
+    
+        const finalReport: Omit<DamageReport, "id"> = {
+          itemId: reportData.itemId || null,
+          otherItemName: reportData.otherItemName || null,
+          reason: reportData.reason,
+          reporterId: user.id,
+          reportDate: new Date().toISOString(),
+          status: "Pending",
+          attachmentUrl: attachmentUrl,
+        };
+    
+        await set(newReportRef, finalReport);
+    
+        return { success: true };
+      } catch (error: any) {
+        console.error("Failed to submit damage report:", error);
+        // Attempt to clean up the created DB entry if upload fails after it's created
+        await remove(newReportRef).catch(cleanupError => 
+          console.error("Failed to clean up DB entry after upload failure:", cleanupError)
+        );
+        return { success: false, error: error.message || "An unknown error occurred." };
+      }
     }, [user]);
 
     const updateDamageReportStatus = useCallback((reportId: string, status: DamageReportStatus, comment?: string) => {
