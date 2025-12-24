@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1502,10 +1503,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const addDamageReport = useCallback(async (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }): Promise<{ success: boolean; error?: string }> => {
         if (!user) return { success: false, error: 'User not authenticated.' };
         
+        const newReportRef = push(ref(rtdb, 'damageReports'));
+        const newReportId = newReportRef.key!;
+    
         try {
-            const newReportRef = push(ref(rtdb, 'damageReports'));
-            const newReportId = newReportRef.key!;
-        
             let attachmentUrl: string | null = null;
             if (reportData.attachment) {
                 const file = reportData.attachment;
@@ -1527,6 +1528,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             return { success: true };
         } catch (error) {
             console.error("Failed to submit damage report:", error);
+            // If DB entry was created but upload failed, we should probably clean it up.
+            // For now, we'll return an error to the user.
+            await remove(newReportRef); // Cleanup failed DB entry
             return { success: false, error: (error as Error).message };
         }
     }, [user]);
