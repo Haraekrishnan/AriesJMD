@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
   "dev": "next dev --webpack",
-    "build": "next build --webpack"
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "postinstall": "patch-package"
-  },
+  "build": "next build --webpack",
+  "start": "next start",
+  "lint": "next lint",
+  "typecheck": "tsc --noEmit",
+  "postinstall": "patch-package"
+},
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
     "@genkit-ai/next": "^1.13.0",
