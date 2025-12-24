@@ -1501,21 +1501,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
     const addDamageReport = useCallback(async (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }): Promise<{ success: boolean; error?: string }> => {
-      if (!user) {
-        return { success: false, error: "User not authenticated." };
-      }
-
-      const newReportRef = push(ref(rtdb, "damageReports"));
-      const newReportId = newReportRef.key!;
-
+      if (!user) return { success: false, error: "User not authenticated." };
+    
       try {
         let attachmentUrl: string | null = null;
         if (reportData.attachment) {
           const file = reportData.attachment;
-          const fileName = `damage-reports/${newReportId}/${uuidv4()}-${file.name}`;
+          const fileName = `damage-reports/${uuidv4()}-${file.name}`;
           attachmentUrl = await uploadFile(file, fileName);
         }
     
+        const newReportRef = push(ref(rtdb, 'damageReports'));
         const finalReport: Omit<DamageReport, "id"> = {
           itemId: reportData.itemId || null,
           otherItemName: reportData.otherItemName || null,
@@ -1527,17 +1523,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
     
         await set(newReportRef, finalReport);
-    
+        addActivityLog(user.id, 'Damage Report Submitted');
         return { success: true };
       } catch (error: any) {
         console.error("Failed to submit damage report:", error);
-        // Attempt to clean up the created DB entry if upload fails after it's created
-        await remove(newReportRef).catch(cleanupError => 
-          console.error("Failed to clean up DB entry after upload failure:", cleanupError)
-        );
         return { success: false, error: error.message || "An unknown error occurred." };
       }
-    }, [user]);
+    }, [user, addActivityLog]);
 
     const updateDamageReportStatus = useCallback((reportId: string, status: DamageReportStatus, comment?: string) => {
         if (!user) return;
