@@ -1540,37 +1540,35 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             toast({ title: 'Permission Denied', variant: 'destructive' });
             return;
         }
-
+    
         const reportsWithFiles = damageReports.filter(r => r.attachmentUrl);
-        if (reportsWithFiles.length === 0) {
-            toast({ title: 'No files to delete.' });
-            return;
-        }
-
         const storage = getStorage();
-        const deletePromises: Promise<void>[] = [];
-
-        // Delete files from Firebase Storage
+        const deleteFilePromises: Promise<void>[] = [];
+    
         reportsWithFiles.forEach(report => {
             if (report.attachmentUrl) {
                 try {
-                    const fileRef = storageRef(storage, report.attachmentUrl);
-                    deletePromises.push(deleteObject(fileRef));
+                    // Check if it's a Firebase Storage URL
+                    if (report.attachmentUrl.includes('firebasestorage.googleapis.com')) {
+                        const fileRef = storageRef(storage, report.attachmentUrl);
+                        deleteFilePromises.push(deleteObject(fileRef));
+                    }
+                    // Old Cloudinary URLs will be ignored by this logic
                 } catch(e) {
-                    console.error("Could not create storage ref for deletion: ", e);
+                    console.error("Could not create storage ref for deletion:", e);
                 }
             }
         });
-
-        // Delete all reports from RTDB
-        deletePromises.push(set(ref(rtdb, 'damageReports'), null));
-
+    
         try {
-            await Promise.all(deletePromises);
+            await Promise.all(deleteFilePromises);
+            await set(ref(rtdb, 'damageReports'), null); // Delete all database entries
             toast({ title: 'Success', description: 'All damage reports and associated files have been deleted.' });
         } catch (error) {
             console.error('Error deleting damage reports/files:', error);
-            toast({ title: 'Deletion Failed', description: 'Some files or reports may not have been deleted. Check the console for details.', variant: 'destructive' });
+            // Even if file deletion fails, try to delete the database entries
+            await set(ref(rtdb, 'damageReports'), null);
+            toast({ title: 'Partial Deletion', description: 'All database entries deleted, but some files may not have been removed from storage. Check the console.', variant: 'destructive' });
         }
     }, [user, damageReports, toast]);
     
