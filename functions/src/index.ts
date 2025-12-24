@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as cors from "cors";
 import Busboy from "busboy";
@@ -12,7 +13,7 @@ const b2 = new B2({
 });
 
 export const uploadDamageReport = functions.https.onRequest(
-  async (req, res) => {
+  (req, res) => {
     corsHandler(req, res, async () => {
       if (req.method !== "POST") {
         res.status(405).json({error: "Method not allowed"});
