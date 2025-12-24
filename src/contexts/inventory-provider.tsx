@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1501,34 +1500,34 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
     const addDamageReport = useCallback(async (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }): Promise<{ success: boolean; error?: string }> => {
-      if (!user) return { success: false, error: "User not authenticated." };
-    
-      try {
-        let attachmentUrl: string | null = null;
-        if (reportData.attachment) {
-          const file = reportData.attachment;
-          const fileName = `damage-reports/${uuidv4()}-${file.name}`;
-          attachmentUrl = await uploadFile(file, fileName);
+        if (!user) return { success: false, error: "User not authenticated." };
+        
+        try {
+            let attachmentUrl: string | null = null;
+            if (reportData.attachment) {
+                const file = reportData.attachment;
+                const fileName = `damage-reports/${uuidv4()}-${file.name}`;
+                attachmentUrl = await uploadFile(file, fileName);
+            }
+        
+            const newReportRef = push(ref(rtdb, 'damageReports'));
+            const finalReport: Omit<DamageReport, "id"> = {
+              itemId: reportData.itemId || null,
+              otherItemName: reportData.otherItemName || null,
+              reason: reportData.reason,
+              reporterId: user.id,
+              reportDate: new Date().toISOString(),
+              status: "Pending",
+              attachmentUrl: attachmentUrl,
+            };
+        
+            await set(newReportRef, finalReport);
+            addActivityLog(user.id, 'Damage Report Submitted');
+            return { success: true };
+        } catch (error: any) {
+            console.error("Failed to submit damage report:", error);
+            return { success: false, error: error.message || "An unknown error occurred." };
         }
-    
-        const newReportRef = push(ref(rtdb, 'damageReports'));
-        const finalReport: Omit<DamageReport, "id"> = {
-          itemId: reportData.itemId || null,
-          otherItemName: reportData.otherItemName || null,
-          reason: reportData.reason,
-          reporterId: user.id,
-          reportDate: new Date().toISOString(),
-          status: "Pending",
-          attachmentUrl: attachmentUrl,
-        };
-    
-        await set(newReportRef, finalReport);
-        addActivityLog(user.id, 'Damage Report Submitted');
-        return { success: true };
-      } catch (error: any) {
-        console.error("Failed to submit damage report:", error);
-        return { success: false, error: error.message || "An unknown error occurred." };
-      }
     }, [user, addActivityLog]);
 
     const updateDamageReportStatus = useCallback((reportId: string, status: DamageReportStatus, comment?: string) => {
