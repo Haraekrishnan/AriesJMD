@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -8,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import type { DamageReport, DamageReportStatus } from '@/lib/types';
 import ViewDamageReportDialog from './ViewDamageReportDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' | 'success' | 'outline' } = {
   'Pending': 'secondary',
@@ -17,9 +21,10 @@ const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' 
 };
 
 export default function DamageReportList() {
-  const { damageReports = [], inventoryItems, utMachines, dftMachines, users } = useAppContext();
+  const { damageReports = [], inventoryItems, utMachines, dftMachines, users, user, deleteDamageReport } = useAppContext();
   const [viewingReport, setViewingReport] = useState<DamageReport | null>(null);
-  
+  const { toast } = useToast();
+
   const allItems = useMemo(() => [
     ...inventoryItems,
     ...utMachines,
@@ -38,6 +43,15 @@ export default function DamageReportList() {
       };
     }).sort((a, b) => parseISO(b.reportDate).getTime() - parseISO(a.reportDate).getTime());
   }, [damageReports, allItems, users]);
+  
+  const handleDelete = (reportId: string) => {
+    deleteDamageReport(reportId);
+    toast({
+        title: "Report Deleted",
+        description: "The damage report has been successfully deleted.",
+        variant: "destructive"
+    });
+  };
 
   if (reportsWithDetails.length === 0) {
     return <p className="text-center py-8 text-muted-foreground">No damage reports have been submitted.</p>;
@@ -68,7 +82,28 @@ export default function DamageReportList() {
               <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
             </TableCell>
             <TableCell className="text-right">
-              <Button variant="outline" size="sm" onClick={() => setViewingReport(report)}>View</Button>
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setViewingReport(report)}>View</Button>
+                {user?.role === 'Admin' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete this damage report. This action cannot be undone.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(report.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+              </div>
             </TableCell>
           </TableRow>
         ))}
