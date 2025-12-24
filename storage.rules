@@ -6,5 +6,10 @@ service firebase.storage {
     match /damage-reports/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
+
+    // Allow authenticated users to read and write to their own avatar folder
+    match /avatars/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
