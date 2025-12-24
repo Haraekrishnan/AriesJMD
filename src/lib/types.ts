@@ -963,10 +963,10 @@ export type DamageReport = {
   id: string;
   reporterId: string;
   reportDate: string; // ISO
-  itemId?: string;
-  otherItemName?: string;
+  itemId?: string | null;
+  otherItemName?: string | null;
   reason: string;
-  attachmentUrl?: string;
+  attachmentUrl?: string | null;
   status: DamageReportStatus;
   comments?: Comment[];
 };
@@ -1016,3 +1016,5 @@ export type Directive = {
   readBy: { [key: string]: boolean };
 };
 export type DirectiveStatus = 'New' | 'Under Review' | 'Action Taken' | 'Closed';
+
+    

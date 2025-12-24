@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -12,7 +13,7 @@ import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { format, parseISO, isValid } from 'date-fns';
 import { useConsumable } from './consumable-provider';
-
+import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -191,6 +192,7 @@ type InventoryContextType = {
 
   addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason' | 'attachmentUrl'>) => void;
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
+  deleteAllDamageReportsAndFiles: () => void;
 
   pendingConsumableRequestCount: number;
   updatedConsumableRequestCount: number;
@@ -1498,8 +1500,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if(!user) return;
         const newReportRef = push(ref(rtdb, 'damageReports'));
         const newReport: Omit<DamageReport, 'id'> = {
-            ...reportData,
             itemId: reportData.itemId || null,
+            otherItemName: reportData.otherItemName || null,
+            reason: reportData.reason,
+            attachmentUrl: reportData.attachmentUrl || null,
             reporterId: user.id,
             reportDate: new Date().toISOString(),
             status: 'Pending',
@@ -1530,6 +1534,45 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
 
     }, [user, damageReportsById, inventoryItems]);
+    
+    const deleteAllDamageReportsAndFiles = useCallback(async () => {
+        if (!user || user.role !== 'Admin') {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
+
+        const reportsWithFiles = damageReports.filter(r => r.attachmentUrl);
+        if (reportsWithFiles.length === 0) {
+            toast({ title: 'No files to delete.' });
+            return;
+        }
+
+        const storage = getStorage();
+        const deletePromises: Promise<void>[] = [];
+
+        // Delete files from Firebase Storage
+        reportsWithFiles.forEach(report => {
+            if (report.attachmentUrl) {
+                try {
+                    const fileRef = storageRef(storage, report.attachmentUrl);
+                    deletePromises.push(deleteObject(fileRef));
+                } catch(e) {
+                    console.error("Could not create storage ref for deletion: ", e);
+                }
+            }
+        });
+
+        // Delete all reports from RTDB
+        deletePromises.push(set(ref(rtdb, 'damageReports'), null));
+
+        try {
+            await Promise.all(deletePromises);
+            toast({ title: 'Success', description: 'All damage reports and associated files have been deleted.' });
+        } catch (error) {
+            console.error('Error deleting damage reports/files:', error);
+            toast({ title: 'Deletion Failed', description: 'Some files or reports may not have been deleted. Check the console for details.', variant: 'destructive' });
+        }
+    }, [user, damageReports, toast]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -1581,6 +1624,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,
+        deleteAllDamageReportsAndFiles,
     };
 
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;
@@ -1599,3 +1643,6 @@ export const useInventory = (): InventoryContextType => {
 
 
 
+
+
+    

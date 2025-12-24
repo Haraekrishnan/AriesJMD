@@ -15,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Upload, Paperclip, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
+import { uploadFile } from '@/lib/storage';
+import { v4 as uuidv4 } from 'uuid';
 
 const damageReportSchema = z.object({
   itemId: z.string().optional(),
@@ -48,23 +50,19 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   });
   
   const allItems = useMemo(() => {
+    const items = [...inventoryItems, ...utMachines, ...dftMachines];
     if (user?.role === 'Admin') {
-      return [...inventoryItems, ...utMachines, ...dftMachines];
+      return items;
     }
     if (!user?.projectIds) return [];
     const userProjectIds = new Set(user.projectIds);
-    return [...inventoryItems, ...utMachines, ...dftMachines].filter(item => userProjectIds.has(item.projectId));
+    return items.filter(item => item.projectId && userProjectIds.has(item.projectId));
   }, [inventoryItems, utMachines, dftMachines, user]);
 
 
   const selectableItems = useMemo(() => {
     if (!user) return [];
-    if (user.role === 'Admin') {
-      return allItems;
-    }
-    if (!user.projectIds) return [];
-    const userProjectIds = new Set(user.projectIds);
-    return allItems.filter(item => userProjectIds.has(item.projectId));
+    return allItems;
   }, [allItems, user]);
 
   const uniqueItemNames = useMemo(() => {
@@ -92,26 +90,17 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     setIsUploading(true);
     toast({ title: 'Uploading...', description: 'Please wait while the file is uploaded.' });
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-        const res = await fetch("/api/drive-upload", {
-            method: "POST",
-            body: formData,
-        });
-        const data = await res.json();
-        setIsUploading(false);
-
-        if (data.success && data.file.webViewLink) {
-            form.setValue('attachmentUrl', data.file.webViewLink);
-            toast({ title: 'Upload Successful', description: 'File has been attached.' });
-        } else {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: data.error || 'Could not upload file.' });
-        }
+        const fileExtension = file.name.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        const downloadURL = await uploadFile(file, `damage-reports/${fileName}`);
+        
+        form.setValue('attachmentUrl', downloadURL);
+        toast({ title: 'Upload Successful', description: 'File has been attached.' });
     } catch (error) {
-        setIsUploading(false);
         toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -267,3 +256,5 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     </Dialog>
   );
 }
+
+    
