@@ -89,19 +89,24 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-    const result = await addDamageReport(data);
-
-    if (result.success) {
-        toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
-        setIsOpen(false);
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Submission Failed',
-            description: result.error || 'An unknown error occurred.',
-        });
+    try {
+      const result = await addDamageReport(data);
+      if (result.success) {
+          toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
+          setIsOpen(false);
+      } else {
+          throw new Error(result.error || 'An unknown error occurred during submission.');
+      }
+    } catch (error: any) {
+      console.error('Damage report submission failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Submission Failed',
+        description: error.message || 'Something went wrong while submitting your report.',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -149,8 +154,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                               {uniqueItemNames.map(name => (
                                 <CommandItem key={name} value={name} onSelect={() => { 
                                   setSelectedItemType(name);
-                                  form.setValue('itemId', undefined);
-                                  form.setValue('otherItemName', undefined);
+                                  form.setValue('itemId', '');
+                                  form.setValue('otherItemName', '');
                                   setIsItemTypePopoverOpen(false); 
                                 }}>
                                   {name}
@@ -158,7 +163,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                               ))}
                               <CommandItem onSelect={() => { 
                                 setSelectedItemType('Other');
-                                form.setValue('itemId', undefined);
+                                form.setValue('itemId', '');
                                 setIsItemTypePopoverOpen(false); 
                               }}>Other (Specify below)</CommandItem>
                             </CommandGroup>
