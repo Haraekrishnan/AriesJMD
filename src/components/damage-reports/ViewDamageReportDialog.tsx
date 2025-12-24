@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -81,7 +82,7 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
                 <div className="space-y-1">
                     <Label>Attachment</Label>
                     <a href={report.attachmentUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="w-full justify-start"><Paperclip className="mr-2 h-4 w-4"/>View Attached Document</Button>
+                        <Button variant="outline" className="w-full justify-start" disabled={!report.attachmentUrl}><Paperclip className="mr-2 h-4 w-4"/>View Attached Document</Button>
                     </a>
                 </div>
              )}

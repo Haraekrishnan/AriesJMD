@@ -87,15 +87,21 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     form.setValue('attachment', file);
   };
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-    addDamageReport(data);
-    toast({ title: 'Damage Report Submitted', description: 'Your report has been sent for review.' });
-    if(data.attachment) {
-      toast({ title: 'File Uploading', description: 'Your file is uploading in the background.'});
+    const result = await addDamageReport(data);
+
+    if (result.success) {
+        toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
+        setIsOpen(false);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Submission Failed',
+            description: result.error || 'An unknown error occurred.',
+        });
     }
     setIsSubmitting(false);
-    setIsOpen(false);
   };
   
   const handleOpenChange = (open: boolean) => {

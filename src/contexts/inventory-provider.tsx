@@ -192,7 +192,7 @@ type InventoryContextType = {
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
-  addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => void;
+  addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => Promise<{ success: boolean; error?: string }>;
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
   deleteAllDamageReportsAndFiles: () => void;
 
@@ -1498,32 +1498,37 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updateInspectionChecklist = useCallback(() => {}, []);
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
-    const addDamageReport = useCallback((reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => {
-      if(!user) return;
-      const newReportRef = push(ref(rtdb, 'damageReports'));
-      const newReportId = newReportRef.key!;
-
-      const initialReport: Omit<DamageReport, 'id' | 'attachmentUrl'> = {
-          itemId: reportData.itemId || null,
-          otherItemName: reportData.otherItemName || null,
-          reason: reportData.reason,
-          reporterId: user.id,
-          reportDate: new Date().toISOString(),
-          status: 'Pending',
-      };
-      set(newReportRef, initialReport);
-  
-      if (reportData.attachment) {
-        const file = reportData.attachment;
-        const fileName = `damage-reports/${newReportId}/${file.name}`;
-        uploadFile(file, fileName).then(url => {
-          update(ref(rtdb, `damageReports/${newReportId}`), { attachmentUrl: url });
-        }).catch(error => {
-          console.error("Error uploading damage report attachment:", error);
-          // Optionally add a comment to the report indicating upload failure
-        });
-      }
-  }, [user]);
+    const addDamageReport = useCallback(async (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }): Promise<{ success: boolean; error?: string }> => {
+        if (!user) return { success: false, error: 'User not authenticated.' };
+        
+        try {
+            const newReportRef = push(ref(rtdb, 'damageReports'));
+            const newReportId = newReportRef.key!;
+        
+            let attachmentUrl: string | null = null;
+            if (reportData.attachment) {
+                const file = reportData.attachment;
+                const fileName = `damage-reports/${newReportId}/${file.name}`;
+                attachmentUrl = await uploadFile(file, fileName);
+            }
+        
+            const finalReport: Omit<DamageReport, 'id'> = {
+                itemId: reportData.itemId || null,
+                otherItemName: reportData.otherItemName || null,
+                reason: reportData.reason,
+                reporterId: user.id,
+                reportDate: new Date().toISOString(),
+                status: 'Pending',
+                attachmentUrl: attachmentUrl,
+            };
+        
+            await set(newReportRef, finalReport);
+            return { success: true };
+        } catch (error) {
+            console.error("Failed to submit damage report:", error);
+            return { success: false, error: (error as Error).message };
+        }
+    }, [user]);
 
     const updateDamageReportStatus = useCallback((reportId: string, status: DamageReportStatus, comment?: string) => {
         if (!user) return;
@@ -1557,8 +1562,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         const reportsToDelete = Object.values(damageReportsById);
         const storage = getStorage();
-        const deleteFilePromises: Promise<void>[] = [];
         const updates: { [key: string]: null } = {};
+        const deleteFilePromises: Promise<void>[] = [];
     
         reportsToDelete.forEach(report => {
             updates[`/damageReports/${report.id}`] = null;
@@ -1574,13 +1579,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         try {
             await Promise.all(deleteFilePromises);
-            await update(ref(rtdb), updates); // Use update with null values to delete all at once
-            toast({ title: 'Success', description: 'All damage reports and associated files have been deleted.' });
         } catch (error) {
-            console.error('Error deleting damage reports/files:', error);
-            // Even if file deletion fails, try to delete the database entries
+            console.error('Some files could not be deleted from storage:', error);
+            toast({ title: 'File Deletion Warning', description: 'Could not delete all files from storage. Check console.', variant: 'destructive' });
+        } finally {
             await update(ref(rtdb), updates);
-            toast({ title: 'Partial Deletion', description: 'All database entries deleted, but some files may not have been removed from storage. Check the console.', variant: 'destructive' });
+            toast({ title: 'Success', description: 'All damage report database entries have been deleted.' });
         }
     }, [user, damageReportsById, toast]);
     
