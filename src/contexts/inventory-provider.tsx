@@ -194,6 +194,7 @@ type InventoryContextType = {
 
   addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => Promise<{ success: boolean; error?: string }>;
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
+  deleteDamageReport: (reportId: string) => void;
   deleteAllDamageReportsAndFiles: () => void;
 
   pendingConsumableRequestCount: number;
@@ -1508,7 +1509,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             let attachmentUrl: string | null = null;
             if (reportData.attachment) {
                 const file = reportData.attachment;
-                const fileName = `damage-reports/${newReportId}/${file.name}`;
+                const fileName = `damage-reports/${newReportId}/${uuidv4()}-${file.name}`;
                 attachmentUrl = await uploadFile(file, fileName);
             }
         
@@ -1554,6 +1555,29 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     }, [user, damageReportsById, inventoryItems]);
     
+    const deleteDamageReport = useCallback((reportId: string) => {
+        if (!user || user.role !== 'Admin') {
+            toast({ variant: 'destructive', title: 'Permission Denied' });
+            return;
+        }
+
+        const report = damageReportsById[reportId];
+        if (!report) return;
+
+        // Delete from DB first
+        remove(ref(rtdb, `damageReports/${reportId}`)).then(() => {
+             // Then delete from storage if URL exists and is a Firebase URL
+            if (report.attachmentUrl && report.attachmentUrl.includes('firebasestorage.googleapis.com')) {
+                const storage = getStorage();
+                const fileRef = storageRef(storage, report.attachmentUrl);
+                deleteObject(fileRef).catch(error => {
+                    console.error("Failed to delete file from storage:", error);
+                    toast({ title: 'File Deletion Failed', description: 'Could not delete the file from storage. It may need to be removed manually.', variant: 'destructive'});
+                });
+            }
+        });
+    }, [user, damageReportsById, toast]);
+
     const deleteAllDamageReportsAndFiles = useCallback(async () => {
         if (!user || user.role !== 'Admin') {
             toast({ title: 'Permission Denied', variant: 'destructive' });
@@ -1638,6 +1662,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,
+        deleteDamageReport,
         deleteAllDamageReportsAndFiles,
     };
 
