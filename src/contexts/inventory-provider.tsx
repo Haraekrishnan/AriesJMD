@@ -14,6 +14,8 @@ import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { format, parseISO, isValid } from 'date-fns';
 import { useConsumable } from './consumable-provider';
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
+import { v4 as uuidv4 } from 'uuid';
+import { uploadFile } from '@/lib/storage';
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -190,7 +192,7 @@ type InventoryContextType = {
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
-  addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason' | 'attachmentUrl'>) => void;
+  addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => void;
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
   deleteAllDamageReportsAndFiles: () => void;
 
@@ -1496,20 +1498,32 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updateInspectionChecklist = useCallback(() => {}, []);
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
-    const addDamageReport = useCallback((reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason' | 'attachmentUrl'>) => {
-        if(!user) return;
-        const newReportRef = push(ref(rtdb, 'damageReports'));
-        const newReport: Omit<DamageReport, 'id'> = {
-            itemId: reportData.itemId || null,
-            otherItemName: reportData.otherItemName || null,
-            reason: reportData.reason,
-            attachmentUrl: reportData.attachmentUrl || null,
-            reporterId: user.id,
-            reportDate: new Date().toISOString(),
-            status: 'Pending',
-        };
-        set(newReportRef, newReport);
-    }, [user]);
+    const addDamageReport = useCallback((reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => {
+      if(!user) return;
+      const newReportRef = push(ref(rtdb, 'damageReports'));
+      const newReportId = newReportRef.key!;
+
+      const initialReport: Omit<DamageReport, 'id' | 'attachmentUrl'> = {
+          itemId: reportData.itemId || null,
+          otherItemName: reportData.otherItemName || null,
+          reason: reportData.reason,
+          reporterId: user.id,
+          reportDate: new Date().toISOString(),
+          status: 'Pending',
+      };
+      set(newReportRef, initialReport);
+  
+      if (reportData.attachment) {
+        const file = reportData.attachment;
+        const fileName = `damage-reports/${newReportId}/${file.name}`;
+        uploadFile(file, fileName).then(url => {
+          update(ref(rtdb, `damageReports/${newReportId}`), { attachmentUrl: url });
+        }).catch(error => {
+          console.error("Error uploading damage report attachment:", error);
+          // Optionally add a comment to the report indicating upload failure
+        });
+      }
+  }, [user]);
 
     const updateDamageReportStatus = useCallback((reportId: string, status: DamageReportStatus, comment?: string) => {
         if (!user) return;
@@ -1541,20 +1555,18 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             return;
         }
     
-        const reportsWithFiles = damageReports.filter(r => r.attachmentUrl);
+        const reportsToDelete = Object.values(damageReportsById);
         const storage = getStorage();
         const deleteFilePromises: Promise<void>[] = [];
+        const updates: { [key: string]: null } = {};
     
-        reportsWithFiles.forEach(report => {
-            if (report.attachmentUrl) {
+        reportsToDelete.forEach(report => {
+            updates[`/damageReports/${report.id}`] = null;
+            if (report.attachmentUrl && report.attachmentUrl.includes('firebasestorage.googleapis.com')) {
                 try {
-                    // Check if it's a Firebase Storage URL
-                    if (report.attachmentUrl.includes('firebasestorage.googleapis.com')) {
-                        const fileRef = storageRef(storage, report.attachmentUrl);
-                        deleteFilePromises.push(deleteObject(fileRef));
-                    }
-                    // Old Cloudinary URLs will be ignored by this logic
-                } catch(e) {
+                    const fileRef = storageRef(storage, report.attachmentUrl);
+                    deleteFilePromises.push(deleteObject(fileRef));
+                } catch (e) {
                     console.error("Could not create storage ref for deletion:", e);
                 }
             }
@@ -1562,15 +1574,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         try {
             await Promise.all(deleteFilePromises);
-            await set(ref(rtdb, 'damageReports'), null); // Delete all database entries
+            await update(ref(rtdb), updates); // Use update with null values to delete all at once
             toast({ title: 'Success', description: 'All damage reports and associated files have been deleted.' });
         } catch (error) {
             console.error('Error deleting damage reports/files:', error);
             // Even if file deletion fails, try to delete the database entries
-            await set(ref(rtdb, 'damageReports'), null);
+            await update(ref(rtdb), updates);
             toast({ title: 'Partial Deletion', description: 'All database entries deleted, but some files may not have been removed from storage. Check the console.', variant: 'destructive' });
         }
-    }, [user, damageReports, toast]);
+    }, [user, damageReportsById, toast]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -1635,12 +1647,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
-
-
-
-
-
-
-    

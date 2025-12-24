@@ -15,14 +15,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Upload, Paperclip, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
-import { v4 as uuidv4 } from 'uuid';
-import { uploadFile } from '@/lib/storage';
 
 const damageReportSchema = z.object({
   itemId: z.string().optional(),
   otherItemName: z.string().optional(),
   reason: z.string().min(10, 'A detailed reason is required.'),
-  attachmentUrl: z.string().optional(),
+  attachment: z.instanceof(File).optional(),
 }).refine(data => data.itemId || data.otherItemName, {
   message: 'You must either select an inventory item or specify an item name.',
   path: ['itemId'],
@@ -38,7 +36,7 @@ interface NewDamageReportDialogProps {
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
   const { user, inventoryItems, utMachines, dftMachines, addDamageReport } = useAppContext();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [isItemTypePopoverOpen, setIsItemTypePopoverOpen] = useState(false);
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
@@ -86,27 +84,17 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-  
-    setIsUploading(true);
-    toast({ title: 'Uploading...', description: 'Please wait while the file is uploaded.' });
-  
-    try {
-      const fileName = `damage-reports/${uuidv4()}-${file.name}`;
-      const url = await uploadFile(file, fileName);
-
-      form.setValue('attachmentUrl', url);
-      toast({ title: 'Upload Successful', description: 'File has been attached.' });
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast({ variant: 'destructive', title: 'Upload Error', description: (error as Error).message });
-    } finally {
-      setIsUploading(false);
-    }
+    form.setValue('attachment', file);
   };
 
   const onSubmit = (data: FormValues) => {
+    setIsSubmitting(true);
     addDamageReport(data);
     toast({ title: 'Damage Report Submitted', description: 'Your report has been sent for review.' });
+    if(data.attachment) {
+      toast({ title: 'File Uploading', description: 'Your file is uploading in the background.'});
+    }
+    setIsSubmitting(false);
     setIsOpen(false);
   };
   
@@ -226,22 +214,22 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
                <div className="space-y-2">
                 <Label>Attachment (Optional)</Label>
-                {form.watch('attachmentUrl') ? (
+                {form.watch('attachment') ? (
                   <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                    <a href={form.getValues('attachmentUrl')!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
+                    <div className="flex items-center gap-2 truncate">
                       <Paperclip className="h-4 w-4" />
-                      <span className="truncate">File Attached</span>
-                    </a>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', undefined)}>
+                      <span className="truncate">{form.watch('attachment')?.name}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachment', undefined)}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : (
                   <div className="relative">
                     <Button asChild variant="outline" size="sm">
-                      <Label htmlFor="damage-report-file"><Upload className="mr-2 h-4 w-4" /> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
+                      <Label htmlFor="damage-report-file"><Upload className="mr-2 h-4 w-4" /> Upload File</Label>
                     </Button>
-                    <Input id="damage-report-file" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} />
+                    <Input id="damage-report-file" type="file" onChange={handleFileChange} className="hidden" />
                   </div>
                 )}
               </div>
@@ -249,7 +237,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
           </ScrollArea>
           <DialogFooter className="mt-auto pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isUploading}>Submit Report</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Submitting...' : 'Submit Report'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
