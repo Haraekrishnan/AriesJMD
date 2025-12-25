@@ -236,14 +236,12 @@
     align-items: flex-end; /* Align to the bottom for the stick */
 }
 .sparkler-1 {
-    bottom: -10px;
+    bottom: 10px;
     right: 5%;
-    transform: rotate(-15deg);
 }
 .sparkler-2 {
-    bottom: -5px;
+    bottom: 10px;
     left: 10%;
-    transform: rotate(15deg);
 }
 .sparkler-stick {
     width: 4px;
