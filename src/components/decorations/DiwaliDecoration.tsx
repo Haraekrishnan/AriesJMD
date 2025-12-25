@@ -24,14 +24,19 @@ export default function DiwaliDecoration() {
                 ))}
             </div>
 
-
-            {/* Fireworks */}
+            {/* Fireworks and Crackers */}
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
             
+            <div className="cracker"></div>
+            <div className="cracker"></div>
+            <div className="cracker"></div>
+            <div className="cracker"></div>
+            <div className="cracker"></div>
+
             {/* Lights */}
             <div className="lights">
                 {Array.from({ length: 15 }).map((_, i) => <div key={`light-${i}`} className="light"></div>)}

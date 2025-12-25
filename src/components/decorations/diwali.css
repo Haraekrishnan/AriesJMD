@@ -180,3 +180,35 @@
 .light:nth-child(13) { top: 85%; left: 55%; --light-color: #f00; animation-delay: 1.3s; }
 .light:nth-child(14) { top: 95%; left: 75%; --light-color: #0f0; animation-delay: 0.7s; }
 .light:nth-child(15) { top: 88%; left: 95%; --light-color: #00f; animation-delay: 1.5s; }
+
+/* Crackers */
+.cracker{
+  position:absolute;
+  width:4px;
+  height:80px;
+  background: linear-gradient(
+    rgba(255,255,255,0.5),
+    #ffc107
+  );
+  animation:shoot 3s infinite;
+  opacity:0;
+}
+@keyframes shoot{
+  0%{
+    transform:translateY(200px) scale(1,1);
+    opacity:1;
+  }
+  80%{
+    transform:translateY(-700px) scale(0.8,0.8);
+    opacity:1;
+  }
+  100%{
+    transform:translateY(-800px) scale(0,0);
+    opacity:0;
+  }
+}
+.cracker:nth-child(6) { left:10%; animation-delay: 1s; }
+.cracker:nth-child(7) { left:30%; animation-delay: 2.5s; }
+.cracker:nth-child(8) { left:50%; animation-delay: 4s; }
+.cracker:nth-child(9) { left:70%; animation-delay: 5.5s; }
+.cracker:nth-child(10) { left:90%; animation-delay: 7s; }
