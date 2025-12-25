@@ -1016,4 +1016,4 @@ export type DamageReport = {
     attachmentUrl: string | null;
 };
 
-export type DecorationTheme = 'none' | 'christmas' | 'diwali';
+export type DecorationTheme = 'none' | 'christmas' | 'diwali' | 'new-year';

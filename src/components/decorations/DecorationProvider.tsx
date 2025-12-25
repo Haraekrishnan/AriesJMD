@@ -3,6 +3,7 @@
 import { useDecorations } from '@/contexts/decoration-provider';
 import ChristmasDecoration from './ChristmasDecoration';
 import DiwaliDecoration from './DiwaliDecoration';
+import NewYearDecoration from './NewYearDecoration';
 
 export function DecorationProvider() {
     const { activeTheme } = useDecorations();
@@ -16,6 +17,8 @@ export function DecorationProvider() {
             return <ChristmasDecoration />;
         case 'diwali':
             return <DiwaliDecoration />;
+        case 'new-year':
+            return <NewYearDecoration />;
         default:
             return null;
     }

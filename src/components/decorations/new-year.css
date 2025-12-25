@@ -1,0 +1,165 @@
+
+.new-year-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* --- HAPPY NEW YEAR TEXT --- */
+.happy-new-year {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: scale-in-out 8s ease-in-out infinite;
+}
+
+.happy-new-year h1 {
+  margin: 0;
+  padding: 0;
+  font-size: 5rem;
+  font-family: 'Lobster', cursive;
+  color: #FFD700; /* Gold */
+  text-shadow: 
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #FFD700,
+    0 0 30px #FFD700,
+    0 0 40px #FFD700,
+    0 0 55px #FFD700,
+    0 0 75px #FFD700;
+}
+
+@keyframes scale-in-out {
+  0%, 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  10%, 40% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50%, 90% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+
+/* --- FIREWORKS --- */
+.firework {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  border-radius: 50%;
+  opacity: 1;
+  animation: firework-shoot 3s ease-out infinite;
+}
+
+@keyframes firework-shoot {
+  0% { transform: translateY(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translateY(-400px); opacity: 0; }
+}
+
+.firework::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: firework-explode 3s ease-out infinite;
+}
+
+@keyframes firework-explode {
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(35); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(35); }
+}
+
+.firework:nth-child(1) { top: 80%; left: 20%; animation-delay: 0s; background: #ffc107; }
+.firework:nth-child(2) { top: 90%; left: 80%; animation-delay: -1.2s; background: #f44336; }
+.firework:nth-child(3) { top: 85%; left: 10%; animation-delay: -0.5s; background: #4caf50; }
+.firework:nth-child(4) { top: 75%; left: 90%; animation-delay: -0.8s; background: #2196f3; }
+.firework:nth-child(5) { top: 95%; left: 50%; animation-delay: -1.5s; background: #9c27b0; }
+
+
+/* --- CONFETTI --- */
+.confetti-container {
+    perspective: 700px;
+}
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 15px;
+    opacity: 0;
+    animation: fall-confetti 5s linear infinite;
+}
+
+@keyframes fall-confetti {
+    0% {
+        transform: translate3d(var(--x-start), -10vh, 0) rotateZ(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(var(--x-end), 110vh, 0) rotateZ(var(--rotate-end));
+        opacity: 0;
+    }
+}
+
+.confetti:nth-child(10n) { background-color: #f44336; }
+.confetti:nth-child(10n + 1) { background-color: #e91e63; }
+.confetti:nth-child(10n + 2) { background-color: #9c27b0; }
+.confetti:nth-child(10n + 3) { background-color: #673ab7; }
+.confetti:nth-child(10n + 4) { background-color: #3f51b5; }
+.confetti:nth-child(10n + 5) { background-color: #2196f3; }
+.confetti:nth-child(10n + 6) { background-color: #03a9f4; }
+.confetti:nth-child(10n + 7) { background-color: #00bcd4; }
+.confetti:nth-child(10n + 8) { background-color: #009688; }
+.confetti:nth-child(10n + 9) { background-color: #4caf50; }
+.confetti:nth-child(odd) { animation-duration: 4s; }
+.confetti:nth-child(even) { animation-duration: 6s; }
+
+.confetti:nth-child(1) { --x-start: 10vw; --x-end: 5vw; --rotate-end: 360deg; animation-delay: -1.2s; }
+.confetti:nth-child(2) { --x-start: 20vw; --x-end: 25vw; --rotate-end: 720deg; animation-delay: -2.3s; }
+.confetti:nth-child(3) { --x-start: 30vw; --x-end: 33vw; --rotate-end: 450deg; animation-delay: -0.5s; }
+.confetti:nth-child(4) { --x-start: 40vw; --x-end: 48vw; --rotate-end: 540deg; animation-delay: -3.1s; }
+.confetti:nth-child(5) { --x-start: 50vw; --x-end: 52vw; --rotate-end: 900deg; animation-delay: -1.8s; }
+.confetti:nth-child(6) { --x-start: 60vw; --x-end: 65vw; --rotate-end: 630deg; animation-delay: -4s; }
+.confetti:nth-child(7) { --x-start: 70vw; --x-end: 71vw; --rotate-end: 810deg; animation-delay: -0.9s; }
+.confetti:nth-child(8) { --x-start: 80vw; --x-end: 88vw; --rotate-end: 1080deg; animation-delay: -2.7s; }
+.confetti:nth-child(9) { --x-start: 90vw; --x-end: 95vw; --rotate-end: 270deg; animation-delay: -1.5s; }
+.confetti:nth-child(10) { --x-start: 15vw; --x-end: 18vw; --rotate-end: 480deg; animation-delay: -3.5s; }
+.confetti:nth-child(11) { --x-start: 25vw; --x-end: 22vw; --rotate-end: 600deg; animation-delay: -0.1s; }
+.confetti:nth-child(12) { --x-start: 35vw; --x-end: 38vw; --rotate-end: 960deg; animation-delay: -1.9s; }
+.confetti:nth-child(13) { --x-start: 45vw; --x-end: 40vw; --rotate-end: 750deg; animation-delay: -2.9s; }
+.confetti:nth-child(14) { --x-start: 55vw; --x-end: 58vw; --rotate-end: 1200deg; animation-delay: -0.4s; }
+.confetti:nth-child(15) { --x-start: 65vw; --x-end: 60vw; --rotate-end: 1000deg; animation-delay: -1.1s; }
+.confetti:nth-child(16) { --x-start: 75vw; --x-end: 79vw; --rotate-end: 850deg; animation-delay: -2.2s; }
+.confetti:nth-child(17) { --x-start: 85vw; --x-end: 80vw; --rotate-end: 1100deg; animation-delay: -3.3s; }
+.confetti:nth-child(18) { --x-start: 95vw; --x-end: 90vw; --rotate-end: 950deg; animation-delay: -0.7s; }
+.confetti:nth-child(19) { --x-start: 5vw; --x-end: 8vw; --rotate-end: 300deg; animation-delay: -2.5s; }
+.confetti:nth-child(20) { --x-start: 98vw; --x-end: 95vw; --rotate-end: 650deg; animation-delay: -1.4s; }
+
+
+/* --- BALLOONS --- */
+.balloon {
+  position: absolute;
+  font-size: 2rem;
+  bottom: -50px;
+  animation: rise 10s ease-in-out infinite;
+}
+
+@keyframes rise {
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-25vh) rotate(10deg); }
+  50% { transform: translateY(-50vh) rotate(-10deg); }
+  75% { transform: translateY(-75vh) rotate(5deg); }
+  100% { transform: translateY(-110vh) rotate(0deg); }
+}
+
+.balloon-1 { left: 15%; animation-duration: 12s; animation-delay: 0s; }
+.balloon-2 { left: 35%; animation-duration: 15s; animation-delay: -2s; font-size: 2.5rem; }
+.balloon-3 { left: 65%; animation-duration: 11s; animation-delay: -4s; }
+.balloon-4 { left: 85%; animation-duration: 14s; animation-delay: -1s; font-size: 2.2rem; }
