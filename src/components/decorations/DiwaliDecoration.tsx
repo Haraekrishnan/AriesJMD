@@ -31,6 +31,13 @@ export default function DiwaliDecoration() {
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
+
+            {/* Crackers from image */}
+            <div className="cracker cracker-1"></div>
+            <div className="cracker cracker-2"></div>
+            <div className="cracker cracker-3"></div>
+            <div className="cracker cracker-4"></div>
+            <div className="cracker cracker-5"></div>
         </div>
     );
 }

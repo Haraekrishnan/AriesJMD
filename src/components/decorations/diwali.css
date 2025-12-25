@@ -143,3 +143,28 @@
 .firework:nth-child(3) { top: 50%; left: 10%; background: #4caf50; box-shadow: 0 0 10px #81c784; animation-delay: -0.5s; }
 .firework:nth-child(4) { top: 70%; left: 90%; background: #2196f3; box-shadow: 0 0 10px #64b5f6; animation-delay: -0.8s; }
 .firework:nth-child(5) { top: 80%; left: 40%; background: #9c27b0; box-shadow: 0 0 10px #ba68c8; animation-delay: -1.5s; }
+
+/* Crackers */
+.cracker {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background-image: url('https://i.ibb.co/3k0cM5q/firework-cracker.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: cracker-pop 4s ease-out infinite;
+  opacity: 0;
+}
+
+@keyframes cracker-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  20% { transform: scale(1); opacity: 1; }
+  80% { transform: scale(1.1); opacity: 0.5; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+
+.cracker-1 { top: 10%; left: 5%; animation-delay: 0s; }
+.cracker-2 { top: 40%; right: 10%; animation-delay: 1.5s; width: 200px; height: 200px; }
+.cracker-3 { bottom: 15%; left: 25%; animation-delay: 2.5s; width: 120px; height: 120px; }
+.cracker-4 { top: 60%; left: 55%; animation-delay: 0.5s; transform: rotate(45deg); }
+.cracker-5 { top: 20%; right: 30%; animation-delay: 3s; width: 180px; height: 180px; }
